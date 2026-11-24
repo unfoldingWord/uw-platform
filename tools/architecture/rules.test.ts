@@ -70,7 +70,7 @@ const refusals: [string, string, string, string][] = [
   [
     'harness into apps',
     'packages/harness/a.ts',
-    "import '../../apps/uw-app/b.ts';",
+    "import '../../apps/uw-platform/b.ts';",
     'harness-imports-contracts-and-core-only',
   ],
   [
@@ -94,7 +94,7 @@ const refusals: [string, string, string, string][] = [
   [
     'harness into a declaration file in apps',
     'packages/harness/a.ts',
-    "import type { Value } from '../../apps/uw-app/types.d.ts'; export type Local = Value;",
+    "import type { Value } from '../../apps/uw-platform/types.d.ts'; export type Local = Value;",
     'harness-imports-contracts-and-core-only',
   ],
   [
@@ -130,7 +130,7 @@ const refusals: [string, string, string, string][] = [
   [
     'a contracts test into apps',
     'packages/contracts/a.test.ts',
-    "import '../../apps/uw-app/b.ts';",
+    "import '../../apps/uw-platform/b.ts';",
     'contracts-imports-nothing',
   ],
   ['harness into Hono', 'packages/harness/a.ts', "import 'hono';", 'harness-is-pure'],
@@ -141,13 +141,13 @@ const refusals: [string, string, string, string][] = [
   [
     'contracts into apps',
     'packages/contracts/a.ts',
-    "import '../../apps/uw-app/b.ts';",
+    "import '../../apps/uw-platform/b.ts';",
     'contracts-imports-nothing',
   ],
   [
     'db into apps',
     'packages/db/a.ts',
-    "import '../../apps/uw-app/b.ts';",
+    "import '../../apps/uw-platform/b.ts';",
     'db-imports-contracts-and-core',
   ],
   ['core into db', 'packages/core/a.ts', "import '../db/b.ts';", 'core-imports-contracts-only'],
@@ -160,7 +160,7 @@ const refusals: [string, string, string, string][] = [
   [
     'sim into apps',
     'sim/a.ts',
-    "import '../apps/uw-app/b.ts';",
+    "import '../apps/uw-platform/b.ts';",
     'sim-imports-harness-contracts-and-db-only',
   ],
   [
@@ -207,37 +207,37 @@ const refusals: [string, string, string, string][] = [
   ],
   [
     'a non-test app file into a port contract',
-    'apps/uw-app/a.ts',
+    'apps/uw-platform/a.ts',
     "import '../../packages/harness/port-contracts/b.ts';",
     'port-contracts-only-in-tests',
   ],
   [
     'a non-test app file into the in-process host',
-    'apps/uw-app/a.ts',
+    'apps/uw-platform/a.ts',
     "import './mcp/in-process.ts';",
     'in-process-host-only-in-run-steps',
   ],
   [
     'the run core into the in-process host past the run steps',
-    'apps/uw-app/runs/run-core.ts',
+    'apps/uw-platform/runs/run-core.ts',
     "import '../mcp/in-process.ts';",
     'in-process-host-only-in-run-steps',
   ],
   [
     'an app module into the run host',
-    'apps/uw-app/cron/a.ts',
+    'apps/uw-platform/cron/a.ts',
     "import '../runs/b.ts';",
     'run-host-only-from-the-workflow',
   ],
   [
     'the MCP surface into the run host',
-    'apps/uw-app/mcp/a.test.ts',
+    'apps/uw-platform/mcp/a.test.ts',
     "import '../runs/b.ts';",
     'mcp-never-imports-the-run-host',
   ],
   [
     'an app module into the verb server',
-    'apps/uw-app/commands/a.ts',
+    'apps/uw-platform/commands/a.ts',
     "import '../mcp/server.ts';",
     'verb-server-only-in-the-hosts',
   ],
@@ -249,43 +249,43 @@ const refusals: [string, string, string, string][] = [
   ],
   [
     'an island into the kernel',
-    'apps/uw-app/islands/a.ts',
+    'apps/uw-platform/islands/a.ts',
     "import '../../../packages/harness/b.ts';",
     'islands-never-call-the-kernel',
   ],
   [
     'a browser island into the database',
-    'apps/uw-app/islands/browser/a.ts',
+    'apps/uw-platform/islands/browser/a.ts',
     "import '../../../../packages/db/b.ts';",
     'islands-never-call-the-kernel',
   ],
   [
     'the service worker into a route module',
-    'apps/uw-app/islands/worker/a.ts',
+    'apps/uw-platform/islands/worker/a.ts',
     "import '../../commands/routes.ts';",
     'islands-never-call-the-kernel',
   ],
   [
     'a route module into the built islands bundle',
-    'apps/uw-app/commands/a.ts',
+    'apps/uw-platform/commands/a.ts',
     "import '../generated/islands.ts';",
     'islands-bundle-only-in-assets-and-views',
   ],
   [
     'a Worker file into the embedded database',
-    'apps/uw-app/a.ts',
+    'apps/uw-platform/a.ts',
     "import '../../packages/db/embedded.ts';",
     'apps-never-import-the-embedded-database',
   ],
   [
     'a Worker file into PGlite',
-    'apps/uw-app/a.ts',
+    'apps/uw-platform/a.ts',
     "import '@electric-sql/pglite';",
     'apps-never-import-the-embedded-database',
   ],
   [
     'a vendor SDK outside an engine',
-    'apps/uw-app/a.ts',
+    'apps/uw-platform/a.ts',
     "import '@anthropic-ai/sdk';",
     'vendor-sdk-only-in-engines',
   ],
@@ -303,7 +303,7 @@ const refusals: [string, string, string, string][] = [
   ],
   [
     'the web push library outside the push transport',
-    'apps/uw-app/notify/push/send.ts',
+    'apps/uw-platform/notify/push/send.ts',
     "import '@block65/webcrypto-web-push';",
     'web-push-only-in-push-transport',
   ],
@@ -315,12 +315,12 @@ describe('the islands rules', () => {
       await violations({
         'packages/contracts/index.ts': leaf,
         'packages/ui/components/text.ts': leaf,
-        'apps/uw-app/islands/live/session.ts': leaf,
-        'apps/uw-app/generated/islands.ts': leaf,
-        'apps/uw-app/islands/browser/a.ts':
+        'apps/uw-platform/islands/live/session.ts': leaf,
+        'apps/uw-platform/generated/islands.ts': leaf,
+        'apps/uw-platform/islands/browser/a.ts':
           "import '../live/session.ts'; import '../../../../packages/contracts/index.ts'; import '../../../../packages/ui/components/text.ts';",
-        'apps/uw-app/assets/routes.ts': "import '../generated/islands.ts';",
-        'apps/uw-app/views/parts/frame.tsx': "import '../../generated/islands.ts';",
+        'apps/uw-platform/assets/routes.ts': "import '../generated/islands.ts';",
+        'apps/uw-platform/views/parts/frame.tsx': "import '../../generated/islands.ts';",
       }),
     ).toEqual([]);
   });
@@ -343,18 +343,18 @@ describe('the dependency rules', () => {
     expect(
       await violations({
         [path]: source,
-        'apps/uw-app/b.ts': leaf,
+        'apps/uw-platform/b.ts': leaf,
         'packages/db/b.ts': leaf,
         'packages/db/embedded.ts': leaf,
         'packages/core/b.ts': leaf,
         'packages/harness/b.ts': leaf,
         'packages/harness/port-contracts/b.ts': leaf,
-        'apps/uw-app/mcp/in-process.ts': leaf,
-        'apps/uw-app/mcp/server.ts': leaf,
-        'apps/uw-app/runs/b.ts': leaf,
-        'apps/uw-app/commands/routes.ts': leaf,
-        'apps/uw-app/generated/islands.ts': leaf,
-        'apps/uw-app/types.d.ts': 'export type Value = number;',
+        'apps/uw-platform/mcp/in-process.ts': leaf,
+        'apps/uw-platform/mcp/server.ts': leaf,
+        'apps/uw-platform/runs/b.ts': leaf,
+        'apps/uw-platform/commands/routes.ts': leaf,
+        'apps/uw-platform/generated/islands.ts': leaf,
+        'apps/uw-platform/types.d.ts': 'export type Value = number;',
       }),
     ).toContain(rule);
   });
@@ -413,12 +413,12 @@ describe('the run host dependency rules allow', () => {
   it('the run steps on the in-process host, the Worker entry on the run host, and the hosts on the verb server', async () => {
     expect(
       await violations({
-        'apps/uw-app/mcp/server.ts': leaf,
-        'apps/uw-app/mcp/in-process.ts': "import './server.ts';",
-        'apps/uw-app/mcp/routes.ts': "import './server.ts';",
-        'apps/uw-app/runs/steps.ts': "import '../mcp/in-process.ts';",
-        'apps/uw-app/runs/workflow.ts': "import './steps.ts';",
-        'apps/uw-app/index.ts': "import './runs/workflow.ts';",
+        'apps/uw-platform/mcp/server.ts': leaf,
+        'apps/uw-platform/mcp/in-process.ts': "import './server.ts';",
+        'apps/uw-platform/mcp/routes.ts': "import './server.ts';",
+        'apps/uw-platform/runs/steps.ts': "import '../mcp/in-process.ts';",
+        'apps/uw-platform/runs/workflow.ts': "import './steps.ts';",
+        'apps/uw-platform/index.ts': "import './runs/workflow.ts';",
       }),
     ).toEqual([]);
   });
@@ -426,8 +426,8 @@ describe('the run host dependency rules allow', () => {
   it('a test that connects the in-process host', async () => {
     expect(
       await violations({
-        'apps/uw-app/mcp/in-process.ts': leaf,
-        'apps/uw-app/mcp/a.test.ts': "import './in-process.ts';",
+        'apps/uw-platform/mcp/in-process.ts': leaf,
+        'apps/uw-platform/mcp/a.test.ts': "import './in-process.ts';",
       }),
     ).toEqual([]);
   });
@@ -435,7 +435,7 @@ describe('the run host dependency rules allow', () => {
   it('the web push library inside the push transport', async () => {
     expect(
       await violations({
-        'apps/uw-app/notify/push/transport.ts': "import '@block65/webcrypto-web-push';",
+        'apps/uw-platform/notify/push/transport.ts': "import '@block65/webcrypto-web-push';",
       }),
     ).toEqual([]);
   });
@@ -443,7 +443,7 @@ describe('the run host dependency rules allow', () => {
   it('a vendor SDK inside an engine directory', async () => {
     expect(
       await violations({
-        'apps/uw-app/engines/claude-messages/a.ts': "import '@anthropic-ai/sdk';",
+        'apps/uw-platform/engines/claude-messages/a.ts': "import '@anthropic-ai/sdk';",
       }),
     ).toEqual([]);
   });
@@ -486,7 +486,7 @@ describe('the store executor rule', () => {
     expect(
       await violations({
         'packages/db/store/store.ts': store,
-        'apps/uw-app/x.ts': "import '../../packages/db/store/store.ts';",
+        'apps/uw-platform/x.ts': "import '../../packages/db/store/store.ts';",
       }),
     ).toContain('store-executor-stays-in-the-store');
   });

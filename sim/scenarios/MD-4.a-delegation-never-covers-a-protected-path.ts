@@ -17,7 +17,7 @@ export const scenario = defineScenario({
     'a merge delegation never covers a protected path: the submit records ship_refused, writes no decision and leaves the item parked for a person',
   run: async (world) => {
     const { harness, admin } = await createSimHarness(world, software, {
-      protectedPaths: ['apps/uw-app/'],
+      protectedPaths: ['apps/uw-platform/'],
     });
     const input = { harnessId: harness.id, editor: admin, title: 'Show the board' };
     const item = await simAtShip(world, { ...input, change: standardChange });

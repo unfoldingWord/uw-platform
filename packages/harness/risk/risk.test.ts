@@ -60,7 +60,7 @@ describe('KN-17 the protected-directory map', () => {
   it('maps each path to one domain by exact segment prefix', () => {
     expect(domainOf('packages/db/migrations/0009_x.sql')).toBe('migration');
     expect(domainOf('packages/core/acl.ts')).toBe('acl');
-    expect(domainOf('apps/uw-app/acl/grants.ts')).toBe('acl');
+    expect(domainOf('apps/uw-platform/acl/grants.ts')).toBe('acl');
     expect(domainOf('.github/workflows/ci.yml')).toBe('infra');
     expect(domainOf('packages/ledger/post.ts')).toBe('ledger');
   });
@@ -79,48 +79,48 @@ describe('KN-17 the protected-directory map is robust and protects itself', () =
 
   it('protects the GitHub identity and merge code under acl', () => {
     expect(domainOf('packages/harness/github/reviewers.ts')).toBe('acl');
-    expect(domainOf('apps/uw-app/github/merge.ts')).toBe('acl');
+    expect(domainOf('apps/uw-platform/github/merge.ts')).toBe('acl');
   });
 });
 
 describe('KN-17 the protected-directory map covers the code that decides what Ship sees and what merges', () => {
   it('protects the whole GitHub module under acl: the App client, the merge and the ship writes', () => {
     for (const file of ['client.ts', 'merge.ts', 'ship-writes.ts', 'session.ts', 'deps.ts']) {
-      expect(domainOf(`apps/uw-app/github/${file}`)).toBe('acl');
+      expect(domainOf(`apps/uw-platform/github/${file}`)).toBe('acl');
     }
-    expect(domainOf('apps/uw-app/github/facts/upsert.ts')).toBe('acl');
+    expect(domainOf('apps/uw-platform/github/facts/upsert.ts')).toBe('acl');
   });
 
   it('protects every platform adapter under acl, the connectors and the GitHub facts among them', () => {
-    expect(domainOf('apps/uw-app/ports/connectors.ts')).toBe('acl');
-    expect(domainOf('apps/uw-app/ports/github-facts.ts')).toBe('acl');
-    expect(domainOf('apps/uw-app/ports/grants.ts')).toBe('acl');
+    expect(domainOf('apps/uw-platform/ports/connectors.ts')).toBe('acl');
+    expect(domainOf('apps/uw-platform/ports/github-facts.ts')).toBe('acl');
+    expect(domainOf('apps/uw-platform/ports/grants.ts')).toBe('acl');
   });
 
   it('protects the kernel composition root under acl', () => {
-    expect(domainOf('apps/uw-app/kernel.ts')).toBe('acl');
-    expect(domainOf('apps/uw-app/kernel.test.ts')).toBeNull();
+    expect(domainOf('apps/uw-platform/kernel.ts')).toBe('acl');
+    expect(domainOf('apps/uw-platform/kernel.test.ts')).toBeNull();
   });
 
   it('protects the person gate kernel and its GitHub opener under acl', () => {
-    expect(domainOf('apps/uw-app/commands/person/gate-kernel.ts')).toBe('acl');
-    expect(domainOf('apps/uw-app/commands/person/gate-github.ts')).toBe('acl');
-    expect(domainOf('apps/uw-app/commands/person/gate-kernel.test.ts')).toBeNull();
+    expect(domainOf('apps/uw-platform/commands/person/gate-kernel.ts')).toBe('acl');
+    expect(domainOf('apps/uw-platform/commands/person/gate-github.ts')).toBe('acl');
+    expect(domainOf('apps/uw-platform/commands/person/gate-kernel.test.ts')).toBeNull();
   });
 
   it('protects the dispatcher that decides who gets the gate GitHub opener, and the person deps that hold it, under acl', () => {
-    expect(domainOf('apps/uw-app/commands/dispatch.ts')).toBe('acl');
-    expect(domainOf('apps/uw-app/commands/person-deps.ts')).toBe('acl');
-    expect(domainOf('apps/uw-app/commands/registry.ts')).toBeNull();
+    expect(domainOf('apps/uw-platform/commands/dispatch.ts')).toBe('acl');
+    expect(domainOf('apps/uw-platform/commands/person-deps.ts')).toBe('acl');
+    expect(domainOf('apps/uw-platform/commands/registry.ts')).toBeNull();
   });
 
   it('protects the command capabilities, which build the gate kernel for a person on a gate command, under acl', () => {
-    expect(domainOf('apps/uw-app/commands/capabilities.ts')).toBe('acl');
+    expect(domainOf('apps/uw-platform/commands/capabilities.ts')).toBe('acl');
   });
 
   it('KN-17 the sandbox egress is in the acl domain', () => {
     for (const file of ['egress.ts', 'github-egress.ts', 'pkt-line.ts']) {
-      expect(domainOf(`apps/uw-app/engines/sandbox/${file}`)).toBe('acl');
+      expect(domainOf(`apps/uw-platform/engines/sandbox/${file}`)).toBe('acl');
     }
   });
 
@@ -188,14 +188,14 @@ describe('KN-17 the protected-directory map covers the checks and the CI that en
 
 describe('KN-17 the floor from paths', () => {
   it('has no tier and no domain for an unprotected path', () => {
-    expect(floorFromPaths(['apps/uw-app/board.tsx'])).toEqual({ tier: null, domains: [] });
+    expect(floorFromPaths(['apps/uw-platform/board.tsx'])).toEqual({ tier: null, domains: [] });
     expect(floorFromPaths([])).toEqual({ tier: null, domains: [] });
   });
 
   it('floors at high with the touched domains in schema order without duplicates', () => {
     const floor = floorFromPaths([
       'packages/db/migrations/0009_x.sql',
-      'infra/uw-app/wrangler.toml',
+      'infra/uw-platform/wrangler.toml',
       './infra/x.json',
     ]);
     expect(floor).toEqual({ tier: 'high', domains: ['infra', 'migration'] });
@@ -218,7 +218,7 @@ describe('KN-17 the declaration raises and never lowers', () => {
   it('adds a declared domain and raises a missing tier', () => {
     const result = applyDeclaration(high, { riskTier: 'high', riskDomains: ['ledger'] });
     expect(result).toEqual({ ok: true, tier: 'high', domains: ['ledger', 'migration'] });
-    const none = floorFromPaths(['apps/uw-app/board.tsx']);
+    const none = floorFromPaths(['apps/uw-platform/board.tsx']);
     expect(applyDeclaration(none, { riskTier: 'standard', riskDomains: [] })).toEqual({
       ok: true,
       tier: 'standard',

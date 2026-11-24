@@ -2,7 +2,7 @@
 
 **Status:** accepted 2026-11-20 with five changes from Jesse (see "Decisions"). Filed as two issues: the build and the content migration.
 **Date:** 2026-11-20
-**Reviewed against:** `develop` at `4da454f`. Sources: `packages/db/schema-platform.ts`, `packages/contracts/pages.ts`, `packages/contracts/page-types.ts`, `packages/contracts/areas.ts`, `apps/uw-app/pages/`, `apps/uw-app/views/screens/page.tsx`, `apps/uw-app/views/parts/names.ts`, `apps/uw-app/islands/`, `apps/uw-app/auth/`, ADR 0015, the platform plan (§1, §2, §2.4 to §2.6, §4, §11, §14, §21), and the live Notion workspace.
+**Reviewed against:** `develop` at `4da454f`. Sources: `packages/db/schema-platform.ts`, `packages/contracts/pages.ts`, `packages/contracts/page-types.ts`, `packages/contracts/areas.ts`, `apps/uw-platform/pages/`, `apps/uw-platform/views/screens/page.tsx`, `apps/uw-platform/views/parts/names.ts`, `apps/uw-platform/islands/`, `apps/uw-platform/auth/`, ADR 0015, the platform plan (§1, §2, §2.4 to §2.6, §4, §11, §14, §21), and the live Notion workspace.
 
 This proposal answers one question: what must the platform do before staff can stop opening Notion for the knowledge base? It covers the wiki. It does not cover Notion's databases (Program Portfolio, Projects Kanban, Colleague Directory, OKRs, Prayer Requests, Parking Lot), which the platform plan handles as typed records in its Phase 1.
 
@@ -177,7 +177,7 @@ A small island in the shell, present on every screen.
 
 Milkdown (MIT) with its Crepe interface, on ProseMirror, loaded only on the edit route. Milkdown parses and writes markdown itself, through remark, so markdown is the editor's own source; the stored body never becomes editor JSON. ADR 0017 records the decision.
 
-**The risk to manage:** remark writes some markdown differently from how it was typed (bullet markers, table padding) and escapes syntax it does not know, such as `[[wiki links]]`. A golden-file test (`apps/uw-app/markdown/editor-round-trip.node.test.ts`) opens and saves sample articles and fails on any change of meaning, and a small plugin keeps the wiki's own syntax as typed. A page that does not survive the round trip opens in a plain markdown editor instead, which is today's textarea and remains available to anyone who prefers it.
+**The risk to manage:** remark writes some markdown differently from how it was typed (bullet markers, table padding) and escapes syntax it does not know, such as `[[wiki links]]`. A golden-file test (`apps/uw-platform/markdown/editor-round-trip.node.test.ts`) opens and saves sample articles and fails on any change of meaning, and a small plugin keeps the wiki's own syntax as typed. A page that does not survive the round trip opens in a plain markdown editor instead, which is today's textarea and remains available to anyone who prefers it.
 
 **Live co-editing with Yjs, from the start** (decision 2, and the platform plan's original position).
 

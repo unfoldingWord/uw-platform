@@ -14,15 +14,15 @@ const commentFreeRoots = ['apps/**', 'packages/**', 'sim/**', 'tests/**'];
 const vendorSdkPatterns = [
   {
     group: ['@anthropic-ai/*'],
-    message: 'Vendor SDKs are imported only inside apps/uw-app/engines/<engine>/.',
+    message: 'Vendor SDKs are imported only inside apps/uw-platform/engines/<engine>/.',
   },
   {
     group: ['openai', 'openai/*'],
-    message: 'Vendor SDKs are imported only inside apps/uw-app/engines/<engine>/.',
+    message: 'Vendor SDKs are imported only inside apps/uw-platform/engines/<engine>/.',
   },
   {
     group: ['@openrouter/*', 'openrouter'],
-    message: 'Vendor SDKs are imported only inside apps/uw-app/engines/<engine>/.',
+    message: 'Vendor SDKs are imported only inside apps/uw-platform/engines/<engine>/.',
   },
 ];
 
@@ -106,7 +106,7 @@ export default defineConfig([
     },
   },
   {
-    files: ['apps/uw-app/engines/*/**'],
+    files: ['apps/uw-platform/engines/*/**'],
     rules: { 'no-restricted-imports': 'off' },
   },
   {

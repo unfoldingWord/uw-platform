@@ -24,18 +24,18 @@ const shipWiring =
   /\b(?:platformConnectors|mergeHandler|createShipWrites|ShipGitHub|MergeGitHub)\b|\b(?:reads|ship)\s*:/;
 const gitHubWired =
   /\bplatform(?:Kernel|Ports)\s*\(\s*(?:[^,()]*|[^,()]*\([^()]*\)[^,()]*),\s*(?:[^,()]*|[^,()]*\([^()]*\)[^,()]*),(?!\s*(?:hubWiring\(|\)))/;
-const gateKernelModule = 'apps/uw-app/commands/person/gate-kernel.ts';
-const kernelRoot = 'apps/uw-app/kernel.ts';
-const delegatedExitRoot = 'apps/uw-app/cron/delegated-exits.ts';
-const mergeModule = 'apps/uw-app/github/merge.ts';
-const connectorsAdapter = 'apps/uw-app/ports/connectors.ts';
-const mergeRig = 'apps/uw-app/github/testing/merge-rig.ts';
-const readOnlyRoots = ['apps/uw-app/queue/', 'apps/uw-app/cron/'];
+const gateKernelModule = 'apps/uw-platform/commands/person/gate-kernel.ts';
+const kernelRoot = 'apps/uw-platform/kernel.ts';
+const delegatedExitRoot = 'apps/uw-platform/cron/delegated-exits.ts';
+const mergeModule = 'apps/uw-platform/github/merge.ts';
+const connectorsAdapter = 'apps/uw-platform/ports/connectors.ts';
+const mergeRig = 'apps/uw-platform/github/testing/merge-rig.ts';
+const readOnlyRoots = ['apps/uw-platform/queue/', 'apps/uw-platform/cron/'];
 const reviewlessRoots = [
-  'apps/uw-app/mcp/',
-  'apps/uw-app/queue/',
-  'apps/uw-app/cron/',
-  'apps/uw-app/commands/',
+  'apps/uw-platform/mcp/',
+  'apps/uw-platform/queue/',
+  'apps/uw-platform/cron/',
+  'apps/uw-platform/commands/',
 ];
 const reviewWiring = /\breviews\s*:|\brunWiring\s*\(|\breviewerAppsOf\b|\bcreateReviewWrites\b/;
 
@@ -43,11 +43,11 @@ const exitModule = 'packages/harness/gates/exit.ts';
 const recoverModule = 'packages/harness/gates/recover.ts';
 const lostExit = 'sim/lost-exit.ts';
 const wiring = [
-  'apps/uw-app/kernel.ts',
+  'apps/uw-platform/kernel.ts',
   'packages/harness/runs/commands.ts',
   'packages/harness/runs/review.ts',
-  'apps/uw-app/testing/lost-exit.ts',
-  'apps/uw-app/testing/run-host.ts',
+  'apps/uw-platform/testing/lost-exit.ts',
+  'apps/uw-platform/testing/run-host.ts',
   exitModule,
   recoverModule,
   'packages/harness/ports.ts',
@@ -190,7 +190,7 @@ describe('GH-6 the merge connector runs only from the kernel stage-exit path', (
     expect(filesMatching(mergeCall, sources())).toEqual([mergeModule, mergeRig, connectorsAdapter]);
     expect(filesMatching(shipWritesCall, sources())).toEqual([
       mergeModule,
-      'apps/uw-app/github/ship-writes.ts',
+      'apps/uw-platform/github/ship-writes.ts',
     ]);
   });
 
@@ -203,13 +203,13 @@ describe('GH-6 the merge connector runs only from the kernel stage-exit path', (
   });
 
   it('GH-6 MD-5 the only kernels built with GitHub reads or the ship writes are the gate kernel, the run host and the delegated exit job', () => {
-    const app = sources().filter((file) => file.startsWith('apps/uw-app/'));
+    const app = sources().filter((file) => file.startsWith('apps/uw-platform/'));
     expect(app.length).toBeGreaterThan(0);
     expect(filesMatching(gitHubWired, app)).toEqual([
       gateKernelModule,
       delegatedExitRoot,
       kernelRoot,
-      'apps/uw-app/runs/deps.ts',
+      'apps/uw-platform/runs/deps.ts',
     ]);
   });
 
@@ -220,20 +220,23 @@ describe('GH-6 the merge connector runs only from the kernel stage-exit path', (
   });
 
   it('flags a planted merge call, outcome read and ship wiring', () => {
-    const merge = plant('apps/uw-app/github/m.ts', 'await writes.merge(repo, 1, change);');
-    const handler = plant('apps/uw-app/x/h.ts', 'const effects = mergeHandler(github);');
-    const outcome = plant('apps/uw-app/x/o.ts', 'await ports.connectors?.outcomeOf(request);');
-    const record = plant('apps/uw-app/x/r.ts', 'await recordExitOutcomes (ports, context, []);');
-    const wired = plant('apps/uw-app/queue/w.ts', 'platformKernel(database, clock, ship);');
-    const named = plant('apps/uw-app/cron/n.ts', 'const effects = platformConnectors(ship);');
+    const merge = plant('apps/uw-platform/github/m.ts', 'await writes.merge(repo, 1, change);');
+    const handler = plant('apps/uw-platform/x/h.ts', 'const effects = mergeHandler(github);');
+    const outcome = plant('apps/uw-platform/x/o.ts', 'await ports.connectors?.outcomeOf(request);');
+    const record = plant(
+      'apps/uw-platform/x/r.ts',
+      'await recordExitOutcomes (ports, context, []);',
+    );
+    const wired = plant('apps/uw-platform/queue/w.ts', 'platformKernel(database, clock, ship);');
+    const named = plant('apps/uw-platform/cron/n.ts', 'const effects = platformConnectors(ship);');
     expect(filesMatching(mergeCall, [merge, handler])).toEqual([merge, handler].sort());
     expect(filesMatching(outcomeOfCall, [outcome])).toEqual([outcome]);
     expect(filesMatching(recordOutcomeCall, [record])).toEqual([record]);
     expect(filesMatching(gitHubWired, [wired])).toEqual([wired]);
     expect(filesMatching(shipWiring, [named])).toEqual([named]);
-    expect(readOnlyRootFiles(['apps/uw-app/queue/worker.ts', 'apps/uw-app/kernel.ts'])).toEqual([
-      'apps/uw-app/queue/worker.ts',
-    ]);
+    expect(
+      readOnlyRootFiles(['apps/uw-platform/queue/worker.ts', 'apps/uw-platform/kernel.ts']),
+    ).toEqual(['apps/uw-platform/queue/worker.ts']);
   });
 });
 
@@ -255,21 +258,21 @@ const hubOnlyCalls = [
 describe('the GitHub kernel wiring check', () => {
   it('flags every planted kernel given GitHub, and none given the hub alone', () => {
     const wired = wiredCalls.map((text, index) =>
-      plant(`apps/uw-app/queue/wired-${index}.ts`, text),
+      plant(`apps/uw-platform/queue/wired-${index}.ts`, text),
     );
     const hubOnly = hubOnlyCalls.map((text, index) =>
-      plant(`apps/uw-app/cron/hub-${index}.ts`, text),
+      plant(`apps/uw-platform/cron/hub-${index}.ts`, text),
     );
     expect(filesMatching(gitHubWired, [...wired, ...hubOnly])).toEqual([...wired].sort());
   });
 
   it('flags a planted read or ship wiring named in a queue or cron root', () => {
     const reads = plant(
-      'apps/uw-app/queue/r.ts',
+      'apps/uw-platform/queue/r.ts',
       'const wiring = { hub, reads: access, ship: null };',
     );
     const ship = plant(
-      'apps/uw-app/cron/s.ts',
+      'apps/uw-platform/cron/s.ts',
       'const wiring = { hub, ship };\nuse({ ship : github });',
     );
     expect(filesMatching(shipWiring, [reads, ship])).toEqual([reads, ship].sort());
@@ -308,12 +311,15 @@ describe("GH-5 the assembler is the ship rule's only caller", () => {
   });
 
   it('flags a planted call of the ship rule or the assembler from an app module', () => {
-    const viaKernel = plant('apps/uw-app/x.ts', 'kernel.shipRule(input);');
-    const direct = plant('apps/uw-app/y.ts', 'shipRule(input);');
-    const aliased = plant('apps/uw-app/z.ts', "import { shipRule as rule } from '@uw/harness';");
-    const assembler = plant('apps/uw-app/w.ts', 'assembleShipInput(source);');
-    expect(sourcesAmong(['apps/uw-app/x.ts', 'apps/uw-app/x.test.ts'])).toEqual([
-      'apps/uw-app/x.ts',
+    const viaKernel = plant('apps/uw-platform/x.ts', 'kernel.shipRule(input);');
+    const direct = plant('apps/uw-platform/y.ts', 'shipRule(input);');
+    const aliased = plant(
+      'apps/uw-platform/z.ts',
+      "import { shipRule as rule } from '@uw/harness';",
+    );
+    const assembler = plant('apps/uw-platform/w.ts', 'assembleShipInput(source);');
+    expect(sourcesAmong(['apps/uw-platform/x.ts', 'apps/uw-platform/x.test.ts'])).toEqual([
+      'apps/uw-platform/x.ts',
     ]);
     expect(strays(shipRuleCall, shipRuleCallers, [viaKernel, direct])).toEqual(
       [viaKernel, direct].sort(),
@@ -336,14 +342,17 @@ describe('HE-4 only the run host kernel holds the Reviewer review writes', () =>
 
   it('flags a planted Reviewer wiring in an MCP, queue, cron or command root', () => {
     const planted = [
-      plant('apps/uw-app/mcp/r.ts', 'hubWiring(hub, { reviews: apps });'),
-      plant('apps/uw-app/queue/r.ts', 'platformKernel(db, clock, runWiring(host, reads, writes));'),
-      plant('apps/uw-app/cron/r.ts', 'const apps = reviewerAppsOf(env);'),
-      plant('apps/uw-app/commands/r.ts', 'const writes = createReviewWrites(app, transport);'),
+      plant('apps/uw-platform/mcp/r.ts', 'hubWiring(hub, { reviews: apps });'),
+      plant(
+        'apps/uw-platform/queue/r.ts',
+        'platformKernel(db, clock, runWiring(host, reads, writes));',
+      ),
+      plant('apps/uw-platform/cron/r.ts', 'const apps = reviewerAppsOf(env);'),
+      plant('apps/uw-platform/commands/r.ts', 'const writes = createReviewWrites(app, transport);'),
     ];
     expect(filesMatching(reviewWiring, planted)).toEqual([...planted].sort());
-    expect(reviewlessRootFiles(['apps/uw-app/runs/deps.ts', 'apps/uw-app/mcp/server.ts'])).toEqual([
-      'apps/uw-app/mcp/server.ts',
-    ]);
+    expect(
+      reviewlessRootFiles(['apps/uw-platform/runs/deps.ts', 'apps/uw-platform/mcp/server.ts']),
+    ).toEqual(['apps/uw-platform/mcp/server.ts']);
   });
 });

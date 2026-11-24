@@ -10,10 +10,10 @@ You work items on the unfoldingWord harness from your own machine. Everything yo
 Sign in to Cloudflare Access with your own Google account:
 
 ```
-cloudflared access login https://<uw-app>/mcp
+cloudflared access login https://<uw-platform>/mcp
 ```
 
-Add the platform as an MCP server named `uw-platform` at `https://<uw-app>/mcp`, sending your Access token and an `x-uw-device` header that names this machine (for example `x-uw-device: laptop`). The platform mints you as `agent:<you>/<device>`. A scheduled routine that runs without you uses a service token instead and must name a live delegation when it claims.
+Add the platform as an MCP server named `uw-platform` at `https://<uw-platform>/mcp`, sending your Access token and an `x-uw-device` header that names this machine (for example `x-uw-device: laptop`). The platform mints you as `agent:<you>/<device>`. A scheduled routine that runs without you uses a service token instead and must name a live delegation when it claims.
 
 ## Poll
 

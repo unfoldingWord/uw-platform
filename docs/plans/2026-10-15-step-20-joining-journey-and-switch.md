@@ -620,7 +620,7 @@ In `HE-1 the HarnessRun Workflow is declared for go-live only, in staging and pr
 
 ```ts
   it('declares no Workflow in the live file', () => {
-    expect(workflowSites(load(`infra/uw-app/${live}`))).toEqual([]);
+    expect(workflowSites(load(`infra/uw-platform/${live}`))).toEqual([]);
   });
 ```
 
@@ -628,8 +628,8 @@ with
 
 ```ts
   it('declares a Workflow in the live file only once the switch is on', () => {
-    const twin = goLiveSwitchedOn() ? load(`infra/uw-app/${goLive}`) : {};
-    expect(workflowSites(load(`infra/uw-app/${live}`))).toEqual(workflowSites(twin));
+    const twin = goLiveSwitchedOn() ? load(`infra/uw-platform/${goLive}`) : {};
+    expect(workflowSites(load(`infra/uw-platform/${live}`))).toEqual(workflowSites(twin));
   });
 ```
 
@@ -637,7 +637,7 @@ In `the sandbox containers are declared for go-live only, in staging and product
 
 ```ts
   it('declares no container, sandbox binding or migration in the live file', () => {
-    const config = load(`infra/uw-app/${live}`);
+    const config = load(`infra/uw-platform/${live}`);
     expect(sandboxSites(config)).toEqual([]);
     expect(config['migrations']).toBeUndefined();
   });
@@ -647,8 +647,8 @@ with
 
 ```ts
   it('declares a container, sandbox binding or migration in the live file only once the switch is on', () => {
-    const config = load(`infra/uw-app/${live}`);
-    const twin = goLiveSwitchedOn() ? load(`infra/uw-app/${goLive}`) : {};
+    const config = load(`infra/uw-platform/${live}`);
+    const twin = goLiveSwitchedOn() ? load(`infra/uw-platform/${goLive}`) : {};
     expect(sandboxSites(config)).toEqual(sandboxSites(twin));
     expect(config['migrations']).toEqual(twin['migrations']);
   });
@@ -660,7 +660,7 @@ In `tools/infra/crons.test.ts`, add `import { goLiveSwitchedOn } from './switch.
 
 ```ts
   it('finds no cron anywhere in the live file', () => {
-    expect(everyCron(readFileSync('infra/uw-app/wrangler.toml', 'utf8'))).toEqual([]);
+    expect(everyCron(readFileSync('infra/uw-platform/wrangler.toml', 'utf8'))).toEqual([]);
   });
 ```
 
@@ -668,8 +668,8 @@ with
 
 ```ts
   it('finds a cron in the live file only once the switch is on', () => {
-    const twin = goLiveSwitchedOn() ? readFileSync('infra/uw-app/wrangler.go-live.toml', 'utf8') : '';
-    expect(everyCron(readFileSync('infra/uw-app/wrangler.toml', 'utf8'))).toEqual(everyCron(twin));
+    const twin = goLiveSwitchedOn() ? readFileSync('infra/uw-platform/wrangler.go-live.toml', 'utf8') : '';
+    expect(everyCron(readFileSync('infra/uw-platform/wrangler.toml', 'utf8'))).toEqual(everyCron(twin));
   });
 ```
 
@@ -724,14 +724,14 @@ switch fails. GL-1, S20-R3."
 ### Task 4: GL-1, the probe answers the database through Hyperdrive
 
 **Files:**
-- Modify: `apps/uw-app/health/health.test.ts` (workers project; one `describe` appended, two imports)
+- Modify: `apps/uw-platform/health/health.test.ts` (workers project; one `describe` appended, two imports)
 
 **Interfaces:**
-- Consumes: `platformDeps` (`apps/uw-app/deps.ts`), `hyperdriveDatabase` (`apps/uw-app/database.ts`), the file's own `handleWithPing`, `commit`, `recordingDeps`, `createApp`, `healthReportSchema`.
+- Consumes: `platformDeps` (`apps/uw-platform/deps.ts`), `hyperdriveDatabase` (`apps/uw-platform/database.ts`), the file's own `handleWithPing`, `commit`, `recordingDeps`, `createApp`, `healthReportSchema`.
 
 - [ ] **Step 1: Write the test**
 
-Add these imports to `apps/uw-app/health/health.test.ts`, beside the existing `../database.ts` type import:
+Add these imports to `apps/uw-platform/health/health.test.ts`, beside the existing `../database.ts` type import:
 
 ```ts
 import { hyperdriveDatabase, type DatabaseHandle } from '../database.ts';
@@ -767,17 +767,17 @@ describe('GL-1 the staging probe answers the database through Hyperdrive', () =>
 
 - [ ] **Step 2: Run it**
 
-Run: `npx vitest run --project workers apps/uw-app/health/health.test.ts`
+Run: `npx vitest run --project workers apps/uw-platform/health/health.test.ts`
 Expected: green on first run. Both cases pin behaviour that FD-11 and FD-12 built; GL-1's test is the proof that the switch needs nothing more in the Worker. Record in the tracker that it was green on first run and why. If the second case reports `amber`, the fake ping took over 500 ms on this machine: rerun once; if it repeats, report it as a finding rather than loosening the status.
 
 - [ ] **Step 3: Lint and commit**
 
-Run: `npx eslint apps/uw-app/health/health.test.ts --max-warnings 0 && pnpm check`
+Run: `npx eslint apps/uw-platform/health/health.test.ts --max-warnings 0 && pnpm check`
 Expected: clean.
 
 ```bash
-git add apps/uw-app/health/health.test.ts
-git commit -m "test(uw-app): GL-1, the probe reports the database through the Hyperdrive binding
+git add apps/uw-platform/health/health.test.ts
+git commit -m "test(uw-platform): GL-1, the probe reports the database through the Hyperdrive binding
 
 The platform opens its database only from HYPERDRIVE, opens nothing
 without it, and the public probe reports the database ok with its
@@ -830,7 +830,7 @@ const gated = "steps.gate.outputs.configured == 'true'";
 const neonName = /\b(?:secrets|vars)\.(NEON_[A-Z_]+)\b/g;
 const gateRun = /^bash \.github\/scripts\/secret-gate\.sh ([A-Z_]+)$/;
 const placeholder = 'set-at-go-live';
-const goLiveFiles = ['infra/uw-app/wrangler.go-live.toml', 'infra/uw-ingest/wrangler.go-live.toml'];
+const goLiveFiles = ['infra/uw-platform/wrangler.go-live.toml', 'infra/uw-ingest/wrangler.go-live.toml'];
 const switchHeading = '## Switching on the go-live wiring (FD-12)';
 const runbookStep = /^(\d+)\. \*\*/gm;
 
@@ -979,7 +979,7 @@ describe('GL-1 the runbook switches on what the go-live files leave unset', () =
   it('GL-1 orders the switch in eight steps and ends on the staging probe answering the database through Hyperdrive', () => {
     const section = switchSection();
     expect(runbookSteps(section)).toEqual([1, 2, 3, 4, 5, 6, 7, 8]);
-    expect(stagingProbe()).toBe('https://uw-app-staging.unfoldingword.workers.dev/health/probe');
+    expect(stagingProbe()).toBe('https://uw-platform-staging.unfoldingword.workers.dev/health/probe');
     expect(section).toContain(stagingProbe());
     expect(section).toContain('select(.name == "database")');
     expect(section).toContain('reachable in');
@@ -1011,15 +1011,15 @@ Append to the end of `infra/README.md` (after the paragraph that begins "Until t
 GL-1 switches the wiring above on. It writes no code: each step creates a resource, sets a secret or a value, or checks one. Every row of `docs/progress_tracker.md` that waits on FD-6, FD-7, FD-10 or FD-12 names the step that closes it. Steps 1 to 5 can run in any order; step 6 needs them all; step 7 is GL-1's release gate.
 
 1. **Neon (FD-12).** Create the Neon project on Postgres 16 or later, and its branch `staging`. In the repository settings set `NEON_API_KEY`, `NEON_DIRECT_URL_STAGING` and `NEON_DIRECT_URL_PRODUCTION` as secrets and `NEON_PROJECT_ID` as a variable (the table above). Check: open a test pull request; `neon-branch` runs its steps instead of the notice "NEON_API_KEY is not set", and closing the pull request runs `drop-neon-branch`.
-2. **Hyperdrive (FD-12, FD-6).** `wrangler hyperdrive create uw-staging --connection-string=<pooled staging string>`, and the same for `uw-production`. Put each Hyperdrive id in place of `set-at-go-live` in `[[env.staging.hyperdrive]]` and `[[env.production.hyperdrive]]` of both go-live files, and staging's Hyperdrive id in uw-app's `[[env.preview.hyperdrive]]` (P33).
+2. **Hyperdrive (FD-12, FD-6).** `wrangler hyperdrive create uw-staging --connection-string=<pooled staging string>`, and the same for `uw-production`. Put each Hyperdrive id in place of `set-at-go-live` in `[[env.staging.hyperdrive]]` and `[[env.production.hyperdrive]]` of both go-live files, and staging's Hyperdrive id in uw-platform's `[[env.preview.hyperdrive]]` (P33).
 3. **Queues and hosts (FD-10).** Create the four queues listed above with `wrangler queues create`. Read the account's `workers.dev` subdomain in the Cloudflare dashboard; if it is not `unfoldingword`, correct `STAGING_URL` and `INGEST_URL` in `.github/workflows/deploy-staging.yml` and the address in step 7.
-4. **Access and origins (FD-7).** Apply the three applications as the Access section says. Put the app application's AUD tag in `ACCESS_AUD`, the `mcp` application's in `ACCESS_MCP_AUD` and the team domain in `ACCESS_TEAM_DOMAIN`, under staging, production and preview of `uw-app/wrangler.go-live.toml`, and the staging origin in `APP_ORIGIN`. `VAPID_PUBLIC_KEY`, `VAPID_SUBJECT`, `ZULIP_SITE` and `ZULIP_BOT_EMAIL` come from the notifier section; the push and Zulip halves read their secrets (`VAPID_PRIVATE_JWK`, `ZULIP_BOT_API_KEY`) before these values, so they stay off until those secrets are set.
-5. **Worker secrets (FD-10, GH-1).** Once an org owner has registered the GitHub App (the GitHub App section), set `GITHUB_WEBHOOK_SECRET` on uw-ingest and the `GITHUB_APP_*` secrets on uw-app with `wrangler secret put <name> --env staging`, as that section lists. Step 7's probe does not need them; the FD-10 webhook check and the delegated merge's live run do.
-6. **The switch pull request.** In one pull request: copy `uw-app/wrangler.go-live.toml` over `uw-app/wrangler.toml` and `uw-ingest/wrangler.go-live.toml` over `uw-ingest/wrangler.toml`, and set `"switchedOn": true` in `infra/go-live.json`. `pnpm verify` must be green: with the flag on, the live-file tests require each live file to carry everything its go-live twin declares, and with it off they require none of it, so a half switch fails. Merge it on a green CI `test` job; `deploy-staging.yml` then runs `migrate-staging` and deploys both Workers. The deploy builds the sandbox images, so the runner needs Docker (the sandbox section).
+4. **Access and origins (FD-7).** Apply the three applications as the Access section says. Put the app application's AUD tag in `ACCESS_AUD`, the `mcp` application's in `ACCESS_MCP_AUD` and the team domain in `ACCESS_TEAM_DOMAIN`, under staging, production and preview of `uw-platform/wrangler.go-live.toml`, and the staging origin in `APP_ORIGIN`. `VAPID_PUBLIC_KEY`, `VAPID_SUBJECT`, `ZULIP_SITE` and `ZULIP_BOT_EMAIL` come from the notifier section; the push and Zulip halves read their secrets (`VAPID_PRIVATE_JWK`, `ZULIP_BOT_API_KEY`) before these values, so they stay off until those secrets are set.
+5. **Worker secrets (FD-10, GH-1).** Once an org owner has registered the GitHub App (the GitHub App section), set `GITHUB_WEBHOOK_SECRET` on uw-ingest and the `GITHUB_APP_*` secrets on uw-platform with `wrangler secret put <name> --env staging`, as that section lists. Step 7's probe does not need them; the FD-10 webhook check and the delegated merge's live run do.
+6. **The switch pull request.** In one pull request: copy `uw-platform/wrangler.go-live.toml` over `uw-platform/wrangler.toml` and `uw-ingest/wrangler.go-live.toml` over `uw-ingest/wrangler.toml`, and set `"switchedOn": true` in `infra/go-live.json`. `pnpm verify` must be green: with the flag on, the live-file tests require each live file to carry everything its go-live twin declares, and with it off they require none of it, so a half switch fails. Merge it on a green CI `test` job; `deploy-staging.yml` then runs `migrate-staging` and deploys both Workers. The deploy builds the sandbox images, so the runner needs Docker (the sandbox section).
 7. **The release gate: the staging probe through Hyperdrive.** Run
 
    ```
-   curl -fsS https://uw-app-staging.unfoldingword.workers.dev/health/probe \
+   curl -fsS https://uw-platform-staging.unfoldingword.workers.dev/health/probe \
      | jq -e '.indicators[] | select(.name == "database") | .status == "ok"'
    ```
 
@@ -1497,7 +1497,7 @@ item 7 is the owner's."
 
 In `docs/progress_tracker.md`:
 
-1. The step 20 row of "Status by build-order step": state `Built`; evidence: "Tasks 1 to 8 on `build/v0.2.0`: <the commit SHAs of Tasks 1 to 8, by task>. DX-10 is proven by `sim/scenarios/DX-10.the-joining-journey-from-shadow-to-a-delegated-merge.ts`; GL-1 by `tools/infra/switch.test.ts` and the GL-1 describe in `apps/uw-app/health/health.test.ts`. GL-1's live switch waits on a person (the GL-1 row under Waiting on a person). `pnpm verify` green locally: counts in Step 2 below. CI: <run id, or the waiver proposal of Task 8 Step 5>. `docs/plans/2026-10-15-step-20-joining-journey-and-switch.md`".
+1. The step 20 row of "Status by build-order step": state `Built`; evidence: "Tasks 1 to 8 on `build/v0.2.0`: <the commit SHAs of Tasks 1 to 8, by task>. DX-10 is proven by `sim/scenarios/DX-10.the-joining-journey-from-shadow-to-a-delegated-merge.ts`; GL-1 by `tools/infra/switch.test.ts` and the GL-1 describe in `apps/uw-platform/health/health.test.ts`. GL-1's live switch waits on a person (the GL-1 row under Waiting on a person). `pnpm verify` green locally: counts in Step 2 below. CI: <run id, or the waiver proposal of Task 8 Step 5>. `docs/plans/2026-10-15-step-20-joining-journey-and-switch.md`".
 2. A section "## Step 20 evidence by requirement", directly before "## Decisions made during the build", in the shape of step 17's:
 
 ```markdown
@@ -1508,7 +1508,7 @@ Commits are on `build/v0.2.0`. The plan commit is left out. `pnpm verify` at the
 | Requirement | Commits | Scenarios and tests |
 |---|---|---|
 | DX-10 | <Task 1 SHA>, <Task 2 SHA> | scenario `DX-10`; release criterion 3 for v0.2.0 in `tools/release/criteria.test.ts` |
-| GL-1 | <Task 3 SHAs>, <Task 4 SHA>, <Task 5 SHAs>, <Task 6 SHA> | `tools/infra/switch.test.ts` (three GL-1 describes), `apps/uw-app/health/health.test.ts` (GL-1 describe), `tools/infra/go-live.test.ts` and `tools/infra/crons.test.ts` (the live-file cases read the switch); the live release gate is a person's (Waiting on a person, GL-1) |
+| GL-1 | <Task 3 SHAs>, <Task 4 SHA>, <Task 5 SHAs>, <Task 6 SHA> | `tools/infra/switch.test.ts` (three GL-1 describes), `apps/uw-platform/health/health.test.ts` (GL-1 describe), `tools/infra/go-live.test.ts` and `tools/infra/crons.test.ts` (the live-file cases read the switch); the live release gate is a person's (Waiting on a person, GL-1) |
 | GL-1 (green on first run) | <Task 4 SHA> | The probe and the Hyperdrive binding were built in step 1 (FD-11, FD-12); the GL-1 test pins them, so it passed when written |
 ```
 

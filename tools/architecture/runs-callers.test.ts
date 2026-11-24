@@ -5,8 +5,8 @@ import { repoFiles } from '../repo-files.ts';
 const hostMembers =
   /\.runs\s*\??\.\s*(?:scene|hibernateAtGate|complete|fail|holdPremise|halt|reviewDiff|postReview|progress)\s*\(/;
 const beatMember = /\.runs\s*\??\.\s*beat\s*\(/;
-const hostCallers = ['apps/uw-app/runs/', 'apps/uw-app/mcp/in-process.ts', 'sim/'];
-const beatCallers = ['apps/uw-app/cron/', 'sim/'];
+const hostCallers = ['apps/uw-platform/runs/', 'apps/uw-platform/mcp/in-process.ts', 'sim/'];
+const beatCallers = ['apps/uw-platform/cron/', 'sim/'];
 
 function isSource(file: string): boolean {
   return (
@@ -42,26 +42,29 @@ describe('the run-host kernel members are called only by the run host', () => {
 
   it('flags a planted host-member call outside the run host, and a planted beat outside the cron', () => {
     const planted = new Map([
-      ['apps/uw-app/mcp/verbs/x.ts', 'await context.kernel.runs.complete(caller, runId, input);'],
       [
-        'apps/uw-app/commands/handlers/y.ts',
+        'apps/uw-platform/mcp/verbs/x.ts',
+        'await context.kernel.runs.complete(caller, runId, input);',
+      ],
+      [
+        'apps/uw-platform/commands/handlers/y.ts',
         'await kernel.runs?.postReview(caller, runId, input);',
       ],
-      ['apps/uw-app/queue/z.ts', 'await kernel.runs . scene (caller, runId);'],
-      ['apps/uw-app/commands/handlers/b.ts', 'await kernel.runs.beat(caller, { limit: 10 });'],
-      ['apps/uw-app/runs/steps.ts', 'await deps.runKernel.runs.scene(host, runId);'],
-      ['apps/uw-app/cron/minute.ts', 'await kernel.runs.beat(caller, { limit: 10 });'],
-      ['apps/uw-app/mcp/x.test.ts', 'await kernel.runs.halt(caller, runId, why);'],
+      ['apps/uw-platform/queue/z.ts', 'await kernel.runs . scene (caller, runId);'],
+      ['apps/uw-platform/commands/handlers/b.ts', 'await kernel.runs.beat(caller, { limit: 10 });'],
+      ['apps/uw-platform/runs/steps.ts', 'await deps.runKernel.runs.scene(host, runId);'],
+      ['apps/uw-platform/cron/minute.ts', 'await kernel.runs.beat(caller, { limit: 10 });'],
+      ['apps/uw-platform/mcp/x.test.ts', 'await kernel.runs.halt(caller, runId, why);'],
     ]);
     const read = (file: string) => planted.get(file) ?? '';
     const files = [...planted.keys()];
     expect(strays(hostMembers, hostCallers, files, read)).toEqual([
-      'apps/uw-app/mcp/verbs/x.ts',
-      'apps/uw-app/commands/handlers/y.ts',
-      'apps/uw-app/queue/z.ts',
+      'apps/uw-platform/mcp/verbs/x.ts',
+      'apps/uw-platform/commands/handlers/y.ts',
+      'apps/uw-platform/queue/z.ts',
     ]);
     expect(strays(beatMember, beatCallers, files, read)).toEqual([
-      'apps/uw-app/commands/handlers/b.ts',
+      'apps/uw-platform/commands/handlers/b.ts',
     ]);
   });
 });

@@ -58,4 +58,4 @@ Fill one row per area with the nodes it relates to, then declare each filled cel
 
 ## What unfoldingWord uses
 
-unfoldingWord's index, `00.01 unfoldingWord Index (Johnny.Decimal)`, is the source of truth for its areas, categories and IDs. The platform's area names and the numbers it shows beside each module follow that index. Another organization replaces the area names in `apps/uw-app/views/parts/names.ts` with its own and names its categories on the wiki screens.
+unfoldingWord's index, `00.01 unfoldingWord Index (Johnny.Decimal)`, is the source of truth for its areas, categories and IDs. The platform's area names and the numbers it shows beside each module follow that index. Another organization replaces the area names in `apps/uw-platform/views/parts/names.ts` with its own and names its categories on the wiki screens.

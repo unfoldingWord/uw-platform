@@ -51,7 +51,7 @@
 
 **Left for later steps, found while planning (recorded in the tracker by Task 12):**
 
-1. The merge connector (`apps/uw-app/github/merge.ts`, `tagOf`) refuses any head ref that is not `harness/<item>` (`head_ref_mismatch`), so a joined pull request cannot merge at Ship yet. Steps 16 or 20 (DX-10's "merge under a delegation") must teach it the S14-R6 combination.
+1. The merge connector (`apps/uw-platform/github/merge.ts`, `tagOf`) refuses any head ref that is not `harness/<item>` (`head_ref_mismatch`), so a joined pull request cannot merge at Ship yet. Steps 16 or 20 (DX-10's "merge under a delegation") must teach it the S14-R6 combination.
 2. `checksNotGreen` requires this repository's six CI job names (`ciJobSchema`) from `github-actions`. A joined repository with other job names gets `checks_not_green` in every shadow verdict. SR-1 (step 15, `required_check_never_ran`) is where required checks become per repository.
 3. Nothing moves a joined item from Check to Ship except a person's `submit_to_gate`. DX-10 (step 20) decides whether a posted approval advances it.
 4. A push after joining is not followed (S14-R5).
@@ -73,7 +73,7 @@ Every task obeys every line here. The controller passes this section to each imp
 
 - TypeScript `strict`, no `any`, no `@ts-ignore`, no `as unknown as`, no non-null assertion.
 - No code comments of any kind.
-- Files under 500 non-blank lines; functions under 50 lines, 25 statements, complexity 10, depth 4, 3 nested callbacks, 5 parameters. `apps/uw-app/github/facts/upsert.ts` (496 lines) and `apps/uw-app/github/sweep.ts` (491) are near the limit: Task 9 adds at most three lines to `upsert.ts` and none to `sweep.ts`.
+- Files under 500 non-blank lines; functions under 50 lines, 25 statements, complexity 10, depth 4, 3 nested callbacks, 5 parameters. `apps/uw-platform/github/facts/upsert.ts` (496 lines) and `apps/uw-platform/github/sweep.ts` (491) are near the limit: Task 9 adds at most three lines to `upsert.ts` and none to `sweep.ts`.
 - Zod at every boundary. `packages/contracts` imports only `zod`. `packages/harness` imports nothing from Workers, Drizzle or the network.
 - Every exported Zod schema registered in `packages/contracts/registry.ts` has `fixtures/<key>/valid/*.json` and `fixtures/<key>/invalid/*.json`. Any change to a registered `z.enum` appends a full entry to `packages/contracts/contract-lock.json` and changes `CONTRACT_VERSION`.
 - Every route and command has `can()` on the harness's area, directly or through a kernel read the route test recognises (`kernel.views.*`, `kernel.reads.*`, `executeCommand`).
@@ -86,7 +86,7 @@ Every task obeys every line here. The controller passes this section to each imp
 
 **Shared roots**
 
-- `packages/contracts/` (Task 1), `packages/db/schema.ts` and `packages/db/schema-github.ts` with the migration (Task 2), `packages/harness/store-ports.ts` (Task 3), and the `tools/architecture/` allowlist (Task 8) are shared roots. Each change to one is its own commit with no feature code, and the message names the root and why. `packages/db/store/`, `packages/db/test-seed.ts`, `apps/uw-app/generated/islands.ts` and the sim are not shared roots.
+- `packages/contracts/` (Task 1), `packages/db/schema.ts` and `packages/db/schema-github.ts` with the migration (Task 2), `packages/harness/store-ports.ts` (Task 3), and the `tools/architecture/` allowlist (Task 8) are shared roots. Each change to one is its own commit with no feature code, and the message names the root and why. `packages/db/store/`, `packages/db/test-seed.ts`, `apps/uw-platform/generated/islands.ts` and the sim are not shared roots.
 - Between Task 1 and Task 2 the drift test (`tools/db/drift.test.ts`) is red, because the schema's name checks derive from the enums. Do Tasks 1 and 2 back to back.
 
 **Tests**
@@ -122,7 +122,7 @@ Inputs the spec implies that no requirement row spells out, most likely to bite 
 - Create: fixtures (Step 5)
 - Modify: `packages/contracts/events.test.ts:31-35`, `packages/contracts/contracts.test.ts` (new block)
 - Modify: `packages/contracts/contract-lock.json`, `packages/contracts/version.ts`
-- Second commit, not a shared root: `packages/harness/items/fold.ts` (`unchangedNames`), `apps/uw-app/pages/gating.ts`, `apps/uw-app/commands/registry.ts`, `apps/uw-app/commands/registry.test.ts`, `apps/uw-app/generated/islands.ts` (regenerated)
+- Second commit, not a shared root: `packages/harness/items/fold.ts` (`unchangedNames`), `apps/uw-platform/pages/gating.ts`, `apps/uw-platform/commands/registry.ts`, `apps/uw-platform/commands/registry.test.ts`, `apps/uw-platform/generated/islands.ts` (regenerated)
 
 **Interfaces:**
 - Produces: everything in the hand-off table that lives in `packages/contracts`. `CommandBody<'set_shadow'>` is `{ command: 'set_shadow'; requestId: string; shadow: false }`. `EventEvidence['shadow_verdict']` is `{ head: string | null; verdict: 'advance' | 'refuse'; reasons: ShipRefusal[] }`. `EventEvidence['review_verdict_recorded']` is `{ runId, head, reviewer, provider, model, verdict, findings }`. `Harness` gains `shadow: boolean` and `externalReviewerIdentities: string[]`.
@@ -574,17 +574,17 @@ GL-2 GL-3 GL-4 GL-6 OB-3 PI-1. S14-R1 S14-R2 S14-R3 S14-R13."
 
 `packages/harness/items/fold.ts`, add to `unchangedNames`: `'review_verdict_recorded'`, `'shadow_verdict'`, `'shadow_lifted'`.
 
-`apps/uw-app/pages/gating.ts`, add `platform: 'gated',` to `gatingByType`.
+`apps/uw-platform/pages/gating.ts`, add `platform: 'gated',` to `gatingByType`.
 
-`apps/uw-app/commands/registry.ts`: `import { notWiredCommand } from './not-wired.ts';` and add `notWiredCommand('set_shadow', 'admin'),` at the end of the `commandRegistryOf([...])` list. `apps/uw-app/commands/registry.test.ts`: add `set_shadow: 'admin',` to `actions`.
+`apps/uw-platform/commands/registry.ts`: `import { notWiredCommand } from './not-wired.ts';` and add `notWiredCommand('set_shadow', 'admin'),` at the end of the `commandRegistryOf([...])` list. `apps/uw-platform/commands/registry.test.ts`: add `set_shadow: 'admin',` to `actions`.
 
 Regenerate the islands bundle, which embeds the contract schemas: `pnpm ui:islands`.
 
-Run: `pnpm check && npx vitest run packages/harness/items/fold.test.ts apps/uw-app/commands/registry.test.ts tools/ui/generated-islands.test.ts packages/contracts`
+Run: `pnpm check && npx vitest run packages/harness/items/fold.test.ts apps/uw-platform/commands/registry.test.ts tools/ui/generated-islands.test.ts packages/contracts`
 Expected: green. `tools/db/drift.test.ts` is red until Task 2.
 
 ```bash
-git add packages/harness/items/fold.ts apps/uw-app/pages/gating.ts apps/uw-app/commands/registry.ts apps/uw-app/commands/registry.test.ts apps/uw-app/generated/islands.ts
+git add packages/harness/items/fold.ts apps/uw-platform/pages/gating.ts apps/uw-platform/commands/registry.ts apps/uw-platform/commands/registry.test.ts apps/uw-platform/generated/islands.ts
 git commit -m "chore: the totals the joining contracts force
 
 The new events fold to nothing, the platform page type is gated, set_shadow
@@ -953,7 +953,7 @@ and in `read`: `platformFor: (jdArea) => platformFor(executor, jdArea),`.
 
 - [ ] **Step 4: Run the Store contract on both adapters**
 
-Run: `pnpm check && TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/postgres npx vitest run packages/harness/port-contracts sim/adapters apps/uw-app/ports`
+Run: `pnpm check && TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/postgres npx vitest run packages/harness/port-contracts sim/adapters apps/uw-platform/ports`
 Expected: green; `store reads for joining` runs on the sim adapter and on the platform adapter. If `pnpm check` reports a `Harness` literal outside these files missing `shadow` or `externalReviewerIdentities`, add `shadow: false, externalReviewerIdentities: []` there (expect `packages/harness/stages/activate.ts`, fixed properly in Task 4; add the two fields with those values now).
 
 - [ ] **Step 5: Commit**
@@ -978,11 +978,11 @@ GL-3 GL-4 GL-6."
 - Modify: `packages/harness/stages/commands.ts` (`liftShadow`)
 - Modify: `packages/harness/github/reviewers.ts` (`countedReviewer`, `namesPlatformReviewer`, `requestsPlatformReviewer`, `EXTERNAL_PROVIDER`)
 - Modify: `packages/harness/index.ts` (export `requestsPlatformReviewer`, `EXTERNAL_PROVIDER`)
-- Modify: `apps/uw-app/commands/person/stages.ts` (`activate_template` passes the fields; `setShadowCommand`)
-- Modify: `apps/uw-app/commands/registry.ts` (replace the not-wired `set_shadow`)
+- Modify: `apps/uw-platform/commands/person/stages.ts` (`activate_template` passes the fields; `setShadowCommand`)
+- Modify: `apps/uw-platform/commands/registry.ts` (replace the not-wired `set_shadow`)
 - Modify: `sim/fixtures.ts` (`createSimHarness` options `shadow`, `externalReviewerIdentities`)
 - Create: `sim/kernel/shadow-switch.test.ts`
-- Create: `apps/uw-app/commands/joining.pg.test.ts`
+- Create: `apps/uw-platform/commands/joining.pg.test.ts`
 
 **Interfaces:**
 - Consumes: Task 1 contracts; Task 3 `harnesses.write.setShadow`.
@@ -1202,7 +1202,7 @@ Expected: green.
 
 - [ ] **Step 8: Write the failing route tests**
 
-`apps/uw-app/commands/joining.pg.test.ts`:
+`apps/uw-platform/commands/joining.pg.test.ts`:
 
 ```ts
 import { randomUUID } from 'node:crypto';
@@ -1250,11 +1250,11 @@ describe.skipIf(!testServer)('GL-4 shadow through the command API', () => {
 });
 ```
 
-`person` in `apps/uw-app/testing/commands.ts` is module-private today (the `person(db, name, role, area)` at line ~148). Export it (`export async function person`). `eventsNamed` returns events with `evidence`; if its shape differs, read it first and adapt the two `toMatchObject` lines.
+`person` in `apps/uw-platform/testing/commands.ts` is module-private today (the `person(db, name, role, area)` at line ~148). Export it (`export async function person`). `eventsNamed` returns events with `evidence`; if its shape differs, read it first and adapt the two `toMatchObject` lines.
 
 - [ ] **Step 9: The handlers**
 
-`apps/uw-app/commands/person/stages.ts`, in `activateTemplateCommand`:
+`apps/uw-platform/commands/person/stages.ts`, in `activateTemplateCommand`:
 
 ```ts
     const { harnessKey, jdArea, repository, shadow, externalReviewerIdentities } = body;
@@ -1280,17 +1280,17 @@ export const setShadowCommand = commandHandler({
 });
 ```
 
-`apps/uw-app/commands/registry.ts`: import `setShadowCommand` from `./person/stages.ts`, replace `notWiredCommand('set_shadow', 'admin')` with `setShadowCommand`, and remove the `notWiredCommand` import if nothing else uses it (grep the file).
+`apps/uw-platform/commands/registry.ts`: import `setShadowCommand` from `./person/stages.ts`, replace `notWiredCommand('set_shadow', 'admin')` with `setShadowCommand`, and remove the `notWiredCommand` import if nothing else uses it (grep the file).
 
 - [ ] **Step 10: Run the route and registry tests**
 
-Run: `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/postgres npx vitest run apps/uw-app/commands/joining.pg.test.ts apps/uw-app/commands/registry.test.ts apps/uw-app/commands/stages.pg.test.ts tools/architecture/command-routes.test.ts`
+Run: `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/postgres npx vitest run apps/uw-platform/commands/joining.pg.test.ts apps/uw-platform/commands/registry.test.ts apps/uw-platform/commands/stages.pg.test.ts tools/architecture/command-routes.test.ts`
 Expected: green.
 
 - [ ] **Step 11: Commit**
 
 ```bash
-git add packages/harness/stages packages/harness/github/reviewers.ts packages/harness/index.ts apps/uw-app/commands sim/fixtures.ts sim/kernel/shadow-switch.test.ts apps/uw-app/testing/commands.ts
+git add packages/harness/stages packages/harness/github/reviewers.ts packages/harness/index.ts apps/uw-platform/commands sim/fixtures.ts sim/kernel/shadow-switch.test.ts apps/uw-platform/testing/commands.ts
 git commit -m "feat(harness): shadow and external reviewers at activation, and the admin lift
 
 activate_template carries shadow and the external reviewer logins (a login
@@ -1307,8 +1307,8 @@ GL-4 PI-1. S14-R1 S14-R2."
 **Files:**
 - Create: `packages/harness/stages/package.ts`
 - Modify: `packages/harness/index.ts` (export `hasPackageStage`)
-- Modify: `apps/uw-app/commands/handlers/items.ts` (`kickstartCommand`)
-- Modify: `apps/uw-app/commands/joining.pg.test.ts` (one `describe`)
+- Modify: `apps/uw-platform/commands/handlers/items.ts` (`kickstartCommand`)
+- Modify: `apps/uw-platform/commands/joining.pg.test.ts` (one `describe`)
 - Create: `packages/harness/stages/package.test.ts`
 
 **Interfaces:**
@@ -1332,7 +1332,7 @@ describe('GL-2 a check-only harness has no Package stage', () => {
 });
 ```
 
-Append to `apps/uw-app/commands/joining.pg.test.ts` (add `import { sql } from 'drizzle-orm';`):
+Append to `apps/uw-platform/commands/joining.pg.test.ts` (add `import { sql } from 'drizzle-orm';`):
 
 ```ts
 describe.skipIf(!testServer)('GL-2 kickstart refuses a check-only harness, which has no Package page', () => {
@@ -1358,7 +1358,7 @@ describe.skipIf(!testServer)('GL-2 kickstart refuses a check-only harness, which
 
 - [ ] **Step 2: Run them and see them fail**
 
-Run: `npx vitest run packages/harness/stages/package.test.ts` then `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/postgres npx vitest run apps/uw-app/commands/joining.pg.test.ts -t "GL-2"`
+Run: `npx vitest run packages/harness/stages/package.test.ts` then `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/postgres npx vitest run apps/uw-platform/commands/joining.pg.test.ts -t "GL-2"`
 Expected: FAIL; `./package.ts` missing; kickstart answers `page_not_found`.
 
 - [ ] **Step 3: Implement**
@@ -1375,7 +1375,7 @@ export function hasPackageStage(stages: readonly Pick<Stage, 'bracket'>[]): bool
 
 `packages/harness/index.ts`: `export { hasPackageStage } from './stages/package.ts';`.
 
-`apps/uw-app/commands/handlers/items.ts`: `import { hasPackageStage } from '@uw/harness';` and first line of `kickstartCommand.run`:
+`apps/uw-platform/commands/handlers/items.ts`: `import { hasPackageStage } from '@uw/harness';` and first line of `kickstartCommand.run`:
 
 ```ts
     if (!hasPackageStage(context.stages)) return { ok: false, reason: 'template_has_no_package' };
@@ -1383,13 +1383,13 @@ export function hasPackageStage(stages: readonly Pick<Stage, 'bracket'>[]): bool
 
 - [ ] **Step 4: Run them**
 
-Same commands as Step 2, plus `npx vitest run apps/uw-app/commands/registry.test.ts`.
+Same commands as Step 2, plus `npx vitest run apps/uw-platform/commands/registry.test.ts`.
 Expected: green.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add packages/harness/stages/package.ts packages/harness/stages/package.test.ts packages/harness/index.ts apps/uw-app/commands/handlers/items.ts apps/uw-app/commands/joining.pg.test.ts
+git add packages/harness/stages/package.ts packages/harness/stages/package.test.ts packages/harness/index.ts apps/uw-platform/commands/handlers/items.ts apps/uw-platform/commands/joining.pg.test.ts
 git commit -m "feat(app): kickstart refuses a harness with no Package stage
 
 A check-only harness has no Package stage and no Package page, so
@@ -1405,11 +1405,11 @@ GL-2."
 **Files:**
 - Create: `packages/harness/items/dispatch.ts`
 - Modify: `packages/harness/items/claim.ts` (`dispatchGuard` in `claimIn`)
-- Modify: `apps/uw-app/pages/confirm.ts` (`'platform'` in `CONFIRMABLE`)
+- Modify: `apps/uw-platform/pages/confirm.ts` (`'platform'` in `CONFIRMABLE`)
 - Modify: `packages/db/test-seed.ts` (`seedPlatformPage`)
 - Modify: `sim/fixtures.ts` (`createSimHarness` seeds the page; option `dispatchable`; `platformPageIdOf`)
 - Create: `sim/kernel/dispatch.test.ts`
-- Modify: `apps/uw-app/pages/gated-activation.pg.test.ts` (`platform` joins the gated types; one GL-6 test)
+- Modify: `apps/uw-platform/pages/gated-activation.pg.test.ts` (`platform` joins the gated types; one GL-6 test)
 - Modify: every app rig or test that then fails `dispatch_list_unavailable` (Step 7)
 
 **Interfaces:**
@@ -1508,7 +1508,7 @@ describe('GL-6 ownership gate on dispatch', () => {
 
 (The repository-not-listed join refusal is pinned in Task 7, which builds the join.)
 
-In `apps/uw-app/pages/gated-activation.pg.test.ts`: add `['platform', { dispatch_allowed: ['unfoldingWord/tc-admin-app'] }]` to `frontmatterByType`, `'platform'` to `gated`, and a block (import `confirmPage` from `./confirm.ts`):
+In `apps/uw-platform/pages/gated-activation.pg.test.ts`: add `['platform', { dispatch_allowed: ['unfoldingWord/tc-admin-app'] }]` to `frontmatterByType`, `'platform'` to `gated`, and a block (import `confirmPage` from `./confirm.ts`):
 
 ```ts
 describe.skipIf(!testServer)('GL-6 the platform page is activated only by a person confirming it', () => {
@@ -1642,17 +1642,17 @@ and in `claimIn` replace the `stale` line with:
     (await dispatchGuard(tx, locked));
 ```
 
-`apps/uw-app/pages/confirm.ts`: `const CONFIRMABLE: ReadonlySet<string> = new Set(['learning', 'skill', 'platform']);`.
+`apps/uw-platform/pages/confirm.ts`: `const CONFIRMABLE: ReadonlySet<string> = new Set(['learning', 'skill', 'platform']);`.
 
 - [ ] **Step 5: Run the new tests**
 
-Run: `npx vitest run sim/kernel/dispatch.test.ts` and `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/postgres npx vitest run apps/uw-app/pages/gated-activation.pg.test.ts`
+Run: `npx vitest run sim/kernel/dispatch.test.ts` and `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/postgres npx vitest run apps/uw-platform/pages/gated-activation.pg.test.ts`
 Expected: green.
 
 - [ ] **Step 6: Commit the gate**
 
 ```bash
-git add packages/harness/items/dispatch.ts packages/harness/items/claim.ts packages/db/test-seed.ts sim/fixtures.ts sim/kernel/dispatch.test.ts apps/uw-app/pages/confirm.ts apps/uw-app/pages/gated-activation.pg.test.ts
+git add packages/harness/items/dispatch.ts packages/harness/items/claim.ts packages/db/test-seed.ts sim/fixtures.ts sim/kernel/dispatch.test.ts apps/uw-platform/pages/confirm.ts apps/uw-platform/pages/gated-activation.pg.test.ts
 git commit -m "feat(harness): agents claim only on repositories the area's platform page lists
 
 The platform page (gated, confirmed by a person) carries dispatch_allowed.
@@ -1673,13 +1673,13 @@ TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/postgres pnpm test 2>&1 | 
 pnpm sim:all 2>&1 | grep -B3 "dispatch_list_unavailable" | head -50
 ```
 
-For each failing file, add a `seedPlatformPage(db, { id: randomUUID(), jdArea: '80-89', repositories: [<the harness's repository>] })` where its harness is activated: in a shared rig when the rig activates the harness (likely `apps/uw-app/testing/commands.ts` `activated`, `apps/uw-app/testing/gate-world.ts`, `apps/uw-app/testing/board-world.ts`, `apps/uw-app/testing/run-host.ts`, `apps/uw-app/github/testing/gate-rig.ts`, `merge-rig.ts`, `ship-rig.ts`, `import-rig.ts`), otherwise in the test's own setup (candidates: `apps/uw-app/mcp/*.pg.test.ts`, `apps/uw-app/harness/*-race.pg.test.ts`). Do not change any assertion; if a test only passes by asserting the new refusal, it is a defect in the change, not the test: stop and report it. Seeding the same area twice is safe (it adds to the list).
+For each failing file, add a `seedPlatformPage(db, { id: randomUUID(), jdArea: '80-89', repositories: [<the harness's repository>] })` where its harness is activated: in a shared rig when the rig activates the harness (likely `apps/uw-platform/testing/commands.ts` `activated`, `apps/uw-platform/testing/gate-world.ts`, `apps/uw-platform/testing/board-world.ts`, `apps/uw-platform/testing/run-host.ts`, `apps/uw-platform/github/testing/gate-rig.ts`, `merge-rig.ts`, `ship-rig.ts`, `import-rig.ts`), otherwise in the test's own setup (candidates: `apps/uw-platform/mcp/*.pg.test.ts`, `apps/uw-platform/harness/*-race.pg.test.ts`). Do not change any assertion; if a test only passes by asserting the new refusal, it is a defect in the change, not the test: stop and report it. Seeding the same area twice is safe (it adds to the list).
 
 Run the two commands again until neither prints a refusal, then `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/postgres pnpm test && pnpm sim:all`.
 Expected: green.
 
 ```bash
-git add -A apps/uw-app sim
+git add -A apps/uw-platform sim
 git commit -m "test: the rigs list their repositories on the area's platform page
 
 Agent claims now need the dispatch list (GL-6); every rig that activates a
@@ -2549,16 +2549,16 @@ GL-4. S14-R7 S14-R8 S14-R9."
 ### Task 9: The app follows pull requests: requested reviewers, joins and shadow verdicts (GL-3, GL-4)
 
 **Files:**
-- Modify: `apps/uw-app/github/payloads.ts` (`requested_reviewers` on `pullSchema`)
-- Modify: `apps/uw-app/github/facts/records.ts` (`PullRequestRecord.requestedReviewers`)
-- Modify: `apps/uw-app/github/facts/normalise.ts` (`pullOf`)
-- Modify: `apps/uw-app/github/facts/upsert.ts` (`pullColumns`, the insert copy)
-- Modify: `apps/uw-app/github/facts/queries.ts` (`PullRequestChange` gains `title`, `open`, `requestedReviewers`)
-- Modify: `apps/uw-app/github/import.ts` (export `callerFor`)
-- Create: `apps/uw-app/github/join.ts`
-- Modify: `apps/uw-app/github/follow-up.ts`
-- Modify: `apps/uw-app/github/facts/normalise.test.ts` (one test)
-- Create: `apps/uw-app/github/join.pg.test.ts`
+- Modify: `apps/uw-platform/github/payloads.ts` (`requested_reviewers` on `pullSchema`)
+- Modify: `apps/uw-platform/github/facts/records.ts` (`PullRequestRecord.requestedReviewers`)
+- Modify: `apps/uw-platform/github/facts/normalise.ts` (`pullOf`)
+- Modify: `apps/uw-platform/github/facts/upsert.ts` (`pullColumns`, the insert copy)
+- Modify: `apps/uw-platform/github/facts/queries.ts` (`PullRequestChange` gains `title`, `open`, `requestedReviewers`)
+- Modify: `apps/uw-platform/github/import.ts` (export `callerFor`)
+- Create: `apps/uw-platform/github/join.ts`
+- Modify: `apps/uw-platform/github/follow-up.ts`
+- Modify: `apps/uw-platform/github/facts/normalise.test.ts` (one test)
+- Create: `apps/uw-platform/github/join.pg.test.ts`
 - Modify: every `PullRequestRecord` or `PullRequestChange` literal `pnpm check` then flags (add `requestedReviewers: []`, and `title`, `open` for changes)
 
 **Interfaces:**
@@ -2567,7 +2567,7 @@ GL-4. S14-R7 S14-R8 S14-R9."
 
 - [ ] **Step 1: Write the failing tests**
 
-In `apps/uw-app/github/facts/normalise.test.ts` (reuse the file's REST pull fixture and repo record; read its top first):
+In `apps/uw-platform/github/facts/normalise.test.ts` (reuse the file's REST pull fixture and repo record; read its top first):
 
 ```ts
 describe('GL-3 the facts carry the requested reviewers', () => {
@@ -2585,7 +2585,7 @@ describe('GL-3 the facts carry the requested reviewers', () => {
 });
 ```
 
-`apps/uw-app/github/join.pg.test.ts`:
+`apps/uw-platform/github/join.pg.test.ts`:
 
 ```ts
 import { randomUUID } from 'node:crypto';
@@ -2678,16 +2678,16 @@ If `kernel.reads.inStage`'s input differs (read `packages/harness/reads/scene.ts
 
 - [ ] **Step 2: Run them and see them fail**
 
-Run: `npx vitest run apps/uw-app/github/facts/normalise.test.ts` and `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/postgres npx vitest run apps/uw-app/github/join.pg.test.ts`
+Run: `npx vitest run apps/uw-platform/github/facts/normalise.test.ts` and `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/postgres npx vitest run apps/uw-platform/github/join.pg.test.ts`
 Expected: FAIL; `requestedReviewers` is undefined and nothing is joined.
 
 - [ ] **Step 3: Requested reviewers into the facts**
 
-`apps/uw-app/github/payloads.ts`, in `pullSchema`: `requested_reviewers: z.array(z.object({ login: name })).optional(),` (use whatever the file calls its bounded login string; `name` is the head-ref string schema).
+`apps/uw-platform/github/payloads.ts`, in `pullSchema`: `requested_reviewers: z.array(z.object({ login: name })).optional(),` (use whatever the file calls its bounded login string; `name` is the head-ref string schema).
 
-`apps/uw-app/github/facts/records.ts`, `PullRequestRecord` gains `readonly requestedReviewers: readonly string[];`.
+`apps/uw-platform/github/facts/records.ts`, `PullRequestRecord` gains `readonly requestedReviewers: readonly string[];`.
 
-`apps/uw-app/github/facts/normalise.ts`: add
+`apps/uw-platform/github/facts/normalise.ts`: add
 
 ```ts
 const REQUESTED_LIMIT = 100;
@@ -2700,7 +2700,7 @@ function requestedOf(pull: Pull): readonly string[] {
 
 and in `pullOf` after `milestoneId`: `requestedReviewers: requestedOf(pull),`.
 
-`apps/uw-app/github/facts/upsert.ts`: add `requestedReviewers: ghPrs.requestedReviewers,` to `pullColumns`, and in `upsertPulls` change the values line to:
+`apps/uw-platform/github/facts/upsert.ts`: add `requestedReviewers: ghPrs.requestedReviewers,` to `pullColumns`, and in `upsertPulls` change the values line to:
 
 ```ts
     .values(
@@ -2710,15 +2710,15 @@ and in `pullOf` after `milestoneId`: `requestedReviewers: requestedOf(pull),`.
 
 (at most three added non-blank lines; the file must stay under 500).
 
-`apps/uw-app/github/facts/queries.ts`: `PullRequestChange` gains `readonly title: string; readonly open: boolean; readonly requestedReviewers: readonly string[];` and `pullRequestChanges` maps `title: pull.title, open: pull.state === 'open', requestedReviewers: [...pull.requestedReviewers],`.
+`apps/uw-platform/github/facts/queries.ts`: `PullRequestChange` gains `readonly title: string; readonly open: boolean; readonly requestedReviewers: readonly string[];` and `pullRequestChanges` maps `title: pull.title, open: pull.state === 'open', requestedReviewers: [...pull.requestedReviewers],`.
 
-Run `pnpm check` and add `requestedReviewers: []` (and `title`, `open` for a change) to each literal it flags in test rigs (`apps/uw-app/github/testing/facts-fixtures.ts` and the `*.pg.test.ts` files under `apps/uw-app/github/`).
+Run `pnpm check` and add `requestedReviewers: []` (and `title`, `open` for a change) to each literal it flags in test rigs (`apps/uw-platform/github/testing/facts-fixtures.ts` and the `*.pg.test.ts` files under `apps/uw-platform/github/`).
 
 - [ ] **Step 4: The follow**
 
-`apps/uw-app/github/import.ts`: `export function callerFor(logger: Logger): Caller {` (only the `export` changes).
+`apps/uw-platform/github/import.ts`: `export function callerFor(logger: Logger): Caller {` (only the `export` changes).
 
-`apps/uw-app/github/join.ts`:
+`apps/uw-platform/github/join.ts`:
 
 ```ts
 import type { Logger } from '@uw/core/log';
@@ -2772,17 +2772,17 @@ export async function followPullRequestJoins(
 }
 ```
 
-`apps/uw-app/github/follow-up.ts`: `import { followPullRequestJoins } from './join.ts';` and as the last line of `followUpserts`: `await followPullRequestJoins(unit, report.pullRequests, logger);`. Files are read first, so a shadow verdict sees the changed paths.
+`apps/uw-platform/github/follow-up.ts`: `import { followPullRequestJoins } from './join.ts';` and as the last line of `followUpserts`: `await followPullRequestJoins(unit, report.pullRequests, logger);`. Files are read first, so a shadow verdict sees the changed paths.
 
 - [ ] **Step 5: Run the tests and the GitHub suite**
 
-Run: `pnpm check && TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/postgres npx vitest run apps/uw-app/github`
+Run: `pnpm check && TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/postgres npx vitest run apps/uw-platform/github`
 Expected: green, including the existing sweep, ingest and upsert tests.
 
 - [ ] **Step 6: Commit**
 
 ```bash
-git add apps/uw-app/github
+git add apps/uw-platform/github
 git commit -m "feat(github): requested reviewers in the facts; every pull-request upsert may join and record a shadow verdict
 
 gh_prs.requested_reviewers is read from the REST pull and the webhook. After
@@ -3020,13 +3020,13 @@ PI-1. S14-R11."
 - Create: `packages/harness/views/shadow-rows.ts` (pure)
 - Create: `packages/harness/views/shadow.ts`
 - Modify: `packages/harness/views/index.ts` (`shadow` read)
-- Create: `apps/uw-app/commands/person/shadow-export.ts`
-- Modify: `apps/uw-app/commands/routes.ts` (`GET /:harness/shadow`)
-- Modify: `apps/uw-app/views/parts/paths.ts` (`shadowExportPath`)
-- Create: `apps/uw-app/views/parts/shadow-list.tsx`
-- Modify: `apps/uw-app/views/screens/gates.tsx`
+- Create: `apps/uw-platform/commands/person/shadow-export.ts`
+- Modify: `apps/uw-platform/commands/routes.ts` (`GET /:harness/shadow`)
+- Modify: `apps/uw-platform/views/parts/paths.ts` (`shadowExportPath`)
+- Create: `apps/uw-platform/views/parts/shadow-list.tsx`
+- Modify: `apps/uw-platform/views/screens/gates.tsx`
 - Create: `sim/scenarios/OB-3.the-gates-view-compares-shadow-verdicts-with-other-reviews.ts`
-- Create: `apps/uw-app/views/shadow.pg.test.ts`
+- Create: `apps/uw-platform/views/shadow.pg.test.ts`
 
 **Interfaces:**
 - Consumes: Task 8 events; Task 7 `sim/joining.ts`; Task 1 `shadowComparisonSchema`.
@@ -3343,7 +3343,7 @@ OB-3. S14-R10."
 
 - [ ] **Step 7: Write the failing app tests**
 
-`apps/uw-app/views/shadow.pg.test.ts`:
+`apps/uw-platform/views/shadow.pg.test.ts`:
 
 ```ts
 import { randomUUID } from 'node:crypto';
@@ -3426,11 +3426,11 @@ describe.skipIf(!testServer)('GL-4 OB-3 the Gates view shows shadow verdicts lab
 });
 ```
 
-Read `apps/uw-app/testing/views.ts` `getHtml` before relying on its fourth and fifth arguments (`{}` and the clock), and `get` in `testing/commands.ts` (claims object, path).
+Read `apps/uw-platform/testing/views.ts` `getHtml` before relying on its fourth and fifth arguments (`{}` and the clock), and `get` in `testing/commands.ts` (claims object, path).
 
 - [ ] **Step 8: The route, the paths and the screen**
 
-`apps/uw-app/views/parts/paths.ts`:
+`apps/uw-platform/views/parts/paths.ts`:
 
 ```ts
 export function shadowExportPath(harnessId: string): string {
@@ -3438,7 +3438,7 @@ export function shadowExportPath(harnessId: string): string {
 }
 ```
 
-`apps/uw-app/commands/person/shadow-export.ts`:
+`apps/uw-platform/commands/person/shadow-export.ts`:
 
 ```ts
 import type { Context } from 'hono';
@@ -3469,9 +3469,9 @@ export async function shadowExport(c: Context<AppEnv>): Promise<Response> {
 }
 ```
 
-`apps/uw-app/commands/routes.ts`: `import { shadowExport } from './person/shadow-export.ts';` and `routes.get('/:harness/shadow', shadowExport);` after the `gates/:item` route.
+`apps/uw-platform/commands/routes.ts`: `import { shadowExport } from './person/shadow-export.ts';` and `routes.get('/:harness/shadow', shadowExport);` after the `gates/:item` route.
 
-`apps/uw-app/views/parts/shadow-list.tsx`:
+`apps/uw-platform/views/parts/shadow-list.tsx`:
 
 ```tsx
 import type { ShadowComparison, ShadowRow } from '@uw/contracts';
@@ -3559,7 +3559,7 @@ export function ShadowList(props: { readonly comparison: ShadowComparison }) {
 }
 ```
 
-`apps/uw-app/views/screens/gates.tsx`: import `ShadowComparison` from `@uw/contracts` and `ShadowList` from `../parts/shadow-list.tsx`; add
+`apps/uw-platform/views/screens/gates.tsx`: import `ShadowComparison` from `@uw/contracts` and `ShadowList` from `../parts/shadow-list.tsx`; add
 
 ```ts
 async function shadowComparisons(screen: ScreenKernel): Promise<ShadowComparison[]> {
@@ -3580,7 +3580,7 @@ Rebuild the stylesheet in case a utility class is new to the tree: `pnpm ui:css`
 
 - [ ] **Step 9: Run the app tests and the route checks**
 
-Run: `pnpm check && TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/postgres npx vitest run apps/uw-app/views apps/uw-app/commands tools/architecture/command-routes.test.ts tools/ui`
+Run: `pnpm check && TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/postgres npx vitest run apps/uw-platform/views apps/uw-platform/commands tools/architecture/command-routes.test.ts tools/ui`
 Expected: green; the route test sees `kernel.views.shadow(` as the guarded entry.
 
 - [ ] **Step 10: Look at it**
@@ -3590,7 +3590,7 @@ Run the app as `AGENTS.md` section 7 step 6 asks (the `run` skill or the reposit
 - [ ] **Step 11: Commit**
 
 ```bash
-git add apps/uw-app/commands apps/uw-app/views apps/uw-app/assets packages/ui
+git add apps/uw-platform/commands apps/uw-platform/views apps/uw-platform/assets packages/ui
 git commit -m "feat(app): the Gates view lists shadow verdicts, and the comparison exports as JSON
 
 Each readable shadow harness gets a section on /gates: every head with its
@@ -3601,7 +3601,7 @@ answers the same list.
 GL-4 OB-3. S14-R10."
 ```
 
-(Stage `apps/uw-app/assets` or `packages/ui` only if `pnpm ui:css` changed a file there; otherwise drop them from the `git add`.)
+(Stage `apps/uw-platform/assets` or `packages/ui` only if `pnpm ui:css` changed a file there; otherwise drop them from the `git add`.)
 
 ---
 
@@ -3618,7 +3618,7 @@ Expected: green. `trace:built` passes once the tracker marks step 14 Built in St
 - [ ] **Step 2: Update the tracker**
 
 In `docs/progress_tracker.md`:
-- The step 14 row: state `Built`; evidence: the commit SHAs of Tasks 1 to 11, the proving files (`apps/uw-app/commands/joining.pg.test.ts` GL-2 and GL-4, `sim/kernel/join.test.ts` and `apps/uw-app/github/join.pg.test.ts` GL-3, `sim/kernel/shadow.test.ts` and scenario GL-4, `sim/kernel/dispatch.test.ts` GL-6, scenario OB-3 and `apps/uw-app/views/shadow.pg.test.ts`, scenario PI-1 and `sim/kernel/external-reviewers.test.ts`), `pnpm verify` green locally with the counts, the contract version, and "CI not run" or the run id.
+- The step 14 row: state `Built`; evidence: the commit SHAs of Tasks 1 to 11, the proving files (`apps/uw-platform/commands/joining.pg.test.ts` GL-2 and GL-4, `sim/kernel/join.test.ts` and `apps/uw-platform/github/join.pg.test.ts` GL-3, `sim/kernel/shadow.test.ts` and scenario GL-4, `sim/kernel/dispatch.test.ts` GL-6, scenario OB-3 and `apps/uw-platform/views/shadow.pg.test.ts`, scenario PI-1 and `sim/kernel/external-reviewers.test.ts`), `pnpm verify` green locally with the counts, the contract version, and "CI not run" or the run id.
 - Under decisions made during the build, rows for S14-R1 to S14-R13 in the shape of the S12 rows (`| date | requirement | ruling | cost if wrong |`).
 - Under the open carries (or the section the file uses for work handed forward), the four "Left for later steps" items from the top of this plan, each naming the step that should take it.
 - Under "Not verified": the Gates screen in a browser if Task 11 Step 10 could not run; the webhook path's join against a live `pull_request.review_requested` delivery (proven only with the sweep rig); every list the rigs needed in Task 6 Step 7, by file.
@@ -3651,6 +3651,6 @@ Design section 6's other columns (`fix_claim`, `frozen`, `freeze_allow`, `bot_au
 
 **Placeholders.** None; every code step carries its code. Steps that touch files whose local fixture names this plan could not see (Task 7 Step 2 and Task 10 Step 3 in `ship-input.test.ts`, Task 9 Step 1 in `normalise.test.ts`) tell the implementer which names to read and reuse rather than inventing new ones; Task 6 Step 7 gives the command that finds the rigs to change and the one line to add.
 
-**Type consistency.** `JoinInput`/`Joined` (Task 7) are what `apps/uw-app/github/join.ts` (Task 9) and `apps/uw-app/views/shadow.pg.test.ts` (Task 11) call. `recordShadowVerdicts(caller, { pullRequest })` returns `readonly ItemState[]` in Task 8 and is read as `.length` in Task 9. `byPullRequest(harnessId, { repo, number })` is the same in Tasks 3, 7 and 8. `countedReviewer`, `namesPlatformReviewer`, `requestsPlatformReviewer`, `EXTERNAL_PROVIDER` are defined in Task 4 and used in Tasks 7, 9 and 10. `ShadowComparison`/`ShadowRow` (Task 1) are what `views/shadow.ts`, `shadow-rows.ts` and `shadow-list.tsx` (Task 11) use. `platformPageSlug` and `platformFrontmatterSchema` are defined in Task 1 and used in Tasks 3 and 6. `createSimHarness` options `shadow`, `externalReviewerIdentities` (Task 4) and `dispatchable` (Task 6) are used by `sim/joining.ts` (Task 7).
+**Type consistency.** `JoinInput`/`Joined` (Task 7) are what `apps/uw-platform/github/join.ts` (Task 9) and `apps/uw-platform/views/shadow.pg.test.ts` (Task 11) call. `recordShadowVerdicts(caller, { pullRequest })` returns `readonly ItemState[]` in Task 8 and is read as `.length` in Task 9. `byPullRequest(harnessId, { repo, number })` is the same in Tasks 3, 7 and 8. `countedReviewer`, `namesPlatformReviewer`, `requestsPlatformReviewer`, `EXTERNAL_PROVIDER` are defined in Task 4 and used in Tasks 7, 9 and 10. `ShadowComparison`/`ShadowRow` (Task 1) are what `views/shadow.ts`, `shadow-rows.ts` and `shadow-list.tsx` (Task 11) use. `platformPageSlug` and `platformFrontmatterSchema` are defined in Task 1 and used in Tasks 3 and 6. `createSimHarness` options `shadow`, `externalReviewerIdentities` (Task 4) and `dispatchable` (Task 6) are used by `sim/joining.ts` (Task 7).
 
 **Review Focus.** Line 1 is pinned in Task 7 (`again` with another head, one `item_created`); line 2 in Task 6 (`suggested` page and a string `dispatch_allowed`); line 3 in Tasks 10 (`UWReview[bot]`) and 4 (`UW-Reviewer[bot]` refused); line 4 in Task 8 (second `recordVerdicts` returns `[]`); line 5 in Task 8 (decisions `[]`, `calls()` and `reviews()` empty).

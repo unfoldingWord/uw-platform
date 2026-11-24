@@ -16,7 +16,7 @@ Every task obeys every line here. Copy exact values; do not paraphrase them in c
 - **Read before the first edit:** `AGENTS.md` sections 1, 4, 6 and 10; `CONTEXT.md` for every word (Item, Stage, Exit gate, Connector, Lease, Delegation, Beat, Run, Run shape, Host, Persona, Principal, Agent identity, Kernel, Port, Adapter, Scenario); `docs/exceptions.md`; `docs/architecture.md` sections "The sim" and "Transactions and locks".
 - **Verify, at the end of every task, green:** `pnpm format`, then `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/uw_test pnpm verify`. The local server is private; CI uses a Postgres service container. If it is down: `/usr/lib/postgresql/16/bin/pg_ctl -D ~/.local/share/uw-platform-test-pg -o "-p 54329 -k '' -c listen_addresses=127.0.0.1" -l ~/.local/share/uw-platform-test-pg.log start`.
 - **R37:** never run two test suites at once. No parallel `pnpm verify`, `pnpm test`, `vitest`, `pnpm sim -- all` or `pnpm sim:all`; wait for one to finish before starting another (concurrent suites kill the WSL VM). One focused file is run with `pnpm exec vitest run --project node <file>`.
-- **DX-8:** no test, binding or job may need a live account or a secret. Everything in this step runs on the sim's test adapters and fixture GitHub facts. This step adds no binding, cron, queue, Durable Object or migration; were one ever needed it would go in `infra/uw-app/wrangler.go-live.toml` only, with a "Waiting on a person" row.
+- **DX-8:** no test, binding or job may need a live account or a secret. Everything in this step runs on the sim's test adapters and fixture GitHub facts. This step adds no binding, cron, queue, Durable Object or migration; were one ever needed it would go in `infra/uw-platform/wrangler.go-live.toml` only, with a "Waiting on a person" row.
 - **Layering (dependency-cruiser and ESLint enforce it):** `sim/*` imports `packages/harness` (`@uw/harness`), `packages/contracts` (`@uw/contracts`), `packages/db` (`@uw/db/*`) and the Node built-ins `node:fs`, `node:fs/promises`, `node:path`, `node:url`, `node:process`, `node:assert`, `node:assert/strict`; its tests also Vitest; nothing else (no `apps/*`, no Drizzle, no PGlite directly). `tools/*` may read files and import `@uw/harness` and `tools/trace/*`. Nothing imports a vendor SDK.
 - **Code:** no comments of any kind (no line, block, JSDoc or directive comments, no commented-out code). Files under 500 lines; functions under 50 lines; ESLint fitness limits: 25 statements, complexity 10, depth 4, 3 nested callbacks, 5 parameters. TypeScript strict, no `any`, no `@ts-ignore`.
 - **Commits:** Conventional Commits. The body's last line lists the requirement IDs the commit proves or serves (for example `DX-7`). No `Co-Authored-By` and no attribution footer of any kind. Hooks always pass; never `--no-verify`.
@@ -48,7 +48,7 @@ Choices the PRD, the spec and AGENTS.md leave open. Task 6 copies each into `doc
 
 | # | Decision | Cost if wrong |
 |---|---|---|
-| S11-D1 | The sim's kickstart is `kernel.items.enqueue` with a seeded `product` page in the harness's area, priority `null` — the call `apps/uw-app/commands/handlers/items.ts` `kickstartCommand` makes; the sim may not import `apps/` | A kickstart-only check added to the route later is not in DX-7 (it is in `apps/uw-app/commands/items.pg.test.ts`) |
+| S11-D1 | The sim's kickstart is `kernel.items.enqueue` with a seeded `product` page in the harness's area, priority `null` — the call `apps/uw-platform/commands/handlers/items.ts` `kickstartCommand` makes; the sim may not import `apps/` | A kickstart-only check added to the route later is not in DX-7 (it is in `apps/uw-platform/commands/items.pg.test.ts`) |
 | S11-D2 | The held premise is on a second, deliberately wrong item, through a hosted Builder run under Kim's `build` delegation (read and scout steps, then `kernel.runs.holdPremise`), as PRD section 14 item 8 does; the main item's premise holds | None for the build; it mirrors the acceptance run |
 | S11-D3 | The main item is worked by an external runner (`agent:<Max>/laptop`, then `agent:<Max>/desktop`) on Scope to Check, so DX-7 crosses both hosts: hosted runs for the held premise and Iterate, external runs for the build | None |
 | S11-D4 | The lease warning and expiry happen at Check, after the Build submit recorded the expected head, so the fresh claim starts from that head (GH-4); the warning is read from `record_run_step`'s reply 13 minutes into the lease | None |
@@ -740,10 +740,10 @@ Cases (exact paths and title prefixes; each `it` names what the item needs in wo
 - **Item 5** (`'release criterion 5: the three agent-boundary checks pass and fail on their planted fixtures'`):
   - static: `expectTitle('tools/architecture/agent-boundary.test.ts', 'AB-7 no file an agent principal can reach')` and `'AB-7 the static check fails on a planted handler'`;
   - runtime: `sim/scenarios/AB-7.no-agent-identity-writes-a-gate-decision.ts` exists; `expectTitle('sim/kernel/agent-boundary-runtime.test.ts', 'AB-7 the runtime check fails on a planted gate command')`;
-  - conformance: `expectTitle('apps/uw-app/mcp/conformance.pg.test.ts', 'AB-7 the Workflow host and an external runner see the same verbs')` and `expectTitle('apps/uw-app/testing/conformance.test.ts', 'AB-7 the conformance check fails on a planted host-specific tool')`;
+  - conformance: `expectTitle('apps/uw-platform/mcp/conformance.pg.test.ts', 'AB-7 the Workflow host and an external runner see the same verbs')` and `expectTitle('apps/uw-platform/testing/conformance.test.ts', 'AB-7 the conformance check fails on a planted host-specific tool')`;
   - `expectNotWeakened` on all four test files.
 - **Item 6** (`'release criterion 6: the race and concurrency tests run on the CI Postgres service container'`):
-  - `expectTitle('apps/uw-app/harness/grant-race.pg.test.ts', 'KN-14 DX-6 the grant re-read race')`, `expectTitle('apps/uw-app/harness/claims.pg.test.ts', 'DX-6 claims race on separate connections')`, `expectTitle('packages/db/store/claim-race.test.ts', 'KN-5 write.claim is one conditional update')`, `expectTitle('tools/ci/test-database.test.ts', 'FD-6 database tests never skip in CI')`; `expectNotWeakened` on all four;
+  - `expectTitle('apps/uw-platform/harness/grant-race.pg.test.ts', 'KN-14 DX-6 the grant re-read race')`, `expectTitle('apps/uw-platform/harness/claims.pg.test.ts', 'DX-6 claims race on separate connections')`, `expectTitle('packages/db/store/claim-race.test.ts', 'KN-5 write.claim is one conditional update')`, `expectTitle('tools/ci/test-database.test.ts', 'FD-6 database tests never skip in CI')`; `expectNotWeakened` on all four;
   - each of the three race files gates its suite with `describe.skipIf(!testServer)` (the source contains `describe.skipIf(!testServer)`);
   - `vitest.config.ts` contains `'apps/**/*.pg.test.ts'` in the node project's `include`.
 
@@ -760,8 +760,8 @@ Run: `pnpm exec vitest run --project node tools/release/criteria.test.ts` — Ex
 3. `pnpm sim -- DX-7` — PASS; note the state printed.
 4. `pnpm sim -- all` — every scenario passes; note the count.
 5. `pnpm exec vitest run --project node packages/harness/template-property.test.ts tools/architecture/agent-boundary.test.ts sim/kernel/agent-boundary-runtime.test.ts` — PASS (the planted cases inside them are the "fail when planted" half of items 4 and 5).
-6. `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/uw_test pnpm exec vitest run --project node apps/uw-app/harness/grant-race.pg.test.ts apps/uw-app/harness/claims.pg.test.ts packages/db/store/claim-race.test.ts apps/uw-app/mcp/conformance.pg.test.ts` — PASS, none skipped (the reporter shows no skipped suites).
-7. `pnpm exec vitest run --project workers apps/uw-app/testing/conformance.test.ts` — PASS.
+6. `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/uw_test pnpm exec vitest run --project node apps/uw-platform/harness/grant-race.pg.test.ts apps/uw-platform/harness/claims.pg.test.ts packages/db/store/claim-race.test.ts apps/uw-platform/mcp/conformance.pg.test.ts` — PASS, none skipped (the reporter shows no skipped suites).
+7. `pnpm exec vitest run --project workers apps/uw-platform/testing/conformance.test.ts` — PASS.
 
 Write the outputs' key lines into the task report (the controller passes them to Task 6).
 
@@ -854,7 +854,7 @@ Every edit below is exact in shape; fill the values from the commits of Tasks 1 
    - 2: `pnpm trace` exits 0, `<summary line>`; guard item 2;
    - 3: `pnpm sim -- DX-7` passes; the printed state; guard item 3;
    - 4: `packages/harness/template-property.test.ts` (KN-10) and `tools/properties/template.test.ts`; `pnpm walk -- software` and `pnpm walk -- bml`; the negative fixture `packages/harness/templates/fixtures/bypasses-ship.ts` fails; guard item 4;
-   - 5: the three checks and their planted halves, by file (static `tools/architecture/agent-boundary.test.ts`; runtime `sim/scenarios/AB-7.no-agent-identity-writes-a-gate-decision.ts` and `sim/kernel/agent-boundary-runtime.test.ts`; conformance `apps/uw-app/mcp/conformance.pg.test.ts` and `apps/uw-app/testing/conformance.test.ts`); guard item 5;
+   - 5: the three checks and their planted halves, by file (static `tools/architecture/agent-boundary.test.ts`; runtime `sim/scenarios/AB-7.no-agent-identity-writes-a-gate-decision.ts` and `sim/kernel/agent-boundary-runtime.test.ts`; conformance `apps/uw-platform/mcp/conformance.pg.test.ts` and `apps/uw-platform/testing/conformance.test.ts`); guard item 5;
    - 6: the CI run `<id>` (`<url>`): the `test` job green on `<head>` with `TEST_DATABASE_URL` pointing at the `postgres:16` service container, running `grant-race.pg.test.ts`, `claims.pg.test.ts`, `claim-race.test.ts`; guard item 6. If no CI run exists yet: `Holds` reads `pending the CI run` (S11-D12).
 4. **"Decisions made during the build":** one row per S11-D1 to S11-D12 from this plan, columns `| Date | Requirement | Decision | Why | Cost if wrong |`.
 5. **"New dependencies":** none; add no row.

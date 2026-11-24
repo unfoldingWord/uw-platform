@@ -7,7 +7,7 @@ import {
   forbidden,
 } from './shared.mjs';
 
-const personActivation = '^apps/uw-app/commands/person/persona-activation\\.ts$';
+const personActivation = '^apps/uw-platform/commands/person/persona-activation\\.ts$';
 
 export const hostRules = [
   {
@@ -15,22 +15,24 @@ export const hostRules = [
     comment:
       'Only the run steps (and tests) connect the in-process Workflow host, so every step connects as its run scene and nothing else picks a principal for it.',
     severity: 'error',
-    from: { pathNot: [testFile, '^apps/uw-app/runs/steps\\.ts$'] },
-    to: { path: '^apps/uw-app/mcp/in-process\\.ts$' },
+    from: { pathNot: [testFile, '^apps/uw-platform/runs/steps\\.ts$'] },
+    to: { path: '^apps/uw-platform/mcp/in-process\\.ts$' },
   },
   {
     name: 'run-host-only-from-the-workflow',
     comment:
-      'The run host under apps/uw-app/runs/ is reached only from the Worker entry, which exports the HarnessRun Workflow, from itself, and from tests and their helpers.',
+      'The run host under apps/uw-platform/runs/ is reached only from the Worker entry, which exports the HarnessRun Workflow, from itself, and from tests and their helpers.',
     severity: 'error',
-    from: { pathNot: ['^apps/uw-app/index\\.ts$', '^apps/uw-app/runs/', appTesting, testFile] },
-    to: { path: '^apps/uw-app/runs/' },
+    from: {
+      pathNot: ['^apps/uw-platform/index\\.ts$', '^apps/uw-platform/runs/', appTesting, testFile],
+    },
+    to: { path: '^apps/uw-platform/runs/' },
   },
   forbidden(
     'mcp-never-imports-the-run-host',
     'The MCP surface imports nothing of the run host, so no verb reaches the run kernel or its GitHub wiring.',
-    '^apps/uw-app/mcp/',
-    '^apps/uw-app/runs/',
+    '^apps/uw-platform/mcp/',
+    '^apps/uw-platform/runs/',
   ),
   {
     name: 'verb-server-only-in-the-hosts',
@@ -39,12 +41,12 @@ export const hostRules = [
     severity: 'error',
     from: {
       pathNot: [
-        '^apps/uw-app/mcp/(routes|in-process|server)\\.ts$',
-        '^apps/uw-app/testing/',
+        '^apps/uw-platform/mcp/(routes|in-process|server)\\.ts$',
+        '^apps/uw-platform/testing/',
         testFile,
       ],
     },
-    to: { path: '^apps/uw-app/mcp/server\\.ts$' },
+    to: { path: '^apps/uw-platform/mcp/server\\.ts$' },
   },
   {
     name: 'app-testing-only-in-tests',
@@ -99,7 +101,7 @@ export const hostRules = [
     name: 'gate-github-only-in-person-deps',
     comment: 'Only the person deps open the gate GitHub, for the gate commands.',
     severity: 'error',
-    from: { pathNot: ['^apps/uw-app/commands/person-deps\\.ts$', testFile] },
+    from: { pathNot: ['^apps/uw-platform/commands/person-deps\\.ts$', testFile] },
     to: { path: gateGitHub },
   },
   {
@@ -109,42 +111,45 @@ export const hostRules = [
     severity: 'error',
     from: {
       pathNot: [
-        '^apps/uw-app/app\\.tsx$',
-        '^apps/uw-app/commands/routes\\.ts$',
+        '^apps/uw-platform/app\\.tsx$',
+        '^apps/uw-platform/commands/routes\\.ts$',
         appTesting,
         testFile,
       ],
     },
-    to: { path: '^apps/uw-app/commands/person-deps\\.ts$' },
+    to: { path: '^apps/uw-platform/commands/person-deps\\.ts$' },
   },
   {
     name: 'person-surface-only-from-commands',
     comment:
-      'The person surface is imported only from apps/uw-app/commands/, the app test helpers and tests.',
+      'The person surface is imported only from apps/uw-platform/commands/, the app test helpers and tests.',
     severity: 'error',
-    from: { pathNot: ['^apps/uw-app/commands/', appTesting, testFile] },
-    to: { path: '^apps/uw-app/commands/person/' },
+    from: { pathNot: ['^apps/uw-platform/commands/', appTesting, testFile] },
+    to: { path: '^apps/uw-platform/commands/person/' },
   },
   forbidden(
     'agent-hosts-never-import-commands',
     'Nothing an agent, a model process or the queue reaches imports the command API, so none of them reaches the gate kernel.',
-    '^apps/uw-app/(mcp|engines|queue)/',
-    '^apps/uw-app/commands/',
+    '^apps/uw-platform/(mcp|engines|queue)/',
+    '^apps/uw-platform/commands/',
   ),
   {
     name: 'confirm-page-only-from-page-routes',
     comment:
       'Confirmation turns a learning or a skill active, which only a person does, so only the page routes and tests import it and no agent host reaches it.',
     severity: 'error',
-    from: { pathNot: ['^apps/uw-app/pages/routes\\.ts$', testFile] },
-    to: { path: '^apps/uw-app/pages/confirm\\.ts$' },
+    from: { pathNot: ['^apps/uw-platform/pages/routes\\.ts$', testFile] },
+    to: { path: '^apps/uw-platform/pages/confirm\\.ts$' },
   },
   {
     name: 'cron-imports-only-the-request-ledger',
     comment:
       'The cron imports nothing of the command API but the request ledger, whose old rows it prunes, so it never reaches the gate kernel.',
     severity: 'error',
-    from: { path: '^apps/uw-app/cron/' },
-    to: { path: '^apps/uw-app/commands/', pathNot: '^apps/uw-app/commands/requests\\.ts$' },
+    from: { path: '^apps/uw-platform/cron/' },
+    to: {
+      path: '^apps/uw-platform/commands/',
+      pathNot: '^apps/uw-platform/commands/requests\\.ts$',
+    },
   },
 ];

@@ -39,6 +39,8 @@ describe('every advisory lock goes through one string key space, with try, share
     'sql`SELECT pg_advisory_xact_lock(${n})`',
     'SELECT pg_advisory_lock_shared(42)',
   ])('flags %s', (source) => {
-    expect(numericLocks(['apps/uw-app/x.ts'], () => source)).toEqual(['apps/uw-app/x.ts']);
+    expect(numericLocks(['apps/uw-platform/x.ts'], () => source)).toEqual([
+      'apps/uw-platform/x.ts',
+    ]);
   });
 });

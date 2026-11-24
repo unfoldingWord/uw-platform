@@ -12,9 +12,9 @@ for (const { path, line, text } of violations) {
 
 if (violations.length > 0) {
   console.error(
-    `\n${violations.length} vendor SDK import(s) outside apps/uw-app/engines/<engine>/. A vendor SDK is named in one directory.`,
+    `\n${violations.length} vendor SDK import(s) outside apps/uw-platform/engines/<engine>/. A vendor SDK is named in one directory.`,
   );
   process.exit(1);
 }
 
-console.log('Vendor SDKs: imported only inside apps/uw-app/engines/<engine>/.');
+console.log('Vendor SDKs: imported only inside apps/uw-platform/engines/<engine>/.');

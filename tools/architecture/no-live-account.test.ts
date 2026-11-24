@@ -10,7 +10,7 @@ const viteEnv = /import\.meta\.env/;
 const testCode =
   /(?:\.test\.(?:ts|tsx|mts)$|^packages\/harness\/port-contracts\/|^sim\/|^tools\/|^packages\/db\/test-[a-z-]+\.ts$|^apps\/[^/]+\/testing\/|^vitest\.config\.ts$)/;
 const codeFile = /\.(?:ts|tsx|mts)$/;
-const platformAdapterFile = /^apps\/uw-app\/ports\/[^/]+\.ts$/;
+const platformAdapterFile = /^apps\/uw-platform\/ports\/[^/]+\.ts$/;
 const wiredWithoutService = /\/(clock|ids)\.ts$/;
 const testRunningJobs = ['lint', 'typecheck', 'architecture', 'test-shard', 'test', 'build'];
 

@@ -131,7 +131,7 @@ How a caller names a credential it wants used: the credential's id and nothing e
 _Avoid_: credential handle, secret reference, credential key, token
 
 **Secret**:
-In code, the wrapper a credential's opened value travels in (`Secret` in `apps/uw-app/credentials/secret.ts`). It shows `[secret]` wherever it is printed, serialised or logged, gives its text only to `exposeSecret`, and is spent when the call it was opened for ends.
+In code, the wrapper a credential's opened value travels in (`Secret` in `apps/uw-platform/credentials/secret.ts`). It shows `[secret]` wherever it is printed, serialised or logged, gives its text only to `exposeSecret`, and is spent when the call it was opened for ends.
 _Avoid_: secret for a credential (that is the thing stored), plaintext, raw value
 
 **Credential version**:
@@ -229,7 +229,7 @@ An interface the kernel needs from the world: Clock, Ids, Store, Grants, GitHubF
 _Avoid_: interface (too general), driver, provider, memory adapter (the test adapter for Store is real Postgres)
 
 **Adapter**:
-One implementation of a port. A **platform adapter** lives in `apps/uw-app/ports/` and reaches the real service; a **test adapter** lives in `sim/adapters/` and is scripted or records what it was asked. The Store and Grants adapters bind the one Drizzle implementation in `packages/db/store/`, so both run the same queries. An adapter whose service is built in a later step is **not wired**: every call rejects with `PortNotWiredError`, which the kernel reports as the refusal `not_wired`.
+One implementation of a port. A **platform adapter** lives in `apps/uw-platform/ports/` and reaches the real service; a **test adapter** lives in `sim/adapters/` and is scripted or records what it was asked. The Store and Grants adapters bind the one Drizzle implementation in `packages/db/store/`, so both run the same queries. An adapter whose service is built in a later step is **not wired**: every call rejects with `PortNotWiredError`, which the kernel reports as the refusal `not_wired`.
 _Avoid_: driver, implementation, mock, fake, stub (say "not wired")
 
 **Port contract**:
@@ -301,7 +301,7 @@ One tool on the MCP surface, from the one registry published by `packages/contra
 _Avoid_: tool (as the noun in prose; tool is the MCP wire word), command (that is a person's action), capability (that is the delegation's word)
 
 **MCP surface**:
-The remote MCP server inside `uw-app` that serves the verb registry. The only way a persona touches the platform, on either host.
+The remote MCP server inside `uw-platform` that serves the verb registry. The only way a persona touches the platform, on either host.
 _Avoid_: API (that is the command API people use), agent API, gateway
 
 **Command**:
@@ -309,7 +309,7 @@ An action a person takes on the harness through the command API: kickstart, enqu
 _Avoid_: verb (that is the agent's word), action, mutation, endpoint
 
 **Person surface**:
-The command handlers that decide gates, edit stages and grant or revoke delegations: `apps/uw-app/commands/person/`. Only a person's command reaches them; nothing the MCP surface reaches imports them.
+The command handlers that decide gates, edit stages and grant or revoke delegations: `apps/uw-platform/commands/person/`. Only a person's command reaches them; nothing the MCP surface reaches imports them.
 _Avoid_: admin API, privileged routes
 
 **Gate view**:

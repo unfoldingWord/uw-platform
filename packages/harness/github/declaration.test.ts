@@ -14,7 +14,7 @@ import {
 const fields: readonly string[] = [
   'closes: #12, unfoldingWord/uw-platform#14',
   'risks: the board renders slower on phones',
-  'touches: apps/uw-app/board',
+  'touches: apps/uw-platform/board',
   'risk_tier: standard',
   'risk_domains: none',
 ];
@@ -22,7 +22,7 @@ const fields: readonly string[] = [
 const parsed: PullRequestDeclaration = {
   closes: ['#12', 'unfoldingWord/uw-platform#14'],
   risks: 'the board renders slower on phones',
-  touches: 'apps/uw-app/board',
+  touches: 'apps/uw-platform/board',
   riskTier: 'standard',
   riskDomains: [],
 };

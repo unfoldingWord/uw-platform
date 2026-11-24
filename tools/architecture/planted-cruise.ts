@@ -35,13 +35,13 @@ const workspacePackages: Record<string, Record<string, string>> = {
 };
 
 function linkWorkspace(root: string): void {
-  mkdirSync(join(root, 'apps/uw-app/node_modules/@uw'), { recursive: true });
+  mkdirSync(join(root, 'apps/uw-platform/node_modules/@uw'), { recursive: true });
   for (const [name, exports] of Object.entries(workspacePackages)) {
     for (const target of Object.values(exports)) write(root, `packages/${name}/${target}`, leaf);
     write(root, `packages/${name}/package.json`, JSON.stringify({ name: `@uw/${name}`, exports }));
     symlinkSync(
       join(root, 'packages', name),
-      join(root, 'apps/uw-app/node_modules/@uw', name),
+      join(root, 'apps/uw-platform/node_modules/@uw', name),
       'dir',
     );
   }
@@ -53,9 +53,9 @@ function pnpmTree(files: Record<string, string>): string {
   for (const directory of architectureRoots) mkdirSync(join(root, directory), { recursive: true });
   write(root, `${store}/index.js`, 'export default 1;');
   write(root, `${store}/package.json`, JSON.stringify({ name: '@octokit/core', main: 'index.js' }));
-  mkdirSync(join(root, 'apps/uw-app/node_modules/@octokit'), { recursive: true });
-  symlinkSync(join(root, store), join(root, 'apps/uw-app/node_modules/@octokit/core'), 'dir');
-  for (const name of githubFiles) write(root, `apps/uw-app/github/${name}.ts`, leaf);
+  mkdirSync(join(root, 'apps/uw-platform/node_modules/@octokit'), { recursive: true });
+  symlinkSync(join(root, store), join(root, 'apps/uw-platform/node_modules/@octokit/core'), 'dir');
+  for (const name of githubFiles) write(root, `apps/uw-platform/github/${name}.ts`, leaf);
   linkWorkspace(root);
   for (const name of ['@octokit/rest', '@octokit/webhooks-methods', 'zod']) {
     write(root, `node_modules/${name}/index.js`, 'export default 1;');

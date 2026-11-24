@@ -3,36 +3,36 @@ import { describe, expect, it } from 'vitest';
 import { repoFiles } from '../repo-files.ts';
 
 const kernelHosts = [
-  ['apps/uw-app/commands/routes.ts', 'hubOf(c.env'],
+  ['apps/uw-platform/commands/routes.ts', 'hubOf(c.env'],
   [
-    'apps/uw-app/commands/dispatch.ts',
+    'apps/uw-platform/commands/dispatch.ts',
     'hubWiring(scope.hub, { runs: scope.runs, notifier: scope.notifier })',
   ],
-  ['apps/uw-app/mcp/routes.ts', 'hubWiring(hubOf(c.env'],
-  ['apps/uw-app/queue/worker.ts', 'unitHub(hubOf(env'],
-  ['apps/uw-app/cron/github-sweep.ts', 'unitHub(hubOf(env'],
-  ['apps/uw-app/cron/minute.ts', 'unitHub(hubOf(env'],
+  ['apps/uw-platform/mcp/routes.ts', 'hubWiring(hubOf(c.env'],
+  ['apps/uw-platform/queue/worker.ts', 'unitHub(hubOf(env'],
+  ['apps/uw-platform/cron/github-sweep.ts', 'unitHub(hubOf(env'],
+  ['apps/uw-platform/cron/minute.ts', 'unitHub(hubOf(env'],
 ] as const;
 
 const notifierHosts = [
-  'apps/uw-app/commands/routes.ts',
-  'apps/uw-app/mcp/routes.ts',
-  'apps/uw-app/queue/worker.ts',
-  'apps/uw-app/cron/github-sweep.ts',
-  'apps/uw-app/cron/minute.ts',
-  'apps/uw-app/runs/deps.ts',
+  'apps/uw-platform/commands/routes.ts',
+  'apps/uw-platform/mcp/routes.ts',
+  'apps/uw-platform/queue/worker.ts',
+  'apps/uw-platform/cron/github-sweep.ts',
+  'apps/uw-platform/cron/minute.ts',
+  'apps/uw-platform/runs/deps.ts',
 ] as const;
 
 const hubBinding = /\bHARNESS_HUB\b/;
 const bindingReaders = [
-  'apps/uw-app/env.ts',
-  'apps/uw-app/ports/hub.ts',
-  'apps/uw-app/live/connect.ts',
-  'apps/uw-app/health/hub.ts',
+  'apps/uw-platform/env.ts',
+  'apps/uw-platform/ports/hub.ts',
+  'apps/uw-platform/live/connect.ts',
+  'apps/uw-platform/health/hub.ts',
 ];
 const socketPath = /\/connect\b(?!\.ts)/;
-const socketOpener = 'apps/uw-app/live/connect.ts';
-const hubCore = 'apps/uw-app/live/hub-core.ts';
+const socketOpener = 'apps/uw-platform/live/connect.ts';
+const hubCore = 'apps/uw-platform/live/hub-core.ts';
 
 function isAppSource(file: string): boolean {
   return (
@@ -73,7 +73,7 @@ describe('every kernel that appends events is wired with the notifier of its env
   });
 
   it('the dispatcher and the gate kernel pass the scope notifier on', () => {
-    expect(readFileSync('apps/uw-app/commands/person/gate-kernel.ts', 'utf8')).toContain(
+    expect(readFileSync('apps/uw-platform/commands/person/gate-kernel.ts', 'utf8')).toContain(
       'notifier: live.notifier',
     );
   });
@@ -86,12 +86,12 @@ describe('the hub Durable Object is reached only through the platform Hub adapte
 
   it('flags a planted binding read outside the adapter', () => {
     const planted = new Map([
-      ['apps/uw-app/commands/routes.ts', 'c.env.HARNESS_HUB.get(id);'],
-      ['apps/uw-app/ports/hub.ts', 'env.HARNESS_HUB'],
-      ['apps/uw-app/ports/hub.test.ts', 'HARNESS_HUB'],
+      ['apps/uw-platform/commands/routes.ts', 'c.env.HARNESS_HUB.get(id);'],
+      ['apps/uw-platform/ports/hub.ts', 'env.HARNESS_HUB'],
+      ['apps/uw-platform/ports/hub.test.ts', 'HARNESS_HUB'],
     ]);
     expect(bindingStrays([...planted.keys()], (file) => planted.get(file) ?? '')).toEqual([
-      'apps/uw-app/commands/routes.ts',
+      'apps/uw-platform/commands/routes.ts',
     ]);
   });
 });
@@ -103,21 +103,21 @@ describe('only the live route opens a socket to the hub', () => {
 
   it('flags a planted connect outside the live route', () => {
     const planted = new Map([
-      ['apps/uw-app/health/hub.ts', "stub.fetch('https://hub.internal/connect');"],
-      ['apps/uw-app/live/connect.ts', "stub.fetch('https://hub.internal/connect');"],
-      ['apps/uw-app/live/connect.pg.test.ts', "'/connect'"],
-      ['apps/uw-app/commands/routes.ts', "import { connectLive } from '../live/connect.ts';"],
+      ['apps/uw-platform/health/hub.ts', "stub.fetch('https://hub.internal/connect');"],
+      ['apps/uw-platform/live/connect.ts', "stub.fetch('https://hub.internal/connect');"],
+      ['apps/uw-platform/live/connect.pg.test.ts', "'/connect'"],
+      ['apps/uw-platform/commands/routes.ts', "import { connectLive } from '../live/connect.ts';"],
     ]);
     expect(socketStrays([...planted.keys()], (file) => planted.get(file) ?? '')).toEqual([
-      'apps/uw-app/health/hub.ts',
+      'apps/uw-platform/health/hub.ts',
     ]);
   });
 });
 
 const cloudflareImport = /(?:from\s*|import\s*\(?\s*)['"](cloudflare[^'"]*)['"]/g;
 const runtimeModuleHosts: ReadonlySet<string> = new Set([
-  'apps/uw-app/live/harness-hub.ts',
-  'apps/uw-app/runs/workflow.ts',
+  'apps/uw-platform/live/harness-hub.ts',
+  'apps/uw-platform/runs/workflow.ts',
 ]);
 
 function isSource(file: string): boolean {
@@ -145,20 +145,23 @@ describe('the Workers runtime module is imported only by the hub Durable Object 
 
   it('flags the cloudflare package, and the runtime module outside the hub file', () => {
     const planted = new Map([
-      ['apps/uw-app/live/harness-hub.ts', "import { DurableObject } from 'cloudflare:workers';"],
       [
-        'apps/uw-app/runs/workflow.ts',
+        'apps/uw-platform/live/harness-hub.ts',
+        "import { DurableObject } from 'cloudflare:workers';",
+      ],
+      [
+        'apps/uw-platform/runs/workflow.ts',
         "import { WorkflowEntrypoint } from 'cloudflare:workers';\nimport { NonRetryableError } from 'cloudflare:workflows';",
       ],
-      ['apps/uw-app/live/other.ts', "import { DurableObject } from 'cloudflare:workers';"],
-      ['apps/uw-app/ports/sdk.ts', "import Cloudflare from 'cloudflare';"],
-      ['apps/uw-app/ports/lazy.ts', "const sdk = await import('cloudflare/resources');"],
+      ['apps/uw-platform/live/other.ts', "import { DurableObject } from 'cloudflare:workers';"],
+      ['apps/uw-platform/ports/sdk.ts', "import Cloudflare from 'cloudflare';"],
+      ['apps/uw-platform/ports/lazy.ts', "const sdk = await import('cloudflare/resources');"],
     ]);
     expect(cloudflareStrays([...planted.keys()], (file) => planted.get(file) ?? '')).toEqual([
-      'apps/uw-app/runs/workflow.ts imports cloudflare:workflows',
-      'apps/uw-app/live/other.ts imports cloudflare:workers',
-      'apps/uw-app/ports/sdk.ts imports cloudflare',
-      'apps/uw-app/ports/lazy.ts imports cloudflare/resources',
+      'apps/uw-platform/runs/workflow.ts imports cloudflare:workflows',
+      'apps/uw-platform/live/other.ts imports cloudflare:workers',
+      'apps/uw-platform/ports/sdk.ts imports cloudflare',
+      'apps/uw-platform/ports/lazy.ts imports cloudflare/resources',
     ]);
   });
 });

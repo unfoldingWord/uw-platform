@@ -5,7 +5,7 @@ const vendorSdkImport =
 
 const scannedExtension = /\.(?:[cm]?[jt]s|[jt]sx)$/;
 const engineDirectory =
-  /^apps\/uw-app\/engines\/(?:claude-messages|openrouter-messages|claude-code-sandbox|codex-sandbox|claude-managed-agent|external)\//;
+  /^apps\/uw-platform\/engines\/(?:claude-messages|openrouter-messages|claude-code-sandbox|codex-sandbox|claude-managed-agent|external)\//;
 const scannedRoot = /^(?:apps|packages|sim|tests)\//;
 
 export function isVendorScanned(path: string): boolean {

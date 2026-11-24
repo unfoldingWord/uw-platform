@@ -70,7 +70,7 @@ Every task obeys every line here. The controller passes this section to each imp
 
 - TypeScript `strict`, no `any`, no `@ts-ignore`, no `as unknown as`, no non-null assertion.
 - No code comments of any kind.
-- Files under 500 non-blank lines; functions under 50 lines, 25 statements, complexity 10, depth 4, 3 nested callbacks, 5 parameters. `apps/uw-app/github/facts/upsert.ts` is at the limit after step 14: Task 6 moves the files writer out before adding a line. `apps/uw-app/github/sweep.ts` gets no new line.
+- Files under 500 non-blank lines; functions under 50 lines, 25 statements, complexity 10, depth 4, 3 nested callbacks, 5 parameters. `apps/uw-platform/github/facts/upsert.ts` is at the limit after step 14: Task 6 moves the files writer out before adding a line. `apps/uw-platform/github/sweep.ts` gets no new line.
 - Zod at every boundary. `packages/contracts` imports only `zod`. `packages/harness` imports nothing from Workers, Drizzle or the network.
 - Every exported Zod schema registered in `packages/contracts/registry.ts` has `fixtures/<key>/valid/*.json` and `fixtures/<key>/invalid/*.json`. Any change to a registered `z.enum` appends a full entry to `packages/contracts/contract-lock.json` and changes `CONTRACT_VERSION`.
 - `shipRule(` is called only in `packages/harness/gates/approve-at-ship.ts` and `packages/harness/ship-rule.ts`; `assembleShipInput(` only there and in `ship-input.ts`; `recordExitOutcomes(` only in `exit.ts` and `recover.ts`; `exitThroughConnector(` only in `approve-at-ship.ts` and `exit.ts` (`tools/architecture/connector-callers.test.ts`). This plan keeps every list unchanged.
@@ -731,12 +731,12 @@ SR-1 SR-2 GD-1 GD-2 GD-3 RV-1 RV-2 RV-3. S15-R1 S15-R12 S15-R13 S15-R17."
 These keep `pnpm check` and the existing tests green with no behaviour change; later tasks replace every neutral value.
 
 1. `packages/harness/items/fold.ts`, `unchangedNames`: add `'freeze_changed'`, `'finding_refuted'`.
-2. `apps/uw-app/commands/registry.ts`: `notWiredCommand('set_freeze', 'admin')`, `notWiredCommand('decide_gates', 'admin')`, `notWiredCommand('refute_finding', 'write')` at the end; `apps/uw-app/commands/registry.test.ts`: `set_freeze: 'admin', decide_gates: 'admin', refute_finding: 'write',` in `actions`.
+2. `apps/uw-platform/commands/registry.ts`: `notWiredCommand('set_freeze', 'admin')`, `notWiredCommand('decide_gates', 'admin')`, `notWiredCommand('refute_finding', 'write')` at the end; `apps/uw-platform/commands/registry.test.ts`: `set_freeze: 'admin', decide_gates: 'admin', refute_finding: 'write',` in `actions`.
 3. `packages/harness/gates/ship-input.ts`, `fromFacts`: the `pullRequest` object gains `behindBy: 0, skipCi: false`; both return branches gain `carries: []`, `closes: []`; `latestChecks` maps `app: check.app`; `assembleShipInput` gains `wraps: null`, `requiredChecks: [...defaultCiChecks]` (import from `@uw/contracts`), `frozen: false`. The rule still reads `ciJobSchema` until Task 5, so this changes nothing.
 4. `packages/harness/ship-rule.test.ts`, `green()`: add `carries: [], closes: [], wraps: null, frozen: false, requiredChecks: [...defaultCiChecks]`, `pullRequest: { …, behindBy: 0, skipCi: false }`, and `app: 'github-actions'` on each check (and in `withChecks` callers that build checks). `packages/contracts/harness.test.ts`: the same additions wherever it parses a ship-rule input.
 5. `packages/harness/gates/ship-input.ts`, `reviewsOn`: `findings: counted.review.findings.map((text) => ({ text, weight: null }))` (Task 4 changes `ReviewFact.findings` and removes the map).
 6. `packages/harness/runs/review.ts`: the `record` in `plannedFrom` gains `findings: []`; step 14's `shadowReview` writes `findings: []` on `review_verdict_recorded` instead of `boundedFindings(...)` (delete `boundedFindings` and its two constants if then unused; grep first). Step 14's `packages/harness/gates/shadow-verdict.ts` maps `findings: recorded.findings.map((finding) => finding.text)`. Task 11 restores the findings.
-7. `packages/harness/views/types.ts`: the `handed_to_person` waiting row's `rounds: number | null`; `packages/harness/views/waiting.ts`: `HandOff.rounds: number | null`; `apps/uw-app/views/screens/home.tsx`: the hand-off text becomes
+7. `packages/harness/views/types.ts`: the `handed_to_person` waiting row's `rounds: number | null`; `packages/harness/views/waiting.ts`: `HandOff.rounds: number | null`; `apps/uw-platform/views/screens/home.tsx`: the hand-off text becomes
 
 ```tsx
       text:
@@ -747,16 +747,16 @@ These keep `pnpm check` and the existing tests green with no behaviour change; l
 
 8. Every `Harness` literal `pnpm check` names (expect `packages/harness/stages/activate.ts`, `packages/db/store/rows.ts` `toHarness`, port-contract fixtures): `frozen: false, freezeAllow: [], requiredChecks: []`. In `toHarness` read `row.frozen`, `row.freezeAllow`, `row.requiredChecks` only after Task 3; for now pass the defaults through `harnessSchema.parse` by omitting them (the schema fills them).
 9. Every persona frontmatter literal typed as the parsed frontmatter: `approve_at: 'no_real_or_plausible'`.
-10. `apps/uw-app/commands/handler.ts`: add `'decide_gates'` to `gateCommands` (it opens the gate GitHub like `approve`).
-11. `apps/uw-app/views/parts/gate-panel.tsx`, `Findings`: render `{finding.text}` (the view's review findings are now objects; Task 12 adds the weight). Step 14's `apps/uw-app/views/parts/shadow-list.tsx` (or wherever it renders the recorded findings): render `finding.text` the same way.
+10. `apps/uw-platform/commands/handler.ts`: add `'decide_gates'` to `gateCommands` (it opens the gate GitHub like `approve`).
+11. `apps/uw-platform/views/parts/gate-panel.tsx`, `Findings`: render `{finding.text}` (the view's review findings are now objects; Task 12 adds the weight). Step 14's `apps/uw-platform/views/parts/shadow-list.tsx` (or wherever it renders the recorded findings): render `finding.text` the same way.
 
 Regenerate the islands bundle: `pnpm ui:islands`.
 
-Run: `pnpm check && npx vitest run packages/contracts packages/harness apps/uw-app/commands/registry.test.ts tools/ui/generated-islands.test.ts` then `pnpm sim -- all`
+Run: `pnpm check && npx vitest run packages/contracts packages/harness apps/uw-platform/commands/registry.test.ts tools/ui/generated-islands.test.ts` then `pnpm sim -- all`
 Expected: green. `tools/db/drift.test.ts` is red until Task 3. If `pnpm check` names a site this list does not, apply the same rule: the neutral value that keeps today's behaviour.
 
 ```bash
-git add -A packages/harness apps/uw-app sim
+git add -A packages/harness apps/uw-platform sim
 git commit -m "chore: the totals and neutral values the 13.0.0 contracts force
 
 The new events fold to nothing, the three commands are registered not
@@ -948,10 +948,10 @@ SR-1 SR-2 GD-2. S15-R1 S15-R5 S15-R6."
 - Modify: `packages/harness/store-ports.ts` and its mirror `packages/db/store/types.ts` (`HarnessesGateway.write.setFreeze`)
 - Modify: `packages/db/store/harnesses.ts` (`setFreeze`), `packages/db/store/rows.ts` (`toHarness`)
 - Create: `packages/harness/port-contracts/store-freeze.ts`; Modify: `packages/harness/port-contracts/store.ts` (wire it)
-- Modify: `apps/uw-app/github/facts/queries.ts` (`pullRequestFacts` reads `closes` and the comparison; findings read back weighted or not)
-- Modify: `packages/harness/stages/activate.ts` (`ActivateInput.requiredChecks`), `apps/uw-app/commands/person/stages.ts` (passes `body.requiredChecks`)
+- Modify: `apps/uw-platform/github/facts/queries.ts` (`pullRequestFacts` reads `closes` and the comparison; findings read back weighted or not)
+- Modify: `packages/harness/stages/activate.ts` (`ActivateInput.requiredChecks`), `apps/uw-platform/commands/person/stages.ts` (passes `body.requiredChecks`)
 - Modify: `sim/ship-fixtures.ts` (`comparedAt`, `simPatchId`, `greenFacts`), `sim/fixtures.ts` (`requiredChecks` option, default `defaultCiChecks`)
-- Modify: `apps/uw-app/github/testing/facts-fixtures.ts`, the app activation helpers (`apps/uw-app/testing/commands.ts`, `apps/uw-app/github/testing/ship-rig.ts`, `import-rig.ts`, `apps/uw-app/testing/board-world.ts`), and every `PullRequestFacts` literal `pnpm check` names
+- Modify: `apps/uw-platform/github/testing/facts-fixtures.ts`, the app activation helpers (`apps/uw-platform/testing/commands.ts`, `apps/uw-platform/github/testing/ship-rig.ts`, `import-rig.ts`, `apps/uw-platform/testing/board-world.ts`), and every `PullRequestFacts` literal `pnpm check` names
 - Modify: `packages/harness/gates/ship-input.ts` (`reviewsOn` drops Task 2's string map)
 
 **Interfaces:**
@@ -1068,11 +1068,11 @@ export function describeStoreFreeze(adapter: string, subject: FreezeSubject): vo
 
 `packages/harness/stages/activate.ts`: `ActivateInput` gains `readonly requiredChecks: readonly RequiredCheck[];` (import the type from `@uw/contracts`); the `harness` literal sets `requiredChecks: [...input.requiredChecks], frozen: false, freezeAllow: []`.
 
-`apps/uw-app/commands/person/stages.ts`, `activateTemplateCommand`: pass `requiredChecks: body.requiredChecks` in `input` (beside step 14's `shadow` and `externalReviewerIdentities`).
+`apps/uw-platform/commands/person/stages.ts`, `activateTemplateCommand`: pass `requiredChecks: body.requiredChecks` in `input` (beside step 14's `shadow` and `externalReviewerIdentities`).
 
 - [ ] **Step 4: The facts read the comparison and the closing references**
 
-`apps/uw-app/github/facts/queries.ts`: import `closingRefSchema`, `readFindingSchema` from `@uw/contracts` and `BaseComparison` from `@uw/harness`; replace the `findings` constant and add the row shapes:
+`apps/uw-platform/github/facts/queries.ts`: import `closingRefSchema`, `readFindingSchema` from `@uw/contracts` and `BaseComparison` from `@uw/harness`; replace the `findings` constant and add the row shapes:
 
 ```ts
 const findingRow = z.union([
@@ -1160,22 +1160,22 @@ and in `greenFacts`' returned object, after `declaration`:
 
 `sim/fixtures.ts`: `SimHarnessOptions` gains `readonly requiredChecks?: readonly RequiredCheck[];` and `createSimHarness` passes `requiredChecks: options.requiredChecks ?? defaultCiChecks` to `activate` (import both from `@uw/contracts`).
 
-`apps/uw-app/github/testing/facts-fixtures.ts`: read it; every `PullRequestFacts` it builds gains `closes: []` and a green comparison at its head, written the same way as `comparedAt` (base = the fixture's base SHA).
+`apps/uw-platform/github/testing/facts-fixtures.ts`: read it; every `PullRequestFacts` it builds gains `closes: []` and a green comparison at its head, written the same way as `comparedAt` (base = the fixture's base SHA).
 
-The app activation helpers (`apps/uw-app/testing/commands.ts` `activated`, `apps/uw-app/github/testing/ship-rig.ts` `enqueued`, `apps/uw-app/github/testing/import-rig.ts`, `apps/uw-app/testing/board-world.ts` `activatedHarness`): pass `requiredChecks: defaultCiChecks` on every software harness, `[]` on any other. Run `grep -rn "stages.activate(" apps sim packages --include=*.ts | grep -v node_modules` and treat each call the compiler names the same way.
+The app activation helpers (`apps/uw-platform/testing/commands.ts` `activated`, `apps/uw-platform/github/testing/ship-rig.ts` `enqueued`, `apps/uw-platform/github/testing/import-rig.ts`, `apps/uw-platform/testing/board-world.ts` `activatedHarness`): pass `requiredChecks: defaultCiChecks` on every software harness, `[]` on any other. Run `grep -rn "stages.activate(" apps sim packages --include=*.ts | grep -v node_modules` and treat each call the compiler names the same way.
 
 Every other `PullRequestFacts` literal `pnpm check` names (expect `packages/harness/port-contracts/github-facts.ts`, `packages/harness/gates/ship-input.test.ts`, the app pg tests listed in this step's file list): add `closes: [], comparison: null` unless the test drives the facts through the ship rule to `advance`, in which case add a green comparison at its head as above. Task 5 is where a missing comparison starts to refuse.
 
 - [ ] **Step 6: Run the Store contract on both adapters and the suites the shapes touch**
 
-Run: `pnpm check && TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/postgres npx vitest run packages/harness/port-contracts sim/adapters apps/uw-app/ports apps/uw-app/github/facts`
+Run: `pnpm check && TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/postgres npx vitest run packages/harness/port-contracts sim/adapters apps/uw-platform/ports apps/uw-platform/github/facts`
 Then: `npx vitest run packages/harness sim/kernel` and `pnpm sim -- all`
 Expected: green; `store freeze and required checks` runs on the sim adapter and on the platform adapter.
 
 - [ ] **Step 7: Commit**
 
 ```bash
-git add packages/db/store packages/harness apps/uw-app sim
+git add packages/db/store packages/harness apps/uw-platform sim
 git commit -m "feat(db): bind the freeze write, the required checks and the base comparison read
 
 The harness row carries frozen, freeze_allow and required_checks; activation
@@ -1396,7 +1396,7 @@ describe('SR-1 SR-2 the assembler reads the comparison, the closing references, 
       { sha: merged, merge: true, skipCi: false, closes: [] },
     ];
     const comparison = { head: merged, base, behindBy: 0, patchId, commits, patchIds: { [head]: patchId, [merged]: patchId } };
-    const moved = { ...facts, head: merged, comparison, checks: facts.checks.map((one) => ({ ...one, headSha: merged })), files: { head: merged, base, paths: ['apps/uw-app/board.tsx'] } };
+    const moved = { ...facts, head: merged, comparison, checks: facts.checks.map((one) => ({ ...one, headSha: merged })), files: { head: merged, base, paths: ['apps/uw-platform/board.tsx'] } };
     const input = assembleShipInput({ ...source, facts: moved });
     expect(input.carries).toEqual([head]);
     expect(input.approvals).toEqual([{ reviewer: 'uw-reviewer', commit: head, provider: 'anthropic' }]);
@@ -1677,13 +1677,13 @@ SR-1 SR-2 GD-2. S15-R1 S15-R2 S15-R3 S15-R7."
 **Files:**
 - Create: `packages/harness/github/closing-keywords.ts`, `packages/harness/github/closing-keywords.test.ts`
 - Modify: `packages/harness/index.ts` (export `closingReferences`, `hasSkipCiMarker`)
-- Modify: `apps/uw-app/github/payloads.ts` (`fileSchema`, `compareCommitSchema`)
-- Modify: `apps/uw-app/github/client.ts` (`changedFiles` returns the comparison)
-- Create: `apps/uw-app/github/facts/patch-id.ts`, `apps/uw-app/github/facts/head-facts.ts`, `apps/uw-app/github/facts/head-facts.test.ts`
-- Create: `apps/uw-app/github/facts/heads.ts` (the files writer, moved out of `upsert.ts` and grown)
-- Modify: `apps/uw-app/github/facts/upsert.ts` (drop the files writer; `closes` and the cleared comparison on a new head), `records.ts` (`FilesRecord`, `PullRequestRecord.closes`, `unknownHead`), `normalise.ts` (`pullOf` reads the closing references; `filesFromRest` takes the head facts), `files.ts` (`fetchFilesAtHead`)
-- Create: `apps/uw-app/github/facts/heads.pg.test.ts`
-- Modify: the fixture GitHub answers to the compare call (`apps/uw-app/github/testing/ship-rig.ts` `listing`, `sweep-rig.ts`, `apps/uw-app/github/fixtures/*.json` the compare answer, `client.test.ts`), `facts-fixtures.ts` (`openedPull.closes`), and the importers of `recordFiles`
+- Modify: `apps/uw-platform/github/payloads.ts` (`fileSchema`, `compareCommitSchema`)
+- Modify: `apps/uw-platform/github/client.ts` (`changedFiles` returns the comparison)
+- Create: `apps/uw-platform/github/facts/patch-id.ts`, `apps/uw-platform/github/facts/head-facts.ts`, `apps/uw-platform/github/facts/head-facts.test.ts`
+- Create: `apps/uw-platform/github/facts/heads.ts` (the files writer, moved out of `upsert.ts` and grown)
+- Modify: `apps/uw-platform/github/facts/upsert.ts` (drop the files writer; `closes` and the cleared comparison on a new head), `records.ts` (`FilesRecord`, `PullRequestRecord.closes`, `unknownHead`), `normalise.ts` (`pullOf` reads the closing references; `filesFromRest` takes the head facts), `files.ts` (`fetchFilesAtHead`)
+- Create: `apps/uw-platform/github/facts/heads.pg.test.ts`
+- Modify: the fixture GitHub answers to the compare call (`apps/uw-platform/github/testing/ship-rig.ts` `listing`, `sweep-rig.ts`, `apps/uw-platform/github/fixtures/*.json` the compare answer, `client.test.ts`), `facts-fixtures.ts` (`openedPull.closes`), and the importers of `recordFiles`
 
 **Interfaces:**
 - Produces: `closingReferences(text: string | null, repository: string): readonly ClosingRef[]`; `hasSkipCiMarker(message: string): boolean`; `GitHubReads.changedFiles(repo, base, head): Promise<GitHubResult<Compared>>` with `Compared = { readonly files: List | 'too_many_files'; readonly behindBy: number | null; readonly commits: List | null }`; `patchIdOf(files: readonly unknown[]): Promise<string | null>`; `headFactsOf(compared: Compared, repository: string): Promise<HeadFacts>` with `HeadFacts = Pick<FilesRecord, 'behindBy' | 'patchId' | 'commits'>`; `recordFiles(db, files: FilesRecord)` now in `heads.ts`.
@@ -1739,7 +1739,7 @@ describe('SR-1 skip-ci markers in a commit message', () => {
 });
 ```
 
-`apps/uw-app/github/facts/head-facts.test.ts`:
+`apps/uw-platform/github/facts/head-facts.test.ts`:
 
 ```ts
 import { describe, expect, it } from 'vitest';
@@ -1749,7 +1749,7 @@ import { patchIdOf } from './patch-id.ts';
 const here = 'unfoldingWord/uw-platform';
 const sha = (seed: string) => seed.padEnd(40, '0');
 
-const file = (patch: string) => ({ filename: 'apps/uw-app/board.tsx', status: 'modified', patch });
+const file = (patch: string) => ({ filename: 'apps/uw-platform/board.tsx', status: 'modified', patch });
 
 describe('SR-2 the patch id is the change against the merge base', () => {
   it('stays the same when only the hunk positions move', async () => {
@@ -1798,7 +1798,7 @@ describe('SR-1 SR-2 the head facts from one compare answer', () => {
 
 - [ ] **Step 2: Run them and see them fail**
 
-Run: `npx vitest run packages/harness/github/closing-keywords.test.ts apps/uw-app/github/facts/head-facts.test.ts`
+Run: `npx vitest run packages/harness/github/closing-keywords.test.ts apps/uw-platform/github/facts/head-facts.test.ts`
 Expected: FAIL; the modules do not exist.
 
 - [ ] **Step 3: Write the closing references and the markers**
@@ -1840,7 +1840,7 @@ export function hasSkipCiMarker(message: string): boolean {
 
 - [ ] **Step 4: Read the comparison from the compare call**
 
-`apps/uw-app/github/payloads.ts`:
+`apps/uw-platform/github/payloads.ts`:
 
 ```ts
 export const fileSchema = z.object({
@@ -1858,7 +1858,7 @@ export const compareCommitSchema = z.object({
 });
 ```
 
-`apps/uw-app/github/client.ts`: export the type and replace `comparison` and `changedFiles`:
+`apps/uw-platform/github/client.ts`: export the type and replace `comparison` and `changedFiles`:
 
 ```ts
 export type Compared = {
@@ -1908,7 +1908,7 @@ In `GitHubReads`, `changedFiles(repo: string, base: string, head: string): Promi
       }),
 ```
 
-`apps/uw-app/github/facts/patch-id.ts`:
+`apps/uw-platform/github/facts/patch-id.ts`:
 
 ```ts
 import type { z } from 'zod';
@@ -1948,7 +1948,7 @@ export async function patchIdOf(files: readonly unknown[]): Promise<string | nul
 
 If the lint forbids a nested ternary, write `bodyOf(file)` with two `if`s. If it flags the `crypto` global, use `globalThis.crypto.subtle`.
 
-`apps/uw-app/github/facts/records.ts`: import `HeadCommit` from `@uw/harness` and `ClosingRef` from `@uw/contracts`; `PullRequestRecord` gains `readonly closes: readonly ClosingRef[];`; `FilesRecord` gains
+`apps/uw-platform/github/facts/records.ts`: import `HeadCommit` from `@uw/harness` and `ClosingRef` from `@uw/contracts`; `PullRequestRecord` gains `readonly closes: readonly ClosingRef[];`; `FilesRecord` gains
 
 ```ts
   readonly behindBy: number | null;
@@ -1963,7 +1963,7 @@ export type HeadFacts = Pick<FilesRecord, 'behindBy' | 'patchId' | 'commits'>;
 export const unknownHead: HeadFacts = { behindBy: null, patchId: null, commits: null };
 ```
 
-`apps/uw-app/github/facts/head-facts.ts`:
+`apps/uw-platform/github/facts/head-facts.ts`:
 
 ```ts
 import { closingReferences, fullSha, hasSkipCiMarker, type HeadCommit } from '@uw/harness';
@@ -1997,12 +1997,12 @@ export async function headFactsOf(compared: Compared, repository: string): Promi
 
 - [ ] **Step 5: Run the unit tests**
 
-Run: `npx vitest run packages/harness/github/closing-keywords.test.ts apps/uw-app/github/facts/head-facts.test.ts`
+Run: `npx vitest run packages/harness/github/closing-keywords.test.ts apps/uw-platform/github/facts/head-facts.test.ts`
 Expected: green.
 
 - [ ] **Step 6: Write the failing read-model test**
 
-`apps/uw-app/github/facts/heads.pg.test.ts`:
+`apps/uw-platform/github/facts/heads.pg.test.ts`:
 
 ```ts
 import { describe, expect, it } from 'vitest';
@@ -2027,7 +2027,7 @@ async function stored(db: Database): Promise<void> {
     pullRequestId: openedPull.githubId,
     head,
     base,
-    paths: ['apps/uw-app/board.tsx'],
+    paths: ['apps/uw-platform/board.tsx'],
     problem: null,
     behindBy: 0,
     patchId: patch,
@@ -2052,7 +2052,7 @@ async function clearsItOnANewHeadAndKeepsTheHistory(db: Database): Promise<void>
     pullRequestId: openedPull.githubId,
     head: nextHead,
     base,
-    paths: ['apps/uw-app/board.tsx'],
+    paths: ['apps/uw-platform/board.tsx'],
     problem: null,
     behindBy: 1,
     patchId: patch,
@@ -2074,12 +2074,12 @@ Read `facts-fixtures.ts` first: if `openedPull`'s head or base are not `head` an
 
 - [ ] **Step 7: Run it and see it fail**
 
-Run: `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/postgres npx vitest run apps/uw-app/github/facts/heads.pg.test.ts`
+Run: `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/postgres npx vitest run apps/uw-platform/github/facts/heads.pg.test.ts`
 Expected: FAIL; `heads.ts` does not exist.
 
 - [ ] **Step 8: The writer**
 
-`apps/uw-app/github/facts/heads.ts` (move `recordFilesIn`, `recordAllFiles` and `recordFiles` out of `upsert.ts` and grow them):
+`apps/uw-platform/github/facts/heads.ts` (move `recordFilesIn`, `recordAllFiles` and `recordFiles` out of `upsert.ts` and grow them):
 
 ```ts
 import { and, eq, sql } from 'drizzle-orm';
@@ -2131,7 +2131,7 @@ export function recordFiles(db: Database, files: FilesRecord): Promise<boolean> 
 }
 ```
 
-`apps/uw-app/github/facts/upsert.ts`: delete the three moved functions and the `FilesRecord` import, `import { recordAllFiles } from './heads.ts';`; add `closes: ghPrs.closes,` to `pullColumns`; in `upsertPulls`' `set`, beside the four `sameHeadOr` lines:
+`apps/uw-platform/github/facts/upsert.ts`: delete the three moved functions and the `FilesRecord` import, `import { recordAllFiles } from './heads.ts';`; add `closes: ghPrs.closes,` to `pullColumns`; in `upsertPulls`' `set`, beside the four `sameHeadOr` lines:
 
 ```ts
         behindBy: sameHeadOr('behind_by'),
@@ -2141,9 +2141,9 @@ export function recordFiles(db: Database, files: FilesRecord): Promise<boolean> 
 
 (`patch_ids` is not cleared; it is the history.) Every importer of `recordFiles` from `./upsert.ts` (`grep -rn "recordFiles" apps --include=*.ts`) imports it from `heads.ts`.
 
-`apps/uw-app/github/facts/normalise.ts`: `pullOf(repo: RepoRecord, pull: Pull)` takes the repository record (its one caller, `pullBatch`, passes `repo`), uses `repo.githubId` where it used `repoId`, and adds `closes: [...closingReferences(pull.body ?? null, repo.fullName)],` (import `closingReferences` from `@uw/harness`; if `pullSchema` names the body differently, use that field, as `declarationOf` does). `filesFromRest` gains a fourth parameter `head: HeadFacts` and spreads it into every record it returns: `{ pullRequestId, head: compared.head, base: compared.base, paths, problem, ...head }` (rename the local `head` of `compared` destructuring to avoid the clash).
+`apps/uw-platform/github/facts/normalise.ts`: `pullOf(repo: RepoRecord, pull: Pull)` takes the repository record (its one caller, `pullBatch`, passes `repo`), uses `repo.githubId` where it used `repoId`, and adds `closes: [...closingReferences(pull.body ?? null, repo.fullName)],` (import `closingReferences` from `@uw/harness`; if `pullSchema` names the body differently, use that field, as `declarationOf` does). `filesFromRest` gains a fourth parameter `head: HeadFacts` and spreads it into every record it returns: `{ pullRequestId, head: compared.head, base: compared.base, paths, problem, ...head }` (rename the local `head` of `compared` destructuring to avoid the clash).
 
-`apps/uw-app/github/facts/files.ts`:
+`apps/uw-platform/github/facts/files.ts`:
 
 ```ts
 import type { Database } from '@uw/db/client';
@@ -2170,7 +2170,7 @@ export async function fetchFilesAtHead(
 
 - [ ] **Step 9: The fixture GitHub answers the comparison**
 
-Every fixture answer to `GET /repos/.../compare/...` gains `behind_by: 0`, `total_commits: 1` and `commits: [{ sha: <the head it compares>, commit: { message: 'Show the board' }, parents: [{ sha: <its base> }] }]`, and each file a `status` and a `patch` (any short `@@ -1 +1 @@\n-a\n+b`). Find them: `grep -rln "compare/" apps/uw-app --include=*.ts` and the JSON answers under `apps/uw-app/github/fixtures/` that those files load (the sweep rig's `restFiles`). In `ship-rig.ts`, `listing(paths)` becomes:
+Every fixture answer to `GET /repos/.../compare/...` gains `behind_by: 0`, `total_commits: 1` and `commits: [{ sha: <the head it compares>, commit: { message: 'Show the board' }, parents: [{ sha: <its base> }] }]`, and each file a `status` and a `patch` (any short `@@ -1 +1 @@\n-a\n+b`). Find them: `grep -rln "compare/" apps/uw-platform --include=*.ts` and the JSON answers under `apps/uw-platform/github/fixtures/` that those files load (the sweep rig's `restFiles`). In `ship-rig.ts`, `listing(paths)` becomes:
 
 ```ts
 function listing(paths: readonly string[]) {
@@ -2184,13 +2184,13 @@ function listing(paths: readonly string[]) {
 
 - [ ] **Step 10: Run the facts, the sweep, the refresh and the gate suites**
 
-Run: `pnpm check && TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/postgres npx vitest run apps/uw-app/github apps/uw-app/commands/gates.pg.test.ts apps/uw-app/commands/gate-view.pg.test.ts packages/harness/github`
+Run: `pnpm check && TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/postgres npx vitest run apps/uw-platform/github apps/uw-platform/commands/gates.pg.test.ts apps/uw-platform/commands/gate-view.pg.test.ts packages/harness/github`
 Expected: green, including `the base comparison in the read model`. A ship test that now refuses `base_behind` or `skip_ci_marker` means its compare answer lacks the Step 9 fields.
 
 - [ ] **Step 11: Commit**
 
 ```bash
-git add packages/harness/github packages/harness/index.ts apps/uw-app/github
+git add packages/harness/github packages/harness/index.ts apps/uw-platform/github
 git commit -m "feat(github): record the head's comparison with its base: behind_by, patch id, commits
 
 The compare call the facts module already makes now lists the head's
@@ -2212,9 +2212,9 @@ SR-1 SR-2. S15-R3 S15-R4 S15-R5 S15-R6."
 - Create: `packages/harness/stages/freeze.ts`
 - Modify: `packages/harness/stages/commands.ts` (`StageCommands.setFreeze`)
 - Modify: `packages/harness/index.ts` (type `FreezeInput`)
-- Modify: `apps/uw-app/commands/person/stages.ts` (`setFreezeCommand`), `apps/uw-app/commands/registry.ts` (replace the not-wired entry)
+- Modify: `apps/uw-platform/commands/person/stages.ts` (`setFreezeCommand`), `apps/uw-platform/commands/registry.ts` (replace the not-wired entry)
 - Create: `sim/kernel/freeze.test.ts`, `sim/scenarios/GD-2.a-freeze-refuses-ship-except-for-named-items.ts`
-- Modify: `apps/uw-app/commands/stages.pg.test.ts` (the route)
+- Modify: `apps/uw-platform/commands/stages.pg.test.ts` (the route)
 
 **Interfaces:**
 - Consumes: Task 4's `setFreeze` write and `Harness.frozen`/`freezeAllow`; Task 5's `harness_frozen` predicate fed by `assembleShipInput`.
@@ -2367,7 +2367,7 @@ export const scenario = defineScenario({
 });
 ```
 
-In `apps/uw-app/commands/stages.pg.test.ts`, add one test beside the `set_hosted_builder` route test, copying its frame: `GD-2 set_freeze freezes for an admin, is refused for an editor, and records freeze_changed`. It posts `{ frozen: true, allow: [] }`, expects `accepted` and one `freeze_changed` event, then posts as the editor and expects the `not_permitted` refusal the hosted-builder test expects.
+In `apps/uw-platform/commands/stages.pg.test.ts`, add one test beside the `set_hosted_builder` route test, copying its frame: `GD-2 set_freeze freezes for an admin, is refused for an editor, and records freeze_changed`. It posts `{ frozen: true, allow: [] }`, expects `accepted` and one `freeze_changed` event, then posts as the editor and expects the `not_permitted` refusal the hosted-builder test expects.
 
 - [ ] **Step 2: Run them and see them fail**
 
@@ -2460,7 +2460,7 @@ export async function setFreeze(
 
 `packages/harness/stages/commands.ts`: import `setFreeze, type FreezeInput`; `StageCommands` gains `setFreeze(caller: Caller, input: FreezeInput): Promise<KernelOutcome<HarnessScene>>;`; the factory gains `setFreeze: (caller, input) => setFreeze(ports, caller, input),`. `packages/harness/index.ts`: `export type { FreezeInput } from './stages/freeze.ts';`.
 
-`apps/uw-app/commands/person/stages.ts`:
+`apps/uw-platform/commands/person/stages.ts`:
 
 ```ts
 export const setFreezeCommand = commandHandler({
@@ -2473,17 +2473,17 @@ export const setFreezeCommand = commandHandler({
 });
 ```
 
-`apps/uw-app/commands/registry.ts`: import it and replace `notWiredCommand('set_freeze', 'admin')` with `setFreezeCommand`.
+`apps/uw-platform/commands/registry.ts`: import it and replace `notWiredCommand('set_freeze', 'admin')` with `setFreezeCommand`.
 
 - [ ] **Step 4: Run them**
 
-Run: `pnpm check && npx vitest run sim/kernel/freeze.test.ts apps/uw-app/commands/registry.test.ts` then `pnpm sim -- GD-2` then `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/postgres npx vitest run apps/uw-app/commands/stages.pg.test.ts`
+Run: `pnpm check && npx vitest run sim/kernel/freeze.test.ts apps/uw-platform/commands/registry.test.ts` then `pnpm sim -- GD-2` then `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/postgres npx vitest run apps/uw-platform/commands/stages.pg.test.ts`
 Expected: green.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add packages/harness/stages packages/harness/index.ts apps/uw-app/commands sim/ship-fixtures.ts sim/kernel/freeze.test.ts sim/scenarios/GD-2.a-freeze-refuses-ship-except-for-named-items.ts
+git add packages/harness/stages packages/harness/index.ts apps/uw-platform/commands sim/ship-fixtures.ts sim/kernel/freeze.test.ts sim/scenarios/GD-2.a-freeze-refuses-ship-except-for-named-items.ts
 git commit -m "feat(harness): an admin freezes a harness; Ship refuses harness_frozen except for named items
 
 set_freeze records freeze_changed with the allow list; lifting clears it.
@@ -2935,13 +2935,13 @@ The connector's refusal reason is bounded to 500 characters by `boundedReason`; 
 Run: `pnpm check && npx vitest run sim/kernel/ship-facts.test.ts sim/kernel/merge-recheck.test.ts sim/kernel/exit-guard.test.ts sim/kernel/gate-command.test.ts sim/kernel/recover.test.ts tools/architecture/connector-callers.test.ts` then `pnpm sim -- SR-1 && pnpm sim -- SR-2 && pnpm sim -- SR-3 && pnpm sim -- all`
 Expected: green. `connector-callers` passes unchanged: `shipRule(` is still called only in `approve-at-ship.ts` and `ship-rule.ts`, and the exit only from `approve-at-ship.ts`.
 
-Then: `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/postgres npx vitest run apps/uw-app/commands/gates.pg.test.ts apps/uw-app/harness apps/uw-app/github/merge.test.ts`
+Then: `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/postgres npx vitest run apps/uw-platform/commands/gates.pg.test.ts apps/uw-platform/harness apps/uw-platform/github/merge.test.ts`
 Expected: green. The platform merge now refreshes the facts a second time before `PUT .../merge`; a test that counts GitHub requests (`readsBeforeTheMerge`) gains the second pull read before the merge, which is the SR-3 behaviour: update its expected list and say so in the commit body.
 
 - [ ] **Step 6: Commit**
 
 ```bash
-git add packages/harness/gates packages/harness/testing.ts sim apps/uw-app
+git add packages/harness/gates packages/harness/testing.ts sim apps/uw-platform
 git commit -m "feat(harness): the merge runs the ship rule again and merges the head it evaluated
 
 The approve-at-Ship path hands the stage exit a guard that refreshes the
@@ -2961,11 +2961,11 @@ SR-1 SR-2 SR-3. S15-R7 S15-R8 S15-R9."
 - Create: `packages/harness/gates/decide-batch.ts`
 - Modify: `packages/harness/gates/decide.ts` (export `decideIn`, `normalised`, the types `DecideRequest` and `Committed`; a pinned reject)
 - Modify: `packages/harness/gates/commands.ts` (`GateCommands.decideGates`), `packages/harness/index.ts` (types `BatchInput`, `BatchEntry`, `BatchDecided`)
-- Modify: `apps/uw-app/commands/person/gates.ts` (`decideGatesCommand`), `apps/uw-app/commands/registry.ts`
-- Create: `apps/uw-app/views/parts/approve-all.tsx`; Modify: `apps/uw-app/views/screens/gates.tsx`
-- Modify: `apps/uw-app/islands/browser/command-body.ts` (`decide_gates` shape), `apps/uw-app/islands/browser/command-form.ts` (`OUTCOME_TEXT`), `apps/uw-app/generated/islands.ts` (regenerated)
-- Create: `sim/kernel/decide-gates.test.ts`, `sim/scenarios/GD-1.decide-gates-approves-a-batch-or-refuses-it-whole.ts`, `apps/uw-app/commands/ship-gates.pg.test.ts`
-- Modify: `apps/uw-app/islands/browser/command-form.test.ts`, `apps/uw-app/views/gates.pg.test.ts`
+- Modify: `apps/uw-platform/commands/person/gates.ts` (`decideGatesCommand`), `apps/uw-platform/commands/registry.ts`
+- Create: `apps/uw-platform/views/parts/approve-all.tsx`; Modify: `apps/uw-platform/views/screens/gates.tsx`
+- Modify: `apps/uw-platform/islands/browser/command-body.ts` (`decide_gates` shape), `apps/uw-platform/islands/browser/command-form.ts` (`OUTCOME_TEXT`), `apps/uw-platform/generated/islands.ts` (regenerated)
+- Create: `sim/kernel/decide-gates.test.ts`, `sim/scenarios/GD-1.decide-gates-approves-a-batch-or-refuses-it-whole.ts`, `apps/uw-platform/commands/ship-gates.pg.test.ts`
+- Modify: `apps/uw-platform/islands/browser/command-form.test.ts`, `apps/uw-platform/views/gates.pg.test.ts`
 
 **Interfaces:**
 - Produces: `GateCommands.decideGates(caller: Caller, input: BatchInput): Promise<KernelOutcome<BatchDecided>>` with `BatchEntry = { readonly itemId: string; readonly head: string; readonly decision: 'approve' | 'reject' }`, `BatchInput = { readonly harnessId: string; readonly entries: readonly BatchEntry[] }`, `BatchDecided = { readonly decided: readonly Decided[] }`.
@@ -3088,7 +3088,7 @@ describe('GD-1 decide_gates', () => {
 
 `sim/scenarios/GD-1.decide-gates-approves-a-batch-or-refuses-it-whole.ts`: id `'GD-1'`, title `'a person approves two gates in one decide_gates and both merge; a batch with one unapproved item records nothing'`. It builds the first test's scene on one harness (two items, both approved), calls `decideGates`, asserts two `advanced`, then parks a third item (`{ ...standardChange, pullRequest: { repo: 'unfoldingWord/uw-platform', number: 44 }, head: simSha('f00d') }`) with facts that carry no approval and asserts a one-entry batch is refused `no_reviewer_approval` naming it. Return `{ advanced, refused }`.
 
-`apps/uw-app/commands/ship-gates.pg.test.ts`:
+`apps/uw-platform/commands/ship-gates.pg.test.ts`:
 
 ```ts
 import { randomUUID } from 'node:crypto';
@@ -3125,9 +3125,9 @@ describe.skipIf(!testServer)('the ship and gate commands on the command API', ()
 });
 ```
 
-Read one refusal assertion in `apps/uw-app/commands/commands.pg.test.ts` first and match its shape (status code and body) exactly; `refute_finding` is registered not wired until Task 12, and its refusal for a viewer comes from `can()` before the handler, so this test holds now.
+Read one refusal assertion in `apps/uw-platform/commands/commands.pg.test.ts` first and match its shape (status code and body) exactly; `refute_finding` is registered not wired until Task 12, and its refusal for a viewer comes from `can()` before the handler, so this test holds now.
 
-In `apps/uw-app/islands/browser/command-form.test.ts` (or the file that tests `commandBody`), add:
+In `apps/uw-platform/islands/browser/command-form.test.ts` (or the file that tests `commandBody`), add:
 
 ```ts
   it('GD-1 the approve-all form sends decide_gates with each shown item and its head', () => {
@@ -3138,11 +3138,11 @@ In `apps/uw-app/islands/browser/command-form.test.ts` (or the file that tests `c
   });
 ```
 
-In `apps/uw-app/views/gates.pg.test.ts`, copy the WB-6 test that renders two decidable gates and add `GD-1 the Gates view offers approve all shown over the gates whose ship rule advances`: assert one `form[data-command="decide_gates"]` per harness with an approvable gate, its hidden `entries` value listing exactly the approvable `itemId:head` pairs, and no such form when no shown gate advances.
+In `apps/uw-platform/views/gates.pg.test.ts`, copy the WB-6 test that renders two decidable gates and add `GD-1 the Gates view offers approve all shown over the gates whose ship rule advances`: assert one `form[data-command="decide_gates"]` per harness with an approvable gate, its hidden `entries` value listing exactly the approvable `itemId:head` pairs, and no such form when no shown gate advances.
 
 - [ ] **Step 2: Run them and see them fail**
 
-Run: `npx vitest run sim/kernel/decide-gates.test.ts apps/uw-app/islands/browser`
+Run: `npx vitest run sim/kernel/decide-gates.test.ts apps/uw-platform/islands/browser`
 Expected: FAIL; `gates.decideGates` does not exist and `commandBody` returns null for `decide_gates`.
 
 - [ ] **Step 3: Export the single decision's body; pin a reject**
@@ -3310,7 +3310,7 @@ with `decideGates: (caller, input) => decideGatesAndResume(ports, caller, input)
 
 - [ ] **Step 5: The command, the form and the island shape**
 
-`apps/uw-app/commands/person/gates.ts`:
+`apps/uw-platform/commands/person/gates.ts`:
 
 ```ts
 export const decideGatesCommand = commandHandler({
@@ -3324,9 +3324,9 @@ export const decideGatesCommand = commandHandler({
 });
 ```
 
-`apps/uw-app/commands/registry.ts`: replace `notWiredCommand('decide_gates', 'admin')` with `decideGatesCommand`. (Task 2 put `decide_gates` in `gateCommands`, so the handler gets the gate kernel with the ship wiring. Agents are refused by the handler's default rule.)
+`apps/uw-platform/commands/registry.ts`: replace `notWiredCommand('decide_gates', 'admin')` with `decideGatesCommand`. (Task 2 put `decide_gates` in `gateCommands`, so the handler gets the gate kernel with the ship wiring. Agents are refused by the handler's default rule.)
 
-`apps/uw-app/islands/browser/command-body.ts`, beside `findingsOf`:
+`apps/uw-platform/islands/browser/command-body.ts`, beside `findingsOf`:
 
 ```ts
 function entriesOf(text: string | undefined): readonly Readonly<Record<string, string>>[] {
@@ -3342,7 +3342,7 @@ function entriesOf(text: string | undefined): readonly Readonly<Record<string, s
 
 and in `shapes`: `['decide_gates', (given) => ({ entries: entriesOf(given.get('entries')) })],`. `command-form.ts` `OUTCOME_TEXT`: `decide_gates: 'Approved',`.
 
-`apps/uw-app/views/parts/approve-all.tsx`:
+`apps/uw-platform/views/parts/approve-all.tsx`:
 
 ```tsx
 import { CommandForm } from '@uw/ui/components/command-form.tsx';
@@ -3373,7 +3373,7 @@ export function ApproveAll(props: { readonly batch: Approvable }) {
 }
 ```
 
-`apps/uw-app/views/screens/gates.tsx`: import `ApproveAll, type Approvable`; add
+`apps/uw-platform/views/screens/gates.tsx`: import `ApproveAll, type Approvable`; add
 
 ```ts
 const BATCH_LIMIT = 50;
@@ -3403,8 +3403,8 @@ Regenerate the islands bundle: `pnpm ui:islands`.
 
 - [ ] **Step 6: Run them**
 
-Run: `pnpm check && npx vitest run sim/kernel/decide-gates.test.ts sim/kernel/gate-command.test.ts apps/uw-app/islands tools/ui/generated-islands.test.ts apps/uw-app/commands/registry.test.ts` then `pnpm sim -- GD-1`
-Then: `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/postgres npx vitest run apps/uw-app/commands/ship-gates.pg.test.ts apps/uw-app/views/gates.pg.test.ts tools/architecture`
+Run: `pnpm check && npx vitest run sim/kernel/decide-gates.test.ts sim/kernel/gate-command.test.ts apps/uw-platform/islands tools/ui/generated-islands.test.ts apps/uw-platform/commands/registry.test.ts` then `pnpm sim -- GD-1`
+Then: `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/postgres npx vitest run apps/uw-platform/commands/ship-gates.pg.test.ts apps/uw-platform/views/gates.pg.test.ts tools/architecture`
 Expected: green. `tools/architecture` holds: `gate_decisions` is still written only in `decide.ts`'s `recordDecision`, now reached from two exported callers in the gates module.
 
 - [ ] **Step 7: Check the screen in light, dark and phone width**
@@ -3414,7 +3414,7 @@ Run the app as the `run` skill or `docs/progress_tracker.md`'s screen-check reci
 - [ ] **Step 8: Commit**
 
 ```bash
-git add packages/harness/gates packages/harness/index.ts apps/uw-app sim/kernel/decide-gates.test.ts sim/scenarios/GD-1.decide-gates-approves-a-batch-or-refuses-it-whole.ts
+git add packages/harness/gates packages/harness/index.ts apps/uw-platform sim/kernel/decide-gates.test.ts sim/scenarios/GD-1.decide-gates-approves-a-batch-or-refuses-it-whole.ts
 git commit -m "feat(harness): decide_gates, one transaction of pinned gate decisions, refused whole
 
 A person approves or rejects up to fifty gates in one command. Each entry
@@ -3431,10 +3431,10 @@ GD-1. S15-R11."
 
 **Files:**
 - Modify: `packages/harness/runs/tool-loop.ts` (outcome `refused`), `packages/harness/runs/tool-loop.test.ts`
-- Modify: `apps/uw-app/engines/seam.ts` (`EngineWorkResult.outcome`), `apps/uw-app/runs/bodies.ts` (`ModelDone.outcome`), `apps/uw-app/runs/run-core.ts` (`afterWork`)
+- Modify: `apps/uw-platform/engines/seam.ts` (`EngineWorkResult.outcome`), `apps/uw-platform/runs/bodies.ts` (`ModelDone.outcome`), `apps/uw-platform/runs/run-core.ts` (`afterWork`)
 - Modify: `packages/harness/runs/lifecycle.ts` (`fail` hands over on `engine_refused`)
 - Modify: `packages/harness/runs/backoff.ts` (`refusedByEngine`), `packages/harness/runs/beat.ts` (`firstItem`)
-- Create: `packages/harness/runs/refused.test.ts`, `sim/kernel/engine-refused.test.ts`, `sim/scenarios/GD-3.an-engine-refusal-hands-the-item-to-a-person-and-starts-no-second-run.ts`, `apps/uw-app/runs/engine-refused.pg.test.ts`
+- Create: `packages/harness/runs/refused.test.ts`, `sim/kernel/engine-refused.test.ts`, `sim/scenarios/GD-3.an-engine-refusal-hands-the-item-to-a-person-and-starts-no-second-run.ts`, `apps/uw-platform/runs/engine-refused.pg.test.ts`
 
 **Interfaces:**
 - Produces: `LoopResult.outcome: 'ended' | 'turn_limit' | 'refused'`; `refusedByEngine(events: readonly HarnessEvent[]): boolean`.
@@ -3556,11 +3556,11 @@ describe('GD-3 refusals are never routed around', () => {
 });
 ```
 
-(If the kernel's `fail` lives under another name on `kernel.runs`, use the one `apps/uw-app/runs/run-core.ts`'s `failRun` calls. If the review run does not hold the item, the tail has no `item_released`; read the tail and keep the assertion on `run_failed` and `handed_to_person`.)
+(If the kernel's `fail` lives under another name on `kernel.runs`, use the one `apps/uw-platform/runs/run-core.ts`'s `failRun` calls. If the review run does not hold the item, the tail has no `item_released`; read the tail and keep the assertion on `run_failed` and `handed_to_person`.)
 
 `sim/scenarios/GD-3.an-engine-refusal-hands-the-item-to-a-person-and-starts-no-second-run.ts`: id `'GD-3'`, the first test's steps through `defineScenario`, returning `{ handed: evidence, started: count }`.
 
-`apps/uw-app/runs/engine-refused.pg.test.ts`:
+`apps/uw-platform/runs/engine-refused.pg.test.ts`:
 
 ```ts
 import { randomUUID } from 'node:crypto';
@@ -3623,7 +3623,7 @@ Expected: FAIL; the loop ignores `stopReason`, `refusedByEngine` does not exist,
     if (result.stopReason === 'refused') return finished(tally, 'refused', result.text);
 ```
 
-`apps/uw-app/engines/seam.ts`: `EngineWorkResult.outcome: 'ended' | 'turn_limit' | 'refused';`. `apps/uw-app/runs/bodies.ts`: the same union on its `outcome` field. `apps/uw-app/runs/run-core.ts`, `afterWork`, before the `turn_limit` line:
+`apps/uw-platform/engines/seam.ts`: `EngineWorkResult.outcome: 'ended' | 'turn_limit' | 'refused';`. `apps/uw-platform/runs/bodies.ts`: the same union on its `outcome` field. `apps/uw-platform/runs/run-core.ts`, `afterWork`, before the `turn_limit` line:
 
 ```ts
   if (work.outcome === 'refused') return failRun(flow, 'work', 'engine_refused', null);
@@ -3681,13 +3681,13 @@ export function refusedByEngine(events: readonly HarnessEvent[]): boolean {
 - [ ] **Step 5: Run them**
 
 Run: `pnpm check && npx vitest run packages/harness/runs sim/kernel/engine-refused.test.ts sim/kernel/run-beat.test.ts sim/kernel/review-rounds.test.ts` then `pnpm sim -- GD-3`
-Then: `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/postgres npx vitest run apps/uw-app/runs`
+Then: `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/postgres npx vitest run apps/uw-platform/runs`
 Expected: green.
 
 - [ ] **Step 6: Commit**
 
 ```bash
-git add packages/harness/runs apps/uw-app/engines/seam.ts apps/uw-app/runs sim/kernel/engine-refused.test.ts sim/scenarios/GD-3.an-engine-refusal-hands-the-item-to-a-person-and-starts-no-second-run.ts
+git add packages/harness/runs apps/uw-platform/engines/seam.ts apps/uw-platform/runs sim/kernel/engine-refused.test.ts sim/scenarios/GD-3.an-engine-refusal-hands-the-item-to-a-person-and-starts-no-second-run.ts
 git commit -m "feat(runs): an engine's refusal fails the run engine_refused and hands the item to a person
 
 A model turn that stops refused ends the tool loop; the host fails the run
@@ -3707,8 +3707,8 @@ GD-3. S15-R12."
 - Create: `packages/harness/runs/weights.ts`, `packages/harness/runs/weights.test.ts`
 - Modify: `packages/harness/runs/review.ts` (`PostReviewInput.findings`, the refusal, the posted verdict, the record's findings, step 14's shadow branch), `rounds.ts` (`countsAsRound`), `types.ts` and `persona.ts` (`RunPersona.approveAt`)
 - Modify: `packages/harness/templates/personas.ts` (the Reviewer's instructions; `approveAt` on the fixtures and the draft)
-- Modify: `packages/harness/views/persona.ts` (`PersonaDashboard.approveAt`), `apps/uw-app/views/parts/persona-figures.tsx` (the line)
-- Modify: `apps/uw-app/runs/prompts.ts` (`reviewPrompt`), `apps/uw-app/runs/prompts.test.ts`, `apps/uw-app/runs/steps.ts` (`finding_weight_missing` ends the run), `apps/uw-app/github/facts/records.ts` (`ReviewRecord.findings: readonly ReadFinding[]`)
+- Modify: `packages/harness/views/persona.ts` (`PersonaDashboard.approveAt`), `apps/uw-platform/views/parts/persona-figures.tsx` (the line)
+- Modify: `apps/uw-platform/runs/prompts.ts` (`reviewPrompt`), `apps/uw-platform/runs/prompts.test.ts`, `apps/uw-platform/runs/steps.ts` (`finding_weight_missing` ends the run), `apps/uw-platform/github/facts/records.ts` (`ReviewRecord.findings: readonly ReadFinding[]`)
 - Modify: `sim/review-runs.ts` (`ReviewSetup.approveAt`), and every `postReview(` input in `sim/` (findings become weighted)
 - Modify: `packages/harness/github/verdicts.test.ts`, `review-body.test.ts`, `review-findings.test.ts`
 - Create: `sim/kernel/finding-weight.test.ts`, `sim/scenarios/RV-1.theoretical-findings-are-recorded-and-never-make-a-review-round.ts`, `sim/scenarios/RV-3.the-zero-findings-preset-requests-changes-on-a-theoretical-finding.ts`
@@ -3922,7 +3922,7 @@ export function weighedLine(line: string): ReadFinding {
 
 `packages/harness/github/review-findings.ts`: returns `readonly ReadFinding[]`; after the existing cut and filter, `.map(weighedLine)`.
 
-`apps/uw-app/github/facts/records.ts`: `ReviewRecord.findings: readonly ReadFinding[]`.
+`apps/uw-platform/github/facts/records.ts`: `ReviewRecord.findings: readonly ReadFinding[]`.
 
 - [ ] **Step 5: The weights and the verdict in the kernel**
 
@@ -4017,7 +4017,7 @@ and the rest of the function is unchanged. If `review.ts` passes 500 lines, move
 
 `packages/harness/runs/rounds.ts`: import `countsAsRound`; in `requestedChanges` replace `review.verdict !== 'request_changes'` with `!countsAsRound(review)`; in `roundsAfter` replace `review.verdict !== 'request_changes'` with `!countsAsRound(review)`.
 
-`apps/uw-app/runs/steps.ts`: add `'finding_weight_missing'` to `endingReasons` (the kernel already failed the run; the host only stops).
+`apps/uw-platform/runs/steps.ts`: add `'finding_weight_missing'` to `endingReasons` (the kernel already failed the run; the host only stops).
 
 - [ ] **Step 6: The Reviewer is asked for the weight; the preset is on its page**
 
@@ -4033,7 +4033,7 @@ and the rest of the function is unchanged. If `review.ts` passes 500 lines, move
 - `PersonaFixture` gains `readonly approveAt: ApproveAt | null;`: `builder` and `iterate` `null`, `reviewer` `'no_real_or_plausible'` (`builderHosted` and `reviewerCodex` inherit by spread).
 - `personaPageDraft`'s frontmatter ends `...(fixture.approveAt === null ? {} : { approve_at: fixture.approveAt }),`.
 
-`apps/uw-app/runs/prompts.ts`, `reviewPrompt`: replace the three lines from `'Open your answer with this block...'` to `'- <finding>',` with:
+`apps/uw-platform/runs/prompts.ts`, `reviewPrompt`: replace the three lines from `'Open your answer with this block...'` to `'- <finding>',` with:
 
 ```ts
     'Open your answer with this block and nothing before it, then one finding per line, each starting with its weight:',
@@ -4048,7 +4048,7 @@ and the rest of the function is unchanged. If `review.ts` passes 500 lines, move
 
 and update `prompts.test.ts`'s expectation of those lines.
 
-`packages/harness/views/persona.ts`: `PersonaDashboard` gains `readonly approveAt: ApproveAt | null;`; `personaView` returns `approveAt: frontmatter.capability === 'review' ? frontmatter.approve_at : null,`. `apps/uw-app/views/parts/persona-figures.tsx`, in `PersonaKpis` after the writes KPI:
+`packages/harness/views/persona.ts`: `PersonaDashboard` gains `readonly approveAt: ApproveAt | null;`; `personaView` returns `approveAt: frontmatter.capability === 'review' ? frontmatter.approve_at : null,`. `apps/uw-platform/views/parts/persona-figures.tsx`, in `PersonaKpis` after the writes KPI:
 
 ```tsx
       {props.dashboard.approveAt === null ? null : (
@@ -4075,14 +4075,14 @@ Run `grep -rln "postReview(" sim --include=*.ts`. Every Reviewer `findings: ['..
 
 - [ ] **Step 8: Run them**
 
-Run: `pnpm check && npx vitest run packages/harness sim/kernel apps/uw-app/runs/prompts.test.ts apps/uw-app/views/parts` then `pnpm sim -- RV-1 && pnpm sim -- RV-3 && pnpm sim -- PE-6 && pnpm sim -- all`
-Then: `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/postgres npx vitest run apps/uw-app/runs apps/uw-app/github apps/uw-app/views/persona.pg.test.ts`
+Run: `pnpm check && npx vitest run packages/harness sim/kernel apps/uw-platform/runs/prompts.test.ts apps/uw-platform/views/parts` then `pnpm sim -- RV-1 && pnpm sim -- RV-3 && pnpm sim -- PE-6 && pnpm sim -- all`
+Then: `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/postgres npx vitest run apps/uw-platform/runs apps/uw-platform/github apps/uw-platform/views/persona.pg.test.ts`
 Expected: green. A run-core test that posts a verdict text with unweighted lines now ends `failed` with `finding_weight_missing`: give its verdict text weighted lines unless the test is about the refusal.
 
 - [ ] **Step 9: Commit**
 
 ```bash
-git add packages/harness apps/uw-app sim
+git add packages/harness apps/uw-platform sim
 git commit -m "feat(runs): every Reviewer finding carries a weight; theoretical findings make no review round
 
 The Reviewer writes each finding as - real:, - plausible: or - theoretical:.
@@ -4104,10 +4104,10 @@ RV-1 RV-3. S15-R13 S15-R14 S15-R15."
 - Modify: `packages/harness/gates/commands.ts` (`GateCommands.refuteFinding`), `packages/harness/gates/view.ts` (the view's `verdicts`), `packages/harness/index.ts` (types `RefuteInput`, `Refuted`, `RefuteTally`)
 - Create: `packages/harness/views/refutes.ts`, `packages/harness/views/refutes.test.ts`
 - Modify: `packages/harness/views/persona.ts` (`PersonaDashboard.refutes`), `packages/harness/views/plane.ts` (`reviewerRefutes`), `packages/harness/views/types.ts` (`PlaneTotals.reviewerRefutes`, `PlaneIndicator` gains `'reviewer_refutes'`), `packages/harness/views/plane-list.ts` (its reader)
-- Modify: `apps/uw-app/commands/person/gates.ts` (`refuteFindingCommand`), `apps/uw-app/commands/registry.ts`
-- Modify: `apps/uw-app/views/parts/gate-panel.tsx` (the verdicts with a refute control), `apps/uw-app/views/parts/persona-figures.tsx` (the rate), `apps/uw-app/health/agent-plane.ts` (`reviewer_refutes`), `apps/uw-app/views/screens/health-list.tsx`, `apps/uw-app/views/parts/health-words.ts`, `apps/uw-app/islands/browser/command-body.ts`, `command-form.ts`, `apps/uw-app/generated/islands.ts` (regenerated)
+- Modify: `apps/uw-platform/commands/person/gates.ts` (`refuteFindingCommand`), `apps/uw-platform/commands/registry.ts`
+- Modify: `apps/uw-platform/views/parts/gate-panel.tsx` (the verdicts with a refute control), `apps/uw-platform/views/parts/persona-figures.tsx` (the rate), `apps/uw-platform/health/agent-plane.ts` (`reviewer_refutes`), `apps/uw-platform/views/screens/health-list.tsx`, `apps/uw-platform/views/parts/health-words.ts`, `apps/uw-platform/islands/browser/command-body.ts`, `command-form.ts`, `apps/uw-platform/generated/islands.ts` (regenerated)
 - Create: `sim/kernel/refute.test.ts`, `sim/scenarios/RV-2.a-refuted-finding-feeds-the-reviewer-refute-rate.ts`
-- Modify: `apps/uw-app/views/health.pg.test.ts` (the label list), `apps/uw-app/health/agent-plane.pg.test.ts` if it lists details
+- Modify: `apps/uw-platform/views/health.pg.test.ts` (the label list), `apps/uw-platform/health/agent-plane.pg.test.ts` if it lists details
 
 **Interfaces:**
 - Produces: `GateCommands.refuteFinding(caller: Caller, input: RefuteInput): Promise<KernelOutcome<Refuted>>` with `RefuteInput = { readonly itemId: string; readonly runId: string; readonly finding: number }`, `Refuted = { readonly recorded: boolean }`; `verdictsOf(events): GateView['verdicts']`; `refuteTallies(events: readonly HarnessEvent[]): readonly RefuteTally[]` with `RefuteTally = { readonly harnessId: string; readonly persona: string; readonly findings: number; readonly refuted: number }`, `REFUTE_WINDOW_MS`, `refuteNames`; `PersonaDashboard.refutes: { readonly findings: number; readonly refuted: number; readonly capped: boolean } | null`; `PlaneTotals.reviewerRefutes: { readonly tallies: readonly RefuteTally[]; readonly capped: boolean }`.
@@ -4241,7 +4241,7 @@ describe('RV-2 a person marks a finding refuted', () => {
 
 `sim/scenarios/RV-2.a-refuted-finding-feeds-the-reviewer-refute-rate.ts`: id `'RV-2'`; the third test's steps; returns `{ refutes: dashboard.refutes }`.
 
-In `apps/uw-app/views/health.pg.test.ts`, the expected label list gains `'Reviewer refute rate'` at the end (the indicator is appended last).
+In `apps/uw-platform/views/health.pg.test.ts`, the expected label list gains `'Reviewer refute rate'` at the end (the indicator is appended last).
 
 - [ ] **Step 2: Run them and see them fail**
 
@@ -4358,7 +4358,7 @@ export function verdictsOf(events: readonly HarnessEvent[]): GateView['verdicts'
 
 `packages/harness/gates/commands.ts`: `GateCommands` gains `refuteFinding(caller: Caller, input: RefuteInput): Promise<KernelOutcome<Refuted>>;` and the factory `refuteFinding: (caller, input) => refuteFinding(ports, caller, input),`.
 
-`apps/uw-app/commands/person/gates.ts`:
+`apps/uw-platform/commands/person/gates.ts`:
 
 ```ts
 export const refuteFindingCommand = commandHandler({
@@ -4484,7 +4484,7 @@ async function refuteRows(scope: ListScope): Promise<readonly PlaneRow[]> {
 
 and `['reviewer_refutes', refuteRows],` in `readers`. `packages/harness/index.ts`: export type `RefuteTally`.
 
-`apps/uw-app/health/agent-plane.ts`: append `'reviewer_refutes'` to `AGENT_PLANE_INDICATORS`; add
+`apps/uw-platform/health/agent-plane.ts`: append `'reviewer_refutes'` to `AGENT_PLANE_INDICATORS`; add
 
 ```ts
 function refutesIndicator({ reviewerRefutes }: PlaneTotals): HealthIndicator {
@@ -4503,9 +4503,9 @@ function refutesIndicator({ reviewerRefutes }: PlaneTotals): HealthIndicator {
 }
 ```
 
-and append `refutesIndicator(totals),` to `agentPlaneIndicators`' list. `apps/uw-app/views/screens/health-list.tsx`: add `'reviewer_refutes'` to `planeIndicators`. `apps/uw-app/views/parts/health-words.ts`: `['reviewer_refutes', 'Reviewer refute rate'],`.
+and append `refutesIndicator(totals),` to `agentPlaneIndicators`' list. `apps/uw-platform/views/screens/health-list.tsx`: add `'reviewer_refutes'` to `planeIndicators`. `apps/uw-platform/views/parts/health-words.ts`: `['reviewer_refutes', 'Reviewer refute rate'],`.
 
-`apps/uw-app/views/parts/persona-figures.tsx`, in `PersonaKpis` after the approve-at KPI:
+`apps/uw-platform/views/parts/persona-figures.tsx`, in `PersonaKpis` after the approve-at KPI:
 
 ```tsx
       {props.dashboard.refutes === null ? null : (
@@ -4529,7 +4529,7 @@ function refuteDetail(refutes: NonNullable<PersonaDashboard['refutes']>): string
 
 - [ ] **Step 5: The refute control on the Gates view**
 
-`apps/uw-app/views/parts/gate-panel.tsx`: the existing `Findings` list renders each GitHub finding as `finding.weight === null ? finding.text : `${reasonText(finding.weight)}: ${finding.text}``. Add, outside any other form:
+`apps/uw-platform/views/parts/gate-panel.tsx`: the existing `Findings` list renders each GitHub finding as `finding.weight === null ? finding.text : `${reasonText(finding.weight)}: ${finding.text}``. Add, outside any other form:
 
 ```tsx
 function RefuteForm(props: { readonly view: GateView; readonly runId: string; readonly index: number }) {
@@ -4577,12 +4577,12 @@ function Verdicts(props: { readonly view: GateView }) {
 
 and in `GatePanel` render `<Verdicts view={view} />` after `<DecisionForm gate={gate} />` (a sibling, not inside it: a form cannot hold a form) and after the read-only `<Findings view={view} />`.
 
-`apps/uw-app/islands/browser/command-body.ts` `shapes`: `['refute_finding', (given) => ({ itemId: given.get('itemId'), runId: given.get('runId'), finding: Number(given.get('finding')) })],`; `command-form.ts` `OUTCOME_TEXT`: `refute_finding: 'Marked refuted',`. Regenerate: `pnpm ui:islands`.
+`apps/uw-platform/islands/browser/command-body.ts` `shapes`: `['refute_finding', (given) => ({ itemId: given.get('itemId'), runId: given.get('runId'), finding: Number(given.get('finding')) })],`; `command-form.ts` `OUTCOME_TEXT`: `refute_finding: 'Marked refuted',`. Regenerate: `pnpm ui:islands`.
 
 - [ ] **Step 6: Run them**
 
-Run: `pnpm check && npx vitest run packages/harness/views sim/kernel/refute.test.ts sim/kernel/persona-dashboard.test.ts sim/kernel/views-plane.test.ts apps/uw-app/islands tools/ui` then `pnpm sim -- RV-2 && pnpm sim -- all`
-Then: `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/postgres npx vitest run apps/uw-app/health apps/uw-app/views apps/uw-app/commands`
+Run: `pnpm check && npx vitest run packages/harness/views sim/kernel/refute.test.ts sim/kernel/persona-dashboard.test.ts sim/kernel/views-plane.test.ts apps/uw-platform/islands tools/ui` then `pnpm sim -- RV-2 && pnpm sim -- all`
+Then: `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/postgres npx vitest run apps/uw-platform/health apps/uw-platform/views apps/uw-platform/commands`
 Expected: green. A plane or persona test comparing a whole `PlaneTotals` or `PersonaDashboard` gains `reviewerRefutes: { tallies: [], capped: false }` or `refutes: null` / `approveAt: null` as its scene implies.
 
 - [ ] **Step 7: Check the Gates view and the persona view in light, dark and phone width**
@@ -4592,7 +4592,7 @@ As in Task 9 Step 7: the verdict list with a "Mark refuted" control, the persona
 - [ ] **Step 8: Commit**
 
 ```bash
-git add packages/harness apps/uw-app sim/kernel/refute.test.ts sim/scenarios/RV-2.a-refuted-finding-feeds-the-reviewer-refute-rate.ts
+git add packages/harness apps/uw-platform sim/kernel/refute.test.ts sim/scenarios/RV-2.a-refuted-finding-feeds-the-reviewer-refute-rate.ts
 git commit -m "feat(harness): a person marks a Reviewer finding refuted; the 30-day refute rate per Reviewer
 
 refute_finding records finding_refuted once per finding, for a person with
@@ -4619,7 +4619,7 @@ Expected: green. Run `pnpm trace` first and confirm SR-1, SR-2, SR-3, GD-1, GD-2
 - [ ] **Step 2: Update the tracker**
 
 In `docs/progress_tracker.md`:
-- The step 15 row: state `Built`; evidence: the commit SHAs of Tasks 1 to 12; the proving files per requirement (SR-1 `packages/harness/ship-rule.test.ts`, `packages/harness/gates/ship-input.test.ts`, `packages/harness/github/closing-keywords.test.ts`, `apps/uw-app/github/facts/head-facts.test.ts`, `sim/kernel/ship-facts.test.ts`, scenario SR-1; SR-2 `packages/harness/gates/carry.test.ts`, `apps/uw-app/github/facts/heads.pg.test.ts`, `sim/kernel/ship-facts.test.ts`, scenario SR-2; SR-3 `sim/kernel/merge-recheck.test.ts`, scenario SR-3; GD-1 `sim/kernel/decide-gates.test.ts`, `apps/uw-app/commands/ship-gates.pg.test.ts`, `apps/uw-app/views/gates.pg.test.ts`, scenario GD-1; GD-2 `sim/kernel/freeze.test.ts`, `apps/uw-app/commands/stages.pg.test.ts`, scenario GD-2; GD-3 `packages/harness/runs/refused.test.ts`, `packages/harness/runs/tool-loop.test.ts`, `sim/kernel/engine-refused.test.ts`, `apps/uw-app/runs/engine-refused.pg.test.ts`, scenario GD-3; RV-1 `packages/harness/runs/weights.test.ts`, `packages/harness/github/verdicts.test.ts`, `sim/kernel/finding-weight.test.ts`, scenario RV-1; RV-2 `packages/harness/views/refutes.test.ts`, `sim/kernel/refute.test.ts`, scenario RV-2; RV-3 `sim/kernel/finding-weight.test.ts`, scenario RV-3); `pnpm verify` green locally with the counts; contract `13.0.0`; "CI not run" or the run id.
+- The step 15 row: state `Built`; evidence: the commit SHAs of Tasks 1 to 12; the proving files per requirement (SR-1 `packages/harness/ship-rule.test.ts`, `packages/harness/gates/ship-input.test.ts`, `packages/harness/github/closing-keywords.test.ts`, `apps/uw-platform/github/facts/head-facts.test.ts`, `sim/kernel/ship-facts.test.ts`, scenario SR-1; SR-2 `packages/harness/gates/carry.test.ts`, `apps/uw-platform/github/facts/heads.pg.test.ts`, `sim/kernel/ship-facts.test.ts`, scenario SR-2; SR-3 `sim/kernel/merge-recheck.test.ts`, scenario SR-3; GD-1 `sim/kernel/decide-gates.test.ts`, `apps/uw-platform/commands/ship-gates.pg.test.ts`, `apps/uw-platform/views/gates.pg.test.ts`, scenario GD-1; GD-2 `sim/kernel/freeze.test.ts`, `apps/uw-platform/commands/stages.pg.test.ts`, scenario GD-2; GD-3 `packages/harness/runs/refused.test.ts`, `packages/harness/runs/tool-loop.test.ts`, `sim/kernel/engine-refused.test.ts`, `apps/uw-platform/runs/engine-refused.pg.test.ts`, scenario GD-3; RV-1 `packages/harness/runs/weights.test.ts`, `packages/harness/github/verdicts.test.ts`, `sim/kernel/finding-weight.test.ts`, scenario RV-1; RV-2 `packages/harness/views/refutes.test.ts`, `sim/kernel/refute.test.ts`, scenario RV-2; RV-3 `sim/kernel/finding-weight.test.ts`, scenario RV-3); `pnpm verify` green locally with the counts; contract `13.0.0`; "CI not run" or the run id.
 - A "Step 15 evidence by requirement" table in the shape of step 12's.
 - Under decisions made during the build, rows S15-R1 to S15-R17 in the shape of the S12 rows (`| date | requirement | ruling | cost if wrong |`).
 - Under carried to later steps: step 14's carry 2 (the six CI job names) is closed by S15-R1; new carries: "the required checks of a live harness change only by re-activation (a command for it is additive, GL-5 or later)"; "a pull request of more than 100 commits refuses `skip_ci_marker` (S15-R5)"; "MD-3 adds the delegation to the ship-rule input and to `PendingExit`; the guard in `approve-at-ship.ts` is where it reads it".

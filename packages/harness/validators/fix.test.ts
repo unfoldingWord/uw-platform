@@ -7,7 +7,7 @@ import { FIX_VALIDATORS, runValidators, validatorRegistry } from './registry.ts'
 const declaration: PullRequestDeclaration = {
   closes: ['#12', '#14'],
   risks: 'the board renders slower on phones',
-  touches: 'apps/uw-app/board',
+  touches: 'apps/uw-platform/board',
   riskTier: 'standard',
   riskDomains: [],
 };
@@ -67,7 +67,10 @@ describe('FL-3 fix_size_cap and fix_keeps_purpose', () => {
   it('FL-3 fix_keeps_purpose refuses a changed declaration and reads closes as a set', () => {
     const reordered = { ...declaration, closes: ['#14', '#12'] };
     expect(sameDeclaration(declaration, reordered)).toBe(true);
-    const changed = { ...fits, declaration: { ...declaration, touches: 'apps/uw-app/billing' } };
+    const changed = {
+      ...fits,
+      declaration: { ...declaration, touches: 'apps/uw-platform/billing' },
+    };
     expect(fixKeepsPurpose(context(changed))).toEqual([
       'fix_keeps_purpose: the pull request declaration changed since the fix was claimed',
     ]);
@@ -84,18 +87,18 @@ describe('FL-3 what a fix may touch beside the pull request', () => {
   it('FL-3 the test allowance reads a test name, or a tests directory at the root or a package root', () => {
     for (const path of [
       'a.pg.test.ts',
-      'apps/uw-app/board.spec.tsx',
+      'apps/uw-platform/board.spec.tsx',
       'tests/board.ts',
       'test/fixtures/a.json',
       '__tests__/a.ts',
       'packages/db/tests/a.ts',
-      'apps/uw-app/__tests__/a.ts',
+      'apps/uw-platform/__tests__/a.ts',
     ]) {
       expect(testOrDoc(path)).toBe(true);
     }
     for (const path of [
       'src/__tests__/a.ts',
-      'apps/uw-app/src/test/a.ts',
+      'apps/uw-platform/src/test/a.ts',
       'tests',
       'apps/test.ts',
     ]) {
@@ -114,7 +117,7 @@ describe('FL-3 what a fix may touch beside the pull request', () => {
     }
     for (const path of [
       'docs/a.txt',
-      'apps/uw-app/notes.md',
+      'apps/uw-platform/notes.md',
       'guide.md',
       'README.ts',
       'packages/db/CHANGELOG.mjs',
@@ -129,7 +132,7 @@ describe('FL-3 what a fix may never touch beside the pull request', () => {
     for (const path of [
       'AGENTS.md',
       'CLAUDE.md',
-      'apps/uw-app/CLAUDE.md',
+      'apps/uw-platform/CLAUDE.md',
       '.claude/settings.json',
       '.claude/agents/reviewer.test.md',
       '.github/workflows/ci.yml',

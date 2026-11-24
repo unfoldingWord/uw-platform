@@ -3,7 +3,7 @@ import { availableParallelism } from 'node:os';
 import { cloudflareTest } from '@cloudflare/vitest-pool-workers';
 import { defineConfig } from 'vitest/config';
 
-const workerPackages = ['apps/uw-app', 'apps/uw-ingest'];
+const workerPackages = ['apps/uw-platform', 'apps/uw-ingest'];
 
 const sdkWithoutSourcemaps = {
   name: 'mcp-sdk-without-sourcemaps',
@@ -33,9 +33,9 @@ export default defineConfig({
             '**/*.pg.test.ts',
             '**/*.node.test.ts',
             '**/node_modules/**',
-            'apps/uw-app/islands/browser/**',
-            'apps/uw-app/islands/editor/**',
-            'apps/uw-app/islands/worker/**',
+            'apps/uw-platform/islands/browser/**',
+            'apps/uw-platform/islands/editor/**',
+            'apps/uw-platform/islands/worker/**',
           ],
         },
       },
@@ -50,9 +50,9 @@ export default defineConfig({
             'sim/**/*.test.ts',
             'apps/**/*.pg.test.ts',
             'apps/**/*.node.test.ts',
-            'apps/uw-app/islands/browser/**/*.test.ts',
-            'apps/uw-app/islands/editor/**/*.test.ts',
-            'apps/uw-app/islands/worker/**/*.test.ts',
+            'apps/uw-platform/islands/browser/**/*.test.ts',
+            'apps/uw-platform/islands/editor/**/*.test.ts',
+            'apps/uw-platform/islands/worker/**/*.test.ts',
           ],
         },
       },

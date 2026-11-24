@@ -122,7 +122,7 @@ async function derivedEvents(world: World, harnessId: string, itemId: string) {
     .map((event) => eventEvidenceSchemas.risk_derived.parse(event.evidence));
 }
 
-const benign = ['apps/uw-app/board.tsx'];
+const benign = ['apps/uw-platform/board.tsx'];
 const low: RiskDeclaration = { riskTier: 'low', riskDomains: [] };
 
 function assertHigh(item: ItemState): void {

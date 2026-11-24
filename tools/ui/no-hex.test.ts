@@ -15,7 +15,7 @@ function scanned(path: string): boolean {
 }
 
 const component = 'packages/ui/components/card.tsx';
-const server = 'apps/uw-app/github/comment.ts';
+const server = 'apps/uw-platform/github/comment.ts';
 
 describe('WB-11 tokens are the only source of a colour', () => {
   it('WB-11 no hex colour or colour function outside the token files', () => {
@@ -38,7 +38,7 @@ describe('WB-11 tokens are the only source of a colour', () => {
     ['packages/ui/app.css', 'a { color: #f00; }'],
     ['packages/ui/app.css', 'a { color: #ff000080; }'],
     ['packages/ui/app.css', 'a { color: rgb(255 0 0); }'],
-    ['apps/uw-app/x.tsx', "export const c = 'oklch(0.6 0.2 30)';"],
+    ['apps/uw-platform/x.tsx', "export const c = 'oklch(0.6 0.2 30)';"],
   ])('WB-11 flags a planted colour in %s: %s', (path, text) => {
     expect(scanned(path)).toBe(true);
     expect(hasColourLiteral(path, text)).toBe(true);
@@ -57,7 +57,7 @@ describe('WB-11 tokens are the only source of a colour', () => {
 
   it('flags a digits-only hex only where styles are written, since it reads as an issue reference elsewhere', () => {
     expect(carriesStyles(component)).toBe(true);
-    expect(carriesStyles('apps/uw-app/islands/live/session.ts')).toBe(true);
+    expect(carriesStyles('apps/uw-platform/islands/live/session.ts')).toBe(true);
     expect(carriesStyles(server)).toBe(false);
     expect(hexColours(component, "export const c = 'see #123';")).toEqual(['#123']);
     expect(hexColours(server, "export const c = 'see #123';")).toEqual([]);

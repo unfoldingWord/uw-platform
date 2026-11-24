@@ -77,9 +77,9 @@ describe('converting a manifest code into Worker secrets', () => {
       [{ id: 99, account: { login: 'unfoldingWord' } }],
     );
     expect(writes.map(({ worker, env, name }) => `${worker} ${env} ${name}`)).toEqual([
-      'uw-app staging GITHUB_APP_ID',
-      'uw-app staging GITHUB_APP_PRIVATE_KEY',
-      'uw-app staging GITHUB_APP_INSTALLATION_ID',
+      'uw-platform staging GITHUB_APP_ID',
+      'uw-platform staging GITHUB_APP_PRIVATE_KEY',
+      'uw-platform staging GITHUB_APP_INSTALLATION_ID',
       'uw-ingest staging GITHUB_WEBHOOK_SECRET',
     ]);
     expect(writes[0]?.value).toBe('7');

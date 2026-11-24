@@ -2,9 +2,9 @@
 
 **Goal:** Text that entered the platform from outside it reaches a model only inside a fence that names its source and says it is data; the reads a hosted run makes to build a prompt carry the run's own principal; a static check fails the build on an unwrapped outside read or a forged wrapper; and any future cache of model output is keyed by the reader's clearance.
 
-**Architecture:** One wrapper, `packages/harness/untrusted.ts`, holds the only constructor of `UntrustedContent` (a class with ES private fields, exported as a type only, so nothing else can build or spread one) and the deterministic fence renderer. The three prompt builders in `apps/uw-app/runs/prompts.ts` take outside text only as `UntrustedContent`; a new `apps/uw-app/runs/prompt-source.ts` wraps the run's reads after the workflow step boundary, so no wrapper is ever serialised into a step's stored output. The read step keeps reading through `resolve_context` on the in-process core client, which is served for the scene's agent principal; the read is split out as `readContext` so a test can prove the filter is that principal's. `tools/architecture/untrusted-content.ts` is the static check (the AB-7 template: functions over `SourceFiles`, a test over the real tree and planted texts). `packages/harness/clearance.ts` is the clearance key UC-5 binds future caches to.
+**Architecture:** One wrapper, `packages/harness/untrusted.ts`, holds the only constructor of `UntrustedContent` (a class with ES private fields, exported as a type only, so nothing else can build or spread one) and the deterministic fence renderer. The three prompt builders in `apps/uw-platform/runs/prompts.ts` take outside text only as `UntrustedContent`; a new `apps/uw-platform/runs/prompt-source.ts` wraps the run's reads after the workflow step boundary, so no wrapper is ever serialised into a step's stored output. The read step keeps reading through `resolve_context` on the in-process core client, which is served for the scene's agent principal; the read is split out as `readContext` so a test can prove the filter is that principal's. `tools/architecture/untrusted-content.ts` is the static check (the AB-7 template: functions over `SourceFiles`, a test over the real tree and planted texts). `packages/harness/clearance.ts` is the clearance key UC-5 binds future caches to.
 
-**Tech Stack:** TypeScript strict, Zod 4, Vitest 4 (node project for `packages`, `tools` and `*.pg.test.ts`; workers project for other `apps/uw-app` tests), the in-process MCP host, Postgres for the `*.pg.test.ts` files.
+**Tech Stack:** TypeScript strict, Zod 4, Vitest 4 (node project for `packages`, `tools` and `*.pg.test.ts`; workers project for other `apps/uw-platform` tests), the in-process MCP host, Postgres for the `*.pg.test.ts` files.
 
 **Spec:** `docs/PRD.md` section 7.11.4 (UC-1 to UC-5), section 13 step 13, section 18.3 V2-3; the design is `docs/specs/2026-10-15-harness-v0-2-0-design.md` sections 3 (V2-3), 5.4, 7 and 9 (release criterion 5).
 
@@ -16,7 +16,7 @@
 
 | Ruling | Cost if wrong |
 |---|---|
-| S13-R1. The Builder's work prompt reads no issue body and no review comment today: `readBody` (`apps/uw-app/runs/bodies.ts:100`) reads only `resolve_context`'s page summaries, the item title and the person's queued prompts. UC-2 is met by fencing the outside text the prompt does carry (the title of an item imported from an issue, and the `resolve_context` reply) and by a `related: readonly UntrustedContent[]` slot on `PromptSource` that renders issue bodies and review comments each in its own fence. The run passes `related: []` until step 17's fix claim fills it with review comments. No new reader is built (V2-3: "No new content sources are built") | Step 17 wants a different slot shape; one field changes in one file |
+| S13-R1. The Builder's work prompt reads no issue body and no review comment today: `readBody` (`apps/uw-platform/runs/bodies.ts:100`) reads only `resolve_context`'s page summaries, the item title and the person's queued prompts. UC-2 is met by fencing the outside text the prompt does carry (the title of an item imported from an issue, and the `resolve_context` reply) and by a `related: readonly UntrustedContent[]` slot on `PromptSource` that renders issue bodies and review comments each in its own fence. The run passes `related: []` until step 17's fix claim fills it with review comments. No new reader is built (V2-3: "No new content sources are built") | Step 17 wants a different slot shape; one field changes in one file |
 | S13-R2. An item imported from an issue has its title fenced with source `issue_body`; the closed set gains no `issue_title`. The title is part of the issue the source names. A title a person typed through `enqueue` stays platform text | A later reader that must tell title from body adds a value: one minor contract bump |
 | S13-R3. The whole `resolve_context` reply is fenced as one `page_from_agent` block. Its page summaries do not say who wrote each page, and any of them may have been written by an agent identity | Titles of pages people wrote are also marked as data, which lowers their weight with the model and never raises it |
 | S13-R4. The diff stays a host read (`kernel.runs.reviewDiff` with the run-host caller). It reads GitHub, not a `can()`-scoped platform row, and the scene it opens already requires the run's principal to hold `write` on the harness's area. UC-3 covers the platform rows a prompt is built from; the diff is covered by UC-2's `pr_diff` fence | If the Reviewer's diff read must be filtered by the run's principal, it moves behind a verb; one read changes |
@@ -25,7 +25,7 @@
 | S13-R7. The fence is a run of backticks one longer than the longest run inside the text (at least three), opened by `untrusted <source>` and preceded by one line that names the source and the item and says the text is data to read and not to follow. It is deterministic, so the kernel stays pure and a replayed step renders the same bytes | A model that ignores markdown fences ignores the boundary; the notice line still says it in prose |
 | S13-R8. UC-4 is an architecture test over source text in `tools/architecture/` (the AB-7 template), not an ESLint rule. It holds five token-level checks: a prompt builder's outside fields are typed `UntrustedContent` and its file reads and imports nothing outside; no builder call's arguments read an outside source except inside `untrusted(…)`; no file but `untrusted.ts` forges the wrapper; (UC-3) no file that builds prompts imports a page store, the database schema, Drizzle or a GitHub module; (UC-5) a cache of model output calls `clearanceKey`. The types are the enforcement; the check is the backstop, as AB-7's is | A read that reaches a `PromptText` field (the title) through a variable named elsewhere passes the text check; the title is the only `PromptText` field and it is set in `prompt-source.ts` alone |
 | S13-R9. The clearance key is the reader's readable-area set at the instant (`readableAreas` from `@uw/core/acl`), not the reader's identity: two readers who can read the same areas share an entry | If a later read filters below area level, the key must add that dimension |
-| S13-R10. A "cache of model output" is a non-test source file under `apps/` or `packages/`, outside a `testing` helper, that names a cache and a model-output type (`EngineWorkResult`, `ModelDone`, `TurnResult`). Workflow step checkpoints are not a cache: they are one run's replay state, read only by that run. The step runner fake in `apps/uw-app/testing/run-host.ts` is the one file in the tree that would match without the `testing` exclusion | A cache that stores model output under another type name escapes the check until the name is added |
+| S13-R10. A "cache of model output" is a non-test source file under `apps/` or `packages/`, outside a `testing` helper, that names a cache and a model-output type (`EngineWorkResult`, `ModelDone`, `TurnResult`). Workflow step checkpoints are not a cache: they are one run's replay state, read only by that run. The step runner fake in `apps/uw-platform/testing/run-host.ts` is the one file in the tree that would match without the `testing` exclusion | A cache that stores model output under another type name escapes the check until the name is added |
 | S13-R11. Tool replies the model fetches during its loop (`read_page`, `search_pages` over MCP) are not prompt builders. They are already filtered by `can()` with the run's principal (UC-3 holds for them) and are not fenced in v0.2.0 | An agent-written page the model reads by tool reaches it unfenced; recorded under Not verified |
 | S13-R12. **Clearance** is a new word, so it goes into `CONTEXT.md` first (rule 1). The contract stays where step 12 left it (`12.3.0` at planning time); no migration | None |
 
@@ -36,10 +36,10 @@
 | `untrusted({ source, itemId, text }): UntrustedContent` | `packages/harness/untrusted.ts`, exported from `@uw/harness` | every later prompt site: FL (step 17), EI (step 18), the v0.3.0 connectors |
 | `type UntrustedContent`, `type PromptText = string \| UntrustedContent`, `promptText`, `renderUntrusted`, `scanFences` | same | prompt builders and their tests |
 | `clearanceKey(reader: Principal, at: Date): string` | `packages/harness/clearance.ts` (export it from `index.ts` when the first caller appears) | any cache of model output |
-| `PromptSource.related: readonly UntrustedContent[]`, `ReviewSource` | `apps/uw-app/runs/prompts.ts` | FL-* review comments in step 17 |
-| `promptSourceOf(read, itemId)`, `reviewSourceOf(read, itemId, diff)`, `ReadText` | `apps/uw-app/runs/prompt-source.ts` | the run bodies; step 17 |
-| `readContext(open): Promise<string>` | `apps/uw-app/runs/bodies.ts` | the read step; UC-3's test |
-| `RigOptions.itemPageId` | `apps/uw-app/testing/run-host.ts` | any run test that needs an item page |
+| `PromptSource.related: readonly UntrustedContent[]`, `ReviewSource` | `apps/uw-platform/runs/prompts.ts` | FL-* review comments in step 17 |
+| `promptSourceOf(read, itemId)`, `reviewSourceOf(read, itemId, diff)`, `ReadText` | `apps/uw-platform/runs/prompt-source.ts` | the run bodies; step 17 |
+| `readContext(open): Promise<string>` | `apps/uw-platform/runs/bodies.ts` | the read step; UC-3's test |
+| `RigOptions.itemPageId` | `apps/uw-platform/testing/run-host.ts` | any run test that needs an item page |
 | `forgedWrappers`, `promptBuilderFiles`, `buildersTakingOutsideText`, `unwrappedBuilderCalls`, `promptFilesReadingDirectly`, `cachesWithoutClearance` | `tools/architecture/untrusted-content.ts` | release criterion 5; MD-5's check in step 16 can copy the template |
 
 ---
@@ -59,7 +59,7 @@ Every task obeys every line here. The controller passes this section to each imp
 
 - TypeScript `strict`, no `any`, no `@ts-ignore`, no `as unknown as`.
 - No code comments of any kind. Meaning goes into names, types, tests and `docs/`.
-- Files under 500 lines; functions under 50 lines (a `describe` callback is a function: keep each under 50 lines by moving bodies into named top-level functions, as `apps/uw-app/runs/run-core.pg.test.ts` does), 25 statements, complexity 10, depth 4, 3 nested callbacks, 5 parameters.
+- Files under 500 lines; functions under 50 lines (a `describe` callback is a function: keep each under 50 lines by moving bodies into named top-level functions, as `apps/uw-platform/runs/run-core.pg.test.ts` does), 25 statements, complexity 10, depth 4, 3 nested callbacks, 5 parameters.
 - Regular expressions are literals (`security/detect-non-literal-regexp`), with no nested quantifier (`security/detect-unsafe-regex`).
 - `packages/harness` is pure: no Workers, Drizzle, vendor SDK or network import. `@uw/contracts` and `@uw/core/acl` are allowed (`packages/harness/access.ts` already imports `@uw/core/acl`).
 - Zod at every boundary: `untrusted()` parses its source with `untrustedSourceSchema`.
@@ -71,7 +71,7 @@ Every task obeys every line here. The controller passes this section to each imp
 
 **Shared roots**
 
-- `CONTEXT.md` (Task 1) and `tools/architecture/` rules (Task 6, named a shared root by the design, section 7) each take their own commit with no feature code, and the message names the root and why. `packages/harness/index.ts`, `apps/uw-app/runs/` and `docs/architecture.md` are not shared roots; Task 7 still commits the docs alone.
+- `CONTEXT.md` (Task 1) and `tools/architecture/` rules (Task 6, named a shared root by the design, section 7) each take their own commit with no feature code, and the message names the root and why. `packages/harness/index.ts`, `apps/uw-platform/runs/` and `docs/architecture.md` are not shared roots; Task 7 still commits the docs alone.
 
 **Tests**
 
@@ -87,8 +87,8 @@ Inputs the spec implies that no task's tests would otherwise exercise, most like
 2. A wrapper created inside a workflow step body would be serialised to `{}` and replayed broken. Wrapping happens in `prompt-source.ts`, after the step boundary; Task 5's tests run through `fakeSteps`, which round-trips every step result through JSON, and would fail if a later change moved the wrap inside a step.
 3. A title a person typed must stay platform text, or every person-written item reads as data. Task 4 pins `fromIssue: false` and Task 5 pins it through a real run.
 4. UC-3's test must not pass vacuously. The real beat principal is the control: it sees the page in area `30-39` (FD-8), and the `viewer` scene does not. Task 5 asserts both.
-5. The static check must pass the wrapper's own file (it holds the class and `new`) and the step runner fake in `apps/uw-app/testing/run-host.ts` (it names a cache and `EngineWorkResult`), and fail every planted text. Task 6 pins the real tree and each planted text.
-6. `apps/uw-app/runs/run-core.pg.test.ts:263` tells the scout prompt from the work prompt by the substring `` ```harness-scout ``. The fence opener is `untrusted <source>`, never `harness-`, so the test keeps working. Task 4 Step 6 runs it.
+5. The static check must pass the wrapper's own file (it holds the class and `new`) and the step runner fake in `apps/uw-platform/testing/run-host.ts` (it names a cache and `EngineWorkResult`), and fail every planted text. Task 6 pins the real tree and each planted text.
+6. `apps/uw-platform/runs/run-core.pg.test.ts:263` tells the scout prompt from the work prompt by the substring `` ```harness-scout ``. The fence opener is `untrusted <source>`, never `harness-`, so the test keeps working. Task 4 Step 6 runs it.
 
 ---
 
@@ -471,10 +471,10 @@ does. No cache exists yet; the UC-4 check binds the first one. S13-R9."
 ### Task 4: UC-2, the prompt builders take outside text only as untrusted content
 
 **Files:**
-- Modify: `apps/uw-app/runs/prompts.ts` (whole file below)
-- Create: `apps/uw-app/runs/prompt-source.ts`
-- Modify: `apps/uw-app/runs/bodies.ts` (imports at lines 13-19; `ReadDone` at 35-41; `readBody` at 100-113; `scoutBody` at 215-228; `workBody` at 230-247)
-- Create: `apps/uw-app/runs/prompts.test.ts` (workers project)
+- Modify: `apps/uw-platform/runs/prompts.ts` (whole file below)
+- Create: `apps/uw-platform/runs/prompt-source.ts`
+- Modify: `apps/uw-platform/runs/bodies.ts` (imports at lines 13-19; `ReadDone` at 35-41; `readBody` at 100-113; `scoutBody` at 215-228; `workBody` at 230-247)
+- Create: `apps/uw-platform/runs/prompts.test.ts` (workers project)
 
 **Interfaces:**
 - Consumes: `untrusted`, `promptText`, `renderUntrusted`, `scanFences`, `PromptText`, `UntrustedContent` from `@uw/harness` (Task 2); `UntrustedSource` from `@uw/contracts`.
@@ -482,7 +482,7 @@ does. No cache exists yet; the UC-4 check binds the first one. S13-R9."
 
 - [ ] **Step 1: Write the failing tests**
 
-`apps/uw-app/runs/prompts.test.ts`:
+`apps/uw-platform/runs/prompts.test.ts`:
 
 ```ts
 import { describe, expect, it } from 'vitest';
@@ -553,12 +553,12 @@ describe('UC-2 the scout prompt fences the same outside text', () => {
 
 - [ ] **Step 2: Run them and see them fail**
 
-Run: `npx vitest run --project workers apps/uw-app/runs/prompts.test.ts`
+Run: `npx vitest run --project workers apps/uw-platform/runs/prompts.test.ts`
 Expected: FAIL, `./prompt-source.ts` not found.
 
 - [ ] **Step 3: Type the builders**
 
-Replace `apps/uw-app/runs/prompts.ts` with:
+Replace `apps/uw-platform/runs/prompts.ts` with:
 
 ```ts
 import {
@@ -649,7 +649,7 @@ The context was sliced twice before (in `contextText` and in `framed`); it is no
 
 - [ ] **Step 4: Wrap where the prompt is built**
 
-`apps/uw-app/runs/prompt-source.ts`:
+`apps/uw-platform/runs/prompt-source.ts`:
 
 ```ts
 import type { UntrustedSource } from '@uw/contracts';
@@ -681,7 +681,7 @@ export function reviewSourceOf(read: ReadText, itemId: string, diff: string): Re
 }
 ```
 
-In `apps/uw-app/runs/bodies.ts`:
+In `apps/uw-platform/runs/bodies.ts`:
 
 1. Replace the import block at lines 13-19 with:
 
@@ -742,27 +742,27 @@ export function readBody(deps: RunDeps, runId: string): Promise<ReadDone | Halte
         : reviewPrompt(reviewSourceOf(read, item.itemId, diff));
 ```
 
-`apps/uw-app/runs/run-core.ts` needs no change: it passes a `ReadDone`, which is a `ReadText`. A `ReadDone` a Workflow stored before this deploy has no `fromIssue`; `read.fromIssue` is then `undefined`, so its title renders as platform text, as it did before.
+`apps/uw-platform/runs/run-core.ts` needs no change: it passes a `ReadDone`, which is a `ReadText`. A `ReadDone` a Workflow stored before this deploy has no `fromIssue`; `read.fromIssue` is then `undefined`, so its title renders as platform text, as it did before.
 
 - [ ] **Step 5: Run the new tests**
 
-Run: `npx vitest run --project workers apps/uw-app/runs/prompts.test.ts`
+Run: `npx vitest run --project workers apps/uw-platform/runs/prompts.test.ts`
 Expected: PASS, 5 tests.
 
 - [ ] **Step 6: Run the run tests that build prompts**
 
-Run: `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/postgres npx vitest run --project node apps/uw-app/runs/run-core.pg.test.ts apps/uw-app/runs/review-resume.pg.test.ts apps/uw-app/runs/step-connection.pg.test.ts`
+Run: `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/postgres npx vitest run --project node apps/uw-platform/runs/run-core.pg.test.ts apps/uw-platform/runs/review-resume.pg.test.ts apps/uw-platform/runs/step-connection.pg.test.ts`
 Expected: green. `run-core.pg.test.ts:263` still tells the scout prompt by `` ```harness-scout ``, which no fence opener contains (Review Focus 6).
 
 - [ ] **Step 7: Typecheck, lint, knip**
 
-Run: `pnpm check && npx eslint apps/uw-app/runs --max-warnings 0 && pnpm knip`
+Run: `pnpm check && npx eslint apps/uw-platform/runs --max-warnings 0 && pnpm knip`
 Expected: green.
 
 - [ ] **Step 8: Commit**
 
 ```bash
-git add apps/uw-app/runs/prompts.ts apps/uw-app/runs/prompt-source.ts apps/uw-app/runs/bodies.ts apps/uw-app/runs/prompts.test.ts
+git add apps/uw-platform/runs/prompts.ts apps/uw-platform/runs/prompt-source.ts apps/uw-platform/runs/bodies.ts apps/uw-platform/runs/prompts.test.ts
 git commit -m "feat(runs): UC-2, the prompt builders take outside text only as untrusted content
 
 reviewPrompt fences the diff as pr_diff; every prompt fences the
@@ -777,17 +777,17 @@ step boundary, in prompt-source.ts. S13-R1, S13-R2, S13-R3."
 ### Task 5: UC-2 and UC-3 through a real run
 
 **Files:**
-- Modify: `apps/uw-app/testing/commands.ts:201` (`enqueued` takes an optional page id)
-- Modify: `apps/uw-app/testing/run-host.ts` (`RigOptions.itemPageId`; `hostRig` passes it)
-- Create: `apps/uw-app/runs/untrusted-prompts.pg.test.ts`
+- Modify: `apps/uw-platform/testing/commands.ts:201` (`enqueued` takes an optional page id)
+- Modify: `apps/uw-platform/testing/run-host.ts` (`RigOptions.itemPageId`; `hostRig` passes it)
+- Create: `apps/uw-platform/runs/untrusted-prompts.pg.test.ts`
 
 **Interfaces:**
-- Consumes: `readContext` (Task 4), `promptSourceOf`, `scoutPrompt`, `openStep`, `isOpen` (`apps/uw-app/runs/steps.ts:62`, `:82`), `hostRig`, `startedRun`, `runDepsFor`, `scriptedEngines`, `fakeSteps`, `ended`, `personaPrincipal` (`apps/uw-app/testing/run-host.ts`), `runWorkflow`.
+- Consumes: `readContext` (Task 4), `promptSourceOf`, `scoutPrompt`, `openStep`, `isOpen` (`apps/uw-platform/runs/steps.ts:62`, `:82`), `hostRig`, `startedRun`, `runDepsFor`, `scriptedEngines`, `fakeSteps`, `ended`, `personaPrincipal` (`apps/uw-platform/testing/run-host.ts`), `runWorkflow`.
 - Produces: `RigOptions.itemPageId?: string`; `enqueued(db, harnessId, title, pageId = null)`.
 
 - [ ] **Step 1: Let the rig give its item a page**
 
-`apps/uw-app/testing/commands.ts`, the `enqueued` signature and its `pageId` line:
+`apps/uw-platform/testing/commands.ts`, the `enqueued` signature and its `pageId` line:
 
 ```ts
 export async function enqueued(
@@ -800,7 +800,7 @@ export async function enqueued(
 
 and inside the call `pageId,` in place of `pageId: null,`.
 
-`apps/uw-app/testing/run-host.ts`: add `readonly itemPageId?: string;` to `RigOptions`, and in `hostRig` change the enqueue line to:
+`apps/uw-platform/testing/run-host.ts`: add `readonly itemPageId?: string;` to `RigOptions`, and in `hostRig` change the enqueue line to:
 
 ```ts
   const itemId = await enqueued(db, harnessId, 'Run the hosted Builder', options.itemPageId ?? null);
@@ -808,7 +808,7 @@ and inside the call `pageId,` in place of `pageId: null,`.
 
 - [ ] **Step 2: Write the tests**
 
-`apps/uw-app/runs/untrusted-prompts.pg.test.ts`:
+`apps/uw-platform/runs/untrusted-prompts.pg.test.ts`:
 
 ```ts
 import { randomUUID } from 'node:crypto';
@@ -1031,25 +1031,25 @@ Why the real run sees the hidden page: the beat principal is `editor` on `80-89`
 
 - [ ] **Step 3: Run them**
 
-Run: `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/postgres npx vitest run --project node apps/uw-app/runs/untrusted-prompts.pg.test.ts`
+Run: `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/postgres npx vitest run --project node apps/uw-platform/runs/untrusted-prompts.pg.test.ts`
 Expected: PASS, 3 tests. These tests prove behaviour Task 4 already built, so they are green on first run. Observe each red once (AGENTS.md section 7 step 4), then revert: for UC-2, temporarily change `reviewSourceOf`'s source from `'pr_diff'` to `'issue_body'` and see `reviewFenced` fail on the span sources (an unwrapped diff cannot be planted, the types refuse it); for UC-3, temporarily pass `null` in place of `viewerOnly(rig)` and see the last assertion fail. Revert both, re-run green, and say in the tracker that this was done.
 
-If `resolve_context` refuses the `viewer` principal (the step throws `StepHalted`), print the reason: a `viewer` holds `read` on `80-89`, which is all `resolve_context` (`onResource('viewer')`) and `kernel.reads.item` need, so a refusal means the scene guard or the bare-persona filter refused; read `apps/uw-app/mcp/dispatch.ts` and `apps/uw-app/mcp/verbs/item-scene.ts` for the reason before changing the test, and record what you found.
+If `resolve_context` refuses the `viewer` principal (the step throws `StepHalted`), print the reason: a `viewer` holds `read` on `80-89`, which is all `resolve_context` (`onResource('viewer')`) and `kernel.reads.item` need, so a refusal means the scene guard or the bare-persona filter refused; read `apps/uw-platform/mcp/dispatch.ts` and `apps/uw-platform/mcp/verbs/item-scene.ts` for the reason before changing the test, and record what you found.
 
 - [ ] **Step 4: Run the other run tests and the tests that call `enqueued`**
 
-Run: `grep -rln "enqueued(" apps/uw-app --include=*.ts`
-Then run the `*.pg.test.ts` files it lists under `apps/uw-app/runs/` and `apps/uw-app/harness/`, one command at a time:
-`TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/postgres npx vitest run --project node --maxWorkers=2 apps/uw-app/runs`
+Run: `grep -rln "enqueued(" apps/uw-platform --include=*.ts`
+Then run the `*.pg.test.ts` files it lists under `apps/uw-platform/runs/` and `apps/uw-platform/harness/`, one command at a time:
+`TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/postgres npx vitest run --project node --maxWorkers=2 apps/uw-platform/runs`
 Expected: green. The default `pageId = null` keeps every existing caller unchanged.
 
 - [ ] **Step 5: Lint and commit**
 
-Run: `npx eslint apps/uw-app/runs apps/uw-app/testing --max-warnings 0 && pnpm check`
+Run: `npx eslint apps/uw-platform/runs apps/uw-platform/testing --max-warnings 0 && pnpm check`
 Expected: green.
 
 ```bash
-git add apps/uw-app/testing/commands.ts apps/uw-app/testing/run-host.ts apps/uw-app/runs/untrusted-prompts.pg.test.ts
+git add apps/uw-platform/testing/commands.ts apps/uw-platform/testing/run-host.ts apps/uw-platform/runs/untrusted-prompts.pg.test.ts
 git commit -m "test(runs): UC-2 and UC-3 through a hosted run
 
 A review run's prompt holds the diff only in a pr_diff fence; a build
@@ -1101,12 +1101,12 @@ function withPlanted(planted: Readonly<Record<string, string>>): SourceFiles {
   };
 }
 
-const builderFile = 'apps/uw-app/runs/prompts.ts';
-const bodies = 'apps/uw-app/runs/bodies.ts';
-const promptSource = 'apps/uw-app/runs/prompt-source.ts';
-const sneakCall = 'apps/uw-app/runs/sneak-review.ts';
-const sneakBuilder = 'apps/uw-app/runs/sneak-prompts.ts';
-const sneakCache = 'apps/uw-app/runs/verdict-cache.ts';
+const builderFile = 'apps/uw-platform/runs/prompts.ts';
+const bodies = 'apps/uw-platform/runs/bodies.ts';
+const promptSource = 'apps/uw-platform/runs/prompt-source.ts';
+const sneakCall = 'apps/uw-platform/runs/sneak-review.ts';
+const sneakBuilder = 'apps/uw-platform/runs/sneak-prompts.ts';
+const sneakCache = 'apps/uw-platform/runs/verdict-cache.ts';
 
 describe('UC-4 the tree passes the untrusted content check', () => {
   it('UC-4 finds the prompt builders where they are, and every one takes outside text wrapped', () => {
@@ -1146,7 +1146,7 @@ const wrapped = [
 describe('UC-4 the check fails on a planted call with an unwrapped outside read', () => {
   it.each(unwrapped)('flags %s', (text) => {
     expect(unwrappedBuilderCalls(withPlanted({ [sneakCall]: text }))).toEqual([
-      expect.stringMatching(/^apps\/uw-app\/runs\/sneak-review\.ts: \w+Prompt$/),
+      expect.stringMatching(/^apps\/uw-platform\/runs\/sneak-review\.ts: \w+Prompt$/),
     ]);
   });
 
@@ -1246,7 +1246,7 @@ describe('UC-5 the check fails on a planted cache of model output without the cl
   });
 
   it('passes a planted testing helper, as it passes the step runner fake', () => {
-    const file = 'apps/uw-app/testing/verdict-cache.ts';
+    const file = 'apps/uw-platform/testing/verdict-cache.ts';
     expect(cachesWithoutClearance(withPlanted({ [file]: modelCache }))).toEqual([]);
   });
 });
@@ -1431,7 +1431,7 @@ export function cachesWithoutClearance(sources: SourceFiles): string[] {
 Run: `npx vitest run --project node tools/architecture/untrusted-content.test.ts`
 Expected: PASS. Count the cases: 3 real-tree, 8 + 4 calls, 6 + 2 builders, 8 forgeries, 4 UC-3, 4 UC-5.
 
-If a real-tree assertion fails, print the list it returned and read each file it names. A name under `apps/uw-app/runs/` means Task 4 left an outside read unwrapped: fix Task 4's code, not the check. A name elsewhere is either a real defect (fix it in its own commit before this one) or a false positive of a marker; for a false positive, narrow that one marker and add the file's text as a passing planted case, in this commit, and say so in the body.
+If a real-tree assertion fails, print the list it returned and read each file it names. A name under `apps/uw-platform/runs/` means Task 4 left an outside read unwrapped: fix Task 4's code, not the check. A name elsewhere is either a real defect (fix it in its own commit before this one) or a false positive of a marker; for a false positive, narrow that one marker and add the file's text as a passing planted case, in this commit, and say so in the body.
 
 - [ ] **Step 6: Run the other architecture tests and the gates**
 
@@ -1474,11 +1474,11 @@ Insert before `## The command API`:
 
 Text that entered the platform from outside it (a pull request diff, an issue's title or body, a review comment, a page an agent identity may have written) reaches a model only as **untrusted content** (V2-3, UC-1 to UC-5).
 
-**The wrapper.** `packages/harness/untrusted.ts` holds the only constructor, `untrusted({ source, itemId, text })`. `UntrustedContent` is a class with private fields exported as a type only, so no other module can build one, cast an object literal to one or spread one into a new one. The source is the closed set `untrusted-source` in `packages/contracts`. `renderUntrusted` writes one line naming the source and the item and saying the text is data, then the text inside a fence of backticks one longer than any run in it, opened by `untrusted <source>`, so the text cannot close its own fence. The rendering is deterministic, so a replayed step renders the same bytes. Wrapping happens where the prompt is built, after the workflow step boundary (`apps/uw-app/runs/prompt-source.ts`), because a step's result is stored as JSON and a wrapper does not survive it.
+**The wrapper.** `packages/harness/untrusted.ts` holds the only constructor, `untrusted({ source, itemId, text })`. `UntrustedContent` is a class with private fields exported as a type only, so no other module can build one, cast an object literal to one or spread one into a new one. The source is the closed set `untrusted-source` in `packages/contracts`. `renderUntrusted` writes one line naming the source and the item and saying the text is data, then the text inside a fence of backticks one longer than any run in it, opened by `untrusted <source>`, so the text cannot close its own fence. The rendering is deterministic, so a replayed step renders the same bytes. Wrapping happens where the prompt is built, after the workflow step boundary (`apps/uw-platform/runs/prompt-source.ts`), because a step's result is stored as JSON and a wrapper does not survive it.
 
-**The prompt builders.** `apps/uw-app/runs/prompts.ts` holds the scout, work and review prompts. Every field that can carry outside text is typed `UntrustedContent`: the `resolve_context` reply (`page_from_agent`), the diff (`pr_diff`) and the `related` slot for issue bodies and review comments. The item title is `PromptText`: platform text when a person typed it, `issue_body` when the item was imported from an issue. The person's queued prompts are platform text.
+**The prompt builders.** `apps/uw-platform/runs/prompts.ts` holds the scout, work and review prompts. Every field that can carry outside text is typed `UntrustedContent`: the `resolve_context` reply (`page_from_agent`), the diff (`pr_diff`) and the `related` slot for issue bodies and review comments. The item title is `PromptText`: platform text when a person typed it, `issue_body` when the item was imported from an issue. The person's queued prompts are platform text.
 
-**Reads carry the run's principal.** The read step builds its context through `resolve_context` on the in-process core client, which is served for the scene's beat principal, so `can()` filters it exactly as it filters an MCP read. No file that builds a prompt imports a page store, the schema, Drizzle or a GitHub module. Under FD-8 a beat principal (an editor on its harness's area) reads every area, so in v0.2.0 the filter hides nothing from a real run; it hides what a narrower principal may not read (`apps/uw-app/runs/untrusted-prompts.pg.test.ts`). The review diff is a host read of GitHub, fenced as `pr_diff` (S13-R4). Tool replies the model fetches during its loop are filtered by `can()` and are not fenced (S13-R11).
+**Reads carry the run's principal.** The read step builds its context through `resolve_context` on the in-process core client, which is served for the scene's beat principal, so `can()` filters it exactly as it filters an MCP read. No file that builds a prompt imports a page store, the schema, Drizzle or a GitHub module. Under FD-8 a beat principal (an editor on its harness's area) reads every area, so in v0.2.0 the filter hides nothing from a real run; it hides what a narrower principal may not read (`apps/uw-platform/runs/untrusted-prompts.pg.test.ts`). The review diff is a host read of GitHub, fenced as `pr_diff` (S13-R4). Tool replies the model fetches during its loop are filtered by `can()` and are not fenced (S13-R11).
 
 **Caches keyed by clearance.** No cache of model output exists. Any that is added keys each entry on `clearanceKey(reader, at)` (`packages/harness/clearance.ts`), the reader's readable-area set at the instant, so text one reader's prompt held never reaches a reader with a narrower clearance. A workflow step checkpoint is one run's replay state and is not a cache.
 
@@ -1490,7 +1490,7 @@ Text that entered the platform from outside it (a pull request diff, an issue's 
 In the table under `## Every rule is a check`, after the row `| No agent route or tool writes gate decisions | … |`, add:
 
 ```markdown
-| Outside text reaches a model only as untrusted content, and prompt reads carry the run's principal | the types in `apps/uw-app/runs/prompts.ts`, `tools/architecture/untrusted-content.test.ts` (UC-3, UC-4) and `apps/uw-app/runs/untrusted-prompts.pg.test.ts` |
+| Outside text reaches a model only as untrusted content, and prompt reads carry the run's principal | the types in `apps/uw-platform/runs/prompts.ts`, `tools/architecture/untrusted-content.test.ts` (UC-3, UC-4) and `apps/uw-platform/runs/untrusted-prompts.pg.test.ts` |
 | A cache of model output is keyed by the reader's clearance | `tools/architecture/untrusted-content.test.ts` (UC-5) |
 ```
 
@@ -1521,7 +1521,7 @@ Expected: green. Note the test and scenario counts from the output. Then run `pn
 
 - [ ] **Step 2: Update the tracker**
 
-1. The step 13 row: state `Built`; evidence: the commit SHAs of Tasks 1 to 7, this plan's path, the test files named for each ID (UC-1 `packages/harness/untrusted.test.ts`; UC-2 `apps/uw-app/runs/prompts.test.ts`, `apps/uw-app/runs/untrusted-prompts.pg.test.ts`; UC-3 `apps/uw-app/runs/untrusted-prompts.pg.test.ts`, `tools/architecture/untrusted-content.test.ts`; UC-4 `tools/architecture/untrusted-content.test.ts`; UC-5 `packages/harness/clearance.test.ts`, `tools/architecture/untrusted-content.test.ts`), `pnpm verify` green locally with the counts, and "CI not run" or the CI run id.
+1. The step 13 row: state `Built`; evidence: the commit SHAs of Tasks 1 to 7, this plan's path, the test files named for each ID (UC-1 `packages/harness/untrusted.test.ts`; UC-2 `apps/uw-platform/runs/prompts.test.ts`, `apps/uw-platform/runs/untrusted-prompts.pg.test.ts`; UC-3 `apps/uw-platform/runs/untrusted-prompts.pg.test.ts`, `tools/architecture/untrusted-content.test.ts`; UC-4 `tools/architecture/untrusted-content.test.ts`; UC-5 `packages/harness/clearance.test.ts`, `tools/architecture/untrusted-content.test.ts`), `pnpm verify` green locally with the counts, and "CI not run" or the CI run id.
 2. `## Step 13 evidence by requirement`: one row per ID with its commits and proofs.
 3. `## Decisions made during the build`: one row per ruling S13-R1 to S13-R12 in the table's columns (`| Date | Requirement | Decision | Why | Cost if wrong |`), dated 2026-10-15, from the rulings table at the top of this plan.
 4. `## Not verified`: (a) no live model has been given a fenced prompt; whether a model treats the fence as data is unmeasured; (b) tool replies the model reads during its loop are not fenced (S13-R11); (c) under FD-8 a real run's prompt can hold any area's pages, so UC-3's filter hides nothing from a real run in v0.2.0 (S13-R5); (d) UC-4 is token-level and a read that reaches the title through a variable named elsewhere passes it (S13-R8); (e) Task 5 Step 3's red-once observation, as done.

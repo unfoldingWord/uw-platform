@@ -57,7 +57,7 @@ describe('FD-11 log retention and shipping are declared', () => {
     ]);
   });
 
-  it.each(['infra/uw-app/wrangler.toml', 'infra/uw-ingest/wrangler.toml'])(
+  it.each(['infra/uw-platform/wrangler.toml', 'infra/uw-ingest/wrangler.toml'])(
     '%s enables observability at the top level, in staging and in production',
     (file) => {
       expect(observabilityEnabled(file)).toEqual([true, true, true]);

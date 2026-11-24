@@ -5,13 +5,13 @@ import { repoFiles } from '../repo-files.ts';
 
 export type SourceFiles = { readonly files: readonly string[]; read(file: string): string };
 
-const appRoot = 'apps/uw-app/';
-const mcpRoot = 'apps/uw-app/mcp/';
-export const personSurface = 'apps/uw-app/commands/person/';
-const entryPoints = ['apps/uw-app/app.tsx', 'apps/uw-app/index.ts'];
-const verbsRoot = 'apps/uw-app/mcp/verbs/';
-const verbsIndex = 'apps/uw-app/mcp/verbs/index.ts';
-const canCallers = ['apps/uw-app/mcp/dispatch.ts', 'apps/uw-app/mcp/handler.ts'];
+const appRoot = 'apps/uw-platform/';
+const mcpRoot = 'apps/uw-platform/mcp/';
+export const personSurface = 'apps/uw-platform/commands/person/';
+const entryPoints = ['apps/uw-platform/app.tsx', 'apps/uw-platform/index.ts'];
+const verbsRoot = 'apps/uw-platform/mcp/verbs/';
+const verbsIndex = 'apps/uw-platform/mcp/verbs/index.ts';
+const canCallers = ['apps/uw-platform/mcp/dispatch.ts', 'apps/uw-platform/mcp/handler.ts'];
 
 const sourceFile = /\.[cm]?[jt]sx?$/;
 const testFile = /\.test\.[cm]?[jt]sx?$/;
@@ -126,7 +126,7 @@ function withoutModulePaths(text: string): string {
   return moduleSpecifiers.reduce((stripped, pattern) => stripped.replaceAll(pattern, "$1''"), text);
 }
 
-const shadowFollow = 'apps/uw-app/github/join.ts';
+const shadowFollow = 'apps/uw-platform/github/join.ts';
 const shadowRecordCall = /\bkernel\s*\??\.\s*gates\s*\??\.\s*recordShadowVerdicts\s*\(/;
 
 function withoutPersonSurfaceCalls(file: string, text: string): string {
@@ -135,7 +135,7 @@ function withoutPersonSurfaceCalls(file: string, text: string): string {
   return personSurfaceCalls.reduce((stripped, pattern) => stripped.replaceAll(pattern, '('), text);
 }
 
-const delegatedExitRoot = 'apps/uw-app/cron/delegated-exits.ts';
+const delegatedExitRoot = 'apps/uw-platform/cron/delegated-exits.ts';
 const delegatedExitCall = /\bkernel\s*\.\s*gates\s*\.\s*exitDelegated\s*\(/g;
 
 function withoutDelegatedExitCall(file: string, text: string): string {

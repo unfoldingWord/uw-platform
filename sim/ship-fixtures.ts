@@ -41,7 +41,7 @@ export const shipPullRequest: PullRequestRef = { repo: 'unfoldingWord/uw-platfor
 export const standardChange: ShipChange = {
   pullRequest: shipPullRequest,
   head: simSha('abc123'),
-  paths: ['apps/uw-app/board.tsx'],
+  paths: ['apps/uw-platform/board.tsx'],
   declaration: { riskTier: 'standard', riskDomains: [] },
 };
 
@@ -220,7 +220,7 @@ export function greenFacts(world: World, input: FactsInput): PullRequestFacts {
       conclusion: 'success',
     })),
     reviews: [...input.reviews],
-    files: { head, base: shipBase, paths: [...(input.paths ?? ['apps/uw-app/board.tsx'])] },
+    files: { head, base: shipBase, paths: [...(input.paths ?? ['apps/uw-platform/board.tsx'])] },
     declaration: input.declaration === undefined ? standardDeclaration : input.declaration,
     closes: [],
     comparison: comparedAt(head),

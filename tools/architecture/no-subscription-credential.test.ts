@@ -14,16 +14,16 @@ const subscriptionNames: readonly string[] = [
 ];
 
 const configurationFiles: readonly string[] = [
-  'apps/uw-app/env.ts',
-  'infra/uw-app/wrangler.toml',
-  'infra/uw-app/wrangler.go-live.toml',
+  'apps/uw-platform/env.ts',
+  'infra/uw-platform/wrangler.toml',
+  'infra/uw-platform/wrangler.go-live.toml',
   'infra/containers/claude-code/Dockerfile',
   'infra/containers/codex/Dockerfile',
 ];
 
 function scanned(path: string): boolean {
   if (configurationFiles.includes(path)) return true;
-  return path.startsWith('apps/uw-app/engines/') && !path.endsWith('.test.ts');
+  return path.startsWith('apps/uw-platform/engines/') && !path.endsWith('.test.ts');
 }
 
 function namedIn(path: string, source: string): string[] {
@@ -37,7 +37,7 @@ describe('no subscription credential on the platform', () => {
   it("HE-3 no hosted engine's configuration names a subscription credential", () => {
     const paths = repoFiles().filter(scanned);
     expect(paths).toEqual(expect.arrayContaining([...configurationFiles]));
-    expect(paths.some((path) => path.startsWith('apps/uw-app/engines/'))).toBe(true);
+    expect(paths.some((path) => path.startsWith('apps/uw-platform/engines/'))).toBe(true);
     const found = paths.flatMap((path) => namedIn(path, readFileSync(path, 'utf8')));
     expect(found).toEqual([]);
   });
@@ -48,7 +48,7 @@ describe('no subscription credential on the platform', () => {
     ['a Codex home', 'env.CODEX_HOME'],
     ['a setup token command', 'claude setup-token'],
   ])('refuses a planted %s', (_name, source) => {
-    expect(namedIn('apps/uw-app/engines/planted.ts', source).length).toBeGreaterThan(0);
-    expect(scanned('apps/uw-app/engines/planted.ts')).toBe(true);
+    expect(namedIn('apps/uw-platform/engines/planted.ts', source).length).toBeGreaterThan(0);
+    expect(scanned('apps/uw-platform/engines/planted.ts')).toBe(true);
   });
 });

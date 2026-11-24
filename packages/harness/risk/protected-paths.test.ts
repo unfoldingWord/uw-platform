@@ -4,7 +4,7 @@ import { protectedAmong } from './protected-paths.ts';
 describe('MD-4 protected paths are the kernel list and the harness list', () => {
   it('MD-4 names a path under a kernel protected directory whatever the harness lists', () => {
     expect(
-      protectedAmong(['packages/db/migrations/0099_x.sql', 'apps/uw-app/board.tsx'], []),
+      protectedAmong(['packages/db/migrations/0099_x.sql', 'apps/uw-platform/board.tsx'], []),
     ).toEqual(['packages/db/migrations/0099_x.sql']);
   });
 

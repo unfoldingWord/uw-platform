@@ -23,7 +23,7 @@ A pnpm workspace on Node 22, TypeScript strict throughout.
 
 | Path | For |
 |---|---|
-| `apps/uw-app/` | The Worker: server-rendered pages with small browser scripts ("islands"), the command API, the MCP endpoint agents use, the live-update hub, hosted agent runs, the queue consumer and the crons |
+| `apps/uw-platform/` | The Worker: server-rendered pages with small browser scripts ("islands"), the command API, the MCP endpoint agents use, the live-update hub, hosted agent runs, the queue consumer and the crons |
 | `apps/uw-ingest/` | Public webhooks (GitHub): signature checks, then onto a queue. Nothing else |
 | `packages/harness/` | The kernel: commands, reads and views as pure TypeScript over ports. It runs in plain Node and imports no Workers, database or vendor code |
 | `packages/contracts/` | Commands, events, outcomes and the verb registry as Zod schemas, versioned, with fixtures |

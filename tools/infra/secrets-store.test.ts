@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { parse } from 'smol-toml';
 import { describe, expect, it } from 'vitest';
-import { platformSecretNames } from '../../apps/uw-app/secrets.ts';
+import { platformSecretNames } from '../../apps/uw-platform/secrets.ts';
 import { ingestSecretNames } from '../../apps/uw-ingest/secrets.ts';
 import kms from '../../infra/aws/credentials-kms.json' with { type: 'json' };
 import inventory from '../../infra/secrets-store.json' with { type: 'json' };
@@ -15,7 +15,7 @@ type Block = Record<string, unknown>;
 type Listed = (typeof inventory.secrets)[number];
 type Environment = (typeof environments)[number];
 
-const apps = ['uw-app', 'uw-ingest'] as const;
+const apps = ['uw-platform', 'uw-ingest'] as const;
 const environments = ['staging', 'production'] as const;
 const placeholder = 'set-at-go-live';
 const live = 'wrangler.toml';
@@ -26,7 +26,7 @@ const ownerShape = /^[^@\s]+@[^@\s]+$/;
 const namedLikeACredential = /API_KEY|TOKEN|SECRET|PRIVATE|ACCESS_KEY/;
 const stringBinding = /^\s+([A-Z][A-Z0-9_]*)\?: string;$/gm;
 const readers: Readonly<Record<string, readonly string[]>> = {
-  'uw-app': platformSecretNames,
+  'uw-platform': platformSecretNames,
   'uw-ingest': ingestSecretNames,
 };
 
@@ -112,7 +112,7 @@ const planted = {
   listed: [
     {
       name: 'A',
-      worker: 'uw-app',
+      worker: 'uw-platform',
       what: 'a',
       issued_by: 'a',
       owner: placeholder,
@@ -120,7 +120,7 @@ const planted = {
     },
     {
       name: 'B',
-      worker: 'uw-app',
+      worker: 'uw-platform',
       what: 'b',
       issued_by: 'b',
       owner: 'owner@example.org',
@@ -148,7 +148,7 @@ describe('#160 every platform secret is listed under 30-39 Infrastructure with a
   });
 
   it.each([
-    ['uw-app', 'apps/uw-app/env.ts'],
+    ['uw-platform', 'apps/uw-platform/env.ts'],
     ['uw-ingest', 'apps/uw-ingest/env.ts'],
   ])('%s has no binding named like a credential that the list leaves out', (app, file) => {
     const secretLike = stringBindingsIn(file).filter((name) => namedLikeACredential.test(name));
@@ -191,8 +191,8 @@ describe('#160 each Worker binds only the secrets it reads, declared in infra', 
     }
   });
 
-  it('uw-ingest binds none of uw-app’s secrets and uw-app none of uw-ingest’s', () => {
-    const app = goLiveBindings('uw-app', 'production').map((entry) => entry.secret_name);
+  it('uw-ingest binds none of uw-platform’s secrets and uw-platform none of uw-ingest’s', () => {
+    const app = goLiveBindings('uw-platform', 'production').map((entry) => entry.secret_name);
     const ingest = goLiveBindings('uw-ingest', 'production');
     expect(ingest.filter((entry) => app.includes(entry.secret_name))).toEqual([]);
     expect(ingest.map((entry) => entry.binding)).toEqual([
@@ -245,7 +245,7 @@ describe('#160 the Worker that opens credentials may only wrap and unwrap under 
   });
 
   it.each(environments)('%s declares the region the Worker is given and one key', (name) => {
-    const vars = (environmentOf(load('uw-app', live), name)['vars'] ?? {}) as Block;
+    const vars = (environmentOf(load('uw-platform', live), name)['vars'] ?? {}) as Block;
     expect(vars['CREDENTIALS_KMS_REGION']).toBe(kms.region);
     expect(Object.keys(kms.environments)).toEqual([...environments]);
     expect(keyIdIsDeclared(String(vars['CREDENTIALS_KMS_KEY_ID']), kms.region)).toBe(true);

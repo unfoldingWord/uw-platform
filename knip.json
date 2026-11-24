@@ -9,7 +9,7 @@
       "entry": ["**/*.test.ts"],
       "project": ["**/*.ts"]
     },
-    "apps/uw-app": {
+    "apps/uw-platform": {
       "entry": [
         "index.ts",
         "**/*.test.ts",

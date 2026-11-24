@@ -57,7 +57,7 @@ function factsFor(repo: string, number: number, head: string): PullRequestFacts 
         submittedAt: new Date('2026-10-01T08:59:00.000Z'),
       },
     ],
-    files: { head, base: '0'.repeat(40), paths: ['apps/uw-app/board.tsx'] },
+    files: { head, base: '0'.repeat(40), paths: ['apps/uw-platform/board.tsx'] },
     declaration: {
       closes: ['#7'],
       risks: 'none known',

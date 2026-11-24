@@ -1,15 +1,15 @@
 import { npm, vendorSdk, testFile, engineKeys, engineDirectory } from './shared.mjs';
 
-const environment = '^apps/uw-app/env\\.ts$';
+const environment = '^apps/uw-platform/env\\.ts$';
 const containers = npm('@cloudflare/containers');
 const webPush = npm('@block65/webcrypto-web-push');
-const sandbox = '^apps/uw-app/engines/sandbox/';
+const sandbox = '^apps/uw-platform/engines/sandbox/';
 const enginesMayImport = [
   '^packages/(harness|contracts)/',
   npm('zod'),
   ...vendorSdk,
   containers,
-  '^apps/uw-app/engines/(seam|config|tool-schemas)\\.ts$',
+  '^apps/uw-platform/engines/(seam|config|tool-schemas)\\.ts$',
   sandbox,
   environment,
 ];
@@ -17,7 +17,7 @@ const enginesMayImport = [
 export const engineRules = [
   {
     name: 'vendor-sdk-only-in-engines',
-    comment: 'A vendor SDK is imported only inside one of the six apps/uw-app/engines/<key>/.',
+    comment: 'A vendor SDK is imported only inside one of the six apps/uw-platform/engines/<key>/.',
     severity: 'error',
     from: { path: '^(apps|packages|sim|tests)/', pathNot: engineDirectory },
     to: { path: vendorSdk },
@@ -27,15 +27,15 @@ export const engineRules = [
     comment:
       'An engine directory is imported only by the engine registry, its own files and tests, so the platform reaches an engine only through the seam.',
     severity: 'error',
-    from: { pathNot: ['^apps/uw-app/engines/registry\\.ts$', engineDirectory, testFile] },
+    from: { pathNot: ['^apps/uw-platform/engines/registry\\.ts$', engineDirectory, testFile] },
     to: { path: engineDirectory },
   },
   {
     name: 'engines-never-import-another-engine',
     comment: 'An engine imports nothing from another engine directory.',
     severity: 'error',
-    from: { path: `^apps/uw-app/engines/${engineKeys}/` },
-    to: { path: engineDirectory, pathNot: '^apps/uw-app/engines/$1/' },
+    from: { path: `^apps/uw-platform/engines/${engineKeys}/` },
+    to: { path: engineDirectory, pathNot: '^apps/uw-platform/engines/$1/' },
   },
   {
     name: 'engines-gateway-only-from-the-roots',
@@ -44,48 +44,48 @@ export const engineRules = [
     severity: 'error',
     from: {
       pathNot: [
-        '^apps/uw-app/engines/gateway/',
-        '^apps/uw-app/(kernel|cron/minute|runs/deps)\\.ts$',
+        '^apps/uw-platform/engines/gateway/',
+        '^apps/uw-platform/(kernel|cron/minute|runs/deps)\\.ts$',
         testFile,
       ],
     },
-    to: { path: '^apps/uw-app/engines/gateway/' },
+    to: { path: '^apps/uw-platform/engines/gateway/' },
   },
   {
     name: 'engines-reach-only-the-tool-caller',
     comment:
       'An engine reaches the platform only through the MCP tool caller it is handed: it imports the harness, the contracts, zod, the vendor SDKs, the shared seam files and its own directory, and nothing else, so no chain of imports reaches the database, the kernel, a port, the MCP surface or GitHub.',
     severity: 'error',
-    from: { path: '^apps/uw-app/engines/([^/]+)/', pathNot: testFile },
-    to: { pathNot: [...enginesMayImport, '^apps/uw-app/engines/$1/'] },
+    from: { path: '^apps/uw-platform/engines/([^/]+)/', pathNot: testFile },
+    to: { pathNot: [...enginesMayImport, '^apps/uw-platform/engines/$1/'] },
   },
   {
     name: 'engine-seam-reaches-only-the-engines',
     comment:
-      'The seam files at the top of apps/uw-app/engines/ import what an engine may, plus the engine directories, and nothing else.',
+      'The seam files at the top of apps/uw-platform/engines/ import what an engine may, plus the engine directories, and nothing else.',
     severity: 'error',
-    from: { path: '^apps/uw-app/engines/[^/]+\\.ts$', pathNot: testFile },
-    to: { pathNot: [...enginesMayImport, '^apps/uw-app/engines/'] },
+    from: { path: '^apps/uw-platform/engines/[^/]+\\.ts$', pathNot: testFile },
+    to: { pathNot: [...enginesMayImport, '^apps/uw-platform/engines/'] },
   },
   {
     name: 'engines-read-the-environment-as-types-only',
     comment:
       'An engine names the Worker environment only as a type; its values come through the engine configuration.',
     severity: 'error',
-    from: { path: '^apps/uw-app/engines/', pathNot: testFile },
+    from: { path: '^apps/uw-platform/engines/', pathNot: testFile },
     to: { path: environment, dependencyTypesNot: ['type-only'] },
   },
   {
     name: 'web-push-only-in-push-transport',
     comment:
-      'The web push library is imported only by apps/uw-app/notify/push/transport.ts, so every push leaves through one seam.',
+      'The web push library is imported only by apps/uw-platform/notify/push/transport.ts, so every push leaves through one seam.',
     severity: 'error',
-    from: { pathNot: '^apps/uw-app/notify/push/transport\\.ts$' },
+    from: { pathNot: '^apps/uw-platform/notify/push/transport\\.ts$' },
     to: { path: webPush },
   },
   {
     name: 'containers-only-in-the-sandbox',
-    comment: 'The Containers package is imported only under apps/uw-app/engines/sandbox/.',
+    comment: 'The Containers package is imported only under apps/uw-platform/engines/sandbox/.',
     severity: 'error',
     from: { pathNot: sandbox },
     to: { path: containers },
@@ -98,9 +98,9 @@ export const engineRules = [
     from: {
       pathNot: [
         sandbox,
-        '^apps/uw-app/engines/(claude-code-sandbox|codex-sandbox)/',
-        '^apps/uw-app/engines/config\\.ts$',
-        '^apps/uw-app/index\\.ts$',
+        '^apps/uw-platform/engines/(claude-code-sandbox|codex-sandbox)/',
+        '^apps/uw-platform/engines/config\\.ts$',
+        '^apps/uw-platform/index\\.ts$',
         testFile,
       ],
     },
@@ -111,7 +111,7 @@ export const engineRules = [
     comment:
       'The sandbox Durable Object classes, which need the Workers runtime, are imported only by the Worker entry and tests, so nothing a Node test imports reaches them.',
     severity: 'error',
-    from: { pathNot: ['^apps/uw-app/index\\.ts$', testFile] },
+    from: { pathNot: ['^apps/uw-platform/index\\.ts$', testFile] },
     to: { path: `${sandbox}classes\\.ts$` },
   },
 ];

@@ -2,7 +2,11 @@ import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import { eventNameSchema, harnessCommandSchemas } from '../../packages/contracts/index.ts';
-import { islandsJs, islandsPath, serviceWorkerJs } from '../../apps/uw-app/generated/islands.ts';
+import {
+  islandsJs,
+  islandsPath,
+  serviceWorkerJs,
+} from '../../apps/uw-platform/generated/islands.ts';
 
 describe('the islands bundle', () => {
   it('the committed islands bundle and service worker are the current build', () => {

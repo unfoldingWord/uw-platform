@@ -2,13 +2,13 @@
 
 **Goal:** Make personas real: a persona page carries its own `status` and a derived `requires_tools`, a person with `admin` activates it after the tool check and a dry run, Builder, Reviewer and Iterate ship as persona pages in the template fixtures, Reviewer hands an item to a person after three rounds, hosted Builder pushes and opens its pull request through the egress proxy, Iterate reads measurements through `query_entities` and routes a labelled revision along a `feeds` edge, learnings and skills are confirmed by a person against the version they read, and every persona page opens on its dashboard.
 
-**Architecture:** The kernel's persona module gains the dry run and the status flip (one conditional `UPDATE` through a new Store gateway method, the only kernel write to `pages`, recorded as an exception) and writes the `personas` projection, which then replaces `pages.read.activePersona` in the hosted beat, poll's subscription and the claim. The page owner (`apps/uw-app/pages/`) derives the server-owned frontmatter fields (persona `status` and `requires_tools`, the learning `contradicts` flag), confirms learnings and skills, and serves the stale-confidence report. Measurements get their writer (a person command at the `iterate` bracket) and a whitelisted query. `submit_to_gate` may attach pages, so a revision travels to `learning_attached` in the same transaction that routes it. The persona view is a server-rendered page over a kernel read, with plain form posts that run the command dispatcher.
+**Architecture:** The kernel's persona module gains the dry run and the status flip (one conditional `UPDATE` through a new Store gateway method, the only kernel write to `pages`, recorded as an exception) and writes the `personas` projection, which then replaces `pages.read.activePersona` in the hosted beat, poll's subscription and the claim. The page owner (`apps/uw-platform/pages/`) derives the server-owned frontmatter fields (persona `status` and `requires_tools`, the learning `contradicts` flag), confirms learnings and skills, and serves the stale-confidence report. Measurements get their writer (a person command at the `iterate` bracket) and a whitelisted query. `submit_to_gate` may attach pages, so a revision travels to `learning_attached` in the same transaction that routes it. The persona view is a server-rendered page over a kernel read, with plain form posts that run the command dispatcher.
 
 **Tech Stack:** TypeScript strict, Zod 4, Hono 4 (JSX, `hono/csrf`), Drizzle over Postgres, PGlite in the sim, Vitest (Node and Workers pools), `yaml` 2.9 (agentskills headers), `@modelcontextprotocol/sdk` (unchanged), Cloudflare Sandbox (unchanged from step 7).
 
 **Spec:** `docs/PRD.md` (approved; no brainstorm, no approval step). Requirements covered: **PE-1, PE-2, PE-3, PE-4, PE-5, PE-6, PE-7, PE-8**, and the KN-7 revision clause. Carries planned here (each closed in Task 9 with its commit): persona frontmatter `status` and the learning contradiction flag (step 1); PE-7 revisions to `learning_attached` and KN-7's revision clause (step 3); the capability words `iterate`, `build`, `review` (step 3, AB-6); PE-8 confirmation pins the version read (step 4); PE-2 `requires_tools` derived (step 4, R22); PE-3 dry run and status flip, PE-7 `measurements_for_item` with the measurements writer, the `personas` projection joining poll's subscription (step 4); PE-3/PE-8 flip as `UPDATE ... WHERE version = expectedVersion` and `activation_required` distinguishable in the UI (step 4); PE-6/HE-9 Reviewer logins seam (step 5); hosted Builder's push and pull request through the egress proxy and its GitHub identity (step 7, PE-5); Reviewer's three-round hand-off (step 7, PE-6); the `personas` projection replacing `pages.read.activePersona` in the beat (step 7, PE-3).
 
-The plan is written against the code as it stands after step 7 (`docs/plans/2026-10-03-step-07-hosts-and-engines.md`): `kernel.runs` (`start`, `scene`, `beat`, `hibernateAtGate`, `complete`, `fail`, `holdPremise`, `halt`, `stop`, `prompt`, `reviewDiff`, `postReview`), `packages/harness/engines.ts` (`engineDescriptor`, `hostable`), `packages/harness/runs/tool-loop.ts` (`runToolLoop`, `TURN_LIMIT`), `apps/uw-app/engines/sandbox/egress.ts` (`egress`, `EgressRoutes`), `apps/uw-app/runs/run-core.ts`, `apps/uw-app/github/reviewer-apps.ts`, contract `11.0.0`. Where a step-7 file named here differs in detail from the step-7 plan, follow the code and keep this plan's behaviour.
+The plan is written against the code as it stands after step 7 (`docs/plans/2026-10-03-step-07-hosts-and-engines.md`): `kernel.runs` (`start`, `scene`, `beat`, `hibernateAtGate`, `complete`, `fail`, `holdPremise`, `halt`, `stop`, `prompt`, `reviewDiff`, `postReview`), `packages/harness/engines.ts` (`engineDescriptor`, `hostable`), `packages/harness/runs/tool-loop.ts` (`runToolLoop`, `TURN_LIMIT`), `apps/uw-platform/engines/sandbox/egress.ts` (`egress`, `EgressRoutes`), `apps/uw-platform/runs/run-core.ts`, `apps/uw-platform/github/reviewer-apps.ts`, contract `11.0.0`. Where a step-7 file named here differs in detail from the step-7 plan, follow the code and keep this plan's behaviour.
 
 ## Global Constraints
 
@@ -19,19 +19,19 @@ Every task obeys every line here. Copy exact values; do not paraphrase them in c
 - **Verify, at the end of every task, green:** `pnpm format && TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/uw_test pnpm verify`. The local server is private; CI uses a Postgres service container. If it is down: `/usr/lib/postgresql/16/bin/pg_ctl -D ~/.local/share/uw-platform-test-pg -o "-p 54329 -k '' -c listen_addresses=127.0.0.1" -l ~/.local/share/uw-platform-test-pg.log start`.
 - **R37:** never run two test suites at once. No parallel `pnpm verify`, `pnpm test`, `vitest` or `pnpm sim:all`; wait for one to finish before starting another.
 - **DX-8:** no test, binding or job may need a live account or a secret. The Builder GitHub App, the Reviewer logins and the sandbox's GitHub egress are proven against fixtures, a fake `fetch` and the fake container host; their live run is recorded under "Waiting on a person" in Task 9. A missing secret answers `not_wired` and logs; it never throws at startup.
-- **Production:** any Cloudflare binding, cron, queue, container or migration of Cloudflare resources goes in `infra/uw-app/wrangler.go-live.toml` only, never `infra/uw-app/wrangler.toml`, and gets a "Waiting on a person" row. This step adds secrets only (`BUILDER_GITHUB_APP_ID`, `BUILDER_GITHUB_APP_INSTALLATION_ID`, `BUILDER_GITHUB_APP_PRIVATE_KEY`), never in any wrangler file.
-- **Layering (dependency-cruiser and ESLint):** `packages/contracts` → nothing but `zod`; `packages/core` → contracts; `packages/db` → contracts, core; `packages/harness` → contracts, core types, `yaml`, pure (no Workers, Drizzle, vendor SDK, MCP SDK or network); `apps/uw-app` → harness, db, contracts, core, ui; `sim/` → harness, contracts, db and the Node built-ins `AGENTS.md` lists. A vendor SDK only under `apps/uw-app/engines/<key>/`.
+- **Production:** any Cloudflare binding, cron, queue, container or migration of Cloudflare resources goes in `infra/uw-platform/wrangler.go-live.toml` only, never `infra/uw-platform/wrangler.toml`, and gets a "Waiting on a person" row. This step adds secrets only (`BUILDER_GITHUB_APP_ID`, `BUILDER_GITHUB_APP_INSTALLATION_ID`, `BUILDER_GITHUB_APP_PRIVATE_KEY`), never in any wrangler file.
+- **Layering (dependency-cruiser and ESLint):** `packages/contracts` → nothing but `zod`; `packages/core` → contracts; `packages/db` → contracts, core; `packages/harness` → contracts, core types, `yaml`, pure (no Workers, Drizzle, vendor SDK, MCP SDK or network); `apps/uw-platform` → harness, db, contracts, core, ui; `sim/` → harness, contracts, db and the Node built-ins `AGENTS.md` lists. A vendor SDK only under `apps/uw-platform/engines/<key>/`.
 - **Code:** no comments of any kind. Files under 500 lines; functions under 50 lines; ESLint fitness limits: 25 statements, complexity 10, depth 4, 3 nested callbacks, 5 parameters. TypeScript strict, no `any`, no `@ts-ignore`.
 - **Commits:** Conventional Commits. The body's last line lists the requirement IDs the commit proves or serves (for example `PE-3 PE-1`). No `Co-Authored-By` and no attribution footer of any kind. Hooks always pass; never `--no-verify`.
 - **Shared roots** (`packages/db/schema.ts`, `packages/db/schema-*.ts`, `packages/contracts/`, `packages/harness/ports.ts`, `packages/core/acl.ts`, `infra/`, `.github/workflows/`, `AGENTS.md`, `CONTEXT.md`, `docs/adr/`): a change goes in its own commit with no feature code, and the message names the shared root and why it changed. A migration travels with the `schema*.ts` commit that needs it.
 - **Exceptions:** any exception to `AGENTS.md` rules 1 to 4 gets its `docs/exceptions.md` row in the same commit as the code, written before it.
-- **Contract version:** Task 1 moves `CONTRACT_VERSION` from `11.0.0` to `11.1.0` (every change is additive) and moves `contractVersion` in `apps/uw-app/package.json` and `apps/uw-ingest/package.json` with it. No later task changes `packages/contracts/`.
+- **Contract version:** Task 1 moves `CONTRACT_VERSION` from `11.0.0` to `11.1.0` (every change is additive) and moves `contractVersion` in `apps/uw-platform/package.json` and `apps/uw-ingest/package.json` with it. No later task changes `packages/contracts/`.
 - **New closed values (contract 11.1.0):** events `measurement_recorded`, `handed_to_person`; error reasons `activation_required`, `dry_run_failed`; persona activation refusal `dry_run_failed`; harness commands `activate_persona`, `record_measurement`; platform command `confirm_page`; `learning_attached` evidence `kind` (`learning`, `revision`); `handed_to_person` evidence `why` (`review_rounds_exhausted`).
 - **Only humans decide gates, activate personas and confirm learnings and skills.** No agent identity can approve, merge, deploy, publish or advance past a human gate, activate a persona, or move a `learning` or `skill` page to `active`, by any route or step.
 - **Agents never hold a GitHub client.** The Builder App's token is minted in the host step and injected at the egress proxy; it never enters the sandbox's environment, files, command line, a model message, an MCP reply or a log line.
 - **What an agent sees equals what it may act on** (R27, R32, R33): poll and claim apply the same persona and capability rules. Hidden equals missing (`*_not_found`, byte-identical). Delegations are checked on every beat and step.
 - **Lock order** (`docs/architecture.md`): stage lock, item rows (ascending id), run rows, grants, then the page row of a persona activation, then appends; nothing locks after the first append. Transactions never nest. No port call inside a Store transaction.
-- **One writer per table.** `pages` and `page_versions`: `apps/uw-app/pages/` (and `packages/harness/personas/` through `tx.pages.write.activatePersona` only, the Task 2 exception); `personas`: `packages/harness/personas/`; `measurements`: `packages/harness/measurements/`; `harness_items` and `harness_events`: the kernel's record functions.
+- **One writer per table.** `pages` and `page_versions`: `apps/uw-platform/pages/` (and `packages/harness/personas/` through `tx.pages.write.activatePersona` only, the Task 2 exception); `personas`: `packages/harness/personas/`; `measurements`: `packages/harness/measurements/`; `harness_items` and `harness_events`: the kernel's record functions.
 - **R36 trace honesty:** a `describe`/`it`/`test` title that leads with a requirement ID must prove that requirement's clauses; supporting tests lead with no ID. Scenarios are `sim/scenarios/<ID>.<slug>.ts`.
 - **Kernel instants and callers:** every kernel command takes a `Caller` (`{ actor, traceId, requestId }`) and reads `ports.clock.now()` once; every route judges at its own instant.
 - **Copy:** sentence case, second person, no exclamation marks, no emoji; `unfoldingWord` camelCase. Kindle marks a human action and nothing else.
@@ -81,7 +81,7 @@ Choices the PRD, the spec and `AGENTS.md` leave open. Task 9 copies each into `d
 **Requirements:** PE-1, PE-2, PE-3, PE-6, PE-7, PE-8 (the contract half of each); CT-3 (the lock).
 
 **Files:**
-- Modify (commit 1, shared root `packages/contracts/`): `packages/contracts/page-types.ts`, `packages/contracts/events.ts`, `packages/contracts/event-evidence.ts`, `packages/contracts/outcomes.ts`, `packages/contracts/commands.ts`, `packages/contracts/platform-commands.ts`, `packages/contracts/pages.ts`, `packages/contracts/registry.ts`, `packages/contracts/verb-io.ts`, `packages/contracts/version.ts`, `packages/contracts/contract-lock.json`, the golden fixtures under `packages/contracts/fixtures/` and `packages/contracts/verb-fixtures/submit_to_gate/`, `packages/contracts/*.test.ts` that pin lists, `apps/uw-app/package.json` and `apps/uw-ingest/package.json` (`contractVersion`)
+- Modify (commit 1, shared root `packages/contracts/`): `packages/contracts/page-types.ts`, `packages/contracts/events.ts`, `packages/contracts/event-evidence.ts`, `packages/contracts/outcomes.ts`, `packages/contracts/commands.ts`, `packages/contracts/platform-commands.ts`, `packages/contracts/pages.ts`, `packages/contracts/registry.ts`, `packages/contracts/verb-io.ts`, `packages/contracts/version.ts`, `packages/contracts/contract-lock.json`, the golden fixtures under `packages/contracts/fixtures/` and `packages/contracts/verb-fixtures/submit_to_gate/`, `packages/contracts/*.test.ts` that pin lists, `apps/uw-platform/package.json` and `apps/uw-ingest/package.json` (`contractVersion`)
 - Modify (commit 2, shared root `packages/db/`): `packages/db/migrations/<next>_contract_11_1_checks.sql` (generated by `pnpm db:generate`, renamed to the next free number with that suffix, as `0023_contract_11_checks.sql` was) and `packages/db/migrations/meta/`
 - Modify (commit 3, shared root `CONTEXT.md` and the PRD): `CONTEXT.md`, `docs/PRD.md`
 
@@ -152,7 +152,7 @@ In `packages/contracts/verbs.test.ts` (or the file pinning `verbIo`): `PE-7 subm
 Run: `pnpm format && TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/uw_test pnpm verify`
 
 ```bash
-git add packages/contracts apps/uw-app/package.json apps/uw-ingest/package.json
+git add packages/contracts apps/uw-platform/package.json apps/uw-ingest/package.json
 git commit -m "feat(contracts): contract 11.1.0, persona status and derived tools, contradiction flag, measurements, hand-off, activation and confirmation
 
 Shared root packages/contracts/: every change is additive, so the version is minor.
@@ -251,7 +251,7 @@ WHERE id = $pageId AND type = 'persona' AND status = 'suggested' AND version = $
 RETURNING *
 ```
 
-then insert the `page_versions` snapshot of the returned row with `edit_source = editSource` and `trace_id = traceId` (the same columns `apps/uw-app/pages/store.ts` `snapshot` writes), and answer its `PageFacts`; no row answers `null`.
+then insert the `page_versions` snapshot of the returned row with `edit_source = editSource` and `trace_id = traceId` (the same columns `apps/uw-platform/pages/store.ts` `snapshot` writes), and answer its `PageFacts`; no row answers `null`.
 
 **`personas` gateway:** `upsert` is `INSERT ... ON CONFLICT (identity) DO UPDATE SET harness_id = EXCLUDED.harness_id, page_id = EXCLUDED.page_id`; `active(identity, harnessId)` joins `pages` on `page_id` and answers the page's facts only when the row's harness is `harnessId`, the page is `persona`, `active`, and its frontmatter `identity` and `harness` equal the row's and parse with `personaFrontmatterSchema` (else `null`, fail closed as `activePersona` does).
 
@@ -300,12 +300,12 @@ PE-3 PE-4 PE-7 DX-3"
 **Requirements:** PE-1, PE-2 (derived `requires_tools`, agent drafts land `suggested`), PE-8 (confirmation, contradiction, stale report and indicator, skills validate).
 
 **Files:**
-- Create: `apps/uw-app/pages/derive.ts`, `apps/uw-app/pages/derive.test.ts`, `apps/uw-app/pages/confirm.ts`, `apps/uw-app/pages/confirm.pg.test.ts`, `apps/uw-app/pages/stale.ts`, `apps/uw-app/pages/stale.pg.test.ts`, `apps/uw-app/pages/derive.pg.test.ts`
-- Modify: `apps/uw-app/pages/store.ts` (create and update write the derived frontmatter; `activationRequired` becomes reason `activation_required` with no detail), `apps/uw-app/pages/agent-write.ts` (the same derivation through `updateCheckedPage` and `createPage`), `apps/uw-app/pages/routes.ts` (`confirm_page` handler; `GET /reports/stale-learnings` registered before `/:pageId`), `apps/uw-app/pages/gated-activation.pg.test.ts` (the reason changes), `apps/uw-app/mcp/verbs/get-health.ts` (the `stale_learnings` indicator), `apps/uw-app/health/indicators.ts` (the public aggregate), `packages/harness/stages/commands.ts` (`instructionsRefusal`), `sim/kernel/stage-command.test.ts`, `docs/exceptions.md` (one row for `apps/uw-app/pages/stale.ts`, a reader beside the owner like `pages/reads.ts`), `tools/skills/sync-harness-skill.test.ts`
+- Create: `apps/uw-platform/pages/derive.ts`, `apps/uw-platform/pages/derive.test.ts`, `apps/uw-platform/pages/confirm.ts`, `apps/uw-platform/pages/confirm.pg.test.ts`, `apps/uw-platform/pages/stale.ts`, `apps/uw-platform/pages/stale.pg.test.ts`, `apps/uw-platform/pages/derive.pg.test.ts`
+- Modify: `apps/uw-platform/pages/store.ts` (create and update write the derived frontmatter; `activationRequired` becomes reason `activation_required` with no detail), `apps/uw-platform/pages/agent-write.ts` (the same derivation through `updateCheckedPage` and `createPage`), `apps/uw-platform/pages/routes.ts` (`confirm_page` handler; `GET /reports/stale-learnings` registered before `/:pageId`), `apps/uw-platform/pages/gated-activation.pg.test.ts` (the reason changes), `apps/uw-platform/mcp/verbs/get-health.ts` (the `stale_learnings` indicator), `apps/uw-platform/health/indicators.ts` (the public aggregate), `packages/harness/stages/commands.ts` (`instructionsRefusal`), `sim/kernel/stage-command.test.ts`, `docs/exceptions.md` (one row for `apps/uw-platform/pages/stale.ts`, a reader beside the owner like `pages/reads.ts`), `tools/skills/sync-harness-skill.test.ts`
 
 If step 8 has already moved `get_health`'s WB-10 indicators out of `get-health.ts`, grep `stale_learnings` and wire the indicator where it now lives; the behaviour below is unchanged.
 
-**`apps/uw-app/pages/derive.ts`:**
+**`apps/uw-platform/pages/derive.ts`:**
 
 ```ts
 export type Landing = { readonly status: PageStatus };
@@ -328,9 +328,9 @@ export async function derivedFrontmatter(
 
 `createPage` and `updateInTransaction` (and the agent write) call it after `checkFrontmatter` with the landing status (create: `command.status`, or `suggested`/`draft` for an agent; update: the status `statusFor` chose) and write the derived object, not `command.frontmatter`. `createPage` now runs the derivation inside its transaction.
 
-**`apps/uw-app/pages/confirm.ts`:** `confirmPage(db, actor, command: ConfirmPageCommand, traceId, at): Promise<PageResult | PageRefusal>` per S10-D9, in one transaction: `actor.kind !== 'person'` → `not_permitted`; `lockedPage` (row lock; unreadable → `page_not_found`); type `persona` → `not_permitted` `{ why: 'persona_needs_activation' }`; type not `learning`/`skill` → `malformed_command` `{ why: 'not_confirmable' }`; no `write` on the area → `not_permitted`; status not `suggested` → `not_permitted` `{ why: 'not_suggested' }`; `UPDATE pages SET status = 'active', version = version + 1, updated_at = now() WHERE id = $1 AND version = $2 AND status = 'suggested' RETURNING *` (no row → `stale_version`); the snapshot with `editSource = actor.identity`.
+**`apps/uw-platform/pages/confirm.ts`:** `confirmPage(db, actor, command: ConfirmPageCommand, traceId, at): Promise<PageResult | PageRefusal>` per S10-D9, in one transaction: `actor.kind !== 'person'` → `not_permitted`; `lockedPage` (row lock; unreadable → `page_not_found`); type `persona` → `not_permitted` `{ why: 'persona_needs_activation' }`; type not `learning`/`skill` → `malformed_command` `{ why: 'not_confirmable' }`; no `write` on the area → `not_permitted`; status not `suggested` → `not_permitted` `{ why: 'not_suggested' }`; `UPDATE pages SET status = 'active', version = version + 1, updated_at = now() WHERE id = $1 AND version = $2 AND status = 'suggested' RETURNING *` (no row → `stale_version`); the snapshot with `editSource = actor.identity`.
 
-**`apps/uw-app/pages/stale.ts`:** `staleLearnings(db, actor, query: { readonly jdArea: JdArea | null; readonly today: string; readonly limit: number }): Promise<readonly StaleLearning[]>` with `StaleLearning = { pageId, title, jdArea, confidence: 'assumed' | 'inferred', asOf, reviewBy }` (`reviewBy` the effective date), filtered in SQL to the areas `readableAreas(actor)` reaches (as `pages/reads.ts` does), ordered by the effective review date then id; and `staleLearningCount(db, jdArea: JdArea | null, today: string): Promise<number>` (no actor; an aggregate). The effective date is `coalesce((frontmatter->>'review_by')::date, (frontmatter->>'as_of')::date + 90)` guarded by the same calendar-shape check `resolve_context` uses (minor 9 of step 4), so a malformed date never throws.
+**`apps/uw-platform/pages/stale.ts`:** `staleLearnings(db, actor, query: { readonly jdArea: JdArea | null; readonly today: string; readonly limit: number }): Promise<readonly StaleLearning[]>` with `StaleLearning = { pageId, title, jdArea, confidence: 'assumed' | 'inferred', asOf, reviewBy }` (`reviewBy` the effective date), filtered in SQL to the areas `readableAreas(actor)` reaches (as `pages/reads.ts` does), ordered by the effective review date then id; and `staleLearningCount(db, jdArea: JdArea | null, today: string): Promise<number>` (no actor; an aggregate). The effective date is `coalesce((frontmatter->>'review_by')::date, (frontmatter->>'as_of')::date + 90)` guarded by the same calendar-shape check `resolve_context` uses (minor 9 of step 4), so a malformed date never throws.
 
 Indicators: `get_health` `stale_learnings` → `staleLearningCount(db, harness.jdArea, today)`: `ok` "no stale learnings" at 0, else `amber` "<n> stale learnings"; `/health` the same with `jdArea: null`, and `not_configured` without a database.
 
@@ -338,7 +338,7 @@ Indicators: `get_health` `stale_learnings` → `staleLearningCount(db, harness.j
 
 - [ ] **Step 1: Write the failing tests**
 
-`apps/uw-app/pages/derive.test.ts` (pure part) and `derive.pg.test.ts`:
+`apps/uw-platform/pages/derive.test.ts` (pure part) and `derive.pg.test.ts`:
 - `PE-1 a persona page's frontmatter status follows the page's status on every write`
 - `PE-1 a write whose persona frontmatter names another status is refused activation_required`
 - `PE-2 requires_tools is derived from the toolset and an edited value is replaced`
@@ -346,30 +346,30 @@ Indicators: `get_health` `stale_learnings` → `staleLearningCount(db, harness.j
 - `PE-8 a learning that supersedes an unretired learning is flagged as a contradiction`
 - `PE-8 a learning that supersedes only retired learnings, or nothing, is not flagged` (Review Focus 6)
 
-`apps/uw-app/pages/confirm.pg.test.ts`:
+`apps/uw-platform/pages/confirm.pg.test.ts`:
 - `PE-8 a person confirms a suggested learning at the version they read`
 - `PE-8 a confirmation at a stale version is refused stale_version and changes nothing`
 - `PE-8 an agent cannot confirm a learning or a skill` (an agent principal → `not_permitted`; and `write_page` by an agent on an active learning stays `not_permitted` `{ why: 'gated_page' }`)
 - `PE-8 confirmation is the only way a learning becomes active` (`update_page` with `status: 'active'` → `activation_required`)
 - `PE-8 a persona is not confirmed but activated`
 
-`apps/uw-app/pages/stale.pg.test.ts`:
+`apps/uw-platform/pages/stale.pg.test.ts`:
 - `PE-8 the stale-confidence report lists assumed and inferred learnings past their review date, defaulting to 90 days after as_of`
 - `PE-8 the report shows only learnings the caller may read`
 - `PE-8 the stale_learnings indicator counts them on get_health and on /health`
 
 `sim/kernel/stage-command.test.ts`: `PE-8 a stage's instructions page must be a skill page`. `tools/skills/sync-harness-skill.test.ts`: `PE-8 the synced harness skill validates as a skill page` (parse `skills/harness/SKILL.md` through the same check the sync uses and `skillFrontmatterSchema`).
 
-`apps/uw-app/mcp/page-verbs.pg.test.ts`: `PE-3 an agent's attempt to activate a persona through write_page is refused and logged` (an agent saves its suggested persona with frontmatter `status: 'active'` → `activation_required`; the dispatcher's `verb call` log entry records the outcome `activation_required`; the page stays `suggested`).
+`apps/uw-platform/mcp/page-verbs.pg.test.ts`: `PE-3 an agent's attempt to activate a persona through write_page is refused and logged` (an agent saves its suggested persona with frontmatter `status: 'active'` → `activation_required`; the dispatcher's `verb call` log entry records the outcome `activation_required`; the page stays `suggested`).
 
-- [ ] **Step 2:** Run `pnpm vitest run apps/uw-app/pages apps/uw-app/mcp/page-verbs.pg.test.ts sim/kernel/stage-command.test.ts tools/skills`; expected FAIL.
+- [ ] **Step 2:** Run `pnpm vitest run apps/uw-platform/pages apps/uw-platform/mcp/page-verbs.pg.test.ts sim/kernel/stage-command.test.ts tools/skills`; expected FAIL.
 - [ ] **Step 3:** Implement; the exceptions row for `stale.ts` is written before the code.
 - [ ] **Step 4: Verify and commit**
 
 Run: `pnpm format && TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/uw_test pnpm verify`
 
 ```bash
-git add apps/uw-app packages/harness/stages sim/kernel tools/skills docs/exceptions.md
+git add apps/uw-platform packages/harness/stages sim/kernel tools/skills docs/exceptions.md
 git commit -m "feat(pages): persona status and tools derived on write, contradictions flagged, learnings and skills confirmed at the version read, stale learnings reported
 
 PE-1 PE-2 PE-3 PE-8"
@@ -382,8 +382,8 @@ PE-1 PE-2 PE-3 PE-8"
 **Requirements:** PE-3, PE-1 (status through activation), PE-2 (the tool check on the derived list); the projection carries (S10-D5, S10-D6).
 
 **Files:**
-- Create: `packages/harness/personas/instructions.ts` (`parseAgentSkillHeader(body)`), `packages/harness/personas/dry-run.ts`, `packages/harness/personas/dry-run.test.ts`, `packages/harness/personas/projection.ts` (`activePersonaOn(tx, identity, harnessId)`, `personaSlugFor(identity)`), `apps/uw-app/commands/person/personas.ts` (`activatePersonaCommand`), `apps/uw-app/commands/personas.pg.test.ts`, `apps/uw-app/harness/persona-activation-flip.pg.test.ts`, `sim/scenarios/PE-3.activation-runs-the-tool-check-and-a-dry-run-then-flips-status.ts`
-- Modify: `packages/harness/personas/activate.ts`, `packages/harness/personas/commands.ts` (the outcome is `KernelOutcome<ActivatedPersona>`; input gains `harnessId`), `packages/harness/package.json` (`yaml` `^2.9.1`, ISC), `packages/harness/runs/beat.ts` and `packages/harness/runs/start.ts` (`tx.personas.read.active` in place of `tx.pages.read.activePersona`), `packages/harness/reads/poll.ts` and `packages/harness/items/claim.ts` (S10-D6), `packages/harness/index.ts`, `apps/uw-app/commands/registry.ts`, `sim/persona-fixtures.ts` (`activatePersona` passes `harnessId`), `packages/db/test-seed.ts` (`seedActivePersona(db, { pageId, identity, harnessId, ... })`: an `active` persona page and its projection row), the sim and test helpers that grant delegations for a persona (grep `delegations.grant` and `seedDelegation` under `sim/` and `apps/uw-app/`) so they seed an active persona when none exists, `sim/kernel/persona-activation.test.ts`, `docs/architecture.md` ("Transactions and locks": persona activation's order)
+- Create: `packages/harness/personas/instructions.ts` (`parseAgentSkillHeader(body)`), `packages/harness/personas/dry-run.ts`, `packages/harness/personas/dry-run.test.ts`, `packages/harness/personas/projection.ts` (`activePersonaOn(tx, identity, harnessId)`, `personaSlugFor(identity)`), `apps/uw-platform/commands/person/personas.ts` (`activatePersonaCommand`), `apps/uw-platform/commands/personas.pg.test.ts`, `apps/uw-platform/harness/persona-activation-flip.pg.test.ts`, `sim/scenarios/PE-3.activation-runs-the-tool-check-and-a-dry-run-then-flips-status.ts`
+- Modify: `packages/harness/personas/activate.ts`, `packages/harness/personas/commands.ts` (the outcome is `KernelOutcome<ActivatedPersona>`; input gains `harnessId`), `packages/harness/package.json` (`yaml` `^2.9.1`, ISC), `packages/harness/runs/beat.ts` and `packages/harness/runs/start.ts` (`tx.personas.read.active` in place of `tx.pages.read.activePersona`), `packages/harness/reads/poll.ts` and `packages/harness/items/claim.ts` (S10-D6), `packages/harness/index.ts`, `apps/uw-platform/commands/registry.ts`, `sim/persona-fixtures.ts` (`activatePersona` passes `harnessId`), `packages/db/test-seed.ts` (`seedActivePersona(db, { pageId, identity, harnessId, ... })`: an `active` persona page and its projection row), the sim and test helpers that grant delegations for a persona (grep `delegations.grant` and `seedDelegation` under `sim/` and `apps/uw-platform/`) so they seed an active persona when none exists, `sim/kernel/persona-activation.test.ts`, `docs/architecture.md` ("Transactions and locks": persona activation's order)
 - Then, once a grep for `activePersona(` finds no caller: remove `PagesGateway.read.activePersona` from `packages/harness/ports.ts` (its own shared-root commit) and from `packages/db/store/pages.ts` and its port contract case.
 
 **Types:**
@@ -450,20 +450,20 @@ The dry run is pure and runs inside the transaction (it calls no port).
 - `PE-1 an activated persona's frontmatter reads status active`
 - `PE-2 activation checks the derived requires_tools: a missing verb opens one item and leaves the persona suggested`
 
-`apps/uw-app/harness/persona-activation-flip.pg.test.ts` (two connections on the server): `PE-3 two activations of one page at once record exactly one persona_activated` (Review Focus 2).
+`apps/uw-platform/harness/persona-activation-flip.pg.test.ts` (two connections on the server): `PE-3 two activations of one page at once record exactly one persona_activated` (Review Focus 2).
 
-`apps/uw-app/commands/personas.pg.test.ts`: `PE-3 activate_persona is admin only, refused to agents, and answers stale_version for an old version`; `PE-3 a page of another harness is page_not_found`.
+`apps/uw-platform/commands/personas.pg.test.ts`: `PE-3 activate_persona is admin only, refused to agents, and answers stale_version for an old version`; `PE-3 a page of another harness is page_not_found`.
 
 `sim/kernel/run-beat.test.ts` and `sim/kernel/poll*.test.ts` (extend, or a new `sim/kernel/persona-projection.test.ts`): `PE-3 the beat starts runs only for personas the projection names active`; `PE-3 a delegated persona polls and claims only where its persona is active` (claim → `persona_not_active`).
 
-- [ ] **Step 2:** Run `pnpm vitest run packages/harness/personas sim/kernel apps/uw-app/commands/personas.pg.test.ts apps/uw-app/harness/persona-activation-flip.pg.test.ts && pnpm sim -- PE-3.activation-runs-the-tool-check-and-a-dry-run-then-flips-status`; expected FAIL.
+- [ ] **Step 2:** Run `pnpm vitest run packages/harness/personas sim/kernel apps/uw-platform/commands/personas.pg.test.ts apps/uw-platform/harness/persona-activation-flip.pg.test.ts && pnpm sim -- PE-3.activation-runs-the-tool-check-and-a-dry-run-then-flips-status`; expected FAIL.
 - [ ] **Step 3:** Implement; update the delegation helpers so existing AB-4, AB-6, AB-7, HE-* and KN-16 tests keep passing with an active persona seeded (do not weaken any assertion); then remove `activePersona` if no caller remains.
 - [ ] **Step 4: Verify and commit**
 
 Run: `pnpm format && TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/uw_test pnpm verify`
 
 ```bash
-git add packages/harness packages/db/test-seed.ts apps/uw-app sim docs/architecture.md pnpm-lock.yaml
+git add packages/harness packages/db/test-seed.ts apps/uw-platform sim docs/architecture.md pnpm-lock.yaml
 git commit -m "feat(harness): an admin activates a persona after the tool check and a dry run; the flip and the projection land in one transaction
 
 PE-1 PE-2 PE-3"
@@ -486,8 +486,8 @@ PE-3"
 **Requirements:** PE-7, KN-7 (the revision clause), AB-6 (the step-3 carry, S10-D15).
 
 **Files:**
-- Create: `packages/harness/measurements/record.ts`, `packages/harness/measurements/commands.ts`, `packages/harness/delegations/capability.ts`, `packages/harness/delegations/capability.test.ts`, `sim/kernel/measurements.test.ts`, `sim/kernel/revision-attach.test.ts`, `sim/kernel/capability-brackets.test.ts`, `apps/uw-app/commands/handlers/measurements.ts`, `apps/uw-app/commands/measurements.pg.test.ts`, `sim/scenarios/PE-7.iterate-reads-measurements-and-routes-a-labelled-revision.ts`
-- Modify: `packages/harness/kernel.ts` (`measurements: MeasurementCommands`), `packages/harness/reads/index.ts` (`measurements(caller, { itemId }, { at })`), `packages/harness/items/learning.ts` (widened attach, `attachWithin(tx, ...)` exported for submit), `packages/harness/items/submit.ts` (`attach` before validators), `packages/harness/items/commands.ts` (`SubmitInput` gains `attach`), `packages/harness/validators/learning-attached.ts` (revisions count only for labels), `packages/harness/items/claim.ts` and `packages/harness/reads/poll.ts` (brackets), `packages/harness/index.ts`, `apps/uw-app/records/queries.ts` (`measurements_for_item`), `apps/uw-app/mcp/verbs/submit-to-gate.ts` (pass `attach`), `apps/uw-app/mcp/rows-verbs.pg.test.ts`, `apps/uw-app/mcp/harness-verbs.pg.test.ts`, `apps/uw-app/commands/registry.ts`, `packages/harness/measurements/owns.ts` (unchanged: `['measurements']`)
+- Create: `packages/harness/measurements/record.ts`, `packages/harness/measurements/commands.ts`, `packages/harness/delegations/capability.ts`, `packages/harness/delegations/capability.test.ts`, `sim/kernel/measurements.test.ts`, `sim/kernel/revision-attach.test.ts`, `sim/kernel/capability-brackets.test.ts`, `apps/uw-platform/commands/handlers/measurements.ts`, `apps/uw-platform/commands/measurements.pg.test.ts`, `sim/scenarios/PE-7.iterate-reads-measurements-and-routes-a-labelled-revision.ts`
+- Modify: `packages/harness/kernel.ts` (`measurements: MeasurementCommands`), `packages/harness/reads/index.ts` (`measurements(caller, { itemId }, { at })`), `packages/harness/items/learning.ts` (widened attach, `attachWithin(tx, ...)` exported for submit), `packages/harness/items/submit.ts` (`attach` before validators), `packages/harness/items/commands.ts` (`SubmitInput` gains `attach`), `packages/harness/validators/learning-attached.ts` (revisions count only for labels), `packages/harness/items/claim.ts` and `packages/harness/reads/poll.ts` (brackets), `packages/harness/index.ts`, `apps/uw-platform/records/queries.ts` (`measurements_for_item`), `apps/uw-platform/mcp/verbs/submit-to-gate.ts` (pass `attach`), `apps/uw-platform/mcp/rows-verbs.pg.test.ts`, `apps/uw-platform/mcp/harness-verbs.pg.test.ts`, `apps/uw-platform/commands/registry.ts`, `packages/harness/measurements/owns.ts` (unchanged: `['measurements']`)
 
 **Measurements (S10-D13):**
 
@@ -506,7 +506,7 @@ export type MeasurementCommands = {
 
 `record`: `isAgent` → `not_permitted` `{ actor }`; one transaction: `tx.harnessItems.read.lock(itemId)` (`item_not_found`), the harness and its stages; grants re-read with `resolveIn`; `write` on the harness's area (`not_permitted`, and an unreadable harness is `item_not_found`); the item's stage's `bracket !== 'iterate'` → `not_permitted` `{ why: 'not_at_iterate' }`; `asOf` after today (UTC from `ports.clock`) or a name that is blank after trimming → `malformed_command`; `tx.measurements.write.insert({ id: ports.ids.next(), harnessId, itemId, source, name: name.trim(), value, asOf, recordedAt: at })`; `recordItemEvents(..., [draft('measurement_recorded', { measurementId, source, name, value, asOf })])`.
 
-`kernel.reads.measurements(caller, { itemId }, { at })`: the item through the same read rule `kernel.reads.item` applies (hidden equals missing, R27 for agents), then `tx.measurements.read.forItem(itemId, 50)`. `measurements_for_item` in `apps/uw-app/records/queries.ts`: params `z.object({ itemId: z.uuid() })`; rows `{ measurementId, itemId, source, name, value, asOf }`, resource the harness's area.
+`kernel.reads.measurements(caller, { itemId }, { at })`: the item through the same read rule `kernel.reads.item` applies (hidden equals missing, R27 for agents), then `tx.measurements.read.forItem(itemId, 50)`. `measurements_for_item` in `apps/uw-platform/records/queries.ts`: params `z.object({ itemId: z.uuid() })`; rows `{ measurementId, itemId, source, name, value, asOf }`, resource the harness's area.
 
 `record_measurement` command: `commandHandler({ name: 'record_measurement', action: 'write', agents: 'refused', run: ... context.kernel.measurements.record(context.caller, body) })`.
 
@@ -540,7 +540,7 @@ export function capabilityReaches(capability: CapabilityWord, bracket: StageBrac
 - `PE-7 a measurement elsewhere, in the future, or by an agent is refused`
 - `PE-7 measurements are read through the item's read rule: hidden equals missing`
 
-`apps/uw-app/mcp/rows-verbs.pg.test.ts`: `PE-7 query_entities measurements_for_item answers the item's measurements, newest first, and nothing for an item the caller cannot read`. `apps/uw-app/commands/measurements.pg.test.ts`: `PE-7 record_measurement is a person's write and is refused to agents`.
+`apps/uw-platform/mcp/rows-verbs.pg.test.ts`: `PE-7 query_entities measurements_for_item answers the item's measurements, newest first, and nothing for an item the caller cannot read`. `apps/uw-platform/commands/measurements.pg.test.ts`: `PE-7 record_measurement is a person's write and is refused to agents`.
 
 `sim/kernel/revision-attach.test.ts`:
 - `KN-7 every revision Iterate proposes carries an evidence label, or learning_attached refuses it` (the revision clause; the item also carries a labelled learning, so only the revision fails)
@@ -550,7 +550,7 @@ export function capabilityReaches(capability: CapabilityWord, bracket: StageBrac
 
 `packages/harness/delegations/capability.test.ts`: `AB-6 build and review reach the build package, iterate reaches iterate, none reaches nothing`. `sim/kernel/capability-brackets.test.ts`: `AB-6 a delegated claim outside its capability's bracket is refused pickup_not_allowed, and poll does not offer it`; `AB-6 a person's claim is not narrowed by any capability`.
 
-`apps/uw-app/mcp/harness-verbs.pg.test.ts`: `PE-7 submit_to_gate attaches pages before its validators run`.
+`apps/uw-platform/mcp/harness-verbs.pg.test.ts`: `PE-7 submit_to_gate attaches pages before its validators run`.
 
 - [ ] **Step 2:** Run the files above and `pnpm sim -- PE-7.iterate-reads-measurements-and-routes-a-labelled-revision`; expected FAIL.
 - [ ] **Step 3:** Implement.
@@ -559,7 +559,7 @@ export function capabilityReaches(capability: CapabilityWord, bracket: StageBrac
 Run: `pnpm format && TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/uw_test pnpm verify`
 
 ```bash
-git add packages/harness sim apps/uw-app
+git add packages/harness sim apps/uw-platform
 git commit -m "feat(harness): measurements and their query, revisions routed to learning_attached at submit, and capability brackets for delegated work
 
 PE-7 KN-7 AB-6"
@@ -572,8 +572,8 @@ PE-7 KN-7 AB-6"
 **Requirements:** PE-5 (Builder is a page; held premises counted per persona), PE-6 (Reviewer's identity, toolset and rounds), PE-7 (Iterate's page).
 
 **Files:**
-- Create: `packages/harness/templates/personas.ts`, `packages/harness/templates/personas.test.ts`, `packages/harness/github/builder.ts`, `packages/harness/runs/rounds.ts`, `sim/kernel/review-rounds.test.ts`, `sim/scenarios/PE-5.builder-is-a-page-and-a-held-premise-is-counted.ts`, `sim/scenarios/PE-6.three-review-rounds-hand-the-item-to-a-person.ts`, `apps/uw-app/commands/template-personas.pg.test.ts`
-- Modify: `packages/harness/github/reviewers.ts` and `packages/harness/github/reviewers.test.ts`, `packages/harness/runs/review.ts` (`postReview` counts rounds), `packages/harness/items/fold.ts` and `packages/harness/items/fold.test.ts` (`handed_to_person`), `packages/harness/index.ts`, `apps/uw-app/commands/capabilities.ts` (`pages.draftPersonas`), `apps/uw-app/commands/person/stages.ts` (`activateTemplateCommand` drafts the template's personas after an accepted activation), `tools/architecture/command-handlers.test.ts` if the new capability needs listing
+- Create: `packages/harness/templates/personas.ts`, `packages/harness/templates/personas.test.ts`, `packages/harness/github/builder.ts`, `packages/harness/runs/rounds.ts`, `sim/kernel/review-rounds.test.ts`, `sim/scenarios/PE-5.builder-is-a-page-and-a-held-premise-is-counted.ts`, `sim/scenarios/PE-6.three-review-rounds-hand-the-item-to-a-person.ts`, `apps/uw-platform/commands/template-personas.pg.test.ts`
+- Modify: `packages/harness/github/reviewers.ts` and `packages/harness/github/reviewers.test.ts`, `packages/harness/runs/review.ts` (`postReview` counts rounds), `packages/harness/items/fold.ts` and `packages/harness/items/fold.test.ts` (`handed_to_person`), `packages/harness/index.ts`, `apps/uw-platform/commands/capabilities.ts` (`pages.draftPersonas`), `apps/uw-platform/commands/person/stages.ts` (`activateTemplateCommand` drafts the template's personas after an accepted activation), `tools/architecture/command-handlers.test.ts` if the new capability needs listing
 
 **Fixtures** (`packages/harness/templates/personas.ts`):
 
@@ -649,7 +649,7 @@ export function roundsSinceEntry(events: readonly HarnessEvent[], stageKey: stri
 
 `sim/kernel/review-rounds.test.ts`: `PE-6 the third request_changes round hands the item to the delegating person`; `PE-6 rounds count only since the item last entered its stage`; `PE-6 an approve does not count as a round`. `packages/harness/items/fold.test.ts`: `PE-6 handed_to_person makes the person the holder with no lease` (and the projection-equals-replay property in `tools/properties/` still passes; extend its generator with the event).
 
-`apps/uw-app/commands/template-personas.pg.test.ts`: `PE-5 activating the software template drafts Builder and both Reviewers as suggested persona pages`; `PE-7 activating the BML template drafts Iterate`; a second activation of another harness from the same template skips taken slugs (titled without an ID).
+`apps/uw-platform/commands/template-personas.pg.test.ts`: `PE-5 activating the software template drafts Builder and both Reviewers as suggested persona pages`; `PE-7 activating the BML template drafts Iterate`; a second activation of another harness from the same template skips taken slugs (titled without an ID).
 
 - [ ] **Step 2:** Run the files above and both scenarios; expected FAIL.
 - [ ] **Step 3:** Implement.
@@ -658,7 +658,7 @@ export function roundsSinceEntry(events: readonly HarnessEvent[], stageKey: stri
 Run: `pnpm format && TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/uw_test pnpm verify`
 
 ```bash
-git add packages/harness sim apps/uw-app tools
+git add packages/harness sim apps/uw-platform tools
 git commit -m "feat(harness): Builder, Reviewer and Iterate are template persona pages; Reviewer identities name their persona; a third review round hands the item to a person
 
 PE-5 PE-6 PE-7"
@@ -672,8 +672,8 @@ PE-5 PE-6 PE-7"
 
 **Files:**
 - Create (commit 1, shared root `infra/`): `infra/github/builder-app-manifest.json` (name `uw-builder`, `default_permissions`: `contents: write`, `pull_requests: write`, `metadata: read`; no `default_events`; no webhook), `infra/README.md` section "The Builder GitHub App (PE-5)" (register from the manifest, install on `unfoldingWord/uw-platform` only, set the three secrets with `wrangler secret put`)
-- Create (commit 2): `apps/uw-app/github/builder-app.ts` (config from `BUILDER_GITHUB_APP_ID`, `BUILDER_GITHUB_APP_INSTALLATION_ID`, `BUILDER_GITHUB_APP_PRIVATE_KEY`; `builderToken(env, repository): Promise<string> | null` minting one installation token scoped to that one repository with `contents: write`, `pull_requests: write`, `metadata: read`, through the existing token module), `apps/uw-app/github/builder-app.test.ts`, `apps/uw-app/engines/sandbox/github-egress.ts`, `apps/uw-app/engines/sandbox/github-egress.test.ts`, `apps/uw-app/engines/sandbox/pkt-line.ts`, `apps/uw-app/engines/sandbox/pkt-line.test.ts`
-- Modify: `apps/uw-app/engines/sandbox/egress.ts` (`EgressRoutes.github: GitHubEgress | null`), `apps/uw-app/engines/claude-code-sandbox/work.ts` (the repository setup and the build tools), `apps/uw-app/engines/claude-code-sandbox/work.test.ts`, `apps/uw-app/runs/run-core.ts` (build `github` routes for a `build` run on a sandbox engine of a harness with a repository; null otherwise), `apps/uw-app/runs/deps.ts`, `apps/uw-app/env.ts` (the three optional secrets), `packages/harness/risk/protected-directories.ts` and `packages/harness/risk/risk.test.ts` (`apps/uw-app/engines/sandbox/` → `acl`), `.dependency-cruiser.mjs` (`apps/uw-app/github/builder-app.ts` imported only by `apps/uw-app/runs/deps.ts` and tests), `tools/architecture/no-live-account.test.ts` only if it lists secret names
+- Create (commit 2): `apps/uw-platform/github/builder-app.ts` (config from `BUILDER_GITHUB_APP_ID`, `BUILDER_GITHUB_APP_INSTALLATION_ID`, `BUILDER_GITHUB_APP_PRIVATE_KEY`; `builderToken(env, repository): Promise<string> | null` minting one installation token scoped to that one repository with `contents: write`, `pull_requests: write`, `metadata: read`, through the existing token module), `apps/uw-platform/github/builder-app.test.ts`, `apps/uw-platform/engines/sandbox/github-egress.ts`, `apps/uw-platform/engines/sandbox/github-egress.test.ts`, `apps/uw-platform/engines/sandbox/pkt-line.ts`, `apps/uw-platform/engines/sandbox/pkt-line.test.ts`
+- Modify: `apps/uw-platform/engines/sandbox/egress.ts` (`EgressRoutes.github: GitHubEgress | null`), `apps/uw-platform/engines/claude-code-sandbox/work.ts` (the repository setup and the build tools), `apps/uw-platform/engines/claude-code-sandbox/work.test.ts`, `apps/uw-platform/runs/run-core.ts` (build `github` routes for a `build` run on a sandbox engine of a harness with a repository; null otherwise), `apps/uw-platform/runs/deps.ts`, `apps/uw-platform/env.ts` (the three optional secrets), `packages/harness/risk/protected-directories.ts` and `packages/harness/risk/risk.test.ts` (`apps/uw-platform/engines/sandbox/` → `acl`), `.dependency-cruiser.mjs` (`apps/uw-platform/github/builder-app.ts` imported only by `apps/uw-platform/runs/deps.ts` and tests), `tools/architecture/no-live-account.test.ts` only if it lists secret names
 
 **`GitHubEgress`** (`github-egress.ts`):
 
@@ -697,16 +697,16 @@ It answers `null` for a host other than `github.com` and `api.github.com` (so `e
 
 - [ ] **Step 1: Write the failing tests**
 
-`apps/uw-app/engines/sandbox/github-egress.test.ts` (a fake `fetch` recording requests):
+`apps/uw-platform/engines/sandbox/github-egress.test.ts` (a fake `fetch` recording requests):
 - `PE-5 a push to harness/<item> is forwarded with the Builder token injected`
 - `PE-5 a push naming another ref, a second ref or a delete is refused` (Review Focus 4)
 - `PE-5 a pull request is opened only from harness/<item> into the default branch with a parseable harness declaration`
 - `PE-5 another repository and any other GitHub path are refused`
 - `PE-5 the sandbox's own credentials are dropped and the token never reaches the sandbox`
 
-`pkt-line.test.ts`: `PE-5 ref updates are read from the receive-pack request up to the first flush` (with a capability tail, a malformed length and a missing flush). `builder-app.test.ts`: `PE-5 the Builder token is scoped to one repository with contents and pull request write, and is not wired without its secrets`. `apps/uw-app/engines/claude-code-sandbox/work.test.ts`: `PE-5 a hosted Builder clones from the expected head onto harness/<item> with no token in its environment, files or commands`. `packages/harness/risk/risk.test.ts`: `KN-17 the sandbox egress is in the acl domain` (it proves the map row).
+`pkt-line.test.ts`: `PE-5 ref updates are read from the receive-pack request up to the first flush` (with a capability tail, a malformed length and a missing flush). `builder-app.test.ts`: `PE-5 the Builder token is scoped to one repository with contents and pull request write, and is not wired without its secrets`. `apps/uw-platform/engines/claude-code-sandbox/work.test.ts`: `PE-5 a hosted Builder clones from the expected head onto harness/<item> with no token in its environment, files or commands`. `packages/harness/risk/risk.test.ts`: `KN-17 the sandbox egress is in the acl domain` (it proves the map row).
 
-- [ ] **Step 2:** Run `pnpm vitest run apps/uw-app/engines apps/uw-app/github/builder-app.test.ts packages/harness/risk`; expected FAIL.
+- [ ] **Step 2:** Run `pnpm vitest run apps/uw-platform/engines apps/uw-platform/github/builder-app.test.ts packages/harness/risk`; expected FAIL.
 - [ ] **Step 3:** Implement: the infra commit first.
 - [ ] **Step 4: Verify and commit**
 
@@ -719,7 +719,7 @@ git commit -m "build(infra): the Builder GitHub App manifest
 Shared root infra/: hosted Builder's own identity, contents and pull request write on one repository.
 
 PE-5"
-git add apps/uw-app packages/harness/risk .dependency-cruiser.mjs tools
+git add apps/uw-platform packages/harness/risk .dependency-cruiser.mjs tools
 git commit -m "feat(engines): hosted Builder pushes harness/<item> and opens its declared pull request through the egress proxy, which holds the token
 
 PE-5"
@@ -732,8 +732,8 @@ PE-5"
 **Requirements:** PE-4, PE-2 (the toolset form), PE-3 (Activate shown only to an admin).
 
 **Files:**
-- Create: `packages/harness/personas/dashboard.ts`, `packages/harness/personas/toolset-options.ts`, `packages/harness/personas/toolset-options.test.ts`, `sim/kernel/persona-dashboard.test.ts`, `apps/uw-app/personas/routes.tsx`, `apps/uw-app/personas/view.tsx`, `apps/uw-app/personas/toolset-form.tsx`, `apps/uw-app/personas/routes.pg.test.ts`, `apps/uw-app/personas/view.test.ts`
-- Modify: `packages/harness/reads/index.ts` (`personaDashboard`), `packages/harness/index.ts`, `apps/uw-app/app.tsx` (`app.route('/personas', personaRoutes(deps, person))` after `withPrincipal`, and a "Personas" link is not added: the view is reached from a persona page link), `tools/architecture/command-routes.test.ts` and `tools/architecture/person-surface-rules.test.ts` if they enumerate person routes
+- Create: `packages/harness/personas/dashboard.ts`, `packages/harness/personas/toolset-options.ts`, `packages/harness/personas/toolset-options.test.ts`, `sim/kernel/persona-dashboard.test.ts`, `apps/uw-platform/personas/routes.tsx`, `apps/uw-platform/personas/view.tsx`, `apps/uw-platform/personas/toolset-form.tsx`, `apps/uw-platform/personas/routes.pg.test.ts`, `apps/uw-platform/personas/view.test.ts`
+- Modify: `packages/harness/reads/index.ts` (`personaDashboard`), `packages/harness/index.ts`, `apps/uw-platform/app.tsx` (`app.route('/personas', personaRoutes(deps, person))` after `withPrincipal`, and a "Personas" link is not added: the view is reached from a persona page link), `tools/architecture/command-routes.test.ts` and `tools/architecture/person-surface-rules.test.ts` if they enumerate person routes
 
 **Kernel read** (`packages/harness/personas/dashboard.ts`):
 
@@ -769,7 +769,7 @@ export type PersonaDashboard = {
 
 `toolsetOptions(principal, area, at, registry = verbRegistry): readonly VerbName[]`: served registry verbs (`servedInV1`), never a forbidden name, that `principal` reaches by the same rule as `toolCheck`'s `reaches` (export that helper from `tool-check.ts` and reuse it), in registry order.
 
-**Routes** (`apps/uw-app/personas/routes.tsx`, every route behind `withPrincipal`; the POSTs behind `csrf()` from `hono/csrf`):
+**Routes** (`apps/uw-platform/personas/routes.tsx`, every route behind `withPrincipal`; the POSTs behind `csrf()` from `hono/csrf`):
 - `GET /:pageId` → `personaDashboard`; `page_not_found` answers a 404 page saying "This page does not exist or you cannot see it."; otherwise the view.
 - `POST /:pageId/activate` (form fields `expectedVersion`, `requestId`, both rendered into hidden inputs, the request id a fresh UUID per render) → `executeCommand({ name: 'activate_persona', harness: <the persona's harness id>, body: { command: 'activate_persona', requestId, pageId, expectedVersion }, principal, traceId, at }, scope)` with the same `DispatchScope` the command routes build, then re-render the view with the outcome beside the button.
 - `POST /:pageId/toolset` (form fields `expectedVersion`, `requestId`, `verb` repeated) → reads the page, keeps only verbs in `toolsetOptions`, and calls the page owner's `updatePage` with the page's other fields unchanged and `frontmatter.toolset` replaced; re-render with the outcome beside the form.
@@ -787,22 +787,22 @@ export type PersonaDashboard = {
 - `PE-5 held premises are counted per persona on its dashboard`
 - `PE-3 Activate is offered only to a person holding admin on the harness's area, and only while the persona is suggested`
 
-`apps/uw-app/personas/routes.pg.test.ts`:
+`apps/uw-platform/personas/routes.pg.test.ts`:
 - `PE-4 a persona page opens on its dashboard`
 - `PE-3 the Activate form activates the persona through the command dispatcher and shows the outcome in place` (and a stale `expectedVersion` shows `stale_version` beside the button)
 - `PE-2 the toolset form saves only offered verbs and requires_tools follows`
 - a POST without a same-origin `Origin` is refused by `csrf()` (titled without an ID)
 
-`apps/uw-app/personas/view.test.ts` (jsdom and `axe-core`, as `packages/ui` tests do): `PE-4 the persona view renders in light and dark with an accessible name on every control`; Kindle appears only on Activate (titled without an ID).
+`apps/uw-platform/personas/view.test.ts` (jsdom and `axe-core`, as `packages/ui` tests do): `PE-4 the persona view renders in light and dark with an accessible name on every control`; Kindle appears only on Activate (titled without an ID).
 
-- [ ] **Step 2:** Run `pnpm vitest run packages/harness/personas sim/kernel/persona-dashboard.test.ts apps/uw-app/personas`; expected FAIL.
+- [ ] **Step 2:** Run `pnpm vitest run packages/harness/personas sim/kernel/persona-dashboard.test.ts apps/uw-platform/personas`; expected FAIL.
 - [ ] **Step 3:** Implement. Load the view at 390 px wide in light and dark if a browser is available; if not, record it under "Not verified" in Task 9.
 - [ ] **Step 4: Verify and commit**
 
 Run: `pnpm format && TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/uw_test pnpm verify`
 
 ```bash
-git add packages/harness sim apps/uw-app tools
+git add packages/harness sim apps/uw-platform tools
 git commit -m "feat(personas): a persona page opens on its dashboard, with the toolset form and Activate for an admin
 
 PE-2 PE-3 PE-4 PE-5"

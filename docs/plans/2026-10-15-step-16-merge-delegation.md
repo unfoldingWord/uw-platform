@@ -2,7 +2,7 @@
 
 **Goal:** A person holding `admin` on a harness's area can lend one agent persona the Ship exit for merges, up to `low` or `standard`, until an expiry. An agent holding that merge delegation claims an item at Ship and submits it; the kernel locks and re-reads the delegation and the grantor's grants, runs the ship rule with the delegation as an input, and either writes one gate decision whose approver is the grantor, whose actor is the agent and whose `delegation_id` names the delegation, or records `ship_refused` and leaves the item parked for a person. The merge then runs from the system's minute job, which runs the ship rule once more and re-checks the delegation before merging. The database refuses an agent actor without a delegation, a delegated row that is not a merge approval, and a delegation of another harness. The static checks allow exactly this one agent-reachable writer by name and fail on a planted second. The merge shows on the Gates screen, in the play-by-play, on `/health`, and as a `delegated_merge` wake at rank 2 to the grantor. A joined pull request (check-only harness, no `harness/<item>` branch) can now merge at Ship, by a person or under a delegation.
 
-**Architecture:** The decision half lives in `packages/harness/gates/delegated-ship.ts` and runs inside the `submit_to_gate` transaction, after the item parks; its writer is one named function, `recordDelegatedDecision`. The merge half lives in `packages/harness/gates/delegated-exits.ts` (`gates.exitDelegated`, system principal only) and reuses step 15's `exitAfterDecision` and its exit guard, which learns to re-check a delegation. The agent's request never holds a GitHub write client (ADR 0009 stands for the agent path); the minute cron builds the one extra GitHub-wired kernel in `apps/uw-app/cron/delegated-exits.ts`. The ship rule stays pure: its input gains `delegation` (`delegationId`, `maxTier`, and the protected paths the change touches), and two predicates. `delegableExit(stage)` (human approval with the `merge` connector) is the one definition of where a delegation may act, shared by claim, poll, submit, the template property and the walk-based MD-4 property. The merge connector accepts a joined pull request's own head ref, still pinned to the evaluated head SHA, the harness repository and the default branch.
+**Architecture:** The decision half lives in `packages/harness/gates/delegated-ship.ts` and runs inside the `submit_to_gate` transaction, after the item parks; its writer is one named function, `recordDelegatedDecision`. The merge half lives in `packages/harness/gates/delegated-exits.ts` (`gates.exitDelegated`, system principal only) and reuses step 15's `exitAfterDecision` and its exit guard, which learns to re-check a delegation. The agent's request never holds a GitHub write client (ADR 0009 stands for the agent path); the minute cron builds the one extra GitHub-wired kernel in `apps/uw-platform/cron/delegated-exits.ts`. The ship rule stays pure: its input gains `delegation` (`delegationId`, `maxTier`, and the protected paths the change touches), and two predicates. `delegableExit(stage)` (human approval with the `merge` connector) is the one definition of where a delegation may act, shared by claim, poll, submit, the template property and the walk-based MD-4 property. The merge connector accepts a joined pull request's own head ref, still pinned to the evaluated head SHA, the harness repository and the default branch.
 
 **Tech Stack:** TypeScript strict, Zod 4, Drizzle and drizzle-kit, Vitest 4 (node project and the Postgres service), Hono JSX for the Gates screen and the play-by-play, the sim over the embedded Postgres Store, dependency-cruiser rules in `tools/architecture/cruise/`.
 
@@ -19,14 +19,14 @@
 | S16-R1. A delegated Ship exit starts from a claim. Ship keeps `agentPickup: 'none'`; the one exception is a stage where `delegableExit(stage)` holds (`exitGate` `human_approval` and `connector` `merge`): an agent presenting a live `merge` delegation may claim there, and `poll_queue` offers such items to an actor whose reach includes `merge`. `merge` reaches no other stage, so it is not added to `capabilityReaches`' bracket map. `pageAgrees` does not apply to `merge`: the persona page names what the persona does at its own stages, and the merge delegation is a person lending it one exit | Any persona can be lent the exit, Reviewer included; the grant is an admin act naming the persona, and it is visible on `/health` |
 | S16-R2. `delegation_required` (MD-4): an agent claim or submit at a delegable exit with no delegation records `delegation_required` and is refused with it; a submit there whose claim carries a delegation whose capability is not `merge` is refused the same way. An agent claim there with a non-merge delegation stays `pickup_not_allowed`. Stages that are not delegable exits keep v0.1.0's `pickup_not_allowed` (KN-5 unchanged) | An agent that wandered into Ship sees `delegation_required` rather than `pickup_not_allowed`; both say "a person decides here" |
 | S16-R3. The decision is written in the agent's `submit_to_gate` transaction, after the item parks, on the read-model facts (`githubFacts.pullRequest`), because the agent's kernel holds no GitHub client. The submit answers `parked` either way: `failures` is empty when the decision was written and lists the ship rule's reasons when it refused. A refusal records `ship_refused` and leaves the item parked for a person; no decision row is written. A shadow harness, or an item with a loop `gateTarget`, never takes the delegated exit: it parks for a person (consistent with S14-R9) and `failures` says `shadow` or `gate_target`; a delegation that lapsed between the claim check and the lock says `delegation_lapsed` | An agent must read empty `failures` at Ship as "approved, merging"; a submit result value for it would be a contract change later |
-| S16-R4. The merge runs from the system's minute job, not on the agent's request: `kernel.gates.exitDelegated` (system principal only) takes delegated decisions from the last 15 minutes (`CONNECTOR_TIMEOUT_MS`) that have no connector outcome, refreshes the facts for the base, and runs step 15's `exitAfterDecision`, whose guard refreshes again, re-checks the delegation's liveness and the grantor's grants, and re-runs the ship rule with the delegation before the connector. Past 15 minutes a person's `recover_connectors` handles it as today. The cron builds the one GitHub-wired kernel for this in `apps/uw-app/cron/delegated-exits.ts`; ADR 0010 records it | A merge lands up to a minute after the agent submits; one more file holds GitHub merge wiring, reachable only from the scheduled handler and refused to every principal but the system's |
+| S16-R4. The merge runs from the system's minute job, not on the agent's request: `kernel.gates.exitDelegated` (system principal only) takes delegated decisions from the last 15 minutes (`CONNECTOR_TIMEOUT_MS`) that have no connector outcome, refreshes the facts for the base, and runs step 15's `exitAfterDecision`, whose guard refreshes again, re-checks the delegation's liveness and the grantor's grants, and re-runs the ship rule with the delegation before the connector. Past 15 minutes a person's `recover_connectors` handles it as today. The cron builds the one GitHub-wired kernel for this in `apps/uw-platform/cron/delegated-exits.ts`; ADR 0010 records it | A merge lands up to a minute after the agent submits; one more file holds GitHub merge wiring, reachable only from the scheduled handler and refused to every principal but the system's |
 | S16-R5. `gate_decisions.actor` keeps its meaning and its check `gate_decisions_actor_is_human`, which is "the approver is a human principal", unchanged. Two nullable columns are added: `agent_actor` (an `agent:` identity) and `delegation_id`. New checks: `gate_decisions_agent_with_delegation` (`(agent_actor IS NULL) = (delegation_id IS NULL)`, MD-3's "requires `delegation_id` whenever the actor is an agent identity"), `gate_decisions_agent_actor_is_agent`, and `gate_decisions_delegated_approves_merge` (a delegated row is an `approve` whose evidence names the `merge` connector, MD-4's database half). A composite foreign key `(delegation_id, harness_id)` to `delegations (id, harness_id)` pins the delegation to the decision's harness. That the approver equals the delegation's grantor is enforced by the kernel and pinned by a test, not by the database | A future writer could record a grantor other than the delegation's person; the MD-5 check allows one writer, and its test pins the equality |
 | S16-R6. The approver principal is the grantor: `personId` from the locked delegation, grants from `grants.lockAndReread` inside the transaction, and the email from `grants.holders(area)` read before the transaction (it refuses to run inside one). A grantor missing from the holders has lost `admin`, which `livenessOf` also finds; either way the exit records the lapse reason in `failures` and the item parks for a person | One extra read of the area's holders per delegated submit |
 | S16-R7. "Protected directory" is the union of the kernel's `protectedDirectories` (`packages/harness/risk/protected-directories.ts`, this repository's paths, each also flooring the tier to `high` with a domain) and a new harness column `protected_paths` for any other repository: a list of at most 50 repository-relative paths, set at activation (`activate_template.protectedPaths`, default `[]`), a trailing `/` meaning a directory, matched with the same normalisation as the risk floor. The column affects only a delegated exit, never the risk tier. Changed paths the facts cannot name (no comparison at the head) fail closed as `protected_path_needs_person` | A joined repository's list changes only by re-activation, like S14-R2 and S15-R1 |
 | S16-R8. `max_tier`: a `merge` grant must name `low` or `standard`; `high` is refused `tier_not_delegable`, no tier is refused `malformed_command` (`why: max_tier_required`), and a tier on any other capability is refused `malformed_command` (`why: max_tier_only_for_merge`). The database holds both rules (`delegations_max_tier_known`, `delegations_merge_has_max_tier`). Supersession keeps working: a superseding grant names its own tier | None beyond one more field on the grant form |
 | S16-R9. `delegated_merge` is recorded with `connector_succeeded` in the exit (not at the decision), carrying the decision, the delegation, the grantor's id and email, the persona, the expiry and the tier, so the play-by-play and the wake say "merged" only after GitHub merged. The decision row's evidence carries the same object under `delegation`, so recovery can record it too. The wake goes to the grantor if they can still read the harness, at rank 2, by push and the hub only (not posted to Zulip). A parked `submitted_to_gate` followed in the same commit by a `gate_approved` for the same item wakes no `gate_waiting` | A Zulip reader learns of delegated merges from the screens, not the channel; adding it is one map entry |
 | S16-R10. A joined pull request merges at its own head ref. `ConnectorRequest` gains `joined` (`item.branchState === 'none' && item.pullRequest !== null`, the S14-R6 combination, now one exported function `joinedPullRequest`); the merge connector skips only the `harness/<item>` head-ref check for it. Everything else still holds: head repository is the harness repository (no forks), live head equals the evaluated head (`sha` guard on the merge), base is the default branch and equals the decided base. The tag is still `harness/<item>` | The platform writes a `harness/<uuid>` tag into a joined repository on every merge; dropping it is one line |
-| S16-R11. MD-5 has two halves. Kernel: a new check finds every write of `gate_decisions` in `apps/`, `packages/` (not `packages/db/` or the port-contract suites) and `sim/`, names its enclosing top-level function, and allows exactly `packages/harness/gates/decide.ts#recordDecision` and `packages/harness/gates/delegated-ship.ts#recordDelegatedDecision`; the import closure of `packages/harness/items/`, `runs/` and `reads/` (what the agent verbs call) must contain the second and never `gates/decide.ts`. App: AB-7's static check allows exactly `kernel.gates.exitDelegated(` in exactly `apps/uw-app/cron/delegated-exits.ts`; the GH-6 wiring checks and the dependency-cruiser roots name that file too | A token-level check can be evaded by an unusual syntax, as AB-7's can; the runtime refusals and the database checks are the enforcement |
+| S16-R11. MD-5 has two halves. Kernel: a new check finds every write of `gate_decisions` in `apps/`, `packages/` (not `packages/db/` or the port-contract suites) and `sim/`, names its enclosing top-level function, and allows exactly `packages/harness/gates/decide.ts#recordDecision` and `packages/harness/gates/delegated-ship.ts#recordDelegatedDecision`; the import closure of `packages/harness/items/`, `runs/` and `reads/` (what the agent verbs call) must contain the second and never `gates/decide.ts`. App: AB-7's static check allows exactly `kernel.gates.exitDelegated(` in exactly `apps/uw-platform/cron/delegated-exits.ts`; the GH-6 wiring checks and the dependency-cruiser roots name that file too | A token-level check can be evaded by an unusual syntax, as AB-7's can; the runtime refusals and the database checks are the enforcement |
 | S16-R12. AGENTS.md gains the one section 10 line the design names, and rules 2 and 3 each gain a clause pointing at it, because without them the file contradicts itself (rule 3 says `gate_decisions` is written only by the gate command for a human principal) | Three lines change instead of one |
 | S16-R13. The contract moves one minor version for the step (expected `13.0.0` to `13.1.0`): new enum values, a new enum, and fields with defaults | None; the lock test enforces the rule |
 | S16-R14. MD-6's Gates view is a "Merged under a delegation" list on the Gates screen: the last 7 days' `delegated_merge` events on harnesses the person administers, newest first, each "Merged under a delegation granted by *email* until *expiry*" with a link to the item. `/health`'s live delegations indicator says how many live delegations are merge delegations, and its drill-through rows gain a `max tier` column | A person who wants the record older than a week reads the play-by-play |
@@ -93,7 +93,7 @@ Every task obeys every line here. The controller passes this section to each imp
 
 **Shared roots**
 
-- `docs/adr/`, `prd/Harness v1 - Architecture.md` and `docs/PRD.md` section 18 (Task 1, one commit, as MD-1 requires), `AGENTS.md` (Task 1), `CONTEXT.md` (Task 1), `packages/contracts/` (Task 2), `packages/db/schema.ts` with the migration (Task 3), `packages/harness/ports.ts`, `packages/harness/store-ports.ts` and its mirror `packages/db/store/types.ts` (Task 4), and `tools/architecture/` rules with `docs/exceptions.md` (Task 9) are shared roots. Each change to one is its own commit with no feature code, and the message names the root and why. `packages/db/store/`, `packages/db/test-seed.ts`, `apps/uw-app/generated/islands.ts` and the sim are not shared roots.
+- `docs/adr/`, `prd/Harness v1 - Architecture.md` and `docs/PRD.md` section 18 (Task 1, one commit, as MD-1 requires), `AGENTS.md` (Task 1), `CONTEXT.md` (Task 1), `packages/contracts/` (Task 2), `packages/db/schema.ts` with the migration (Task 3), `packages/harness/ports.ts`, `packages/harness/store-ports.ts` and its mirror `packages/db/store/types.ts` (Task 4), and `tools/architecture/` rules with `docs/exceptions.md` (Task 9) are shared roots. Each change to one is its own commit with no feature code, and the message names the root and why. `packages/db/store/`, `packages/db/test-seed.ts`, `apps/uw-platform/generated/islands.ts` and the sim are not shared roots.
 - Between Task 2's contracts commit and its follow-up commit `pnpm check` is red; between Task 2 and Task 3 `tools/db/drift.test.ts` is red (the event-name check derives from the enum); between Task 4's port commit and its binding commit `pnpm check` is red. Do each pair back to back.
 
 **Tests**
@@ -144,7 +144,7 @@ A harness can opt into one unattended Ship exit. A person holding `admin` on the
 - ADR 0002. No verb is added: `approve`, `merge`, `deploy`, `publish` and `advance` stay forbidden, and the MCP surface is unchanged. What changes is what the kernel does with `submit_to_gate` at a merge Ship stage when the claim carries a live merge delegation. An agent's request still never holds a GitHub write client.
 - ADR 0003. The Postgres check "the approver is a human principal" (`gate_decisions_actor_is_human`) is unchanged: the approver on a delegated row is the grantor. New checks: an agent actor requires a delegation (`gate_decisions_agent_with_delegation`), and a delegated row is a merge approval (`gate_decisions_delegated_approves_merge`); the delegation must belong to the decision's harness (a composite foreign key). The ship rule stays pure; its input gains the delegation's tier and the protected paths the change touches, and it refuses `tier_above_delegation` and `protected_path_needs_person`.
 - ADR 0005. The closed set of capability words gains `merge`, which alone carries `max_tier`; `high` is refused `tier_not_delegable`.
-- ADR 0009. The person surface is still the only place a person decides a gate. One more kernel wired with GitHub exists: the minute job's, in `apps/uw-app/cron/delegated-exits.ts`, which calls only `kernel.gates.exitDelegated` as the system principal, and the kernel refuses that call to everyone else. AB-7's static check allows exactly that call in exactly that file, and a new check allows exactly two functions to write `gate_decisions`: the gate command's `recordDecision` and the delegated Ship exit's `recordDelegatedDecision`.
+- ADR 0009. The person surface is still the only place a person decides a gate. One more kernel wired with GitHub exists: the minute job's, in `apps/uw-platform/cron/delegated-exits.ts`, which calls only `kernel.gates.exitDelegated` as the system principal, and the kernel refuses that call to everyone else. AB-7's static check allows exactly that call in exactly that file, and a new check allows exactly two functions to write `gate_decisions`: the gate command's `recordDecision` and the delegated Ship exit's `recordDelegatedDecision`.
 
 **What a delegation never covers.** Deploy and publish connectors (the database refuses a delegated row naming any connector but `merge`, and a property over every template's paths fails if a delegated exit could reach one), a changed file under a protected path (the kernel's protected directories and the harness's `protected_paths`), a change whose tier is above the delegation's, `high` at all, a shadow harness, and a loop target.
 
@@ -317,7 +317,7 @@ MD-2 MD-3 MD-4 MD-6."
 - Create: fixtures (Step 4)
 - Modify: `packages/contracts/contracts.test.ts` (new block), `packages/contracts/events.test.ts` (the vocabulary count)
 - Modify: `packages/contracts/contract-lock.json`, `packages/contracts/version.ts`
-- Second commit, not a shared root: `packages/harness/ship-rule.ts` (two predicates), `packages/harness/ship-rule.test.ts`, `packages/harness/notify/rank.ts`, `packages/harness/notify/plan.ts` (`screens`), `packages/harness/items/fold.ts` (`unchangedNames`), `packages/harness/gates/ship-input.ts` (`delegation: null`), every `Harness` literal `pnpm check` names, `apps/uw-app/generated/islands.ts` (regenerated)
+- Second commit, not a shared root: `packages/harness/ship-rule.ts` (two predicates), `packages/harness/ship-rule.test.ts`, `packages/harness/notify/rank.ts`, `packages/harness/notify/plan.ts` (`screens`), `packages/harness/items/fold.ts` (`unchangedNames`), `packages/harness/gates/ship-input.ts` (`delegation: null`), every `Harness` literal `pnpm check` names, `apps/uw-platform/generated/islands.ts` (regenerated)
 
 **Interfaces:**
 - Produces: `delegableTierSchema = z.enum(['low', 'standard'])`; `delegatedShipSchema = { delegationId: uuid, maxTier: DelegableTier, protectedTouched: string[] | null }`; `ShipRuleInput.delegation: DelegatedShip | null` (default `null`); `ShipRefusal` gains `protected_path_needs_person`, `tier_above_delegation`; `ErrorReason` gains those two and `tier_not_delegable`; `WakeReason` gains `delegated_merge`; `EventName` gains `delegated_merge`; `DelegatedMerge = { decisionId, delegationId, personId, email, persona, expiresAt, maxTier }`; `Harness.protectedPaths: string[]` (default `[]`); `CommandBody<'schedule_regular_tweak'>.maxTier: RiskTier | null` (default `null`, so `high` reaches the kernel to be refused `tier_not_delegable`); `CommandBody<'activate_template'>.protectedPaths: string[]` (default `[]`); `EventEvidence['delegation_granted'].maxTier: DelegableTier | null` (default `null`).
@@ -680,7 +680,7 @@ Expected: green. `tools/db/drift.test.ts` stays red until Task 3.
 - [ ] **Step 10: Commit**
 
 ```bash
-git add packages/harness apps/uw-app/generated/islands.ts
+git add packages/harness apps/uw-platform/generated/islands.ts
 git commit -m "feat(harness): the ship rule refuses a protected path or a tier above a delegation
 
 The two MD-4 predicates, which only a delegated exit's input can trip;
@@ -933,7 +933,7 @@ MD-2 MD-3 MD-4. S16-R5 S16-R7 S16-R8."
 
 **Files:**
 - Modify (shared-root commit): `packages/harness/store-ports.ts` and its mirror `packages/db/store/types.ts` (`Delegation.maxTier`; `DelegationsGateway.read.lock`; `GateDecisionRow.agentActor`, `GateDecisionRow.delegationId`; `GateDecisionsGateway.read.delegatedSince`), `packages/harness/ports.ts` (`ConnectorRequest.joined`)
-- Modify (binding commit): `packages/db/store/delegations.ts`, `packages/db/store/gate-decisions.ts`, `packages/db/store/rows.ts` (`toDelegation`, `toGateDecision`, `toHarness`), `packages/harness/gates/decide.ts` (`recordDecision`'s insert), `packages/harness/gates/exit.ts` (`requestOf`), `packages/harness/gates/ship-input.ts` (`joinedPullRequest`, `usableHead`), `packages/harness/delegations/commands.ts` (`draftOf` sets `maxTier: null`; Task 5 fills it), every `Delegation`, `GateDecisionRow` and `ConnectorRequest` literal `pnpm check` names (expect `packages/harness/port-contracts/store-delegations.ts`, `store-gateways.ts`, `connectors.ts`, `apps/uw-app/github/testing/merge-rig.ts`, `sim/lost-exit.ts`, `apps/uw-app/testing/lost-exit.ts`)
+- Modify (binding commit): `packages/db/store/delegations.ts`, `packages/db/store/gate-decisions.ts`, `packages/db/store/rows.ts` (`toDelegation`, `toGateDecision`, `toHarness`), `packages/harness/gates/decide.ts` (`recordDecision`'s insert), `packages/harness/gates/exit.ts` (`requestOf`), `packages/harness/gates/ship-input.ts` (`joinedPullRequest`, `usableHead`), `packages/harness/delegations/commands.ts` (`draftOf` sets `maxTier: null`; Task 5 fills it), every `Delegation`, `GateDecisionRow` and `ConnectorRequest` literal `pnpm check` names (expect `packages/harness/port-contracts/store-delegations.ts`, `store-gateways.ts`, `connectors.ts`, `apps/uw-platform/github/testing/merge-rig.ts`, `sim/lost-exit.ts`, `apps/uw-platform/testing/lost-exit.ts`)
 - Modify: `packages/harness/port-contracts/store-gateways.ts` (`describeGateDecisions`), `packages/harness/port-contracts/store-delegations.ts` (a `describeLockAndTier` block), `packages/harness/gates/ship-input.test.ts`
 
 **Interfaces:**
@@ -1180,13 +1180,13 @@ Every other literal `pnpm check` names: `maxTier: null` on a `Delegation`, `agen
 - [ ] **Step 5: Run the checks and the contract suites on both adapters**
 
 Run: `pnpm check && npx vitest run packages/harness/gates sim/kernel/gate-command.test.ts sim/kernel/recover.test.ts`
-Then: `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/postgres npx vitest run packages/db/store apps/uw-app/ports sim/adapters`
+Then: `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/postgres npx vitest run packages/db/store apps/uw-platform/ports sim/adapters`
 Expected: green, including the five new `describeGateDecisions` cases and `describeLockAndTier` on the sim Store and the platform Store, and `KN-1 gate_decisions takes only a human actor and is append-only`.
 
 - [ ] **Step 6: Commit**
 
 ```bash
-git add packages/db/store packages/harness apps/uw-app sim
+git add packages/db/store packages/harness apps/uw-platform sim
 git commit -m "feat(db): bind the delegation lock, the delegated decisions read and the joined request
 
 The Store locks a delegation for share and lists delegated decisions by
@@ -1204,11 +1204,11 @@ MD-2 MD-3 MD-4. S16-R5 S16-R10."
 
 **Files:**
 - Modify: `packages/harness/delegations/commands.ts` (`GrantInput.maxTier`, `tierOf`, `draftOf`, the grant event)
-- Modify: `apps/uw-app/commands/person/delegations.ts` (passes `maxTier`)
-- Modify: `apps/uw-app/commands/person/stages.ts` (`activate_template` passes `protectedPaths`)
+- Modify: `apps/uw-platform/commands/person/delegations.ts` (passes `maxTier`)
+- Modify: `apps/uw-platform/commands/person/stages.ts` (`activate_template` passes `protectedPaths`)
 - Modify: `sim/fixtures.ts` (`simDelegate`'s input gains `maxTier`; `createSimHarness` option `protectedPaths`)
 - Create: `sim/kernel/merge-delegation-grant.test.ts`
-- Modify: `apps/uw-app/commands/delegations.pg.test.ts` (one case)
+- Modify: `apps/uw-platform/commands/delegations.pg.test.ts` (one case)
 
 **Interfaces:**
 - Consumes: Task 2's `delegableTierSchema`, `schedule_regular_tweak.maxTier`, `activate_template.protectedPaths`, `delegation_granted.maxTier`; Task 4's `Delegation.maxTier`.
@@ -1306,7 +1306,7 @@ describe('MD-2 a merge delegation carries a tier, and only an admin grants one',
 
 If `readAllEvents` does not take `null` for harness-level events, read them the way `sim/kernel/stage-command.test.ts` does for `hosted_builder_set`. If `Refused`'s detail field has another name than `detail`, read `packages/harness/outcome.ts` and match it.
 
-`apps/uw-app/commands/delegations.pg.test.ts`, add beside `scheduled`:
+`apps/uw-platform/commands/delegations.pg.test.ts`, add beside `scheduled`:
 
 ```ts
 async function mergeTier(db: Database): Promise<void> {
@@ -1374,9 +1374,9 @@ The `delegation_granted` draft gains `maxTier: next.maxTier,` after `supersedes`
 
 - [ ] **Step 4: The app and the sim pass the new fields**
 
-`apps/uw-app/commands/person/delegations.ts`: destructure `maxTier` from `body` and add it to `input`.
+`apps/uw-platform/commands/person/delegations.ts`: destructure `maxTier` from `body` and add it to `input`.
 
-`apps/uw-app/commands/person/stages.ts`, `activateTemplateCommand`: pass `protectedPaths: body.protectedPaths` in `input`, beside steps 14 and 15's `shadow`, `externalReviewerIdentities` and `requiredChecks`.
+`apps/uw-platform/commands/person/stages.ts`, `activateTemplateCommand`: pass `protectedPaths: body.protectedPaths` in `input`, beside steps 14 and 15's `shadow`, `externalReviewerIdentities` and `requiredChecks`.
 
 `sim/fixtures.ts`: the local `GrantInput` gains `readonly maxTier?: RiskTier | null;` (import the type) and `simDelegate` calls `world.kernel.delegations.grant(simCaller(world, actor), { ...input, maxTier: input.maxTier ?? null })`. `SimHarnessOptions` gains `readonly protectedPaths?: readonly string[];` and `createSimHarness` passes `protectedPaths: options.protectedPaths ?? []` to `activate`.
 
@@ -1385,13 +1385,13 @@ Any other `kernel.delegations.grant(` call `pnpm check` names: add `maxTier: nul
 - [ ] **Step 5: Run the tests**
 
 Run: `pnpm check && npx vitest run sim/kernel/merge-delegation-grant.test.ts sim/kernel/delegations.test.ts sim/kernel/delegation-guard.test.ts`
-Then: `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/postgres npx vitest run apps/uw-app/commands/delegations.pg.test.ts apps/uw-app/commands/stages.pg.test.ts`
+Then: `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/postgres npx vitest run apps/uw-platform/commands/delegations.pg.test.ts apps/uw-platform/commands/stages.pg.test.ts`
 Expected: green.
 
 - [ ] **Step 6: Commit**
 
 ```bash
-git add packages/harness/delegations apps/uw-app/commands sim
+git add packages/harness/delegations apps/uw-platform/commands sim
 git commit -m "feat(harness): an admin grants a merge delegation up to low or standard
 
 A merge grant must name its tier; high is refused tier_not_delegable,
@@ -1428,7 +1428,7 @@ import { protectedAmong } from './protected-paths.ts';
 
 describe('MD-4 protected paths are the kernel list and the harness list', () => {
   it('MD-4 names a path under a kernel protected directory whatever the harness lists', () => {
-    expect(protectedAmong(['packages/db/migrations/0099_x.sql', 'apps/uw-app/board.tsx'], [])).toEqual([
+    expect(protectedAmong(['packages/db/migrations/0099_x.sql', 'apps/uw-platform/board.tsx'], [])).toEqual([
       'packages/db/migrations/0099_x.sql',
     ]);
   });
@@ -1467,8 +1467,8 @@ describe('MD-4 the ship-rule input carries the delegation and the protected path
 
   it('MD-4 names the changed paths the harness protects', () => {
     const source = sourceOf({});
-    const guarded = { ...source, harness: { ...source.harness, protectedPaths: ['apps/uw-app/'] }, delegation: lent };
-    expect(assembleShipInput(guarded).delegation?.protectedTouched).toEqual(['apps/uw-app/board.tsx']);
+    const guarded = { ...source, harness: { ...source.harness, protectedPaths: ['apps/uw-platform/'] }, delegation: lent };
+    expect(assembleShipInput(guarded).delegation?.protectedTouched).toEqual(['apps/uw-platform/board.tsx']);
   });
 
   it('MD-4 fails closed when the facts cannot name the changed paths at the head', () => {
@@ -1848,7 +1848,7 @@ describe('MD-3 an agent under a merge delegation takes the Ship exit, and the re
 
 describe('MD-4 what a merge delegation never covers', () => {
   it('MD-4 a protected path is refused protected_path_needs_person and the item waits for a person, who can approve', () =>
-    inScene({ protectedPaths: ['apps/uw-app/'] }, async (scene) => {
+    inScene({ protectedPaths: ['apps/uw-platform/'] }, async (scene) => {
       const loan = await simLendMerge(scene.world, scene.admin, { harnessId: scene.harnessId, maxTier: 'standard' });
       const submitted = await claimAndSubmit(scene, loan);
       expect(submitted).toMatchObject({ status: 'accepted', value: { result: 'parked', failures: ['protected_path_needs_person'] } });
@@ -2306,8 +2306,8 @@ MD-3 MD-4. S16-R1 S16-R2 S16-R3 S16-R6."
 - Modify: `packages/harness/gates/approve-at-ship.ts` (`ShipPorts` gains `grants`; `standingAtExit`; the exit guard uses it)
 - Modify: `packages/harness/gates/exit.ts` (`recordIn` appends `delegated_merge` with a delegated success)
 - Modify: `packages/harness/gates/recover.ts` (export `CONNECTOR_TIMEOUT_MS`; `DecidedRoute.delegated`; `delegatedOf`; `stuckAt`)
-- Modify: `apps/uw-app/github/merge.ts` (`Target.joined`, `identityRefusal`)
-- Modify: `apps/uw-app/github/merge.test.ts` (one block)
+- Modify: `apps/uw-platform/github/merge.ts` (`Target.joined`, `identityRefusal`)
+- Modify: `apps/uw-platform/github/merge.test.ts` (one block)
 - Create: `sim/kernel/delegated-exit.test.ts`
 - Create: `sim/scenarios/MD-3.an-agent-merges-under-a-delegation-and-the-grantor-is-the-approver.ts`
 
@@ -2454,7 +2454,7 @@ If `simAgent`'s identity for persona `shipper` is not `agent:shipper` (read `sim
 
 `sim/scenarios/MD-3.an-agent-merges-under-a-delegation-and-the-grantor-is-the-approver.ts` (id `'MD-3'`, the same import rules as Task 7's MD-4 scenario): the first case above end to end, asserting with `assert.deepEqual` the decision row's `actor`, `agentActor` and `delegationId`, then that `exitDelegated` as `simSystem()` advanced the item and the connector was called once; return `{ state: { approver, actor, merged } }`.
 
-`apps/uw-app/github/merge.test.ts`, append:
+`apps/uw-platform/github/merge.test.ts`, append:
 
 ```ts
 describe('MD-3 the merge connector merges a joined pull request at its own head ref, pinned to the evaluated head', () => {
@@ -2486,7 +2486,7 @@ describe('MD-3 the merge connector merges a joined pull request at its own head 
 
 - [ ] **Step 2: Run them and see them fail**
 
-Run: `npx vitest run sim/kernel/delegated-exit.test.ts apps/uw-app/github/merge.test.ts`
+Run: `npx vitest run sim/kernel/delegated-exit.test.ts apps/uw-platform/github/merge.test.ts`
 Expected: FAIL; `kernel.gates.exitDelegated` does not exist and a joined request is refused `head_ref_mismatch`.
 
 - [ ] **Step 3: The record and the guard**
@@ -2669,7 +2669,7 @@ and `createGateCommands` gains `exitDelegated: (caller, input) => exitDelegated(
 
 - [ ] **Step 5: The merge connector accepts a joined pull request's own ref**
 
-`apps/uw-app/github/merge.ts`: `Target` gains `readonly joined: boolean;`; `targetOf` returns `{ ...pullRequest, itemId, head, base, repository, title, overrideReason, joined: request.joined }`; `identityRefusal` becomes:
+`apps/uw-platform/github/merge.ts`: `Target` gains `readonly joined: boolean;`; `targetOf` returns `{ ...pullRequest, itemId, head, base, repository, title, overrideReason, joined: request.joined }`; `identityRefusal` becomes:
 
 ```ts
 function identityRefusal(target: Target, live: Live): Refusal | null {
@@ -2685,13 +2685,13 @@ Nothing else in the file changes: the merge still sends `sha: target.head` (the 
 
 - [ ] **Step 6: Run the tests**
 
-Run: `pnpm check && npx vitest run sim/kernel/delegated-exit.test.ts sim/kernel/delegated-ship.test.ts sim/kernel/merge-recheck.test.ts sim/kernel/exit-guard.test.ts sim/kernel/recover.test.ts sim/kernel/gate-command.test.ts tools/architecture/connector-callers.test.ts apps/uw-app/github/merge.test.ts` then `pnpm sim -- MD-3 && pnpm sim -- SR-3 && pnpm sim -- all`
+Run: `pnpm check && npx vitest run sim/kernel/delegated-exit.test.ts sim/kernel/delegated-ship.test.ts sim/kernel/merge-recheck.test.ts sim/kernel/exit-guard.test.ts sim/kernel/recover.test.ts sim/kernel/gate-command.test.ts tools/architecture/connector-callers.test.ts apps/uw-platform/github/merge.test.ts` then `pnpm sim -- MD-3 && pnpm sim -- SR-3 && pnpm sim -- all`
 Expected: green. `connector-callers` passes unchanged: `exitThroughConnector(` is still called only in `approve-at-ship.ts` and `exit.ts`, and the new files never name the connectors port.
 
 - [ ] **Step 7: Commit**
 
 ```bash
-git add packages/harness apps/uw-app/github sim
+git add packages/harness apps/uw-platform/github sim
 git commit -m "feat(harness): the minute job merges a delegated decision after checking it again
 
 gates.exitDelegated, for the system principal only, takes delegated
@@ -2712,11 +2712,11 @@ MD-3. S16-R4 S16-R9 S16-R10."
 **Files:**
 - Create (shared-root commit): `tools/architecture/gate-writers.ts`, `tools/architecture/gate-writers.test.ts`
 - Modify (shared-root commit): `tools/architecture/agent-boundary.ts` (`delegatedExitRoot`, `withoutDelegatedExitCall` in `gateTouches`), `tools/architecture/connector-callers.test.ts` (the two GH-6 lists), `tools/architecture/cruise/shared.mjs` (`readRoots`, `appConfigRoots`), `docs/exceptions.md` (one row), `docs/architecture.md` (the `gate_decisions` row and the AB-7 static row)
-- Create (feature commit): `apps/uw-app/cron/delegated-exits.ts`, `apps/uw-app/cron/delegated-exits.pg.test.ts`
-- Modify (feature commit): `apps/uw-app/cron/minute.ts` (one step)
+- Create (feature commit): `apps/uw-platform/cron/delegated-exits.ts`, `apps/uw-platform/cron/delegated-exits.pg.test.ts`
+- Modify (feature commit): `apps/uw-platform/cron/minute.ts` (one step)
 
 **Interfaces:**
-- Produces: `gateWriteSites(sources: SourceFiles): WriteSite[]` with `WriteSite = { readonly file: string; readonly fn: string }`; `agentKernelClosure(sources: SourceFiles): string[]`; `gateWriteViolations(sources: SourceFiles): string[]`; `PERSON_WRITER`, `DELEGATED_WRITER`; `runDelegatedExits(run: DelegatedRun)`, `exitDelegatedMerges(kernel, run)`, `delegatedExitKernel(run, github)`, `cronShipGitHub(env, clock)` in `apps/uw-app/cron/delegated-exits.ts`.
+- Produces: `gateWriteSites(sources: SourceFiles): WriteSite[]` with `WriteSite = { readonly file: string; readonly fn: string }`; `agentKernelClosure(sources: SourceFiles): string[]`; `gateWriteViolations(sources: SourceFiles): string[]`; `PERSON_WRITER`, `DELEGATED_WRITER`; `runDelegatedExits(run: DelegatedRun)`, `exitDelegatedMerges(kernel, run)`, `delegatedExitKernel(run, github)`, `cronShipGitHub(env, clock)` in `apps/uw-platform/cron/delegated-exits.ts`.
 
 - [ ] **Step 1: Write the failing checks and their planted cases**
 
@@ -2729,8 +2729,8 @@ import { agentKernelClosure, gateWriteSites, gateWriteViolations } from './gate-
 
 const real = repoSources();
 const delegatedShip = 'packages/harness/gates/delegated-ship.ts';
-const cronRoot = 'apps/uw-app/cron/delegated-exits.ts';
-const sneakVerb = 'apps/uw-app/mcp/verbs/merge-sneak.ts';
+const cronRoot = 'apps/uw-platform/cron/delegated-exits.ts';
+const sneakVerb = 'apps/uw-platform/mcp/verbs/merge-sneak.ts';
 
 function withPlanted(planted: Readonly<Record<string, string>>): SourceFiles {
   const texts = new Map(Object.entries(planted));
@@ -2805,7 +2805,7 @@ describe('MD-5 a planted second delegated writer fails', () => {
 
   it('MD-5 flags the exit call anywhere but the minute job\'s file, and any other gate call in that file', () => {
     const call = 'await kernel.gates.exitDelegated(caller, { limit: 50 });';
-    const elsewhere = 'apps/uw-app/cron/other-exits.ts';
+    const elsewhere = 'apps/uw-platform/cron/other-exits.ts';
     expect(touchedWith({ [sneakVerb]: call })).toEqual([sneakVerb]);
     expect(touchedWith({ [sneakVerb]: "import '../../cron/other-exits.ts';", [elsewhere]: call })).toEqual([elsewhere]);
     const widened = `${call}\nawait kernel.gates.decide(caller, input);`;
@@ -2815,7 +2815,7 @@ describe('MD-5 a planted second delegated writer fails', () => {
 });
 ```
 
-The tree assertions ("finds ... on the tree", "the minute job may call ...") pass only after the feature commit below adds `apps/uw-app/cron/delegated-exits.ts`; until then the cron file does not exist and they pass trivially. If `touchedWith({})` is not `[]` on the real tree, a real file fails AB-7: find it before going on.
+The tree assertions ("finds ... on the tree", "the minute job may call ...") pass only after the feature commit below adds `apps/uw-platform/cron/delegated-exits.ts`; until then the cron file does not exist and they pass trivially. If `touchedWith({})` is not `[]` on the real tree, a real file fails AB-7: find it before going on.
 
 - [ ] **Step 2: Run them and see them fail**
 
@@ -2927,7 +2927,7 @@ export function gateWriteViolations(sources: SourceFiles): string[] {
 `tools/architecture/agent-boundary.ts`, beside `personSurfaceCalls`:
 
 ```ts
-const delegatedExitRoot = 'apps/uw-app/cron/delegated-exits.ts';
+const delegatedExitRoot = 'apps/uw-platform/cron/delegated-exits.ts';
 const delegatedExitCall = /\bkernel\s*\.\s*gates\s*\.\s*exitDelegated\s*\(/g;
 
 function withoutDelegatedExitCall(file: string, text: string): string {
@@ -2944,17 +2944,17 @@ and in `gateTouches`:
 
 - [ ] **Step 5: GH-6 and dependency-cruiser name the one more GitHub-wired root**
 
-`tools/architecture/connector-callers.test.ts`: add `const delegatedExitRoot = 'apps/uw-app/cron/delegated-exits.ts';`. In `GH-6 the only kernel built with GitHub reads or the ship writes is the gate kernel`, add `delegatedExitRoot` to the expected list (keep it sorted; rename the title to `GH-6 MD-5 the only kernels built with GitHub reads or the ship writes are the gate kernel, the run host and the delegated exit job`). In `GH-6 the queue and cron roots name no ship or read wiring`, filter it out: `const roots = readOnlyRootFiles(sources()).filter((file) => file !== delegatedExitRoot);` (the planted `apps/uw-app/cron/n.ts` case still fails, so any other cron file stays read-only).
+`tools/architecture/connector-callers.test.ts`: add `const delegatedExitRoot = 'apps/uw-platform/cron/delegated-exits.ts';`. In `GH-6 the only kernel built with GitHub reads or the ship writes is the gate kernel`, add `delegatedExitRoot` to the expected list (keep it sorted; rename the title to `GH-6 MD-5 the only kernels built with GitHub reads or the ship writes are the gate kernel, the run host and the delegated exit job`). In `GH-6 the queue and cron roots name no ship or read wiring`, filter it out: `const roots = readOnlyRootFiles(sources()).filter((file) => file !== delegatedExitRoot);` (the planted `apps/uw-platform/cron/n.ts` case still fails, so any other cron file stays read-only).
 
-`tools/architecture/cruise/shared.mjs`: add `export const delegatedExitJob = '^apps/uw-app/cron/delegated-exits\\.ts$';`; append it to `readRoots`; change `appConfigRoots`' first entry to `'^apps/uw-app/(queue/worker|cron/github-sweep|cron/delegated-exits)\\.ts$'`. If `tools/architecture/planted-cruise.ts` asserts these lists, update its expectation the same way.
+`tools/architecture/cruise/shared.mjs`: add `export const delegatedExitJob = '^apps/uw-platform/cron/delegated-exits\\.ts$';`; append it to `readRoots`; change `appConfigRoots`' first entry to `'^apps/uw-platform/(queue/worker|cron/github-sweep|cron/delegated-exits)\\.ts$'`. If `tools/architecture/planted-cruise.ts` asserts these lists, update its expectation the same way.
 
 `docs/exceptions.md`, a new row after the 2026-10-03 AB-7 row:
 
 ```markdown
-| 2026-10-15 | Section 10: no agent identity can approve or merge past a human gate, as enforced by AB-7 (no gate call in the import closure of `apps/uw-app/index.ts`) and GH-6 (no GitHub-wired kernel in a cron root) | `apps/uw-app/cron/delegated-exits.ts`, `tools/architecture/agent-boundary.ts`, `tools/architecture/connector-callers.test.ts`, `tools/architecture/cruise/shared.mjs` | A merge under a delegation (ADR 0010) runs after the agent's request, from the minute job, which needs a kernel wired with GitHub and one call into `kernel.gates`. AB-7 allows exactly `kernel.gates.exitDelegated(` in exactly that file, and GH-6 and dependency-cruiser name that file as the one cron root holding GitHub wiring. The rule still holds at runtime: `exitDelegated` refuses every principal but the system's, only exits a decision the delegated Ship exit already recorded, and re-checks the delegation and the ship rule before the merge. The agent's request never holds a GitHub write client. | ADR 0010; S16-R4, S16-R11 |
+| 2026-10-15 | Section 10: no agent identity can approve or merge past a human gate, as enforced by AB-7 (no gate call in the import closure of `apps/uw-platform/index.ts`) and GH-6 (no GitHub-wired kernel in a cron root) | `apps/uw-platform/cron/delegated-exits.ts`, `tools/architecture/agent-boundary.ts`, `tools/architecture/connector-callers.test.ts`, `tools/architecture/cruise/shared.mjs` | A merge under a delegation (ADR 0010) runs after the agent's request, from the minute job, which needs a kernel wired with GitHub and one call into `kernel.gates`. AB-7 allows exactly `kernel.gates.exitDelegated(` in exactly that file, and GH-6 and dependency-cruiser name that file as the one cron root holding GitHub wiring. The rule still holds at runtime: `exitDelegated` refuses every principal but the system's, only exits a decision the delegated Ship exit already recorded, and re-checks the delegation and the ship rule before the merge. The agent's request never holds a GitHub write client. | ADR 0010; S16-R4, S16-R11 |
 ```
 
-`docs/architecture.md`: in the tables row for `gate_decisions` (line ~101), the writer becomes `the gate command for human principals, and the delegated Ship exit (ADR 0010)`; in the AB-7 table's Static row append: ` Since step 16, a second check (\`tools/architecture/gate-writers.ts\`) allows exactly two functions to write \`gate_decisions\`, \`recordDecision\` and \`recordDelegatedDecision\`, and the closure of the item, run and read commands must reach only the second; and \`kernel.gates.exitDelegated(…)\` is allowed in exactly \`apps/uw-app/cron/delegated-exits.ts\` (ADR 0010).`
+`docs/architecture.md`: in the tables row for `gate_decisions` (line ~101), the writer becomes `the gate command for human principals, and the delegated Ship exit (ADR 0010)`; in the AB-7 table's Static row append: ` Since step 16, a second check (\`tools/architecture/gate-writers.ts\`) allows exactly two functions to write \`gate_decisions\`, \`recordDecision\` and \`recordDelegatedDecision\`, and the closure of the item, run and read commands must reach only the second; and \`kernel.gates.exitDelegated(…)\` is allowed in exactly \`apps/uw-platform/cron/delegated-exits.ts\` (ADR 0010).`
 
 - [ ] **Step 6: Run the checks and commit (shared root `tools/architecture`)**
 
@@ -2980,7 +2980,7 @@ MD-5. S16-R4 S16-R11."
 
 - [ ] **Step 7: Write the failing job test**
 
-`apps/uw-app/cron/delegated-exits.pg.test.ts`:
+`apps/uw-platform/cron/delegated-exits.pg.test.ts`:
 
 ```ts
 import { randomUUID } from 'node:crypto';
@@ -3020,14 +3020,14 @@ describe.skipIf(!testServer)('MD-3 the minute job runs the delegated exits as th
 });
 ```
 
-Read `apps/uw-app/testing/kernel.ts` for `agentOf`'s signature and `packages/core/log` for `createLogger`'s sink type and the field the logger writes the fields under; adapt the two `toMatchObject` paths to it (the minute job's own test, `apps/uw-app/cron/minute.pg.test.ts`, reads its lines the same way). The kernel path itself is proven in the sim (Task 8) and the merge connector in `apps/uw-app/github/merge.test.ts`; the GitHub-wired run against a real repository is GL-1's (Task 11 records it under Not verified).
+Read `apps/uw-platform/testing/kernel.ts` for `agentOf`'s signature and `packages/core/log` for `createLogger`'s sink type and the field the logger writes the fields under; adapt the two `toMatchObject` paths to it (the minute job's own test, `apps/uw-platform/cron/minute.pg.test.ts`, reads its lines the same way). The kernel path itself is proven in the sim (Task 8) and the merge connector in `apps/uw-platform/github/merge.test.ts`; the GitHub-wired run against a real repository is GL-1's (Task 11 records it under Not verified).
 
-Run: `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/postgres npx vitest run apps/uw-app/cron/delegated-exits.pg.test.ts`
+Run: `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/postgres npx vitest run apps/uw-platform/cron/delegated-exits.pg.test.ts`
 Expected: FAIL, `./delegated-exits.ts` not found.
 
 - [ ] **Step 8: The job**
 
-`apps/uw-app/cron/delegated-exits.ts`:
+`apps/uw-platform/cron/delegated-exits.ts`:
 
 ```ts
 import { errorFields, type Logger } from '@uw/core/log';
@@ -3098,7 +3098,7 @@ export async function runDelegatedExits(run: DelegatedRun): Promise<void> {
 
 Write the type import of `ShipGitHub` exactly as above (the connectors-reference check exempts only that line). The file names no `connectors` otherwise.
 
-`apps/uw-app/cron/minute.ts`, in `minuteWith`: build the notifier once (`const notifier = notifierOf(env, database, deps.sink, deps.fetch);`) and pass it to `hubWiring` as now; import `runDelegatedExits` from `./delegated-exits.ts`; after `await guarded(minute, 'beat', beat);` add:
+`apps/uw-platform/cron/minute.ts`, in `minuteWith`: build the notifier once (`const notifier = notifierOf(env, database, deps.sink, deps.fetch);`) and pass it to `hubWiring` as now; import `runDelegatedExits` from `./delegated-exits.ts`; after `await guarded(minute, 'beat', beat);` add:
 
 ```ts
     await runDelegatedExits({
@@ -3114,13 +3114,13 @@ Write the type import of `ShipGitHub` exactly as above (the connectors-reference
 - [ ] **Step 9: Run everything that guards the boundary**
 
 Run: `pnpm check && npx vitest run tools/architecture && pnpm architecture`
-Then: `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/postgres npx vitest run apps/uw-app/cron`
+Then: `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/postgres npx vitest run apps/uw-platform/cron`
 Expected: green, including `MD-5 finds the gate command and the delegated Ship exit and nothing else on the tree`, `MD-5 the minute job may call exactly kernel.gates.exitDelegated, from exactly its own file`, every `AB-7` case in `agent-boundary.test.ts` unchanged, and `minute.pg.test.ts` (if it asserts the exact list of steps it logs, add `delegated_exits` with outcome `github_not_configured`, which its test env produces).
 
 - [ ] **Step 10: Commit**
 
 ```bash
-git add apps/uw-app/cron
+git add apps/uw-platform/cron
 git commit -m "feat(cron): the minute job runs the delegated exits with a GitHub-wired kernel
 
 As the system principal, after the beat, the minute job calls
@@ -3138,13 +3138,13 @@ MD-3 MD-5. S16-R4."
 
 **Files:**
 - Modify: `packages/harness/notify/triggers.ts` (`delegated_merge`; no `gate_waiting` for a park approved in the same commit), `packages/harness/notify/recipients.ts` (the grantor), `packages/harness/notify/triggers.test.ts`
-- Modify: `apps/uw-app/islands/worker/sw-core.ts` (`PUSH_TITLES`), `apps/uw-app/generated/islands.ts` (regenerated)
-- Modify: `apps/uw-app/views/parts/play-evidence.ts` (a describer); Create: `apps/uw-app/views/parts/play-evidence.test.ts`
+- Modify: `apps/uw-platform/islands/worker/sw-core.ts` (`PUSH_TITLES`), `apps/uw-platform/generated/islands.ts` (regenerated)
+- Modify: `apps/uw-platform/views/parts/play-evidence.ts` (a describer); Create: `apps/uw-platform/views/parts/play-evidence.test.ts`
 - Create: `packages/harness/views/delegated-merges.ts`; Modify: `packages/harness/views/index.ts` (`ViewReads.delegatedMerges`), `packages/harness/index.ts` (type `DelegatedMergeRow`)
-- Create: `apps/uw-app/views/parts/delegated-merges.tsx`; Modify: `apps/uw-app/views/screens/gates.tsx`
-- Modify: `packages/harness/views/types.ts` (`PlaneTotals.liveDelegations.merge`), `packages/harness/views/plane.ts`, `packages/harness/views/plane-list.ts` (the `maxTier` cell), `apps/uw-app/health/agent-plane.ts` (`delegationsIndicator`)
+- Create: `apps/uw-platform/views/parts/delegated-merges.tsx`; Modify: `apps/uw-platform/views/screens/gates.tsx`
+- Modify: `packages/harness/views/types.ts` (`PlaneTotals.liveDelegations.merge`), `packages/harness/views/plane.ts`, `packages/harness/views/plane-list.ts` (the `maxTier` cell), `apps/uw-platform/health/agent-plane.ts` (`delegationsIndicator`)
 - Create: `sim/kernel/delegated-merges-view.test.ts`
-- Modify: `apps/uw-app/views/gates.pg.test.ts` (one case)
+- Modify: `apps/uw-platform/views/gates.pg.test.ts` (one case)
 
 **Interfaces:**
 - Consumes: Task 8's `delegated_merge` event; Task 7's `simAtShip`, `simLendMerge`.
@@ -3213,7 +3213,7 @@ describe('MD-6 a delegated merge wakes the grantor at rank 2', () => {
 });
 ```
 
-`apps/uw-app/views/parts/play-evidence.test.ts`:
+`apps/uw-platform/views/parts/play-evidence.test.ts`:
 
 ```ts
 import { describe, expect, it } from 'vitest';
@@ -3296,11 +3296,11 @@ describe('MD-6 the Gates view and /health show delegated merges', () => {
 
 If the harness the sim activates is not in area `80-89`, read `createSimHarness` and use its area for the viewer. If `planeTotals` counts delegations the scene's `createSimHarness` seeds, compare `merge` only and `count` with `toBeGreaterThanOrEqual(1)`.
 
-`apps/uw-app/views/gates.pg.test.ts`: add one case on the frame of the file's first case: seed one `delegated_merge` event on an item of the harness with `seedEvent` (`@uw/db/test-seed`; read its `SeedEvent` fields), render `/gates` as the admin, and assert the body contains `Merged under a delegation` and `granted by rowan.test@unfoldingword.org until`. Title: `MD-6 the Gates screen lists a merge under a delegation with its grantor and expiry`.
+`apps/uw-platform/views/gates.pg.test.ts`: add one case on the frame of the file's first case: seed one `delegated_merge` event on an item of the harness with `seedEvent` (`@uw/db/test-seed`; read its `SeedEvent` fields), render `/gates` as the admin, and assert the body contains `Merged under a delegation` and `granted by rowan.test@unfoldingword.org until`. Title: `MD-6 the Gates screen lists a merge under a delegation with its grantor and expiry`.
 
 - [ ] **Step 2: Run them and see them fail**
 
-Run: `npx vitest run packages/harness/notify/triggers.test.ts apps/uw-app/views/parts/play-evidence.test.ts sim/kernel/delegated-merges-view.test.ts`
+Run: `npx vitest run packages/harness/notify/triggers.test.ts apps/uw-platform/views/parts/play-evidence.test.ts sim/kernel/delegated-merges-view.test.ts`
 Expected: FAIL; `delegated_merge` wakes nobody, the play line is empty, `views.delegatedMerges` does not exist.
 
 - [ ] **Step 3: The wake**
@@ -3341,11 +3341,11 @@ function grantorOf(scope: RecipientScope): string | null {
 
 and `byReason` gains `['delegated_merge', readerOnly(grantorOf)],`.
 
-`apps/uw-app/islands/worker/sw-core.ts`: `PUSH_TITLES` gains `delegated_merge: 'An agent merged under a delegation you gave',`. Regenerate: `pnpm ui:islands`.
+`apps/uw-platform/islands/worker/sw-core.ts`: `PUSH_TITLES` gains `delegated_merge: 'An agent merged under a delegation you gave',`. Regenerate: `pnpm ui:islands`.
 
 - [ ] **Step 4: The play-by-play line**
 
-`apps/uw-app/views/parts/play-evidence.ts`:
+`apps/uw-platform/views/parts/play-evidence.ts`:
 
 ```ts
 function delegatedMerge(fields: Fields): Shown {
@@ -3435,7 +3435,7 @@ export async function delegatedMerges(
 
 `packages/harness/index.ts`: export type `DelegatedMergeRow`.
 
-`apps/uw-app/views/parts/delegated-merges.tsx`:
+`apps/uw-platform/views/parts/delegated-merges.tsx`:
 
 ```tsx
 import { formatInstant } from '@uw/core/dates';
@@ -3468,7 +3468,7 @@ export function DelegatedMerges(props: { readonly rows: readonly DelegatedMergeR
 }
 ```
 
-`apps/uw-app/views/screens/gates.tsx`: read `const merged = await screen.kernel.views.delegatedMerges(screen.caller, { at: screen.at });` beside the gates read, and render `<DelegatedMerges rows={merged} />` as the last child of both branches of the returned fragment (after `GateList` and after the empty-state note; steps 14 and 15 may have added a shadow section and "approve all shown": put it after those).
+`apps/uw-platform/views/screens/gates.tsx`: read `const merged = await screen.kernel.views.delegatedMerges(screen.caller, { at: screen.at });` beside the gates read, and render `<DelegatedMerges rows={merged} />` as the last child of both branches of the returned fragment (after `GateList` and after the empty-state note; steps 14 and 15 may have added a shadow section and "approve all shown": put it after those).
 
 - [ ] **Step 6: `/health`**
 
@@ -3478,7 +3478,7 @@ export function DelegatedMerges(props: { readonly rows: readonly DelegatedMergeR
 
 `packages/harness/views/plane-list.ts`, `delegationRows`' cells gain `maxTier: delegation.maxTier,` after `capability`.
 
-`apps/uw-app/health/agent-plane.ts`, `delegationsIndicator`:
+`apps/uw-platform/health/agent-plane.ts`, `delegationsIndicator`:
 
 ```ts
   const merges = liveDelegations.merge === 0 ? '' : `, ${formatCount(liveDelegations.merge)} of them merge`;
@@ -3489,8 +3489,8 @@ export function DelegatedMerges(props: { readonly rows: readonly DelegatedMergeR
 
 - [ ] **Step 7: Run the tests and look at the screens**
 
-Run: `pnpm check && npx vitest run packages/harness/notify sim/kernel/delegated-merges-view.test.ts sim/kernel/views-plane.test.ts sim/kernel/wakes.test.ts apps/uw-app/views/parts tools/ui`
-Then: `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/postgres npx vitest run apps/uw-app/views apps/uw-app/health`
+Run: `pnpm check && npx vitest run packages/harness/notify sim/kernel/delegated-merges-view.test.ts sim/kernel/views-plane.test.ts sim/kernel/wakes.test.ts apps/uw-platform/views/parts tools/ui`
+Then: `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/postgres npx vitest run apps/uw-platform/views apps/uw-platform/health`
 Expected: green. If a health test pins the live delegations detail text, it reads the same when no merge delegation is live.
 
 Load `/gates` and an item's play-by-play in the local dev server in light and dark at phone width with one delegated merge seeded; record in the tracker whether you could (step 15's and step 14's screen checks say how they did it).
@@ -3498,7 +3498,7 @@ Load `/gates` and an item's play-by-play in the local dev server in light and da
 - [ ] **Step 8: Commit**
 
 ```bash
-git add packages/harness apps/uw-app sim
+git add packages/harness apps/uw-platform sim
 git commit -m "feat(views): delegated merges are visible on Gates, in the play-by-play, on /health and to the grantor
 
 The Gates screen lists the week's merges under a delegation with the
@@ -3524,7 +3524,7 @@ Expected: green. Note the test count and scenario count from the output. Then ru
 
 - [ ] **Step 2: Update the tracker**
 
-In `docs/progress_tracker.md`, change the step 16 row's state to `Built` and its evidence to: the commit SHAs of Tasks 1 to 10, the test files and scenarios named for MD-1 to MD-6 (`tools/release/merge-delegation-decision.test.ts`, `sim/kernel/merge-delegation-grant.test.ts`, `sim/kernel/delegated-ship.test.ts`, `sim/kernel/delegated-exit.test.ts`, `sim/kernel/delegated-merges-view.test.ts`, `packages/harness/ship-rule.test.ts`, `packages/harness/template-property.test.ts`, `packages/harness/risk/protected-paths.test.ts`, `packages/db/merge-delegation-columns.test.ts`, the Store contract cases, `tools/architecture/gate-writers.test.ts`, `apps/uw-app/github/merge.test.ts`, `apps/uw-app/cron/delegated-exits.pg.test.ts`, scenarios `MD-3` and `MD-4`), `pnpm verify` green locally with the counts, and "CI not run" or the CI run id. Add a "Step 16 evidence by requirement" section in the shape of step 13's. Under the step's heading in the rulings section (the shape of the S15 rows: `| date | requirement | ruling | cost if wrong |`), add S16-R1 to S16-R14 from the top of this plan, each tagged with its requirement IDs.
+In `docs/progress_tracker.md`, change the step 16 row's state to `Built` and its evidence to: the commit SHAs of Tasks 1 to 10, the test files and scenarios named for MD-1 to MD-6 (`tools/release/merge-delegation-decision.test.ts`, `sim/kernel/merge-delegation-grant.test.ts`, `sim/kernel/delegated-ship.test.ts`, `sim/kernel/delegated-exit.test.ts`, `sim/kernel/delegated-merges-view.test.ts`, `packages/harness/ship-rule.test.ts`, `packages/harness/template-property.test.ts`, `packages/harness/risk/protected-paths.test.ts`, `packages/db/merge-delegation-columns.test.ts`, the Store contract cases, `tools/architecture/gate-writers.test.ts`, `apps/uw-platform/github/merge.test.ts`, `apps/uw-platform/cron/delegated-exits.pg.test.ts`, scenarios `MD-3` and `MD-4`), `pnpm verify` green locally with the counts, and "CI not run" or the CI run id. Add a "Step 16 evidence by requirement" section in the shape of step 13's. Under the step's heading in the rulings section (the shape of the S15 rows: `| date | requirement | ruling | cost if wrong |`), add S16-R1 to S16-R14 from the top of this plan, each tagged with its requirement IDs.
 
 Under "Not verified": the minute job's GitHub-wired merge against a real repository (needs the GitHub App on staging; GL-1); the screens in a browser if Task 10 Step 7 could not load them.
 
@@ -3548,6 +3548,6 @@ The draft pull request for `build/v0.2.0` already exists; push only.
 
 **Placeholders.** None; every step carries its code or its command. Where a file differs because steps 14 and 15 changed it (the shape of `simParkedAtShip`, `submitIn`, the Gates screen's branches, a test file's helper names), the step names what to keep and what to change.
 
-**Type consistency.** `DelegableTier` (Task 2) is `Delegation.maxTier` (Task 4), `ShipDelegation.maxTier` (Task 6), `Lent.lent.maxTier` (Task 7) and `DelegatedMerge.maxTier` (Task 2). `ShipDelegation` (Task 6) is what `shipCheck` (Task 7) and `standingAtExit` (Task 8) pass to `assembleShipInput`. `DelegatedMerge` (Task 2) is `ExitInput.delegated` and `PendingExit.delegated` (Task 4), what `recordDelegatedDecision` writes under `evidence.delegation` (Task 7), what `delegatedOf` and `exitDelegated` parse back (Task 8), and the `delegated_merge` evidence `recordIn` records (Task 8) and the views read (Task 10). `recordDelegatedDecision` and `recordDecision` are the two names Task 9's `DELEGATED_WRITER` and `PERSON_WRITER` hold. `kernel.gates.exitDelegated` (Task 8) is the one call Task 9 allows in `apps/uw-app/cron/delegated-exits.ts`.
+**Type consistency.** `DelegableTier` (Task 2) is `Delegation.maxTier` (Task 4), `ShipDelegation.maxTier` (Task 6), `Lent.lent.maxTier` (Task 7) and `DelegatedMerge.maxTier` (Task 2). `ShipDelegation` (Task 6) is what `shipCheck` (Task 7) and `standingAtExit` (Task 8) pass to `assembleShipInput`. `DelegatedMerge` (Task 2) is `ExitInput.delegated` and `PendingExit.delegated` (Task 4), what `recordDelegatedDecision` writes under `evidence.delegation` (Task 7), what `delegatedOf` and `exitDelegated` parse back (Task 8), and the `delegated_merge` evidence `recordIn` records (Task 8) and the views read (Task 10). `recordDelegatedDecision` and `recordDecision` are the two names Task 9's `DELEGATED_WRITER` and `PERSON_WRITER` hold. `kernel.gates.exitDelegated` (Task 8) is the one call Task 9 allows in `apps/uw-platform/cron/delegated-exits.ts`.
 
 **Review Focus.** Line 1 is pinned by Task 8's revocation case; line 2 by Task 7's second-admin case; line 3 by Task 6's property, Task 7's deploy-stage case and Task 4's `deploy` row refusal; line 4 by Task 8's second run and Task 7's second submit; line 5 by Task 8's merge connector block; line 6 by Task 7's revocation-after-claim case and Task 8's revocation-after-decision case.

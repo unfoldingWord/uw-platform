@@ -219,7 +219,7 @@ describe('submit takes no paths or declaration from the change', () => {
     const itemId = await heldAtScope(scene);
     const smuggled = {
       ...changeAt(head),
-      paths: ['apps/uw-app/board.tsx'],
+      paths: ['apps/uw-platform/board.tsx'],
       declaration: { riskTier: 'low', riskDomains: [] },
     };
     value(await submitAs(scene, scene.builder, itemId, smuggled));
