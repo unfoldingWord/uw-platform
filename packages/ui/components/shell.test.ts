@@ -41,7 +41,7 @@ describe('WB-11 the shell', () => {
     expect(html).not.toMatch(/\b(?:min-|max-)?w-\[\d/);
     expect(html).not.toMatch(/\bw-\d{3,}/);
     const document = documentOf(html);
-    const disclosure = document.querySelector('details');
+    const disclosure = document.querySelector('section[aria-label="Menu"] details');
     expect(disclosure?.querySelector('summary')?.textContent).toContain('Menu');
     expect(disclosure?.closest('.md\\:hidden')).not.toBeNull();
     expect(document.querySelector('aside')?.getAttribute('class')).toMatch(
@@ -139,7 +139,7 @@ describe('the shell escapes the text it is given', () => {
       link.getAttribute('href'),
     );
     expect(hrefs).toEqual(['#main', '/', '/', '/cdn-cgi/access/logout']);
-    expect(document.querySelectorAll('[popover]')).toHaveLength(1);
+    expect(document.querySelectorAll('[popover]')).toHaveLength(2);
     expect(document.body.textContent).toContain('Trail');
   });
 });

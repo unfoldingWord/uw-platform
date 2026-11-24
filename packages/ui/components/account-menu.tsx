@@ -1,5 +1,6 @@
 import { safeHref } from './href.ts';
 import { Icon } from './icon.tsx';
+import { ThemeSwitch } from './theme-switch.tsx';
 
 export type Person = {
   readonly initials: string;
@@ -43,12 +44,12 @@ export function AccountRow(props: { readonly person: Person | null }) {
     <button
       type="button"
       popovertarget={accountMenuId}
-      class={`flex w-full cursor-pointer items-center gap-2 rounded-sm px-2 py-1 text-left hover:bg-side-hover ${focus}`}
+      class={`flex w-full cursor-pointer items-center gap-2 rounded-md px-2 py-1 text-left transition-colors motion-reveal hover:bg-side-hover ${focus}`}
     >
       <Initials person={person} size="row" />
       {person === null ? null : (
         <span class="min-w-0 leading-snug">
-          <span class="block truncate text-sm font-heavy">{person.name}</span>
+          <span class="block truncate text-sm font-semibold">{person.name}</span>
           <span class="block truncate text-xs text-side-text-3">{person.role}</span>
         </span>
       )}
@@ -105,9 +106,12 @@ export function AccountMenu(props: {
       id={accountMenuId}
       popover="auto"
       aria-label="Account"
-      class="absolute inset-auto top-8 right-2 m-0 w-side max-w-full rounded-md border border-side-line bg-side p-2 text-side-text shadow-2 md:fixed md:top-auto md:right-auto md:bottom-8 md:left-2"
+      class="absolute inset-auto top-8 right-2 m-0 w-side max-w-full rounded-lg border-0 bg-side p-2 text-side-text shadow-3 md:fixed md:top-auto md:right-auto md:bottom-8 md:left-2"
     >
       {props.person === null ? null : <Who person={props.person} />}
+      <div class="mb-2 rounded-md bg-surface p-1">
+        <ThemeSwitch />
+      </div>
       <LogOut link={props.logOut} />
     </div>
   );

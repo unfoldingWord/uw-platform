@@ -2,7 +2,7 @@ import { Icon, type IconProps } from './icon.tsx';
 import { safeHref } from './href.ts';
 
 const base =
-  'inline-flex h-size-4 items-center rounded-full border px-2 text-xs font-heavy whitespace-nowrap outline-offset-2 outline-accent-text focus-visible:outline-2';
+  'inline-flex h-size-4 cursor-pointer items-center rounded-full border px-3 text-xs font-semibold whitespace-nowrap no-underline outline-offset-2 outline-accent-text transition-colors motion-reveal focus-visible:outline-2';
 
 function look(selected: boolean): string {
   return selected
@@ -58,10 +58,10 @@ export function IconToggle(props: {
 }
 
 const favourite =
-  'inline-flex h-size-5 items-center gap-2 rounded-md border border-line bg-surface px-3 text-sm font-heavy text-text-2 outline-offset-2 outline-accent-text hover:border-accent hover:text-accent-text focus-visible:outline-2 data-on:border-accent data-on:bg-accent-soft data-on:text-accent-text';
+  'inline-flex h-size-5 items-center gap-2 rounded-md border border-line bg-surface px-3 text-sm font-semibold text-text-2 outline-offset-2 outline-accent-text hover:border-accent hover:text-accent-text focus-visible:outline-2 data-on:border-accent data-on:bg-accent-soft data-on:text-accent-text';
 
 const favouriteCompact =
-  'inline-flex h-size-5 items-center gap-2 rounded-md border border-line bg-surface px-2 text-sm font-heavy text-text-2 outline-offset-2 outline-accent-text hover:border-accent hover:text-accent-text focus-visible:outline-2 data-on:border-accent data-on:bg-accent-soft data-on:text-accent-text';
+  'inline-flex h-size-5 items-center gap-2 rounded-md border border-line bg-surface px-2 text-sm font-semibold text-text-2 outline-offset-2 outline-accent-text hover:border-accent hover:text-accent-text focus-visible:outline-2 data-on:border-accent data-on:bg-accent-soft data-on:text-accent-text';
 
 export function FavouriteToggle(props: {
   readonly pageId: string;

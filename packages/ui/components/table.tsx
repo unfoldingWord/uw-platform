@@ -29,17 +29,17 @@ export function Table(props: {
   readonly rows: readonly Readonly<Record<string, Child>>[];
   readonly bare?: boolean;
 }) {
-  const frame = props.bare === true ? '' : 'rounded-md border border-line';
+  const frame = props.bare === true ? '' : '';
   return (
-    <div class={`overflow-x-auto bg-surface ${frame}`}>
+    <div class={`overflow-x-auto ${frame}`}>
       <table class="w-full border-collapse text-sm text-text">
         <caption class="sr-only">{props.caption}</caption>
-        <thead class="bg-raised">
+        <thead>
           <tr>
             {props.columns.map((column) => (
               <th
                 scope="col"
-                class={`border-b border-line px-3 py-2 text-xs font-heavy tracking-wide whitespace-nowrap text-text-3 uppercase ${headClasses(column)}`}
+                class={`border-b border-line-soft px-3 py-2 text-xs font-semibold tracking-wide whitespace-nowrap text-text-3 uppercase ${headClasses(column)}`}
               >
                 {column.label}
               </th>
@@ -50,7 +50,7 @@ export function Table(props: {
           {props.rows.map((row) => {
             const cells = new Map(Object.entries(row));
             return (
-              <tr class="border-b border-line-soft last:border-b-0 hover:bg-raised">
+              <tr class="border-b border-line-soft transition-colors motion-reveal last:border-b-0 hover:bg-raised">
                 {props.columns.map((column) => (
                   <td class={`px-3 py-2 align-middle ${cellClasses(column)}`}>
                     {cells.get(column.key) ?? null}

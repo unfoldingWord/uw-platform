@@ -5,6 +5,7 @@
   "type": "module",
   "exports": {
     "./components/*": "./components/*",
+    "./shapes/*": "./shapes/*",
     "./generated/app-css": "./generated/app-css.ts",
     "./generated/fonts": "./generated/fonts.ts",
     "./generated/icons": "./generated/icons.ts",

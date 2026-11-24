@@ -109,13 +109,13 @@ export function KanbanCard(props: {
   return (
     <article
       {...drag}
-      class="flex flex-col gap-2 overflow-hidden rounded-md border border-line bg-card p-3 text-text hover:border-accent"
+      class="group/card flex flex-col gap-2 overflow-hidden rounded-md bg-card p-3 text-text shadow-1 transition-shadow motion-reveal focus-within:shadow-2 hover:shadow-2"
     >
       {cover === undefined ? null : (
         <img src={cover} alt="" class="block h-size-8 w-full rounded-sm object-cover" />
       )}
       <Top number={props.number} risk={props.risk} badge={props.badge} />
-      <h3 class="m-0 text-base leading-snug font-heavy break-words">
+      <h3 class="m-0 text-base leading-snug font-semibold break-words">
         {href === undefined ? (
           props.title
         ) : (

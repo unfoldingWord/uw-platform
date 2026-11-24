@@ -229,7 +229,8 @@ async function emptyHome(db: Database): Promise<void> {
   expect(page.status).toBe(200);
   expect(linksOf(page.text)).toEqual([]);
   const { document } = new JSDOM(page.text).window;
-  expect(document.querySelector('main [role="note"]')?.textContent).toBe(
+  expect(document.querySelector('main [role="note"]')).toBeNull();
+  expect(document.querySelector('main')?.textContent).toContain(
     'Nothing is waiting on you right now.',
   );
 }

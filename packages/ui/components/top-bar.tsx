@@ -1,17 +1,12 @@
 import type { Child } from 'hono/jsx';
 import { safeHref } from './href.ts';
-import { humanBadge } from './human-action.tsx';
 import { Icon } from './icon.tsx';
 import { QuickSwitcherButton } from './quick-switcher.tsx';
-import { ThemeSwitch } from './theme-switch.tsx';
+import { StatusDot, type Status } from './status-bar.tsx';
+import type { TabLink } from './tabs.tsx';
 
 export type Crumb = { readonly label: string; readonly href?: string };
-export type Tab = {
-  readonly label: string;
-  readonly href: string;
-  readonly current: boolean;
-  readonly count?: number;
-};
+export type Tab = TabLink;
 
 const focus = 'outline-offset-2 outline-accent-text focus-visible:outline-2';
 
@@ -19,55 +14,25 @@ function CrumbItem(props: { readonly crumb: Crumb; readonly last: boolean }) {
   const { crumb, last } = props;
   const href = crumb.href === undefined ? undefined : safeHref(crumb.href);
   const label = last ? (
-    <span aria-current="page" class="text-md font-heavy text-text">
+    <span aria-current="page" class="font-semibold text-text">
       {crumb.label}
     </span>
   ) : href === undefined ? (
     <span>{crumb.label}</span>
   ) : (
-    <a href={href} class={`hover:text-accent-text hover:underline ${focus}`}>
+    <a href={href} class={`text-text-3 no-underline hover:text-accent-text ${focus}`}>
       {crumb.label}
     </a>
   );
   return (
     <li class="flex items-center gap-2">
       {label}
-      {last ? null : <span aria-hidden="true">/</span>}
+      {last ? null : (
+        <span aria-hidden="true" class="text-line-strong">
+          /
+        </span>
+      )}
     </li>
-  );
-}
-
-function Tabs(props: { readonly tabs: readonly Tab[] }) {
-  if (props.tabs.length === 0) return null;
-  return (
-    <nav
-      aria-label="Views"
-      class="inline-flex overflow-hidden rounded-md border border-line bg-surface"
-    >
-      {props.tabs.map((tab) => {
-        const href = safeHref(tab.href);
-        if (href === undefined) return null;
-        const count = tab.count ?? 0;
-        return (
-          <a
-            href={href}
-            aria-current={tab.current ? 'page' : undefined}
-            aria-label={count > 0 ? `${tab.label}, ${count} waiting` : undefined}
-            class={`inline-flex items-center gap-2 border-r border-line px-3 py-1 text-sm font-heavy text-text-3 last:border-r-0 hover:text-text aria-[current=page]:bg-side aria-[current=page]:text-side-text ${focus}`}
-          >
-            {tab.label}
-            {count > 0 ? (
-              <span
-                data-count
-                class={`rounded-sm px-1 font-mono text-xs leading-normal ${humanBadge}`}
-              >
-                {count}
-              </span>
-            ) : null}
-          </a>
-        );
-      })}
-    </nav>
   );
 }
 
@@ -79,7 +44,7 @@ function Search() {
       action="/search"
       method="get"
       role="search"
-      class="hidden h-size-5 w-aside items-center gap-2 rounded-md border border-line bg-canvas px-3 text-sm text-text-3 lg:flex"
+      class="hidden h-size-5 w-aside items-center gap-2 rounded-md bg-raised px-3 text-sm text-text-3 lg:flex"
     >
       <Icon name="magnifying-glass" size={1} />
       <label for={searchId} class="sr-only">
@@ -102,7 +67,7 @@ export function Crumbs(props: {
   readonly crumbs: readonly Crumb[];
 }) {
   return (
-    <nav aria-label="Breadcrumb" class="min-w-0 text-sm font-semibold text-text-3">
+    <nav aria-label="Breadcrumb" class="min-w-0 text-sm text-text-3">
       <ol class="flex flex-wrap items-center gap-2">
         {props.code === undefined ? null : (
           <li class="rounded-sm bg-accent-soft px-1 font-mono text-xs text-accent-text">
@@ -120,21 +85,20 @@ export function Crumbs(props: {
 export function TopBar(props: {
   readonly code?: string | undefined;
   readonly crumbs: readonly Crumb[];
-  readonly tabs?: readonly Tab[] | undefined;
   readonly actions?: Child | undefined;
+  readonly status: Status;
 }) {
   return (
     <header
       data-chrome=""
-      class="flex flex-wrap items-center gap-3 border-b border-line bg-surface px-4 py-3 md:px-5"
+      class="flex min-h-size-8 flex-wrap items-center gap-3 border-b border-line-soft bg-surface px-5 py-2 md:px-6"
     >
       <Crumbs code={props.code} crumbs={props.crumbs} />
-      <Tabs tabs={props.tabs ?? []} />
       <div class="ml-auto flex flex-wrap items-center gap-2">
+        {props.actions}
+        <StatusDot status={props.status} />
         <QuickSwitcherButton />
         <Search />
-        {props.actions}
-        <ThemeSwitch />
       </div>
     </header>
   );

@@ -4,7 +4,8 @@ import { speculationRules, themeScript } from './inline-scripts.ts';
 import { AccountMenu, type LogOutLink, type Person } from './account-menu.tsx';
 import { QuickSwitcher } from './quick-switcher.tsx';
 import { PhoneHeader, Sidebar, type NavSection } from './sidebar.tsx';
-import { StatusBar, type Status } from './status-bar.tsx';
+import type { Status } from './status-bar.tsx';
+import { Tabs } from './tabs.tsx';
 import { TopBar, type Crumb, type Tab } from './top-bar.tsx';
 
 export type Frame = {
@@ -48,14 +49,18 @@ function SkipLink() {
   );
 }
 
-function Main(props: { readonly children?: Child; readonly sheet?: boolean }) {
-  const ground = props.sheet === true ? 'bg-surface' : '';
+function Main(props: { readonly children?: Child; readonly tabs: readonly Tab[] }) {
   return (
     <main
       id="main"
       tabindex={-1}
-      class={`relative min-w-0 flex-1 p-4 md:min-h-0 md:overflow-y-auto md:px-5 md:pt-5 md:pb-7 ${ground}`}
+      class="relative min-w-0 flex-1 bg-surface px-5 pt-6 pb-8 md:min-h-0 md:overflow-y-auto md:px-6 md:pt-7"
     >
+      {props.tabs.length === 0 ? null : (
+        <div class="mx-auto mb-6 w-full max-w-content">
+          <Tabs tabs={props.tabs} />
+        </div>
+      )}
       {props.children}
     </main>
   );
@@ -111,12 +116,11 @@ function Framed(props: {
           <TopBar
             code={props.code}
             crumbs={props.crumbs}
-            tabs={props.tabs}
             actions={props.actions}
+            status={frame.status}
           />
         )}
-        <Main sheet={props.bare === true}>{props.children}</Main>
-        <StatusBar status={frame.status} />
+        <Main tabs={props.tabs ?? []}>{props.children}</Main>
       </div>
     </div>
   );
@@ -140,7 +144,7 @@ export function Shell(props: {
   return (
     <html lang="en">
       <Head title={props.title} stylesheet={props.stylesheet} script={props.script} />
-      <body class="min-h-dvh bg-canvas font-sans text-base text-text">
+      <body class="min-h-dvh bg-surface font-sans text-base text-text">
         <SkipLink />
         <div data-progress aria-hidden="true"></div>
         {props.focus === true ? (

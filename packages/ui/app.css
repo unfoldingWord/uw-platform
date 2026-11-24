@@ -10,11 +10,13 @@
 @import './print.css';
 
 @source './components/**/*.tsx';
+@source './shapes/**/*.tsx';
 @source '../../apps/uw-platform/**/*.tsx';
 @source './components/flow-layout.ts';
 @source not './dist';
 @source not '../../apps/uw-platform/dist';
 @source not './components/**/*.test.tsx';
+@source not './shapes/**/*.test.tsx';
 @source not '../../apps/uw-platform/**/*.test.tsx';
 
 @theme {
@@ -133,6 +135,45 @@
   grid-template-columns: 2fr 2fr 1fr;
 }
 
+@utility motion-reveal {
+  transition-duration: var(--uw-motion-reveal);
+  transition-timing-function: var(--uw-motion-ease);
+}
+
+@utility motion-popover {
+  transition-duration: var(--uw-motion-popover);
+  transition-timing-function: var(--uw-motion-ease);
+}
+
+@utility motion-panel {
+  transition-duration: var(--uw-motion-panel);
+  transition-timing-function: var(--uw-motion-ease);
+}
+
+@utility delay-tooltip {
+  transition-delay: var(--uw-delay-tooltip);
+}
+
+@utility grid-cols-prop {
+  grid-template-columns: var(--uw-layout-prop) minmax(0, 1fr) auto;
+}
+
+@utility grid-cols-document {
+  grid-template-columns: minmax(0, 1fr) var(--uw-layout-aside);
+}
+
+@utility grid-cols-overview {
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+}
+
+@utility grid-cols-figures {
+  grid-template-columns: repeat(auto-fit, minmax(var(--uw-layout-figure), 1fr));
+}
+
+@utility grid-cols-peek {
+  grid-template-columns: minmax(0, 1fr) var(--uw-layout-inbox);
+}
+
 @utility grid-cols-frame {
   grid-template-columns: var(--uw-layout-side) 1fr;
 }
@@ -165,9 +206,33 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      transition-duration: 0s !important;
+    }
+
     html[data-navigating] [data-progress] {
       animation: none;
       transform: scaleX(1);
+    }
+  }
+
+  @supports (position-area: bottom) {
+    [data-anchored] {
+      inset: auto;
+      margin: var(--uw-space-1) 0 0;
+      position-area: bottom span-left;
+      position-try-fallbacks: flip-block, flip-inline;
+    }
+  }
+
+  [data-anchored]:popover-open {
+    opacity: 1;
+    transition: opacity var(--uw-motion-popover) var(--uw-motion-ease);
+
+    @starting-style {
+      opacity: 0;
     }
   }
 
@@ -195,7 +260,7 @@
   }
 
   body {
-    background: var(--uw-canvas);
+    background: var(--uw-surface);
     color: var(--uw-text);
     font-family: var(--uw-font-sans);
     font-size: var(--uw-text-base);
