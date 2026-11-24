@@ -1,7 +1,7 @@
 import { errorFields, type Logger } from '@uw/core/log';
 import { hyperdriveDatabase, type DatabaseHandle } from '../database.ts';
 import { bucketFiles } from '../pages/file-store.ts';
-import { expireExports } from '../pdf/exports.ts';
+import { expireExports, failStuckExports } from '../pdf/exports.ts';
 import { cronLogger, type CronJob } from './job.ts';
 
 async function released(database: DatabaseHandle, logger: Logger): Promise<void> {
@@ -24,8 +24,10 @@ export const expirePdfExportsJob: CronJob = async (env, deps) => {
       logger.warn('pdf export expiry skipped: no file bucket', { outcome: 'not_wired' });
       return;
     }
-    const expired = await expireExports(database.db, bucketFiles(env.FILES), deps.now());
-    logger.info('pdf exports expired', { outcome: 'expired', expired });
+    const at = deps.now();
+    const stuck = await failStuckExports(database.db, at);
+    const expired = await expireExports(database.db, bucketFiles(env.FILES), at);
+    logger.info('pdf exports expired', { outcome: 'expired', expired, stuck });
   } catch (error) {
     logger.error('pdf export expiry failed', { outcome: 'internal_error', ...errorFields(error) });
   } finally {

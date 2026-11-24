@@ -3,10 +3,12 @@ import { binderRequestSchema, principalSchema, type ErrorReason } from '@uw/cont
 import { formatDate } from '@uw/core/dates';
 import type { Principal } from '@uw/core/principal';
 import type { Database } from '@uw/db/client';
+import { resolveGrants } from '@uw/db/store';
 import type { PdfExportStart } from '../env.ts';
 import type { FileStore } from '../pages/file-store.ts';
-import { exportKey, exportPath, finishExport, queuedExport } from './exports.ts';
-import { printJob, type Printed } from './print-document.ts';
+import { personById } from '../people/directory.ts';
+import { exportKey, exportPath, finishExport, queuedExport, type QueuedExport } from './exports.ts';
+import { printJob, sourceHashOf, type Printed } from './print-document.ts';
 import { fileImages } from './print-images.ts';
 import type { Printable } from './print-kernel.ts';
 import { binderPlan, printPlannedBinder } from './print-targets.ts';
@@ -26,17 +28,13 @@ export type PdfExportResult = 'ready' | 'failed' | 'skipped';
 
 type Run = { readonly deps: PdfExportDeps; readonly exportId: string; readonly at: Date };
 
-const queuedRequestSchema = z.object({ target: binderRequestSchema, principal: principalSchema });
+const queuedRequestSchema = z.object({ target: binderRequestSchema });
+const HUMAN = 'human:';
 const PDF = 'application/pdf';
 
 async function failed(run: Run, reason: ErrorReason): Promise<PdfExportResult> {
   await finishExport(run.deps.db, run.exportId, { kind: 'failed', reason }, run.at);
   return 'failed';
-}
-
-function hashOf(printed: Printed): Promise<string> {
-  const input = printed.hashInput;
-  return input.kind === 'hash' ? Promise.resolve(input.sha256) : sha256Hex(input.text);
 }
 
 async function provenanceOf(run: Run, actor: Principal, printed: Printed): Promise<Provenance> {
@@ -46,8 +44,28 @@ async function provenanceOf(run: Run, actor: Principal, printed: Printed): Promi
     filters: printed.filters,
     exportedBy: exporterOf(actor),
     exportedOn: formatDate(run.at),
-    sha256: await hashOf(printed),
+    ...(await sourceHashOf(printed)),
   };
+}
+
+async function requesterNow(
+  db: Database,
+  queued: QueuedExport,
+  at: Date,
+): Promise<Principal | null> {
+  const { requestedBy: identity, personId } = queued;
+  const found = personId === null ? null : await personById(db, personId);
+  const active = found?.status === 'active' && personId !== null;
+  const person = identity.startsWith(HUMAN);
+  const parsed = principalSchema.safeParse({
+    identity,
+    kind: person ? 'person' : 'agent',
+    personId,
+    email: person ? (found?.email ?? null) : null,
+    grants: active ? await resolveGrants(db, personId, { at }) : [],
+    interactive: false,
+  });
+  return parsed.success ? parsed.data : null;
 }
 
 async function rendered(
@@ -64,7 +82,8 @@ async function rendered(
   if (pdf === null) return failed(run, 'pdf_render_failed');
   const r2Key = exportKey(run.exportId);
   await files.put(r2Key, { bytes: pdf, contentType: PDF });
-  const ready = { kind: 'ready', r2Key, sha256: provenance.sha256, bytes: pdf.byteLength } as const;
+  const hashes = { sourceSha256: provenance.sourceSha256, fileSha256: await sha256Hex(pdf) };
+  const ready = { kind: 'ready', r2Key, ...hashes, bytes: pdf.byteLength } as const;
   await finishExport(db, run.exportId, ready, run.at);
   return 'ready';
 }
@@ -79,7 +98,9 @@ export async function runPdfExport(
   const request = queuedRequestSchema.safeParse(queued.request);
   if (!request.success) return failed(run, 'malformed_command');
   if (deps.renderer === null) return failed(run, 'not_wired');
-  const { target, principal } = request.data;
+  const principal = await requesterNow(deps.db, queued, run.at);
+  if (principal === null) return failed(run, 'binder_empty');
+  const { target } = request.data;
   const plan = await binderPlan(deps.db, principal, target, run.at);
   if (typeof plan === 'string') return failed(run, plan);
   const printable = await printPlannedBinder(deps.db, principal, plan, run.at, deps.commit);

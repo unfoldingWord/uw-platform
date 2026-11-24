@@ -467,7 +467,7 @@ An ordered set of pages printed as one PDF export, with a cover, a contents list
 _Avoid_: document set (the plan's word), packet, bundle, book, document
 
 **Provenance footer**:
-What every PDF export says about where it came from: the running footer's short line (reference, export date, the first twelve characters of the sha256, page n of N), and the full Provenance block that closes the body: source address, reference, filters, who exported it, the date and the whole sha256. For a page the reference is `<area>/<slug>@v<version>` and the sha256 is recomputable from that version in `page_versions`; for a saved view it is `<collection>/<view>` with the filters in words and a sha256 over the view, its settings, the place and the rows printed.
+What every PDF export says about where it came from: the running footer's short line (reference, export date, the first twelve characters of the source sha256, page n of N), and the full Provenance block that closes the body: source address, reference, filters, who exported it, the date and the whole source sha256. The source sha256 hashes what was printed from, never the file; the file sha256 is the hash of the PDF bytes, recorded for a stored export and sent with every download. For a page the reference is `<area>/<slug>@v<version>` and the source sha256 is recomputable from that version in `page_versions`, over the fields shown to the exporter; for a saved view it is `<collection>/<view>` with the filters in words and a source sha256 over the view, its settings, the place and the rows printed.
 _Avoid_: watermark, stamp, signature (nothing is signed), checksum (alone)
 
 **Print stylesheet**:

@@ -18,12 +18,14 @@ export async function collectionPrinted(
     cursor: cursorOf(c),
   };
   const rowIds = layout.reply.rows.map((row) => row.id);
-  const sha256 = await sha256Hex(canonicalJson({ viewId: view.id, settings, params, rowIds }));
+  const sourceSha256 = await sha256Hex(
+    canonicalJson({ viewId: view.id, settings, params, rowIds }),
+  );
   return {
     printed: {
       reference: `${stored.definition.key}/${settings.name}`,
       filters: viewFilters(settings, stored.definition.properties, params),
-      hashInput: { kind: 'hash', sha256 },
+      hashInput: { kind: 'hash', sourceSha256, withheld: false },
     },
   };
 }

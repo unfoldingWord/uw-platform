@@ -110,10 +110,10 @@ async function printsThePageVersionItShows(db: Database): Promise<void> {
   isPdf(sent);
   const hash = await versionHash(db, made.pageId, 2);
   expect(hash).not.toBe(await versionHash(db, made.pageId, 1));
-  expect(sent.headers.get('x-uw-sha256')).toBe(hash);
+  expect(sent.headers.get('x-uw-source-sha256')).toBe(hash);
   const call = onlyCall(browser.calls());
   expect(call.pdfOptions.footerTemplate).toContain(`00-09/${SLUG}@v2`);
-  expect(call.pdfOptions.footerTemplate).toContain(`sha256:${hash.slice(0, 12)}`);
+  expect(call.pdfOptions.footerTemplate).toContain(`source sha256:${hash.slice(0, 12)}`);
   const printed = new JSDOM(call.html).window.document;
   expect(printed.querySelector('[data-pdf-provenance] [data-hash]')?.textContent).toBe(hash);
   expect(printed.querySelector('[data-pdf-provenance]')?.textContent).toContain(made.editor);
@@ -131,7 +131,7 @@ async function printsAnOldVersionByItsNumber(db: Database): Promise<void> {
   const sent = await getWithBindings(db, made.editor, path, { BROWSER: browser });
   isPdf(sent);
   const hash = await versionHash(db, made.pageId, 1);
-  expect(sent.headers.get('x-uw-sha256')).toBe(hash);
+  expect(sent.headers.get('x-uw-source-sha256')).toBe(hash);
   const call = onlyCall(browser.calls());
   expect(call.pdfOptions.footerTemplate).toContain(`00-09/${SLUG}@v1`);
   expect(call.html).toContain('First words.');
@@ -298,7 +298,7 @@ async function printsTheViewsFilters(db: Database): Promise<void> {
   const expected = await sha256Hex(
     canonicalJson({ viewId, settings, params, rowIds: world.running }),
   );
-  expect(sent.headers.get('x-uw-sha256')).toBe(expected);
+  expect(sent.headers.get('x-uw-source-sha256')).toBe(expected);
 }
 
 async function printsAChartAsVectorArt(db: Database): Promise<void> {

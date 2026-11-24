@@ -7476,8 +7476,14 @@
           "primaryKey": false,
           "notNull": false
         },
-        "sha256": {
-          "name": "sha256",
+        "source_sha256": {
+          "name": "source_sha256",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "file_sha256": {
+          "name": "file_sha256",
           "type": "text",
           "primaryKey": false,
           "notNull": false
@@ -7534,6 +7540,27 @@
           "concurrently": false,
           "method": "btree",
           "with": {}
+        },
+        "pdf_exports_renders_by_person": {
+          "name": "pdf_exports_renders_by_person",
+          "columns": [
+            {
+              "expression": "person_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         }
       },
       "foreignKeys": {
@@ -7563,9 +7590,13 @@
           "name": "pdf_exports_requested_by_identity",
           "value": "\"pdf_exports\".\"requested_by\" ~ '^(?:human:[A-Za-z0-9][A-Za-z0-9_-]*|agent:[a-z0-9][a-z0-9_-]*|agent:[A-Za-z0-9][A-Za-z0-9_-]*/[a-z0-9][a-z0-9-]{0,31}|agent:[A-Za-z0-9][A-Za-z0-9_-]*/[a-z0-9][a-z0-9-]{0,31} as [a-z0-9][a-z0-9_-]* via delegation:[A-Za-z0-9][A-Za-z0-9_-]*)$'"
         },
-        "pdf_exports_sha256_form": {
-          "name": "pdf_exports_sha256_form",
-          "value": "\"pdf_exports\".\"sha256\" ~ '^[0-9a-f]{64}$'"
+        "pdf_exports_source_sha256_form": {
+          "name": "pdf_exports_source_sha256_form",
+          "value": "\"pdf_exports\".\"source_sha256\" ~ '^[0-9a-f]{64}$'"
+        },
+        "pdf_exports_file_sha256_form": {
+          "name": "pdf_exports_file_sha256_form",
+          "value": "\"pdf_exports\".\"file_sha256\" ~ '^[0-9a-f]{64}$'"
         },
         "pdf_exports_bytes_counted": {
           "name": "pdf_exports_bytes_counted",
@@ -7577,7 +7608,11 @@
         },
         "pdf_exports_ready_has_file": {
           "name": "pdf_exports_ready_has_file",
-          "value": "\"pdf_exports\".\"status\" <> 'ready' OR (\"pdf_exports\".\"r2_key\" IS NOT NULL AND \"pdf_exports\".\"sha256\" IS NOT NULL AND \"pdf_exports\".\"bytes\" IS NOT NULL AND \"pdf_exports\".\"finished_at\" IS NOT NULL)"
+          "value": "\"pdf_exports\".\"status\" <> 'ready' OR ((\"pdf_exports\".\"r2_key\" IS NOT NULL OR \"pdf_exports\".\"kind\" = 'screen') AND \"pdf_exports\".\"source_sha256\" IS NOT NULL AND \"pdf_exports\".\"file_sha256\" IS NOT NULL AND \"pdf_exports\".\"bytes\" IS NOT NULL AND \"pdf_exports\".\"finished_at\" IS NOT NULL)"
+        },
+        "pdf_exports_screen_never_stored": {
+          "name": "pdf_exports_screen_never_stored",
+          "value": "\"pdf_exports\".\"kind\" <> 'screen' OR \"pdf_exports\".\"r2_key\" IS NULL"
         },
         "pdf_exports_failed_has_reason": {
           "name": "pdf_exports_failed_has_reason",

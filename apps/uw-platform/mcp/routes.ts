@@ -39,7 +39,7 @@ async function serve(c: Context<AppEnv>, deps: McpDeps): Promise<Response> {
     cap: spendCapOf(c.env),
     logger,
     files: c.env.FILES === undefined ? null : bucketFiles(c.env.FILES),
-    pdf: pdfRendererOf(c.env),
+    pdf: pdfRendererOf(c.env, logger),
     pdfExport: c.env.PDF_EXPORT ?? null,
     origin: c.env.APP_ORIGIN ?? new URL(c.req.url).origin,
   });

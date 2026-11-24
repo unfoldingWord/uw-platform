@@ -17,8 +17,8 @@ function escapedHtml(words: string): string {
 }
 
 function shortProvenance(provenance: Provenance): string {
-  const hash = provenance.sha256.slice(0, SHORT_HASH);
-  return `${provenance.reference} · ${provenance.exportedOn} · sha256:${hash}`;
+  const hash = provenance.sourceSha256.slice(0, SHORT_HASH);
+  return `${provenance.reference} · ${provenance.exportedOn} · source sha256:${hash}`;
 }
 
 function band(fontSize: string, colour: string, justify: string): string {

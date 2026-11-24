@@ -30,21 +30,28 @@ type ExportRow = {
   readonly status?: string;
   readonly requestedBy?: string;
   readonly r2Key?: string | null;
-  readonly sha256?: string | null;
+  readonly sourceSha256?: string | null;
+  readonly fileSha256?: string | null;
   readonly bytes?: number | null;
   readonly failure?: string | null;
   readonly finishedAt?: string | null;
   readonly expiresAt?: string;
 };
 
+function hashesOf(row: ExportRow) {
+  return { source: row.sourceSha256 ?? null, file: row.fileSha256 ?? null };
+}
+
 function addExport(db: AnyDatabase, row: ExportRow) {
+  const hashed = hashesOf(row);
   return db.execute(sql`INSERT INTO pdf_exports
       (id, kind, status, title, reference, requested_by, person_id, areas, request,
-       r2_key, sha256, bytes, failure, created_at, finished_at, expires_at)
+       r2_key, source_sha256, file_sha256, bytes, failure, created_at, finished_at, expires_at)
     VALUES (${row.id}, ${row.kind ?? 'binder'}, ${row.status ?? 'queued'}, 'Handbook',
       '01-09/handbook@v3', ${row.requestedBy ?? `human:${person}`}, ${person},
       ARRAY['00-09', '10-19']::text[], '{"kind":"binder"}'::jsonb,
-      ${row.r2Key ?? null}, ${row.sha256 ?? null}, ${row.bytes ?? null}, ${row.failure ?? null},
+      ${row.r2Key ?? null}, ${hashed.source}, ${hashed.file},
+      ${row.bytes ?? null}, ${row.failure ?? null},
       ${createdAt}::timestamptz, ${row.finishedAt ?? null}::timestamptz,
       ${row.expiresAt ?? expiresAt}::timestamptz)`);
 }
@@ -52,7 +59,8 @@ function addExport(db: AnyDatabase, row: ExportRow) {
 const ready = {
   status: 'ready',
   r2Key: 'exports/x.pdf',
-  sha256: hash,
+  sourceSha256: hash,
+  fileSha256: hash,
   bytes: 1024,
   finishedAt: createdAt,
 };
@@ -70,6 +78,40 @@ function openDatabase(target: DatabaseTarget): () => AnyDatabase {
   };
 }
 
+const refusals: readonly (readonly [string, Partial<ExportRow>, string])[] = [
+  ['an unknown kind', { kind: 'letter' }, 'pdf_exports_kind_known'],
+  ['an unknown status', { status: 'printing' }, 'pdf_exports_status_known'],
+  [
+    'a requester that is not an identity',
+    { requestedBy: 'somebody' },
+    'pdf_exports_requested_by_identity',
+  ],
+  [
+    'a source sha256 that is not hex',
+    { ...ready, sourceSha256: 'not-a-hash' },
+    'pdf_exports_source_sha256_form',
+  ],
+  [
+    'a file sha256 that is not hex',
+    { ...ready, fileSha256: 'not-a-hash' },
+    'pdf_exports_file_sha256_form',
+  ],
+  [
+    'a ready export with no file hash',
+    { ...ready, fileSha256: null },
+    'pdf_exports_ready_has_file',
+  ],
+  ['a negative size', { ...ready, bytes: -1 }, 'pdf_exports_bytes_counted'],
+  ['a ready export with no file', { status: 'ready' }, 'pdf_exports_ready_has_file'],
+  ['a failed export with no reason', { status: 'failed' }, 'pdf_exports_failed_has_reason'],
+  ['a free-text failure', { status: 'failed', failure: 'Error: boom' }, 'pdf_exports_failure_form'],
+  [
+    'an expiry before creation',
+    { expiresAt: '2026-11-23T09:00:00.000Z' },
+    'pdf_exports_expires_after_creation',
+  ],
+];
+
 function rowRules(db: () => AnyDatabase): void {
   it('#198 records a queued binder, a ready page and a failed view', async () => {
     await addExport(db(), { id: '00000000-0000-4000-8000-0000001980b1' });
@@ -83,29 +125,7 @@ function rowRules(db: () => AnyDatabase): void {
     });
   });
 
-  it.each([
-    ['an unknown kind', { kind: 'letter' }, 'pdf_exports_kind_known'],
-    ['an unknown status', { status: 'printing' }, 'pdf_exports_status_known'],
-    [
-      'a requester that is not an identity',
-      { requestedBy: 'somebody' },
-      'pdf_exports_requested_by_identity',
-    ],
-    ['a sha256 that is not hex', { ...ready, sha256: 'not-a-hash' }, 'pdf_exports_sha256_form'],
-    ['a negative size', { ...ready, bytes: -1 }, 'pdf_exports_bytes_counted'],
-    ['a ready export with no file', { status: 'ready' }, 'pdf_exports_ready_has_file'],
-    ['a failed export with no reason', { status: 'failed' }, 'pdf_exports_failed_has_reason'],
-    [
-      'a free-text failure',
-      { status: 'failed', failure: 'Error: boom' },
-      'pdf_exports_failure_form',
-    ],
-    [
-      'an expiry before creation',
-      { expiresAt: '2026-11-23T09:00:00.000Z' },
-      'pdf_exports_expires_after_creation',
-    ],
-  ])('#198 refuses %s', async (_name, change, constraint) => {
+  it.each(refusals)('#198 refuses %s', async (_name, change, constraint) => {
     const row = { id: '00000000-0000-4000-8000-0000001980b9', ...change };
     expect(await refusal(addExport(db(), row))).toEqual({ code: '23514', constraint });
   });

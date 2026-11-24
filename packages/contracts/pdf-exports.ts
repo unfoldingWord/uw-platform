@@ -36,14 +36,14 @@ export const pdfTargetSchema = z.union([
   binderByRoot,
 ]);
 
+const sha256Schema = z.string().regex(/^[0-9a-f]{64}$/);
+
 export const pdfExportReplySchema = z.strictObject({
   exportId: z.uuid(),
   status: pdfExportStatusSchema,
   file: z.string(),
-  sha256: z
-    .string()
-    .regex(/^[0-9a-f]{64}$/)
-    .nullable(),
+  sourceSha256: sha256Schema.nullable(),
+  fileSha256: sha256Schema.nullable(),
   bytes: z.number().int().nonnegative().nullable(),
 });
 

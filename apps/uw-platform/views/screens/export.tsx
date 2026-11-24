@@ -41,9 +41,14 @@ function Ready(props: { readonly found: ExportRecord }) {
           Download the PDF
         </a>
       </p>
+      <p class="m-0 text-xs text-text-3">{`Available until ${formatDate(found.expiresAt)}.`}</p>
       <p class="m-0 text-xs text-text-3">
-        {`Available until ${formatDate(found.expiresAt)}. SHA-256 `}
-        <code class="font-mono break-all">{found.sha256}</code>
+        {'File SHA-256 '}
+        <code class="font-mono break-all">{found.fileSha256}</code>
+      </p>
+      <p class="m-0 text-xs text-text-3">
+        {'Source SHA-256 '}
+        <code class="font-mono break-all">{found.sourceSha256}</code>
       </p>
     </>
   );

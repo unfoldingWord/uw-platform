@@ -138,7 +138,11 @@ async function printsAPageAtItsVersion(db: Database): Promise<void> {
   expect(printed?.printed).toEqual({
     reference: `00-09/${page.slug}@v1`,
     filters: [],
-    hashInput: { kind: 'hash', sha256: await pageVersionHash({ ...page, pageId: page.id }) },
+    hashInput: {
+      kind: 'hash',
+      sourceSha256: await pageVersionHash({ ...page, pageId: page.id }),
+      withheld: false,
+    },
   });
   expect(await printPage(db, made.reader, made.hidden, at, COMMIT)).toBeNull();
 }

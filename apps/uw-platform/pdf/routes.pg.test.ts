@@ -1,6 +1,8 @@
+import { eq } from 'drizzle-orm';
 import { describe, expect, it } from 'vitest';
 import { pdfExportReplySchema } from '@uw/contracts';
 import type { Database } from '@uw/db/client';
+import { pdfExports } from '@uw/db/schema';
 import { createApp } from '../app.tsx';
 import type { Bindings, FilesBucket, PdfExportBinding, PdfExportStart } from '../env.ts';
 import { bucketFiles } from '../pages/file-store.ts';
@@ -106,7 +108,8 @@ async function queuesABinder(db: Database): Promise<void> {
     exportId: reply.exportId,
     status: 'queued',
     file: `/api/exports/${reply.exportId}/file`,
-    sha256: null,
+    sourceSha256: null,
+    fileSha256: null,
     bytes: null,
   });
   expect(made.started).toEqual([
@@ -232,6 +235,16 @@ async function screenShowsAFailureInPlace(db: Database): Promise<void> {
   expect(failed).not.toContain(`href="${reply.file}"`);
 }
 
+async function failsTheExportWhenTheRunWillNotStart(db: Database): Promise<void> {
+  const made = await world(db);
+  const refusing: PdfExportBinding = { create: () => Promise.reject(new Error('quota')) };
+  const env = { ...envOf(made), PDF_EXPORT: refusing };
+  const sent = await postJson(made, made.reader, { kind: 'binder', rootPageId: made.root }, env);
+  expect(await reasonOf(sent)).toEqual([500, 'internal_error']);
+  const rows = await db.select().from(pdfExports).where(eq(pdfExports.kind, 'binder'));
+  expect(rows).toEqual([expect.objectContaining({ status: 'failed', failure: 'internal_error' })]);
+}
+
 describe.skipIf(!testServer)('#198 the PDF export routes', () => {
   it('#198 queues a binder through the Workflow binding and answers it queued, not ready', () =>
     withAppDatabase(queuesABinder));
@@ -245,4 +258,6 @@ describe.skipIf(!testServer)('#198 the PDF export routes', () => {
     withAppDatabase(screenShowsTheExport));
   it('#198 the export screen shows a failed export with its closed-set reason in place', () =>
     withAppDatabase(screenShowsAFailureInPlace));
+  it('#198 finishes the export failed and refuses internal_error when its run will not start', () =>
+    withAppDatabase(failsTheExportWhenTheRunWillNotStart));
 });

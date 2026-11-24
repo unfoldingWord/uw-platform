@@ -6,7 +6,8 @@ export type Provenance = {
   readonly filters: readonly string[];
   readonly exportedBy: string;
   readonly exportedOn: string;
-  readonly sha256: string;
+  readonly sourceSha256: string;
+  readonly withheld: boolean;
 };
 
 export type VersionSnapshot = {

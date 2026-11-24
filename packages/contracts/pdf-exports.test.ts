@@ -31,6 +31,10 @@ describe('#198 the pdf export closed sets', () => {
     expect(reasons.filter((reason) => !errorReasonSchema.safeParse(reason).success)).toEqual([]);
     expect(errorReasonSchema.safeParse('pdf_not_wired').success).toBe(false);
   });
+
+  it('#198 refuses a person past their daily renders with export_limit_reached', () => {
+    expect(errorReasonSchema.safeParse('export_limit_reached').success).toBe(true);
+  });
 });
 
 describe('#198 a binder request', () => {
@@ -99,20 +103,28 @@ describe('#198 an export reply', () => {
     exportId: pageId(9),
     status: 'ready',
     file: `/api/exports/${pageId(9)}/file`,
-    sha256: 'a'.repeat(64),
+    sourceSha256: 'a'.repeat(64),
+    fileSha256: 'b'.repeat(64),
     bytes: 1024,
   };
+  const queued = { ...ready, status: 'queued', sourceSha256: null, fileSha256: null, bytes: null };
 
-  it('#198 answers a ready export with its hash and size, and a queued one with neither', () => {
+  it('#198 answers a ready export with its source hash, file hash and size, a queued one with none', () => {
     expect(pdfExportReplySchema.safeParse(ready).success).toBe(true);
-    expect(
-      pdfExportReplySchema.safeParse({ ...ready, status: 'queued', sha256: null, bytes: null })
-        .success,
-    ).toBe(true);
+    expect(pdfExportReplySchema.safeParse(queued).success).toBe(true);
+  });
+
+  it('#198 names the source hash apart from the file hash and never answers a bare sha256', () => {
+    const { sourceSha256, ...unnamed } = ready;
+    expect(pdfExportReplySchema.safeParse({ ...unnamed, sha256: sourceSha256 }).success).toBe(
+      false,
+    );
+    expect(pdfExportReplySchema.safeParse({ ...ready, fileSha256: undefined }).success).toBe(false);
   });
 
   it('#198 refuses a short hash, negative bytes and the bytes themselves', () => {
-    expect(pdfExportReplySchema.safeParse({ ...ready, sha256: 'abc' }).success).toBe(false);
+    expect(pdfExportReplySchema.safeParse({ ...ready, sourceSha256: 'abc' }).success).toBe(false);
+    expect(pdfExportReplySchema.safeParse({ ...ready, fileSha256: 'abc' }).success).toBe(false);
     expect(pdfExportReplySchema.safeParse({ ...ready, bytes: -1 }).success).toBe(false);
     expect(pdfExportReplySchema.safeParse({ ...ready, contentBase64: 'JVBERi0=' }).success).toBe(
       false,

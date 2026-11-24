@@ -3,16 +3,24 @@ import { appCss } from '@uw/ui/generated/app-css';
 import { fontFiles } from '@uw/ui/generated/fonts';
 import { element, htmlOf, printedBody, text, type ImageOf } from './print-html.ts';
 import { footerTemplate, headerTemplate } from './print-templates.ts';
-import type { Provenance } from './provenance.ts';
+import { sha256Hex, type Provenance } from './provenance.ts';
 import type { PrintJob } from './renderer.ts';
 
 export type Printed = {
   readonly reference: string;
   readonly filters: readonly string[];
   readonly hashInput:
-    | { readonly kind: 'hash'; readonly sha256: string }
+    | { readonly kind: 'hash'; readonly sourceSha256: string; readonly withheld: boolean }
     | { readonly kind: 'text'; readonly text: string };
 };
+
+export type SourceHash = Pick<Provenance, 'sourceSha256' | 'withheld'>;
+
+export async function sourceHashOf(printed: Printed): Promise<SourceHash> {
+  const input = printed.hashInput;
+  if (input.kind === 'hash') return { sourceSha256: input.sourceSha256, withheld: input.withheld };
+  return { sourceSha256: await sha256Hex(input.text), withheld: false };
+}
 
 export type PrintInput = {
   readonly title: string;
@@ -58,7 +66,17 @@ function filtersOf(filters: readonly string[]): ElementContent {
   );
 }
 
-function provenanceBlock(provenance: Provenance): Element {
+function leftOutRow(count: number): ElementContent[] {
+  if (count === 0) return [];
+  return row('Images left out', text(`${count} left out for size`));
+}
+
+function withheldRow(withheld: boolean): ElementContent[] {
+  if (!withheld) return [];
+  return row('Hash scope', text('Source SHA-256 covers the fields shown to the exporter'));
+}
+
+function provenanceBlock(provenance: Provenance, imagesLeftOut: number): Element {
   return element('section', { dataPdfProvenance: '' }, [
     element('h2', {}, [text('Provenance')]),
     element('dl', {}, [
@@ -67,7 +85,9 @@ function provenanceBlock(provenance: Provenance): Element {
       ...row('Filters', filtersOf(provenance.filters)),
       ...row('Exported by', text(provenance.exportedBy)),
       ...row('Exported on', text(provenance.exportedOn)),
-      ...row('SHA-256', element('code', { dataHash: '' }, [text(provenance.sha256)])),
+      ...row('Source SHA-256', element('code', { dataHash: '' }, [text(provenance.sourceSha256)])),
+      ...withheldRow(provenance.withheld),
+      ...leftOutRow(imagesLeftOut),
     ]),
   ]);
 }
@@ -102,7 +122,7 @@ export async function printJob(input: PrintInput): Promise<PrintJob> {
   const main = element('main', { dataPdfDocument: '' }, [
     ...content,
     ...linksBlock(body.links),
-    provenanceBlock(input.provenance),
+    provenanceBlock(input.provenance, body.imagesLeftOutForSize),
   ]);
   return {
     title: input.title,

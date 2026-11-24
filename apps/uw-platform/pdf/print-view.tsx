@@ -69,7 +69,7 @@ export async function printView(
     printed: {
       reference: `${stored.definition.key}/${view.settings.name}`,
       filters: viewFilters(view, month),
-      hashInput: { kind: 'hash', sha256: await sha256Hex(hashed) },
+      hashInput: { kind: 'hash', sourceSha256: await sha256Hex(hashed), withheld: false },
     },
     areas: [stored.definition.jdArea],
   };

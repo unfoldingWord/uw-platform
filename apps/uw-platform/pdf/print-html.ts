@@ -8,7 +8,12 @@ export type ImageOf = (src: string) => Promise<string | null>;
 export type PrintedBody = {
   readonly nodes: readonly RootContent[];
   readonly links: readonly string[];
+  readonly imagesLeftOutForSize: number;
 };
+
+export const IMAGE_BUDGET_BYTES = 8 * 1024 * 1024;
+
+type Budget = { left: number; spent: boolean; leftOut: number };
 
 const dropped: ReadonlySet<string> = new Set([
   'script',
@@ -75,12 +80,36 @@ function replaceByAlt(node: Element): void {
   node.children = typeof alt === 'string' && alt !== '' ? [text(alt)] : [];
 }
 
-async function inlineImage(node: Element, image: ImageOf): Promise<void> {
+function sourceBytesOf(data: string): number {
+  const payload = data.slice(data.indexOf(',') + 1);
+  const padding = payload.endsWith('==') ? 2 : payload.endsWith('=') ? 1 : 0;
+  return Math.floor((payload.length * 3) / 4) - padding;
+}
+
+function leaveOutForSize(node: Element, budget: Budget): void {
+  budget.spent = true;
+  budget.leftOut += 1;
+  replaceByAlt(node);
+}
+
+async function inlineImage(node: Element, image: ImageOf, budget: Budget): Promise<void> {
   const src = node.properties['src'];
   if (typeof src === 'string' && src.startsWith('data:')) return;
+  if (budget.spent) return leaveOutForSize(node, budget);
   const data = typeof src === 'string' ? await image(src) : null;
   if (data === null) return replaceByAlt(node);
+  const bytes = sourceBytesOf(data);
+  if (bytes > budget.left) return leaveOutForSize(node, budget);
+  budget.left -= bytes;
   node.properties = { ...node.properties, src: data, srcSet: undefined };
+}
+
+async function inlineImages(tree: Root, image: ImageOf): Promise<number> {
+  const budget: Budget = { left: IMAGE_BUDGET_BYTES, spent: false, leftOut: 0 };
+  for (const node of images(tree)) {
+    await inlineImage(node, image, budget);
+  }
+  return budget.leftOut;
 }
 
 function addressOf(href: unknown, origin: string): string | null {
@@ -118,7 +147,7 @@ export async function printedBody(
 ): Promise<PrintedBody> {
   const tree = parsedHtml(html);
   withoutHidden(tree);
-  await Promise.all(images(tree).map((node) => inlineImage(node, image)));
+  const imagesLeftOutForSize = await inlineImages(tree, image);
   const links = footnoted(tree, origin);
-  return { nodes: tree.children, links };
+  return { nodes: tree.children, links, imagesLeftOutForSize };
 }

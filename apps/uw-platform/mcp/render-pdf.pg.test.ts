@@ -1,6 +1,8 @@
+import { eq } from 'drizzle-orm';
 import { describe, expect, it } from 'vitest';
 import { pdfExportReplySchema } from '@uw/contracts';
 import type { Database } from '@uw/db/client';
+import { pdfExports } from '@uw/db/schema';
 import { createApp } from '../app.tsx';
 import type { Bindings, FilesBucket, PdfExportStart } from '../env.ts';
 import { createAccessFixture, fixtureAccessEnv } from '../testing/access-keys.ts';
@@ -9,6 +11,7 @@ import { person } from '../testing/commands.ts';
 import { memoryBucket } from '../testing/files.ts';
 import { fileKnowledge } from '../testing/knowledge.ts';
 import { callTool, httpClient } from '../testing/mcp.ts';
+import { sha256Hex } from '../pdf/provenance.ts';
 import { postgresDeps, testServer, withAppDatabase } from '../testing/postgres.ts';
 
 const fixture = createAccessFixture();
@@ -95,15 +98,26 @@ async function hidesLikeMissing(db: Database): Promise<void> {
 async function readyForAReaderOnly(db: Database): Promise<void> {
   const made = await world(db);
   const { body } = await render(made, made.reader, { kind: 'page', pageId: made.root });
-  expect(Object.keys(body).sort()).toEqual(['bytes', 'exportId', 'file', 'sha256', 'status']);
+  expect(Object.keys(body).sort()).toEqual([
+    'bytes',
+    'exportId',
+    'file',
+    'fileSha256',
+    'sourceSha256',
+    'status',
+  ]);
   const reply = pdfExportReplySchema.parse(body);
   expect(reply).toMatchObject({ status: 'ready', file: `/api/exports/${reply.exportId}/file` });
   expect(typeof reply.bytes).toBe('number');
   const read = await download(made, made.reader, reply.file);
   expect(read.status).toBe(200);
   expect(read.headers.get('content-type')).toBe('application/pdf');
-  expect(read.headers.get('x-uw-sha256')).toBe(reply.sha256);
-  expect(new Uint8Array(await read.arrayBuffer()).byteLength).toBe(reply.bytes);
+  expect(read.headers.get('x-uw-source-sha256')).toBe(reply.sourceSha256);
+  expect(read.headers.get('x-uw-file-sha256')).toBe(reply.fileSha256);
+  const downloaded = new Uint8Array(await read.arrayBuffer());
+  expect(downloaded.byteLength).toBe(reply.bytes);
+  expect(await sha256Hex(downloaded)).toBe(reply.fileSha256);
+  expect(reply.fileSha256).not.toBe(reply.sourceSha256);
   expect((await download(made, made.stranger, reply.file)).status).toBe(404);
 }
 
@@ -111,7 +125,12 @@ async function binderQueues(db: Database): Promise<void> {
   const made = await world(db);
   const { body } = await render(made, made.reader, { kind: 'binder', rootPageId: made.root });
   const reply = pdfExportReplySchema.parse(body);
-  expect(reply).toMatchObject({ status: 'queued', sha256: null, bytes: null });
+  expect(reply).toMatchObject({
+    status: 'queued',
+    sourceSha256: null,
+    fileSha256: null,
+    bytes: null,
+  });
   expect(made.started.map((start) => start.id)).toEqual([reply.exportId]);
   expect(made.started[0]?.params.exportId).toBe(reply.exportId);
   const read = await download(made, made.reader, reply.file);
@@ -131,6 +150,17 @@ async function saysWhenUnwired(db: Database): Promise<void> {
   expect(made.started).toEqual([]);
 }
 
+async function failsABinderWhoseRunWillNotStart(db: Database): Promise<void> {
+  const made = await world(db);
+  const refusing = { create: () => Promise.reject(new Error('quota')) };
+  const env = { ...envOf(made), PDF_EXPORT: refusing };
+  const binder = { kind: 'binder', rootPageId: made.root };
+  const { body } = await render(made, made.reader, binder, env);
+  expect(body).toMatchObject({ status: 'error', reason: 'internal_error' });
+  const rows = await db.select().from(pdfExports).where(eq(pdfExports.kind, 'binder'));
+  expect(rows).toEqual([expect.objectContaining({ status: 'failed', failure: 'internal_error' })]);
+}
+
 describe.skipIf(!testServer)('#198 render_pdf makes an export a person can download', () => {
   it('#198 answers a hidden page or binder exactly like a missing one', () =>
     withAppDatabase(hidesLikeMissing));
@@ -140,4 +170,6 @@ describe.skipIf(!testServer)('#198 render_pdf makes an export a person can downl
     withAppDatabase(binderQueues));
   it('#198 refuses not_wired without a browser, a bucket or, for a binder, the Workflow', () =>
     withAppDatabase(saysWhenUnwired));
+  it('#198 finishes a binder failed and refuses internal_error when its run will not start', () =>
+    withAppDatabase(failsABinderWhoseRunWillNotStart));
 });

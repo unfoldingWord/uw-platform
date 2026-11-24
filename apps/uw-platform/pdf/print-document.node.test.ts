@@ -5,6 +5,7 @@ import { fontFiles } from '@uw/ui/generated/fonts';
 import { markBase64 } from '@uw/ui/generated/mark';
 import { printColours } from '@uw/ui/generated/app-css';
 import { binderBody, printJob, type PrintInput } from './print-document.ts';
+import { IMAGE_BUDGET_BYTES } from './print-html.ts';
 import type { Provenance } from './provenance.ts';
 
 const FILE = '/api/files/1b2c3d4e-5f60-4718-89ab-cdef01234567';
@@ -18,7 +19,8 @@ const provenance: Provenance = {
   filters: ['status is open', 'month = 2026-11'],
   exportedBy: 'reader@example.org',
   exportedOn: '2026-11-24',
-  sha256: SHA,
+  sourceSha256: SHA,
+  withheld: false,
 };
 
 const body = [
@@ -123,6 +125,8 @@ describe('#198 the print document footnotes its links and closes with its proven
       expect(said).toContain(value);
     }
     expect(block?.querySelector('[data-hash]')?.textContent).toBe(SHA);
+    expect(said).toContain('Source SHA-256');
+    expect(said).not.toContain('covers the fields shown');
     const order = [...document.querySelectorAll('[data-pdf-links], [data-pdf-provenance]')];
     expect(order.map((node) => node.hasAttribute('data-pdf-provenance'))).toEqual([false, true]);
   });
@@ -130,6 +134,13 @@ describe('#198 the print document footnotes its links and closes with its proven
   it('#198 says there were no filters when none were used', async () => {
     const { document } = await printed({ provenance: { ...provenance, filters: [] } });
     expect(document.querySelector('[data-pdf-provenance]')?.textContent).toContain('None');
+  });
+
+  it('#198 says the source hash covers only the fields shown when any were withheld', async () => {
+    const { document } = await printed({ provenance: { ...provenance, withheld: true } });
+    expect(document.querySelector('[data-pdf-provenance]')?.textContent).toContain(
+      'Source SHA-256 covers the fields shown to the exporter',
+    );
   });
 });
 
@@ -144,7 +155,9 @@ describe('#198 the running header and footer of a print job', () => {
 
   it('#198 foots every page with the short provenance line and the page count', async () => {
     const { job } = await printed();
-    expect(job.footer).toContain(`tasks/Open tasks · 2026-11-24 · sha256:${SHA.slice(0, 12)}`);
+    expect(job.footer).toContain(
+      `tasks/Open tasks · 2026-11-24 · source sha256:${SHA.slice(0, 12)}`,
+    );
     expect(job.footer).not.toContain(SHA);
     expect(job.footer).toContain('<span class="pageNumber"></span>');
     expect(job.footer).toContain('<span class="totalPages"></span>');
@@ -196,5 +209,83 @@ describe('#198 a binder body', () => {
     const { document } = new JSDOM(job.html).window;
     expect(document.querySelectorAll('sup[data-footnote]')).toHaveLength(0);
     expect(document.querySelectorAll('[data-pdf-section]')).toHaveLength(2);
+  });
+});
+
+const PART = Math.floor((IMAGE_BUDGET_BYTES * 0.4) / 3) * 3;
+
+function pictureOf(bytes: number): string {
+  return `data:image/png;base64,${'A'.repeat((bytes / 3) * 4)}`;
+}
+
+function picturesBody(count: number): string {
+  const pictures = Array.from(
+    { length: count },
+    (_, at) => `<img src="/api/files/pic-${at}" alt="Picture ${at}">`,
+  );
+  return `<p>${pictures.join('')}</p>`;
+}
+
+function inlinedSources(document: Document): string[] {
+  return [...document.querySelectorAll('img')].map((img) => img.getAttribute('src') ?? '');
+}
+
+describe('#198 a printed document inlines images only up to its byte budget', () => {
+  it('#198 inlines the first images and prints the alt text of the rest once the budget is spent', async () => {
+    const asked: string[] = [];
+    const image = async (src: string): Promise<string | null> => {
+      asked.push(src);
+      return pictureOf(PART);
+    };
+    const { document } = await printed({ bodyHtml: picturesBody(4), image });
+    expect(inlinedSources(document)).toEqual([pictureOf(PART), pictureOf(PART)]);
+    const missing = texts(document.querySelectorAll('[data-pdf-missing-image]'));
+    expect(missing).toEqual(['Picture 2', 'Picture 3']);
+    expect(asked).toEqual(['/api/files/pic-0', '/api/files/pic-1', '/api/files/pic-2']);
+  });
+
+  it('#198 names in the provenance block how many images were left out for size', async () => {
+    const image = async (): Promise<string | null> => pictureOf(PART);
+    const { document } = await printed({ bodyHtml: picturesBody(5), image });
+    const said = document.querySelector('[data-pdf-provenance]')?.textContent ?? '';
+    expect(said).toContain('Images left out');
+    expect(said).toContain('3 left out for size');
+  });
+
+  it('#198 says nothing about left-out images when every image fits', async () => {
+    const { document } = await printed();
+    const said = document.querySelector('[data-pdf-provenance]')?.textContent ?? '';
+    expect(said).not.toContain('Images left out');
+  });
+});
+
+describe('#198 a printed document reads its images in turn against one budget', () => {
+  it('#198 reads images one at a time', async () => {
+    let reading = 0;
+    let most = 0;
+    const image = async (): Promise<string | null> => {
+      reading += 1;
+      most = Math.max(most, reading);
+      await new Promise((resolve) => setTimeout(resolve, 1));
+      reading -= 1;
+      return PIXEL;
+    };
+    await printed({ bodyHtml: picturesBody(4), image });
+    expect(most).toBe(1);
+  });
+
+  it('#198 spends one budget across the whole binder, not one per page', async () => {
+    const sections = [0, 1, 2].map((at) => ({
+      title: `Page ${at}`,
+      reference: `01-09/page-${at}@v1`,
+      html: `<p><img src="/api/files/pic-${at}" alt="Picture ${at}"></p>`,
+    }));
+    const cover = { title: 'Packet', exportedBy: 'reader@example.org', exportedOn: '2026-11-24' };
+    const image = async (): Promise<string | null> => pictureOf(PART);
+    const { document } = await printed({ bodyHtml: binderBody(sections, cover), image });
+    expect(inlinedSources(document)).toHaveLength(2);
+    expect(texts(document.querySelectorAll('[data-pdf-missing-image]'))).toEqual(['Picture 2']);
+    const said = document.querySelector('[data-pdf-provenance]')?.textContent ?? '';
+    expect(said).toContain('1 left out for size');
   });
 });

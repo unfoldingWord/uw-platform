@@ -5,8 +5,15 @@ import { loadCollectionById } from '../../collections/definitions.ts';
 import { viewRow } from '../../collections/view-rows.ts';
 import type { PdfExportBinding } from '../../env.ts';
 import type { FileStore } from '../../pages/file-store.ts';
-import { exportFilePath, queueExport, storeReadyExport } from '../../pdf/exports.ts';
-import { printJob, type Printed } from '../../pdf/print-document.ts';
+import {
+  exportFilePath,
+  queueExport,
+  recordRender,
+  startQueuedExport,
+  storeReadyExport,
+  withinRenderLimit,
+} from '../../pdf/exports.ts';
+import { printJob, sourceHashOf, type Printed } from '../../pdf/print-document.ts';
 import { fileImages } from '../../pdf/print-images.ts';
 import {
   binderPlan,
@@ -16,7 +23,7 @@ import {
   type BinderPlan,
   type Printable,
 } from '../../pdf/print-targets.ts';
-import { exporterOf, sha256Hex, type Provenance } from '../../pdf/provenance.ts';
+import { exporterOf, type Provenance } from '../../pdf/provenance.ts';
 import type { PdfRenderer } from '../../pdf/renderer.ts';
 import type { VerbContext } from '../context.ts';
 import { gatedHandler, refusal, type Found, type VerbInput, type VerbRefusal } from '../handler.ts';
@@ -86,11 +93,6 @@ function sourceOf(context: VerbContext, target: Single): string {
   return `${context.origin ?? ''}${path}`;
 }
 
-async function hashOf(printed: Printed): Promise<string> {
-  const input = printed.hashInput;
-  return input.kind === 'hash' ? input.sha256 : sha256Hex(input.text);
-}
-
 async function provenanceOf(
   context: VerbContext,
   target: Single,
@@ -102,7 +104,7 @@ async function provenanceOf(
     filters: printed.filters,
     exportedBy: exporterOf(context.principal),
     exportedOn: formatDate(context.at),
-    sha256: await hashOf(printed),
+    ...(await sourceHashOf(printed)),
   };
 }
 
@@ -128,15 +130,14 @@ async function renderNow(
   const pdf = await wired.pdf.render(
     await printJob({ title, bodyHtml, provenance, origin, image }),
   );
-  if (pdf === null) return refusal('pdf_render_failed');
-  const { reference, sha256 } = provenance;
-  const stored = { kind: target.kind, title, reference, areas, request: target, pdf, sha256 };
-  const at = context.at;
-  const reply = await storeReadyExport(context.db, wired.files, {
-    ...stored,
-    actor: context.principal,
-    at,
-  });
+  const { reference, sourceSha256 } = provenance;
+  const stored = { kind: target.kind, title, reference, areas, request: target };
+  const asked = { ...stored, actor: context.principal, at: context.at };
+  if (pdf === null) {
+    await recordRender(context.db, asked, { kind: 'failed', reason: 'pdf_render_failed' });
+    return refusal('pdf_render_failed');
+  }
+  const reply = await storeReadyExport(context.db, wired.files, { ...asked, pdf, sourceSha256 });
   return { status: 'accepted' as const, output: reply };
 }
 
@@ -151,9 +152,18 @@ async function queueBinder(context: VerbContext, binder: Binder, start: PdfExpor
   };
   const at = context.at;
   const { exportId } = await queueExport(context.db, { ...queued, actor: context.principal, at });
-  await start.create({ id: exportId, params: { exportId, traceId: context.traceId } });
+  const begin = () =>
+    start.create({ id: exportId, params: { exportId, traceId: context.traceId } });
+  if (!(await startQueuedExport(context.db, exportId, at, begin))) return refusal('internal_error');
   const file = exportFilePath(exportId);
-  const output: PdfExportReply = { exportId, status: 'queued', file, sha256: null, bytes: null };
+  const output: PdfExportReply = {
+    exportId,
+    status: 'queued',
+    file,
+    sourceSha256: null,
+    fileSha256: null,
+    bytes: null,
+  };
   return { status: 'accepted' as const, output };
 }
 
@@ -168,6 +178,9 @@ export const renderPdfVerb = gatedHandler({
   run: async (context, input, scene) => {
     const { pdf, files } = context;
     if (!pdf || !files) return refusal('not_wired');
+    if (!(await withinRenderLimit(context.db, context.principal, context.at))) {
+      return refusal('export_limit_reached');
+    }
     if (scene.kind === 'binder') {
       if (!context.pdfExport) return refusal('not_wired');
       return queueBinder(context, scene, context.pdfExport);

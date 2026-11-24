@@ -1,11 +1,14 @@
 import type { Context } from 'hono';
 import { formatDate } from '@uw/core/dates';
 import type { Principal } from '@uw/core/principal';
+import type { Executor } from '@uw/db/client';
 import type { AppEnv } from '../deps.ts';
 import { refuse } from '../http/outcomes.ts';
+import { requestLogger } from '../request-logger.ts';
 import { bucketFiles } from '../pages/file-store.ts';
 import { bufferOf } from '../pages/files.ts';
-import { printJob, type Printed } from './print-document.ts';
+import { recordRender, withinRenderLimit, type RenderOutcome } from './exports.ts';
+import { printJob, sourceHashOf, type Printed } from './print-document.ts';
 import { fileImages, noImages } from './print-images.ts';
 import type { ImageOf } from './print-html.ts';
 import { exporterOf, sha256Hex, type Provenance } from './provenance.ts';
@@ -35,11 +38,6 @@ function pdfFileName(title: string): string {
   return `${slug === '' ? UNNAMED : slug}.pdf`;
 }
 
-function hashOf(printed: Printed): Promise<string> {
-  const input = printed.hashInput;
-  return input.kind === 'hash' ? Promise.resolve(input.sha256) : sha256Hex(input.text);
-}
-
 export function screenPrinted(c: Context<AppEnv>, html: string): Printed {
   const params = new URL(c.req.url).searchParams;
   const filters = [...params]
@@ -67,8 +65,21 @@ async function provenanceOf(
     filters: printed.filters,
     exportedBy: exporterOf(actor),
     exportedOn: formatDate(c.get('now')),
-    sha256: await hashOf(printed),
+    ...(await sourceHashOf(printed)),
   };
+}
+
+type ScreenRender = {
+  readonly actor: Principal;
+  readonly title: string;
+  readonly printed: Printed;
+  readonly at: Date;
+};
+
+function recorded(db: Executor, render: ScreenRender, outcome: RenderOutcome) {
+  const { actor, title, printed, at } = render;
+  const screen = { kind: 'screen' as const, title, reference: printed.reference, areas: [] };
+  return recordRender(db, { ...screen, request: {}, actor, at }, outcome);
 }
 
 export async function pdfOfScreen(
@@ -80,16 +91,30 @@ export async function pdfOfScreen(
   const actor = c.get('principal');
   if (actor === null) return refuse(c, 'unauthenticated');
   if (c.env.BROWSER === undefined) return refuse(c, 'not_wired');
+  const database = c.get('database');
+  if (database === null) return refuse(c, 'database_not_configured');
+  if (!(await withinRenderLimit(database.db, actor, c.get('now')))) {
+    return refuse(c, 'export_limit_reached');
+  }
   const provenance = await provenanceOf(c, actor, printed);
   const image = imagesOf(c, actor);
   const job = await printJob({ title, bodyHtml, provenance, origin: originOf(c), image });
-  const pdf = await browserPdf(c.env.BROWSER).render(job);
-  if (pdf === null) return refuse(c, 'pdf_render_failed');
+  const pdf = await browserPdf(c.env.BROWSER, requestLogger(c)).render(job);
+  const render = { actor, title, printed, at: c.get('now') };
+  if (pdf === null) {
+    await recorded(database.db, render, { kind: 'failed', reason: 'pdf_render_failed' });
+    return refuse(c, 'pdf_render_failed');
+  }
+  const { sourceSha256 } = provenance;
+  const fileSha256 = await sha256Hex(pdf);
+  const printedPdf = { kind: 'printed', sourceSha256, fileSha256, bytes: pdf.byteLength } as const;
+  await recorded(database.db, render, printedPdf);
   c.set('outcome', 'accepted');
   return c.body(bufferOf(pdf), 200, {
     'content-type': 'application/pdf',
     'content-disposition': `attachment; filename="${pdfFileName(title)}"`,
     'cache-control': 'no-store',
-    'x-uw-sha256': provenance.sha256,
+    'x-uw-source-sha256': sourceSha256,
+    'x-uw-file-sha256': fileSha256,
   });
 }

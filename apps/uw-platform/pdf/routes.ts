@@ -13,6 +13,8 @@ import {
   exportPath,
   queueExport,
   readExport,
+  startQueuedExport,
+  withinRenderLimit,
   type ExportRecord,
 } from './exports.ts';
 import { binderPlan, binderReference } from './print-targets.ts';
@@ -67,16 +69,22 @@ async function queueBinder(c: Context<AppEnv>): Promise<Response> {
   const at = c.get('now');
   const plan = await binderPlan(database.db, actor, asked.request, at);
   if (typeof plan === 'string') return refuse(c, plan);
+  if (!(await withinRenderLimit(database.db, actor, at))) return refuse(c, 'export_limit_reached');
   const { title, areas } = plan;
   const reference = binderReference(plan);
   const input = { kind: 'binder' as const, title, reference, areas, request: asked.request };
   const { exportId } = await queueExport(database.db, { ...input, actor, at });
   const params = { exportId, traceId: c.get('traceId') };
-  await c.env.PDF_EXPORT.create({ id: exportId, params });
+  const workflow = c.env.PDF_EXPORT;
+  const begin = () => workflow.create({ id: exportId, params });
+  if (!(await startQueuedExport(database.db, exportId, at, begin))) {
+    return refuse(c, 'internal_error');
+  }
   c.set('outcome', 'accepted');
   if (asked.form) return c.redirect(exportPath(exportId), 303);
-  const reply = { exportId, status: 'queued', file: exportFilePath(exportId), sha256: null };
-  return c.json(pdfExportReplySchema.parse({ ...reply, bytes: null }), 202);
+  const reply = { exportId, status: 'queued', file: exportFilePath(exportId) };
+  const unmade = { sourceSha256: null, fileSha256: null, bytes: null };
+  return c.json(pdfExportReplySchema.parse({ ...reply, ...unmade }), 202);
 }
 
 async function foundExport(c: Context<AppEnv>): Promise<ExportRecord | Response> {
@@ -94,9 +102,10 @@ async function foundExport(c: Context<AppEnv>): Promise<ExportRecord | Response>
 async function readReply(c: Context<AppEnv>): Promise<Response> {
   const found = await foundExport(c);
   if (found instanceof Response) return found;
-  const { exportId, status, file, sha256, bytes } = found;
+  const { exportId, status, file, sourceSha256, fileSha256, bytes } = found;
+  const reply = { exportId, status, file, sourceSha256, fileSha256, bytes };
   c.set('outcome', 'accepted');
-  return c.json(pdfExportReplySchema.parse({ exportId, status, file, sha256, bytes }), 200);
+  return c.json(pdfExportReplySchema.parse(reply), 200);
 }
 
 function fileNameOf(title: string): string {
@@ -115,14 +124,18 @@ async function downloadExport(c: Context<AppEnv>): Promise<Response> {
   if (found instanceof Response) return found;
   if (found.status === 'queued') return refuse(c, 'export_not_ready');
   const stored = found.r2Key === null ? null : await bucketFiles(c.env.FILES).get(found.r2Key);
-  if (stored === null || found.sha256 === null) return refuse(c, 'export_not_found');
+  const { sourceSha256, fileSha256 } = found;
+  if (stored === null || sourceSha256 === null || fileSha256 === null) {
+    return refuse(c, 'export_not_found');
+  }
   c.set('outcome', 'accepted');
   return c.body(bufferOf(stored.bytes), 200, {
     'content-type': 'application/pdf',
     'content-disposition': `attachment; filename="${fileNameOf(found.title)}"`,
     'x-content-type-options': 'nosniff',
     'cache-control': 'private, no-store',
-    'x-uw-sha256': found.sha256,
+    'x-uw-source-sha256': sourceSha256,
+    'x-uw-file-sha256': fileSha256,
   });
 }
 

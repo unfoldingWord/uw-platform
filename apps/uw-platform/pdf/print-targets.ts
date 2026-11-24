@@ -2,14 +2,14 @@ import { binderLimit, type BinderRequest, type Page } from '@uw/contracts';
 import { formatDate } from '@uw/core/dates';
 import type { Principal } from '@uw/core/principal';
 import type { Database } from '@uw/db/client';
-import { pageVersion } from '../pages/history.ts';
 import { listPages } from '../pages/listing.ts';
 import { renderPage } from '../pages/render-page.ts';
 import { readPage } from '../pages/store.ts';
 import { withViews } from '../views/parts/view-embed.tsx';
-import { binderBody, type BinderSection } from './print-document.ts';
+import { binderBody, type BinderSection, type SourceHash } from './print-document.ts';
 import { screenOf, titled, type Printable } from './print-kernel.ts';
-import { canonicalJson, exporterOf, pageVersionHash, sha256Hex } from './provenance.ts';
+import { pagePrinted, pageReference, pageSourceHash } from './page-source.ts';
+import { canonicalJson, exporterOf, sha256Hex } from './provenance.ts';
 
 export { printView } from './print-view.tsx';
 export type { Printable } from './print-kernel.ts';
@@ -24,21 +24,10 @@ export type BinderPlan = {
 };
 
 type Reader = { readonly db: Database; readonly actor: Principal; readonly at: Date };
-type Section = BinderSection & { readonly sha256: string };
+type Section = BinderSection & SourceHash;
 
 const DEEPEST = 20;
 const CHILDREN = 200;
-
-function pageReference(page: Page): string {
-  return `${page.jdArea}/${page.slug}@v${page.version}`;
-}
-
-async function pageHash(reader: Reader, page: Page): Promise<string> {
-  const key = { pageId: page.id, version: page.version };
-  const snapshot = await pageVersion(reader.db, reader.actor, key, reader.at);
-  const source = snapshot?.page ?? page;
-  return pageVersionHash({ ...source, pageId: page.id });
-}
 
 async function pageHtml(reader: Reader, page: Page, commit: string): Promise<string> {
   const { db, actor, at } = reader;
@@ -59,11 +48,7 @@ export async function printPage(
   return {
     title: page.title,
     bodyHtml: titled(page.title, await pageHtml(reader, page, commit)),
-    printed: {
-      reference: pageReference(page),
-      filters: [],
-      hashInput: { kind: 'hash', sha256: await pageHash(reader, page) },
-    },
+    printed: await pagePrinted(reader, page),
     areas: [page.jdArea],
   };
 }
@@ -124,7 +109,7 @@ async function sectionsOf(reader: Reader, plan: BinderPlan, commit: string): Pro
       title: page.title,
       reference: pageReference(page),
       html: await pageHtml(reader, page, commit),
-      sha256: await pageHash(reader, page),
+      ...(await pageSourceHash(reader, page)),
     });
   }
   return sections;
@@ -144,14 +129,18 @@ export async function printPlannedBinder(
 ): Promise<Printable> {
   const sections = await sectionsOf({ db, actor, at }, plan, commit);
   const cover = { title: plan.title, exportedBy: exporterOf(actor), exportedOn: formatDate(at) };
-  const hashed = sections.map(({ reference, sha256 }) => ({ reference, sha256 }));
+  const hashed = sections.map(({ reference, sourceSha256 }) => ({
+    reference,
+    sha256: sourceSha256,
+  }));
+  const withheld = sections.some((section) => section.withheld);
   return {
     title: plan.title,
     bodyHtml: binderBody(sections, cover),
     printed: {
       reference: binderReference(plan),
       filters: sections.map((section) => `page=${section.reference}`),
-      hashInput: { kind: 'hash', sha256: await sha256Hex(canonicalJson(hashed)) },
+      hashInput: { kind: 'hash', sourceSha256: await sha256Hex(canonicalJson(hashed)), withheld },
     },
     areas: plan.areas,
   };

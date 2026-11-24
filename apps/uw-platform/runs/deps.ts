@@ -118,7 +118,7 @@ export function runDepsOf(env: Bindings, traceId: string): OpenedRunDeps {
     },
     builder: builderOf(env, database.db),
     files: env.FILES === undefined ? null : bucketFiles(env.FILES),
-    pdf: pdfRendererOf(env),
+    pdf: pdfRendererOf(env, logger),
     pdfExport: env.PDF_EXPORT ?? null,
     origin: env.APP_ORIGIN ?? '',
   };

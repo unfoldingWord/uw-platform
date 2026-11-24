@@ -222,6 +222,11 @@ async function openScene(r: Rig): Promise<Scene> {
   };
 }
 
+const workflowLogger = createLogger(
+  { traceId: 'trace', commit: 'test-commit', route: 'workflow', principal: null },
+  () => undefined,
+);
+
 function workflowContext(r: Rig, principal: Principal): Omit<VerbContext, 'host'> {
   return {
     principal,
@@ -232,12 +237,9 @@ function workflowContext(r: Rig, principal: Principal): Omit<VerbContext, 'host'
     commit: 'test-commit',
     cap: DEFAULT_SPEND_CAP,
     files: workflowFiles(),
-    pdf: browserPdf(fakeBrowser()),
+    pdf: browserPdf(fakeBrowser(), workflowLogger),
     origin: 'http://uw.test',
-    logger: createLogger(
-      { traceId: 'trace', commit: 'test-commit', route: 'workflow', principal: null },
-      () => undefined,
-    ),
+    logger: workflowLogger,
   };
 }
 

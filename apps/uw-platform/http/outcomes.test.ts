@@ -10,6 +10,7 @@ const pdfReasons: readonly (readonly [ErrorReason, number])[] = [
   ['export_not_ready', 409],
   ['binder_empty', 422],
   ['binder_too_large', 422],
+  ['export_limit_reached', 429],
 ];
 
 function refuser(reason: ErrorReason): Hono<AppEnv> {

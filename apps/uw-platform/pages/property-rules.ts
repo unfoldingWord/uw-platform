@@ -32,6 +32,23 @@ async function withheldKeys(
   return new Set(withheld.map((row) => row.key));
 }
 
+export type ShownPage = { readonly page: Page; readonly withheld: boolean };
+
+export async function shownFields(
+  db: Executor,
+  actor: Principal,
+  page: Page,
+  collectionId: string | null,
+  at: Date,
+): Promise<ShownPage> {
+  if (collectionId === null) return { page, withheld: false };
+  const withheld = await withheldKeys(db, actor, collectionId, at);
+  const entries = Object.entries(page.frontmatter);
+  const kept = entries.filter(([key]) => !withheld.has(key));
+  if (kept.length === entries.length) return { page, withheld: false };
+  return { page: { ...page, frontmatter: Object.fromEntries(kept) }, withheld: true };
+}
+
 export async function withoutWithheld(
   db: Executor,
   actor: Principal,
@@ -39,11 +56,5 @@ export async function withoutWithheld(
   collectionId: string | null,
   at: Date,
 ): Promise<Page> {
-  if (collectionId === null) return page;
-  const withheld = await withheldKeys(db, actor, collectionId, at);
-  if (withheld.size === 0) return page;
-  const frontmatter = Object.fromEntries(
-    Object.entries(page.frontmatter).filter(([key]) => !withheld.has(key)),
-  );
-  return { ...page, frontmatter };
+  return (await shownFields(db, actor, page, collectionId, at)).page;
 }
