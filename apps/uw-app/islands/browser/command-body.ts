@@ -233,6 +233,10 @@ const shapes: ReadonlyMap<string, Shape> = new Map<string, Shape>([
   ['revoke_reveal', grantOnly],
   ['claim', itemOnly],
   ['release', itemOnly],
+  [
+    'submit_to_gate',
+    (given) => ({ itemId: given.get('itemId'), to: null, pullRequest: null, head: null }),
+  ],
   ['take_over', itemOnly],
   ['stop_run', itemOnly],
   [

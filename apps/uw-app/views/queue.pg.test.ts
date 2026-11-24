@@ -228,6 +228,46 @@ async function claimsRefused(db: Database): Promise<void> {
   expect(await wip()).toBe('wip_limit_reached');
 }
 
+function sendButton(document: Document, title: string): string | null {
+  return (
+    formOf(cardOf(document, title), 'submit_to_gate')?.querySelector('button')?.textContent ?? null
+  );
+}
+
+async function sendOnForms(world: BoardWorld): Promise<void> {
+  const document = await documentOf(world);
+  expect(sendButton(document, 'Review the copy')).toBe('Run checks and send on');
+  expect(fieldsOf(formOf(cardOf(document, 'Review the copy'), 'submit_to_gate'))).toEqual({
+    itemId: world.personHeld,
+  });
+  expect(sendButton(document, 'Write the run notes')).toBeNull();
+  expect(sendButton(document, 'Draw the icon')).toBeNull();
+  const viewerBoard = await documentOf(world, world.viewer.email);
+  expect(sendButton(viewerBoard, 'Review the copy')).toBeNull();
+}
+
+async function sendOutOfBacklog(db: Database): Promise<void> {
+  const world = await boardWorld(db, realClock);
+  const kernel = kernelOn(db, realClock);
+  accepted(
+    await kernel.items.claim(callerOf(world.rowan), { itemId: world.unheld, delegationId: null }),
+  );
+  const html = await getHtml(db, world.rowanEmail, queuePath(world.harnessId), {}, realClock);
+  const before = new JSDOM(html.text).window.document;
+  expect(sendButton(before, 'Draw the icon')).toBe('Send to next stage');
+  const form = formOf(cardOf(before, 'Draw the icon'), 'submit_to_gate');
+  const body = commandBody('submit_to_gate', fieldsOf(form), randomUUID());
+  const path = `/api/harness/${world.harnessId}/commands/submit_to_gate`;
+  const sent = await post(db, world.rowanEmail, path, body);
+  expect(sent.status).toBe(200);
+  const after = await getHtml(db, world.rowanEmail, queuePath(world.harnessId), {}, realClock);
+  const document = new JSDOM(after.text).window.document;
+  const lane = laneOf(document, 'Premise verified');
+  const moved = [...(lane?.querySelectorAll('article h3') ?? [])].map((h) => h.textContent);
+  expect(moved).toContain('Draw the icon');
+  expect(formOf(cardOf(document, 'Draw the icon'), 'claim')).not.toBeNull();
+}
+
 async function oneStage(world: BoardWorld): Promise<void> {
   const document = await documentOf(world, world.rowanEmail, queuePath(world.harnessId, 'build'));
   const lanes = [...document.querySelectorAll('main section[aria-labelledby] h2')].map(
@@ -318,6 +358,10 @@ describe.skipIf(!testServer)('the Queue', () => {
     inBoard(commandForms));
   it('WB-5 a claim refused for the WIP limit, a held lease or a missing grant answers its closed reason', () =>
     withAppDatabase(claimsRefused));
+  it('#232 the person holding a card can send it on, with words for the stage exit gate', () =>
+    inBoard(sendOnForms));
+  it('#232 a person sends a held Backlog card to the next stage, and it arrives unheld', () =>
+    withAppDatabase(sendOutOfBacklog));
   it('WB-5 the board filtered to one stage shows that column only', () => inBoard(oneStage));
   it('a harness the person cannot read renders the same not-found board as a missing one', () =>
     inBoard(hiddenIsMissing));
