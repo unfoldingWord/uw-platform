@@ -44,7 +44,7 @@ Monorepo, three Workers:
 
 | Worker | Purpose | Why separate |
 |---|---|---|
-| `uw-app` | Everything internal: SSR UI, API, MCP server, queue consumers, crons | One deploy, one log stream |
+| `uw-platform` | Everything internal: SSR UI, API, MCP server, queue consumers, crons | One deploy, one log stream |
 | `uw-ingest` | Public webhooks: Stripe, GitHub (later Zulip) | No Cloudflare Access in front; isolates signature verification; app deploys never drop a Stripe webhook |
 | `uw-www` | Public site: pre-rendered HTML from KV/R2 | Zero DB dependency; site survives Postgres outage |
 
@@ -340,7 +340,7 @@ Policies are pages with frontmatter: `policy_level (org|portfolio|program|projec
 
 ## 6. AI Agent Integration
 
-Remote MCP server inside `uw-app` (Streamable HTTP): `search_pages`, `read_page`, `write_page` (same validation path as UI), `query_entities` (whitelisted parameterized queries, never raw SQL), `resolve_policies`, `create_task`, `create_draft_journal_entry`, role-gated `list_gifts`, plus the work-queue tools below. Agents have their own identities + Access service tokens, grants always ≤ their owner's; every write records `agent:<id>` in version history and ledger audit. **Agents can never post a JE, send donor email, or approve a publish — those verbs don't exist as tools.**
+Remote MCP server inside `uw-platform` (Streamable HTTP): `search_pages`, `read_page`, `write_page` (same validation path as UI), `query_entities` (whitelisted parameterized queries, never raw SQL), `resolve_policies`, `create_task`, `create_draft_journal_entry`, role-gated `list_gifts`, plus the work-queue tools below. Agents have their own identities + Access service tokens, grants always ≤ their owner's; every write records `agent:<id>` in version history and ledger audit. **Agents can never post a JE, send donor email, or approve a publish — those verbs don't exist as tools.**
 
 ### Agent work queues (native feature)
 
@@ -802,11 +802,11 @@ Every row produces an artifact on schedule — a PDF (§16) plus its machine-rea
 - `packages/db/schema.ts` — Drizzle schema (pages, versions, ledger, CRM, ACL) — single source of truth
 - `packages/db/migrations/…` — incl. hand-written SQL for ledger triggers (balance, append-only, period lock, gapless numbering)
 - `packages/core/acl.ts` — the `can(actor, verb, resource)` function + role definitions
-- `apps/uw-app/` — Hono monolith (UI, API, MCP, queue consumer, crons)
+- `apps/uw-platform/` — Hono monolith (UI, API, MCP, queue consumer, crons)
 - `apps/uw-ingest/` — Stripe/GitHub webhook verification + enqueue
 - `apps/uw-www/` — public site server
 - `apps/uw-desktop/` — Tauri shell around the shared editor/sync client
-- `packages/editor/` — shared Milkdown Crepe + Yjs editor and sync client (used by uw-app islands and uw-desktop), incl. the suggestion/revision layer and CriticMarkup serializer (§2.4)
+- `packages/editor/` — shared Milkdown Crepe + Yjs editor and sync client (used by uw-platform islands and uw-desktop), incl. the suggestion/revision layer and CriticMarkup serializer (§2.4)
 - `packages/core/modules.ts` — the module registry (§14): dependencies, tables, routes, tools, classification
 - `packages/core/dates.ts` — the single `formatDate`/`parseDate` pair; everything else is banned by lint (§0)
 - `packages/charts/` — chart specs, standard chart library, brand palette, SVG/PNG/CSV export (§17), seeded by porting `../Budget Report`, `../Revenue Projection`, `../team-charts`

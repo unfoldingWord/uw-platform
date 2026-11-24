@@ -106,7 +106,7 @@ const facts: PullRequestFacts = {
   defaultBranch: 'main',
   checks: ciJobSchema.options.map((name) => check(name)),
   reviews: [review()],
-  files: { head, base, paths: ['apps/uw-app/board.tsx'] },
+  files: { head, base, paths: ['apps/uw-platform/board.tsx'] },
   declaration: declared('standard'),
   closes: [],
   comparison: {
@@ -242,7 +242,7 @@ describe('GH-5 SR-1 every check on the head counts, apart by app and name', () =
     const input = assembled({
       facts: {
         head: upper,
-        files: { head: upper, base, paths: ['apps/uw-app/board.tsx'] },
+        files: { head: upper, base, paths: ['apps/uw-platform/board.tsx'] },
         checks: ciJobSchema.options.map((name) => check(name, { headSha: upper })),
         reviews: [review({ commit: upper })],
       },
@@ -318,7 +318,7 @@ describe('KN-17 GH-5 risk at Ship comes from the files and declaration at the he
   });
 
   it('declares nothing without files at the head or without a declaration', () => {
-    const stale = { files: { head: older, base, paths: ['apps/uw-app/board.tsx'] } };
+    const stale = { files: { head: older, base, paths: ['apps/uw-platform/board.tsx'] } };
     expect(assembled({ facts: stale }).riskTier).toBeNull();
     expect(assembled({ facts: { files: null } }).riskTier).toBeNull();
     expect(assembled({ facts: { declaration: null } }).riskTier).toBeNull();
@@ -489,7 +489,7 @@ describe('SR-2 the assembler carries an approval across a merge from base', () =
       head: merged,
       comparison,
       checks: facts.checks.map((one) => ({ ...one, headSha: merged })),
-      files: { head: merged, base, paths: ['apps/uw-app/board.tsx'] },
+      files: { head: merged, base, paths: ['apps/uw-platform/board.tsx'] },
     };
     const input = assembleShipInput({ ...source, facts: moved });
     expect(input.carries).toEqual([head]);
@@ -524,11 +524,11 @@ describe('MD-4 the ship-rule input carries the delegation and the protected path
     const source = sourceOf({});
     const guarded = {
       ...source,
-      harness: { ...source.harness, protectedPaths: ['apps/uw-app/'] },
+      harness: { ...source.harness, protectedPaths: ['apps/uw-platform/'] },
       delegation: lent,
     };
     expect(assembleShipInput(guarded).delegation?.protectedTouched).toEqual([
-      'apps/uw-app/board.tsx',
+      'apps/uw-platform/board.tsx',
     ]);
   });
 

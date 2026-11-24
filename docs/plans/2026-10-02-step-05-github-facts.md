@@ -2,7 +2,7 @@
 
 **Goal:** Make GitHub the only source of the facts the Ship gate reads: a least-privilege GitHub App declared in `infra/`, a `gh_*` read model in Postgres fed by the existing webhook ingest and repaired by a nightly sweep, labelled issues imported as items, the `harness/<item>` branch convention with abandon and adopt, risk derived from the PR's changed files and fenced `harness` declaration at the head, approvals counted only from Reviewer identities on the head, a squash-merge connector that re-checks the head and is idempotent per item and head, a recovery sweep for a decision whose connector result was lost, and the four other connectors registered as not wired (GH-1 to GH-7).
 
-**Architecture:** The kernel stays pure. Its GitHubFacts port gains the facts the assembler needs (head ref, changed files at a head, the parsed declaration, check-run app and id, review id and time); the assembler in `packages/harness/gates/ship-input.ts` is the ship rule's only caller and builds every input from those facts; `submit` reads the same port for risk paths and the declaration. In `apps/uw-app`, one read-model module (`apps/uw-app/github/facts/`) owns the six `gh_*` tables and has one upsert path, called by the queue consumer's GitHub handler and by the nightly sweep; the platform GitHubFacts adapter reads it. A GitHub client (`apps/uw-app/github/client.ts`) mints the App JWT with `jose` and an installation token per call, and is reachable only from the GitHub module and the platform Connectors adapter; the merge connector is a handler in that adapter. Everything is proven against fixture payloads, a fixture `fetch` and a fixture key pair (DX-8); the live App waits on a person.
+**Architecture:** The kernel stays pure. Its GitHubFacts port gains the facts the assembler needs (head ref, changed files at a head, the parsed declaration, check-run app and id, review id and time); the assembler in `packages/harness/gates/ship-input.ts` is the ship rule's only caller and builds every input from those facts; `submit` reads the same port for risk paths and the declaration. In `apps/uw-platform`, one read-model module (`apps/uw-platform/github/facts/`) owns the six `gh_*` tables and has one upsert path, called by the queue consumer's GitHub handler and by the nightly sweep; the platform GitHubFacts adapter reads it. A GitHub client (`apps/uw-platform/github/client.ts`) mints the App JWT with `jose` and an installation token per call, and is reachable only from the GitHub module and the platform Connectors adapter; the merge connector is a handler in that adapter. Everything is proven against fixture payloads, a fixture `fetch` and a fixture key pair (DX-8); the live App waits on a person.
 
 **Tech Stack:** TypeScript 6 strict on Node 22.18+, Zod 4, Hono 4, Drizzle ORM 0.45 over `postgres` 3.4 and `@electric-sql/pglite` 0.5.8, `jose` 6 (already a dependency), `@octokit/core` 7.0.8 (new), Vitest 4 (Workers pool and node project), `fast-check` 4, dependency-cruiser, knip.
 
@@ -14,20 +14,20 @@
 
 **Decisions this plan makes (the PRD, the spec and `AGENTS.md` leave them open; Task 16 records each with its cost if wrong):**
 
-1. **The read model lives in `apps/uw-app/github/facts/`**, a platform module that uses Drizzle directly (as `pages/store.ts` does), with `docs/exceptions.md` rows. The architecture document already names "the GitHub read-model module in `uw-app`". The sim keeps its scripted GitHubFacts adapter; the platform adapter is proven by the shared port contract on the Postgres server.
+1. **The read model lives in `apps/uw-platform/github/facts/`**, a platform module that uses Drizzle directly (as `pages/store.ts` does), with `docs/exceptions.md` rows. The architecture document already names "the GitHub read-model module in `uw-platform`". The sim keeps its scripted GitHubFacts adapter; the platform adapter is proven by the shared port contract on the Postgres server.
 2. **The GitHub client is `@octokit/core` with an App JWT signed by `jose` and an installation token minted per call.** `@octokit/auth-app` was rejected because it caches installation tokens in memory across calls, and GH-1 says per call. The private key secret must be PKCS#8 (`openssl pkcs8 -topk8 -nocrypt`); a PKCS#1 key is refused `key_not_pkcs8`. Configuration is three Worker secrets, `GITHUB_APP_ID`, `GITHUB_APP_INSTALLATION_ID`, `GITHUB_APP_PRIVATE_KEY`; any one absent means GitHub is not configured: the merge connector answers `not_wired`, the sweep logs `github_not_configured` and does nothing, PR files are not fetched (so the gate fails closed `risk_tier_undeclared`).
 3. **Write-back is three operations: a cross-reference comment, the squash merge, and the merge tag.** The client's write surface is exactly `comment`, `merge` and `tag`. GH-1's "link labels" are not written in v1: the `harness` label is set by a person. The App's permissions are `metadata: read`, `issues: write`, `pull_requests: write` (reviews are under it; GitHub has no separate reviews permission), `checks: read`, `contents: write` (the merge and the tag).
 4. **The harness label is `harness`.** An issue carrying it is imported onto the harness whose `repository` equals the issue's repository, case-insensitively; with no such harness the import logs `no_harness_for_repository` and does nothing.
 5. **A harness names its repository** (`owner/name` or null), set at activation, unique case-insensitively. A submit, a ship decision and a merge on a PR whose repository is not the harness's are refused: submit `not_permitted` `{ why: 'repository_mismatch' }`, the ship rule through absent facts (`pr_not_open`, `head_mismatch`, `checks_not_green`), the connector `repository_mismatch`.
 6. **Heads are full SHAs.** A head is 40 or 64 lowercase hex after trimming and lowercasing; anything else (an abbreviated head) is `malformed_command` at submit and makes the facts unusable at Ship. The read model's CHECKs refuse any other form.
 7. **The PR declaration** is the fenced block that opens the PR body: its first line is exactly `` ```harness `` (S5-R39 makes the head position and form an allowlist; see `docs/progress_tracker.md`), closed by a line `` ``` ``, holding `key: value` lines for exactly `closes`, `risks`, `touches`, `risk_tier`, `risk_domains`. `closes` is `none` or a comma list of `#N` or `owner/name#N`; `risk_domains` is `none` or a comma list of risk domains; blank lines are ignored; CRLF is accepted. A second `harness` block, an unclosed block, an unknown or repeated key, a missing key or an invalid value makes the declaration absent (fail closed), with the problem recorded on the read model. It is parsed when the PR is upserted; the body itself is not stored.
-8. **Reviewer identities are a reviewed list in `packages/harness/github/reviewers.ts`**: GitHub login `uw-reviewer[bot]` is reviewer `uw-reviewer`, `uw-reviewer-codex[bot]` is `uw-reviewer-codex`. Only a review by a listed login counts; the ship rule sees the listed reviewer id, never the login. `packages/harness/github/` and `apps/uw-app/github/` become protected paths (domain `acl`), so changing who counts as a reviewer needs org-scope admin. The real logins are confirmed by a person (Waiting on a person).
+8. **Reviewer identities are a reviewed list in `packages/harness/github/reviewers.ts`**: GitHub login `uw-reviewer[bot]` is reviewer `uw-reviewer`, `uw-reviewer-codex[bot]` is `uw-reviewer-codex`. Only a review by a listed login counts; the ship rule sees the listed reviewer id, never the login. `packages/harness/github/` and `apps/uw-platform/github/` become protected paths (domain `acl`), so changing who counts as a reviewer needs org-scope admin. The real logins are confirmed by a person (Waiting on a person).
 9. **The resolved provider is read from the review body**: a fenced block `` ```harness-review `` with a `provider: <id>` line (and `model: <id>`, read and ignored). No block, or a provider that fails `[a-z0-9._-]` after NFKC and lowercase, is a null provider.
 10. **What counts on the head.** A check counts only if its app is `github-actions`, its name is one of the six CI jobs, and it is the latest run (highest GitHub id) of that name on the head. A review counts only if it is by a Reviewer identity, on the head, and is that reviewer's latest review on the head among `approved`, `changes_requested` and `dismissed` (by submission time, then id); `commented` reviews are ignored; only an `approved` latest counts.
 11. **Risk at Ship is re-derived from the facts at the head**: the floor from the changed paths (each file and each rename's previous name), carried over the item's ratcheted tier and domains, raised by the declaration. If the files at the head are unknown, or the declaration is absent, the tier is null and the rule refuses `risk_tier_undeclared`. `submit` derives and records `risk_derived` from the same facts when they are known at the submitted head, and records nothing new when they are not (R26 semantics).
 12. **The branch convention is checked at Ship**: facts whose head ref is not `harness/<itemId>` are unusable. A claim of an item whose branch is `abandoned` starts from the expected head unless the claim sets `adoptBranch`, which records `branch_adopted`; `adoptBranch` on an item without an abandoned branch is `malformed_command` `{ why: 'no_abandoned_branch' }`. The claim reply names the branch, the commit to start from and whether it was adopted.
 13. **Idempotency and order in the read model.** Every row is keyed on its GitHub id. Issues, PRs and milestones overwrite only with an equal or newer GitHub `updated_at` and only when a value differs; a completed check run never returns to a non-completed status; a dismissed review is terminal. Changed files land only for the PR's current head. A truncated delivery (`payloadTruncated`) is logged `payload_truncated` and left to the sweep. A payload that fails its schema is logged `malformed_payload` and acknowledged.
-14. **The nightly sweep** runs at `17 3 * * *` UTC as a cron in `apps/uw-app/cron/`. Per repository the App is installed on, it lists issues and PRs updated since the watermark less 10 minutes (all of them on the first run, at most 30 pages of 100 per run), re-reads every open PR's checks, reviews and files, retries pending cross-reference comments, and records on `gh_repos` the watermark and what it repaired (row counts per table). A GitHub failure on one repository leaves its watermark unchanged.
+14. **The nightly sweep** runs at `17 3 * * *` UTC as a cron in `apps/uw-platform/cron/`. Per repository the App is installed on, it lists issues and PRs updated since the watermark less 10 minutes (all of them on the first run, at most 30 pages of 100 per run), re-reads every open PR's checks, reviews and files, retries pending cross-reference comments, and records on `gh_repos` the watermark and what it repaired (row counts per table). A GitHub failure on one repository leaves its watermark unchanged.
 15. **An imported issue wraps a page of a new type `issue`** (frontmatter `repo`, `number`, `github_id`, `url`), created by the read model's import path in the harness's area with slug `issue-<github id>`, status `active`, classified gated (no agent may save it). Imported and manual items share one path and one event: `item_created` carries `issue` (null for a manual enqueue). The item records the issue on `harness_items` (unique on the GitHub id).
 16. **Exactly one cross-reference comment** per issue: the import claims the comment on `gh_issues` (`xref_claimed_at`, a claim older than 10 minutes may be retaken), looks for the marker `<!-- uw-harness-item:<itemId> -->` among the issue's comments, posts only if absent, then records the comment id; a failed post releases the claim. The comment reads `This issue is tracked by the unfoldingWord harness as item <itemId>.` followed by the marker.
 17. **Label removal** is recorded by `kernel.items.labelRemoved` only when an upsert shows the issue's labels going from holding `harness` to not, and the kernel dedupes on the GitHub `updated_at` of the change. Re-adding the label to an issue whose item exists records nothing.
@@ -67,10 +67,10 @@ Every task obeys every line here. The controller passes this section to each imp
 
 - `packages/contracts` imports only `zod`. `packages/core` imports `packages/contracts` and `zod`. `packages/db` imports `packages/contracts`, `packages/core`, `drizzle-orm`, `postgres`, `@electric-sql/pglite` and Node built-ins. `packages/harness` imports `@uw/contracts` and `@uw/core/acl` and nothing else.
 - `sim/` imports `packages/harness`, `packages/contracts`, `packages/db`, its own files and the Node built-ins in `AGENTS.md` rule 2; its tests also Vitest.
-- `@octokit/core` and the GitHub client (`apps/uw-app/github/client.ts`, `apps/uw-app/github/token.ts`) are imported only by files under `apps/uw-app/github/` and by `apps/uw-app/ports/connectors.ts`; never by `apps/uw-app/mcp/**` or `apps/uw-app/engines/**` (Task 7 adds the dependency-cruiser rule). No function returns an installation token or the App JWT to its caller; no log line carries either.
-- Rule 2 exceptions: an `apps/uw-app` platform module that uses Drizzle directly needs its own row in `docs/exceptions.md`, written in the same commit as the code and before it.
-- One writer per table (rule 3): the six `gh_*` tables are written only under `apps/uw-app/github/facts/` (`owns` in `apps/uw-app/github/facts/upsert.ts`); `pages` and `page_versions` only under `apps/uw-app/pages/`; `harness_items` and `harness_events` only by the kernel through its gateways; `harnesses` only by the stage command.
-- No route, tool handler or Workflow step reachable by an agent identity writes `gate_decisions` or `harness_stages`, calls `kernel.gates`, `kernel.stages` or `kernel.repair`, or names the connectors port (`tools/architecture/agent-boundary.ts`). The GitHub queue handler and the cron are reached from `apps/uw-app/index.ts`, which that check scans: they may call `kernel.items` and `kernel.reads` only.
+- `@octokit/core` and the GitHub client (`apps/uw-platform/github/client.ts`, `apps/uw-platform/github/token.ts`) are imported only by files under `apps/uw-platform/github/` and by `apps/uw-platform/ports/connectors.ts`; never by `apps/uw-platform/mcp/**` or `apps/uw-platform/engines/**` (Task 7 adds the dependency-cruiser rule). No function returns an installation token or the App JWT to its caller; no log line carries either.
+- Rule 2 exceptions: an `apps/uw-platform` platform module that uses Drizzle directly needs its own row in `docs/exceptions.md`, written in the same commit as the code and before it.
+- One writer per table (rule 3): the six `gh_*` tables are written only under `apps/uw-platform/github/facts/` (`owns` in `apps/uw-platform/github/facts/upsert.ts`); `pages` and `page_versions` only under `apps/uw-platform/pages/`; `harness_items` and `harness_events` only by the kernel through its gateways; `harnesses` only by the stage command.
+- No route, tool handler or Workflow step reachable by an agent identity writes `gate_decisions` or `harness_stages`, calls `kernel.gates`, `kernel.stages` or `kernel.repair`, or names the connectors port (`tools/architecture/agent-boundary.ts`). The GitHub queue handler and the cron are reached from `apps/uw-platform/index.ts`, which that check scans: they may call `kernel.items` and `kernel.reads` only.
 
 **Ports, gateways and transactions**
 
@@ -81,7 +81,7 @@ Every task obeys every line here. The controller passes this section to each imp
 
 **Contracts**
 
-- The live version moves `6.0.0` → `7.0.0` (Task 2) → `7.1.0` (Task 3) → `8.0.0` (Task 5) → `8.1.0` (Task 6) → `9.0.0` (Task 11). Each move changes, together and in one commit: the schemas, their fixtures under `packages/contracts/fixtures/<registry key>/{valid,invalid}/` (and `packages/contracts/verb-fixtures/<verb>/{input,output}/{valid,invalid}/` for verb I/O), the `schemaRegistry` entries in `packages/contracts/registry.ts`, `CONTRACT_VERSION` in `packages/contracts/version.ts`, a new last entry in `packages/contracts/contract-lock.json` recording every closed set, and `"contractVersion"` in `apps/uw-app/package.json` and `apps/uw-ingest/package.json`. No other task changes a contract; if one finds it must, it bumps the minor version the same way and records why in the tracker.
+- The live version moves `6.0.0` → `7.0.0` (Task 2) → `7.1.0` (Task 3) → `8.0.0` (Task 5) → `8.1.0` (Task 6) → `9.0.0` (Task 11). Each move changes, together and in one commit: the schemas, their fixtures under `packages/contracts/fixtures/<registry key>/{valid,invalid}/` (and `packages/contracts/verb-fixtures/<verb>/{input,output}/{valid,invalid}/` for verb I/O), the `schemaRegistry` entries in `packages/contracts/registry.ts`, `CONTRACT_VERSION` in `packages/contracts/version.ts`, a new last entry in `packages/contracts/contract-lock.json` recording every closed set, and `"contractVersion"` in `apps/uw-platform/package.json` and `apps/uw-ingest/package.json`. No other task changes a contract; if one finds it must, it bumps the minor version the same way and records why in the tracker.
 
 **Shared roots**
 
@@ -90,7 +90,7 @@ Every task obeys every line here. The controller passes this section to each imp
 
 **Dependencies**
 
-- One new third-party package: `@octokit/core@^7.0.8` (MIT; fetch-based, runs on Workers and Node 22) in `apps/uw-app/package.json` `dependencies`, added in Task 7. Run `pnpm install` after any `package.json` change and commit `pnpm-lock.yaml` with it. If `pnpm audit:prod` reports a high advisory in its tree, pin the patched version through `pnpm.overrides` in the root `package.json` and record it.
+- One new third-party package: `@octokit/core@^7.0.8` (MIT; fetch-based, runs on Workers and Node 22) in `apps/uw-platform/package.json` `dependencies`, added in Task 7. Run `pnpm install` after any `package.json` change and commit `pnpm-lock.yaml` with it. If `pnpm audit:prod` reports a high advisory in its tree, pin the patched version through `pnpm.overrides` in the root `package.json` and record it.
 
 **Tests**
 
@@ -98,8 +98,8 @@ Every task obeys every line here. The controller passes this section to each imp
 - Name each `describe` (or scenario file) with the requirement ID first and a space: `describe('GH-5 only Reviewer identities on the head count', …)`, `sim/scenarios/GH-3.a-labelled-issue-becomes-one-item.ts`. A title may lead with an ID only if it proves that requirement's clauses (tracker R36). Fixture IDs use the prefix `ZZ-`.
 - A scenario is `defineScenario({ id, title, run })` returning `{ state }`; the runner supplies the events and checks replay against the projection. Scenarios assert with `node:assert/strict`.
 - Kernel behaviour over the world that is not a scenario goes in `sim/kernel/*.test.ts`; schema behaviour in `packages/db/*.test.ts` on `databaseTargets` from `@uw/db/test-targets`; property tests in `tools/properties/*.test.ts`.
-- `apps/uw-app` tests: pure and Workers-runtime tests are `*.test.ts` (the `workers` Vitest project, no database); anything with a database is `*.pg.test.ts` (the `node` project) on `withAppDatabase` (`apps/uw-app/testing/postgres.ts`), wrapped in `describe.skipIf(!testServer)`.
-- GitHub is never called. Webhook and REST payloads are JSON fixtures under `apps/uw-app/github/fixtures/`, trimmed from GitHub's documented example payloads (docs.github.com, "Webhook events and payloads" and the REST reference) with their ids and names changed to fixture values; the GitHub API is `fixtureGitHub()` from `apps/uw-app/github/testing/fixture-github.ts` (Task 7), a `fetch` that routes method and path to programmed responses and records every request; the App key is a pair generated in the test with `jose`'s `generateKeyPair('RS256', { extractable: true })`.
+- `apps/uw-platform` tests: pure and Workers-runtime tests are `*.test.ts` (the `workers` Vitest project, no database); anything with a database is `*.pg.test.ts` (the `node` project) on `withAppDatabase` (`apps/uw-platform/testing/postgres.ts`), wrapped in `describe.skipIf(!testServer)`.
+- GitHub is never called. Webhook and REST payloads are JSON fixtures under `apps/uw-platform/github/fixtures/`, trimmed from GitHub's documented example payloads (docs.github.com, "Webhook events and payloads" and the REST reference) with their ids and names changed to fixture values; the GitHub API is `fixtureGitHub()` from `apps/uw-platform/github/testing/fixture-github.ts` (Task 7), a `fetch` that routes method and path to programmed responses and records every request; the App key is a pair generated in the test with `jose`'s `generateKeyPair('RS256', { extractable: true })`.
 - Fixture heads are full SHAs. In the sim use `simSha(seed)` from `sim/ship-fixtures.ts` (Task 4): `seed.padEnd(40, '0')`, with `seed` lowercase hex.
 - Locally `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/uw_test` (a private local Postgres 16 server, already running); CI uses the `postgres:16` service container. No test may need a live account or a secret (PRD DX-8); the only environment variables test code reads are `TEST_DATABASE_URL`, `CI` and `PATH`.
 - Every test file that opens an embedded Postgres (directly or through `createWorld`) has `afterAll(closeEmbeddedTemplate)` and closes every world or database it opens.
@@ -140,30 +140,30 @@ packages/harness/{ports.ts,gates/ship-input.ts,gates/approve-at-ship.ts,kernel.t
   sim/{adapters/github-facts.ts,ship-fixtures.ts}; scenarios and tests that build facts; sim/scenarios/GH-5.* Task 4
 packages/contracts/{ship-rule,harness,verb-io,event-evidence,version}.ts, fixtures/**;
   packages/db/checks.ts; packages/harness/{items/submit.ts,items/commands.ts,gates/facts-failure.ts};
-  apps/uw-app/mcp/verbs/submit-to-gate.ts; sim/ship-fixtures.ts; sim/kernel/submit-facts.test.ts           Task 5
+  apps/uw-platform/mcp/verbs/submit-to-gate.ts; sim/ship-fixtures.ts; sim/kernel/submit-facts.test.ts           Task 5
 packages/contracts/{verb-io,version}.ts, verb-fixtures/**; packages/harness/items/claim.ts;
-  apps/uw-app/mcp/verbs/claim-item.ts; sim/scenarios/GH-4.*                                                 Task 6
-infra/github/app-manifest.json, infra/README.md; apps/uw-app/{env.ts,package.json};
-  apps/uw-app/github/{app-config,token,client,failures}.ts, testing/fixture-github.ts; tests;
+  apps/uw-platform/mcp/verbs/claim-item.ts; sim/scenarios/GH-4.*                                                 Task 6
+infra/github/app-manifest.json, infra/README.md; apps/uw-platform/{env.ts,package.json};
+  apps/uw-platform/github/{app-config,token,client,failures}.ts, testing/fixture-github.ts; tests;
   .dependency-cruiser.mjs; tools/infra/github-app.test.ts                                                    Task 7
-apps/uw-app/github/{payloads.ts,fixtures/*.json,facts/records.ts,facts/normalise.ts,facts/upsert.ts,
+apps/uw-platform/github/{payloads.ts,fixtures/*.json,facts/records.ts,facts/normalise.ts,facts/upsert.ts,
   facts/queries.ts}; tests; tools/architecture/owners.test.ts; docs/exceptions.md                           Task 8
-apps/uw-app/ports/github-facts.ts, github-facts.contract.pg.test.ts; apps/uw-app/kernel.ts;
-  apps/uw-app/github/{ingest,follow-up}.ts; apps/uw-app/queue/{consumer,worker}.ts; tests                   Task 9
-apps/uw-app/cron/{registry,scheduled}.ts; apps/uw-app/github/sweep.ts; apps/uw-app/index.ts;
-  infra/uw-app/wrangler{,.go-live}.toml; tools/infra/crons.test.ts; tests                                   Task 10
+apps/uw-platform/ports/github-facts.ts, github-facts.contract.pg.test.ts; apps/uw-platform/kernel.ts;
+  apps/uw-platform/github/{ingest,follow-up}.ts; apps/uw-platform/queue/{consumer,worker}.ts; tests                   Task 9
+apps/uw-platform/cron/{registry,scheduled}.ts; apps/uw-platform/github/sweep.ts; apps/uw-platform/index.ts;
+  infra/uw-platform/wrangler{,.go-live}.toml; tools/infra/crons.test.ts; tests                                   Task 10
 packages/contracts/{identity,harness,event-evidence,page-types,pages,registry,version}.ts, fixtures/**;
   packages/db/schema.ts, migrations/0015_item_issue.*; packages/harness/ports.ts;
   packages/db/store/{items,rows}.ts; packages/harness/{items/fold.ts,items/record.ts,port-contracts/*};
-  packages/core/principal.ts; apps/uw-app/pages/gating.ts                                                   Task 11
+  packages/core/principal.ts; apps/uw-platform/pages/gating.ts                                                   Task 11
 packages/harness/{access.ts,lock-keys.ts,items/enqueue.ts,items/import.ts,items/commands.ts,
   reads/index.ts,reads/repository.ts}; packages/db/advisory-locks.ts; tools/architecture/system-principal.test.ts;
-  sim/scenarios/GH-3.*; sim/kernel/import.test.ts; apps/uw-app/harness/import-race.pg.test.ts              Task 12
-apps/uw-app/pages/issue-pages.ts; apps/uw-app/github/{import,follow-up,sweep}.ts;
-  apps/uw-app/github/facts/{upsert,queries}.ts; docs/exceptions.md; tests                                    Task 13
+  sim/scenarios/GH-3.*; sim/kernel/import.test.ts; apps/uw-platform/harness/import-race.pg.test.ts              Task 12
+apps/uw-platform/pages/issue-pages.ts; apps/uw-platform/github/{import,follow-up,sweep}.ts;
+  apps/uw-platform/github/facts/{upsert,queries}.ts; docs/exceptions.md; tests                                    Task 13
 packages/harness/{ports.ts,connectors/registry.ts,gates/exit.ts,gates/approve-at-ship.ts,
-  port-contracts/connectors.ts}; sim/adapters/connectors.ts; apps/uw-app/github/merge.ts;
-  apps/uw-app/ports/connectors.ts (+contract test); apps/uw-app/kernel.ts; delete connectors.not-wired.ts;
+  port-contracts/connectors.ts}; sim/adapters/connectors.ts; apps/uw-platform/github/merge.ts;
+  apps/uw-platform/ports/connectors.ts (+contract test); apps/uw-platform/kernel.ts; delete connectors.not-wired.ts;
   tools/architecture/connector-callers.test.ts; .dependency-cruiser.mjs; tests                              Task 14
 packages/harness/gates/{recover.ts,commands.ts,exit.ts}; sim/lost-exit.ts; sim/scenarios/GH-6.*; sim/kernel/recover.test.ts;
   tools/architecture/connector-callers.test.ts                                                               Task 15
@@ -305,7 +305,7 @@ git commit -m "test(db): the read-model tables are keyed on the GitHub id, class
 **Requirements:** GH-6 (SECURITY carry: harnesses gain a repository field), GH-5 (the facts' repository must be the harness's).
 
 **Files:**
-- Modify: `packages/contracts/harness.ts`, `packages/contracts/event-evidence.ts`, `packages/contracts/registry.ts`, `packages/contracts/version.ts`, `packages/contracts/contract-lock.json`, `packages/contracts/fixtures/**` (harness and `template_activated` fixtures), `apps/uw-app/package.json`, `apps/uw-ingest/package.json`
+- Modify: `packages/contracts/harness.ts`, `packages/contracts/event-evidence.ts`, `packages/contracts/registry.ts`, `packages/contracts/version.ts`, `packages/contracts/contract-lock.json`, `packages/contracts/fixtures/**` (harness and `template_activated` fixtures), `apps/uw-platform/package.json`, `apps/uw-ingest/package.json`
 - Modify: `packages/db/schema.ts`; Create: `packages/db/migrations/0014_harness_repository.sql` (generated)
 - Modify: `packages/harness/ports.ts`, `packages/db/store/harnesses.ts`, `packages/db/store/rows.ts`, `packages/db/store/types.ts` (if it re-declares the gateway), `packages/harness/port-contracts/store-gateways.ts`, `packages/harness/port-contracts/store-gateway-fixtures.ts`
 - Modify: `packages/harness/stages/activate.ts`, `sim/fixtures.ts`, every caller of `kernel.stages.activate` (grep `stages.activate(`)
@@ -342,7 +342,7 @@ export const pullRequestRefSchema = z.strictObject({
 and add `repository: repositorySchema.nullable()` to `harnessSchema`. In `event-evidence.ts` `template_activated` gains `repository: repositorySchema.nullable()`. Update the fixtures (every valid harness and `template_activated` fixture gains `repository`; add an invalid one with `repository: 'no-slash'`), `CONTRACT_VERSION = '7.0.0'`, the lock entry and both apps' `contractVersion`.
 
 ```bash
-git add packages/contracts apps/uw-app/package.json apps/uw-ingest/package.json
+git add packages/contracts apps/uw-platform/package.json apps/uw-ingest/package.json
 git commit -m "feat(contracts)!: a harness names its repository (7.0.0)" -m "Shared root packages/contracts: harnessSchema gains a required repository and template_activated records it, so the ship path and the merge connector can refuse another repository's PR." -m "GH-6 GH-5 CT-3"
 ```
 
@@ -414,7 +414,7 @@ const body = [
   '```harness',
   'closes: #12, unfoldingWord/uw-platform#14',
   'risks: the board renders slower on phones',
-  'touches: apps/uw-app/board',
+  'touches: apps/uw-platform/board',
   'risk_tier: standard',
   'risk_domains: none',
   '```',
@@ -423,7 +423,7 @@ const body = [
 ].join('\n');
 ````
 
-- that body parses to `{ closes: ['#12', 'unfoldingWord/uw-platform#14'], risks: 'the board renders slower on phones', touches: 'apps/uw-app/board', riskTier: 'standard', riskDomains: [] }`;
+- that body parses to `{ closes: ['#12', 'unfoldingWord/uw-platform#14'], risks: 'the board renders slower on phones', touches: 'apps/uw-platform/board', riskTier: 'standard', riskDomains: [] }`;
 - the same body with `\r\n` line endings parses the same;
 - `risk_domains: acl, migration` parses to `['acl', 'migration']` in schema order whatever the written order; `risk_domains: acl, acl` is `invalid_value`;
 - `closes: none` parses to `[]`; `closes: 12` is `invalid_value`;
@@ -437,7 +437,7 @@ const body = [
 
 `reviewers.test.ts`, `describe('GH-5 only listed Reviewer identities are reviewers', …)`: `reviewerOf('uw-reviewer[bot]')` is `uw-reviewer`, `reviewerOf('UW-Reviewer[bot]')` is `uw-reviewer`, `reviewerOf('uw-reviewer-codex[bot]')` is `uw-reviewer-codex`, `reviewerOf('uw-reviewer')` (a user, not the bot) and `reviewerOf('octocat')` are null; every listed `reviewer` passes `normalisedIdentifier` unchanged and the logins are distinct.
 
-`risk.test.ts`: `domainOf('packages/harness/github/reviewers.ts')` and `domainOf('apps/uw-app/github/merge.ts')` are `acl`.
+`risk.test.ts`: `domainOf('packages/harness/github/reviewers.ts')` and `domainOf('apps/uw-platform/github/merge.ts')` are `acl`.
 
 Run each with `pnpm vitest run <file>`. Expected: FAIL (modules missing).
 
@@ -467,7 +467,7 @@ export type PullRequestDeclaration = z.infer<typeof pullRequestDeclarationSchema
 Export from `index.ts`, register `pull_request_declaration` in `schemaRegistry`, add valid fixtures (the parsed body above; one with `closes: []` and `riskDomains: ['acl','migration']`) and invalid ones (`riskTier: 'medium'`, `closes: ['12']`, an extra key). `CONTRACT_VERSION = '7.1.0'`, lock entry, both apps.
 
 ```bash
-git add packages/contracts apps/uw-app/package.json apps/uw-ingest/package.json
+git add packages/contracts apps/uw-platform/package.json apps/uw-ingest/package.json
 git commit -m "feat(contracts): the PR declaration's parsed shape (7.1.0)" -m "Shared root packages/contracts: P16 makes the fenced harness block a contract schema." -m "GH-5 CT-3"
 ```
 
@@ -521,7 +521,7 @@ export function reviewerOf(login: string): string | null {
 
 `declaration.ts`: split the body on `/\r?\n/`; find every index whose line is exactly `` ```harness `` (after trimming trailing whitespace); zero is `missing`, more than one is `ambiguous_block` (S5-R39 superseded this search: the block must open the body); collect lines until a line that is exactly `` ``` ``, none is `unclosed_block`; skip blank lines; each line must match `^([a-z_]+): (.*)$` (else `invalid_value`); keys must be in the `Map` of five key readers (else `unknown_key`), each seen once (else `duplicate_key`), all five present (else `missing_key`); `closes` and `risk_domains` read `none` as `[]`, else split on `,` and trim; `risk_domains` values must be distinct; build the object and `pullRequestDeclarationSchema.safeParse` it (failure is `invalid_value`), sorting `riskDomains` into `riskDomainSchema.options` order. `riskDeclarationOf` maps to `{ riskTier, riskDomains }` or null. `parseReviewProvider` finds the single `` ```harness-review `` block the same way and returns `normalisedIdentifier` of its `provider` value, or null on any problem. Keep each function under the lint limits by splitting block-finding, line-reading and assembling into separate functions.
 
-Add `{ path: 'packages/harness/github/', domain: 'acl' }` and `{ path: 'apps/uw-app/github/', domain: 'acl' }` to `protectedDirectories`.
+Add `{ path: 'packages/harness/github/', domain: 'acl' }` and `{ path: 'apps/uw-platform/github/', domain: 'acl' }` to `protectedDirectories`.
 
 - [ ] **Step 4: Run the tests**
 
@@ -546,7 +546,7 @@ git commit -m "feat(harness): parse the PR declaration and the review provider, 
 **Files:**
 - Modify: `packages/harness/ports.ts` (its own commit)
 - Modify: `packages/harness/gates/ship-input.ts`, `packages/harness/gates/approve-at-ship.ts`, `packages/harness/kernel.ts`, `packages/harness/port-contracts/github-facts.ts`, `tools/architecture/connector-callers.test.ts`
-- Modify: `sim/adapters/github-facts.ts`, `sim/ship-fixtures.ts`, `apps/uw-app/testing/kernel.ts` (`fixedFacts`), and every test and scenario that builds `PullRequestFacts`, `CheckFact` or `ReviewFact` or uses a short head (grep `greenFacts(`, `approvedBy(`, `headSha:`, `'abc123'`, `'def456'`): `sim/scenarios/KN-11.*`, `KN-12.*`, `KN-13.*`, `KN-17.*`, `sim/kernel/{submit,connector-exit,gate-command,exit-guard}.test.ts`, `sim/adapters/recording-adapters.test.ts`, `packages/harness/{gates/ship-input,ship-rule,items/fold}.test.ts`, `packages/harness/port-contracts/store-gateways.ts`, `tools/properties/submit-human-gate.test.ts`, `apps/uw-app/mcp/{harness-verbs,submit-human-gate}.pg.test.ts`, `apps/uw-app/harness/grant-race.pg.test.ts`
+- Modify: `sim/adapters/github-facts.ts`, `sim/ship-fixtures.ts`, `apps/uw-platform/testing/kernel.ts` (`fixedFacts`), and every test and scenario that builds `PullRequestFacts`, `CheckFact` or `ReviewFact` or uses a short head (grep `greenFacts(`, `approvedBy(`, `headSha:`, `'abc123'`, `'def456'`): `sim/scenarios/KN-11.*`, `KN-12.*`, `KN-13.*`, `KN-17.*`, `sim/kernel/{submit,connector-exit,gate-command,exit-guard}.test.ts`, `sim/adapters/recording-adapters.test.ts`, `packages/harness/{gates/ship-input,ship-rule,items/fold}.test.ts`, `packages/harness/port-contracts/store-gateways.ts`, `tools/properties/submit-human-gate.test.ts`, `apps/uw-platform/mcp/{harness-verbs,submit-human-gate}.pg.test.ts`, `apps/uw-platform/harness/grant-race.pg.test.ts`
 - Create: `sim/scenarios/GH-5.only-reviewer-identities-on-the-head-count.ts`
 - Test: `packages/harness/gates/ship-input.test.ts` (rewritten)
 
@@ -587,7 +587,7 @@ export type PullRequestFacts = {
 
   `ReviewFact.reviewer` is the GitHub login as GitHub sent it. `PullRequestDeclaration` is imported from `@uw/contracts`.
 - Produces: `assembleShipInput(source: ShipInputSource): ShipRuleInput` with `ShipInputSource = { facts: PullRequestFacts | null; item: ItemState; harness: Pick<Harness, 'jdArea' | 'repository'>; approver: Principal; at: Date; override: boolean }`; `GITHUB_ACTIONS_APP = 'github-actions'` (exported, consumed by the test). `riskAtHead(facts, item, head)` is module-private.
-- Produces (sim): `simSha(seed: string): string`; `greenFacts(world, input: { itemId: string; head: string; reviews: readonly ReviewFact[]; ref?: PullRequestRef; paths?: readonly string[]; declaration?: PullRequestDeclaration | null }): PullRequestFacts` (checks are the six CI jobs from `github-actions`, `headRef: harness/<itemId>`, `files: { head, paths }` with `paths` defaulting to `['apps/uw-app/board.tsx']`, `declaration` defaulting to a `standard` declaration); `approvedBy(login: string, provider: string | null, commit: string, reviewId: number, submittedAt?: Date): ReviewFact`; the reviewer logins used in fixtures are `uw-reviewer[bot]` and `uw-reviewer-codex[bot]`.
+- Produces (sim): `simSha(seed: string): string`; `greenFacts(world, input: { itemId: string; head: string; reviews: readonly ReviewFact[]; ref?: PullRequestRef; paths?: readonly string[]; declaration?: PullRequestDeclaration | null }): PullRequestFacts` (checks are the six CI jobs from `github-actions`, `headRef: harness/<itemId>`, `files: { head, paths }` with `paths` defaulting to `['apps/uw-platform/board.tsx']`, `declaration` defaulting to a `standard` declaration); `approvedBy(login: string, provider: string | null, commit: string, reviewId: number, submittedAt?: Date): ReviewFact`; the reviewer logins used in fixtures are `uw-reviewer[bot]` and `uw-reviewer-codex[bot]`.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -605,7 +605,7 @@ Rewrite `ship-input.test.ts` with `describe('GH-5 the assembler builds the ship 
 Run: `pnpm vitest run packages/harness/gates/ship-input.test.ts`
 Expected: FAIL (type errors and wrong values).
 
-In `tools/architecture/connector-callers.test.ts` add `describe('GH-5 the assembler is the ship rule's only caller', …)`: `assembleShipInput(` appears in non-test sources only in `packages/harness/gates/approve-at-ship.ts` and `ship-input.ts`, and `shipRule(` only in `approve-at-ship.ts` and `ship-rule.ts` (the existing check, retitled under this describe); a planted `kernel.shipRule(` or `shipRule(` call in `apps/uw-app/x.ts` is flagged.
+In `tools/architecture/connector-callers.test.ts` add `describe('GH-5 the assembler is the ship rule's only caller', …)`: `assembleShipInput(` appears in non-test sources only in `packages/harness/gates/approve-at-ship.ts` and `ship-input.ts`, and `shipRule(` only in `approve-at-ship.ts` and `ship-rule.ts` (the existing check, retitled under this describe); a planted `kernel.shipRule(` or `shipRule(` call in `apps/uw-platform/x.ts` is flagged.
 
 Write `sim/scenarios/GH-5.only-reviewer-identities-on-the-head-count.ts`: park an item at Ship (`simParkedAtShip`), give facts whose only approval is by `octocat`, approve: refused `no_reviewer_approval`, `ship_refused` recorded, no connector call; give facts with `uw-reviewer[bot]` on an older commit: refused again; give facts with `uw-reviewer[bot]` on the head: approve accepted, one connector call, one `gate_decisions` row. `state` reports the decisions and the connector call count.
 
@@ -684,7 +684,7 @@ function riskAtHead(facts: PullRequestFacts, item: ItemState, head: string): Pic
 - [ ] **Step 4: Update the adapters, fixtures and every caller**
 
 - `sim/adapters/github-facts.ts`: `keyOf` lowercases the repository; the stored facts are the new shape.
-- `port-contracts/github-facts.ts`: `factsFor` builds the new shape (a `github-actions` check with `checkId`, a review with `reviewId` and `submittedAt`, `headRef: 'harness/b1000000-0000-4000-8000-000000000002'`, `files: { head, paths: ['apps/uw-app/board.tsx'] }`, a declaration); add DX-3 cases: the facts round-trip `files`, `declaration`, `headRef`, `checkId`, `app`, `reviewId` and `submittedAt` exactly; a repository asked in another case (`UnfoldingWord/UW-Platform`) answers the same facts.
+- `port-contracts/github-facts.ts`: `factsFor` builds the new shape (a `github-actions` check with `checkId`, a review with `reviewId` and `submittedAt`, `headRef: 'harness/b1000000-0000-4000-8000-000000000002'`, `files: { head, paths: ['apps/uw-platform/board.tsx'] }`, a declaration); add DX-3 cases: the facts round-trip `files`, `declaration`, `headRef`, `checkId`, `app`, `reviewId` and `submittedAt` exactly; a repository asked in another case (`UnfoldingWord/UW-Platform`) answers the same facts.
 - `sim/ship-fixtures.ts`: add `simSha`, change `greenFacts` and `approvedBy` to the Interfaces signatures; `shipPullRequest` stays; `standardChange.head` becomes `simSha('abc123')`.
 - Update every listed test and scenario to the new shapes and full SHAs (`simSha('abc123')`, `simSha('def456')`, or `'a'.repeat(40)` in package tests), the registered reviewer logins, and `headRef: harness/<itemId>`. Keep every existing assertion's meaning; where a test asserted that a planted approval counts, it now asserts the registered login counts.
 
@@ -713,8 +713,8 @@ git commit -m "feat(harness): the assembler counts only Reviewer identities and 
 - Modify: `packages/db/checks.ts` (`FULL_SHA_PATTERN` reuses `fullShaPattern`)
 - Create: `packages/harness/gates/facts-failure.ts` (moves `factsFailure` out of `approve-at-ship.ts`)
 - Modify: `packages/harness/items/submit.ts`, `packages/harness/items/commands.ts` (ports gain `githubFacts`), `packages/harness/gates/approve-at-ship.ts`
-- Modify: `apps/uw-app/mcp/verbs/submit-to-gate.ts`, `sim/ship-fixtures.ts`, `sim/scenarios/KN-17.*`, `sim/kernel/submit.test.ts`, `tools/properties/submit-human-gate.test.ts`, `apps/uw-app/mcp/{harness-verbs,submit-human-gate}.pg.test.ts`
-- Test: `sim/kernel/submit-facts.test.ts`, `apps/uw-app/mcp/submit-facts.pg.test.ts`
+- Modify: `apps/uw-platform/mcp/verbs/submit-to-gate.ts`, `sim/ship-fixtures.ts`, `sim/scenarios/KN-17.*`, `sim/kernel/submit.test.ts`, `tools/properties/submit-human-gate.test.ts`, `apps/uw-platform/mcp/{harness-verbs,submit-human-gate}.pg.test.ts`
+- Test: `sim/kernel/submit-facts.test.ts`, `apps/uw-platform/mcp/submit-facts.pg.test.ts`
 
 **Interfaces:**
 - Consumes: `floorFromPaths`, `carryForward`, `applyDeclaration` (`packages/harness/risk/derive.ts`), `riskDeclarationOf`, `fullSha`, `sameRepository` (Task 3), imported by module path inside the harness.
@@ -730,7 +730,7 @@ git commit -m "feat(harness): the assembler counts only Reviewer identities and 
 - a second submit with a new head replaces `expectedHead` (GH-4);
 - a facts port that throws `PortNotWiredError` makes the submit `not_wired` and records nothing.
 
-`apps/uw-app/mcp/submit-facts.pg.test.ts`, `describe('GH-5 submit_to_gate takes no paths or declaration from the agent', …)`: the verb's input schema rejects `paths` and `declaration` as unknown keys (or strips them; assert whichever the schema does and that the kernel never sees them by checking the recorded `risk_derived` is absent with no facts); an abbreviated head is `malformed_command` at the schema.
+`apps/uw-platform/mcp/submit-facts.pg.test.ts`, `describe('GH-5 submit_to_gate takes no paths or declaration from the agent', …)`: the verb's input schema rejects `paths` and `declaration` as unknown keys (or strips them; assert whichever the schema does and that the kernel never sees them by checking the recorded `risk_derived` is absent with no facts); an abbreviated head is `malformed_command` at the schema.
 
 Run each (the pg one with `TEST_DATABASE_URL`). Expected: FAIL.
 
@@ -746,7 +746,7 @@ export const fullShaSchema = z.string().regex(new RegExp(fullShaPattern), 'a hea
 `itemStateSchema.expectedHead`, `submitted_to_gate.expectedHead`, `branch_abandoned.head` and `branch_adopted.head` become `fullShaSchema.nullable()`; `submit_to_gate.input.head` becomes `z.string().regex(/^(?:[0-9a-fA-F]{40}|[0-9a-fA-F]{64})$/).nullable()` (the kernel lowercases). Update fixtures (valid ones use full SHAs; add invalid ones with `abc123`), `CONTRACT_VERSION = '8.0.0'`, lock, both apps. `packages/db/checks.ts` sets `FULL_SHA_PATTERN = fullShaPattern` imported from `@uw/contracts` and its `(…|…)` form is replaced by the contract's.
 
 ```bash
-git add packages/contracts packages/db/checks.ts apps/uw-app/package.json apps/uw-ingest/package.json
+git add packages/contracts packages/db/checks.ts apps/uw-platform/package.json apps/uw-ingest/package.json
 git commit -m "feat(contracts)!: heads are full commit SHAs (8.0.0)" -m "Shared root packages/contracts: GH-5 rejects abbreviated heads at the verb, on the item and in the events." -m "GH-5 GH-4 CT-3"
 ```
 
@@ -760,7 +760,7 @@ git commit -m "feat(contracts)!: heads are full commit SHAs (8.0.0)" -m "Shared 
 - `riskDraft(change, item, facts)` returns null unless `facts` matches the change's PR (repository case-insensitive and number), `fullSha(facts.head) === change.head`, and `facts.files` is at that head; otherwise it derives exactly as today with `paths = facts.files.paths` and `declaration = riskDeclarationOf(facts.declaration)`, and records them in the evidence.
 - `items/commands.ts` `ItemPorts` adds `'githubFacts'`.
 
-`apps/uw-app/mcp/verbs/submit-to-gate.ts` `changeOf` returns `{ pullRequest, head }`.
+`apps/uw-platform/mcp/verbs/submit-to-gate.ts` `changeOf` returns `{ pullRequest, head }`.
 
 Update `sim/ship-fixtures.ts`, `KN-17` and the listed tests to seed facts instead of passing paths and declarations.
 
@@ -786,9 +786,9 @@ git commit -m "feat(harness): submit derives risk from the changed files and dec
 
 **Files:**
 - Modify: `packages/contracts/verb-io.ts` (`claim_item`), `packages/contracts/verb-fixtures/claim_item/**`, `version.ts`, `contract-lock.json`, both apps' `package.json`
-- Modify: `packages/harness/items/claim.ts`, `apps/uw-app/mcp/verbs/claim-item.ts`, every `items.claim(` caller (grep; add `adoptBranch: false`)
+- Modify: `packages/harness/items/claim.ts`, `apps/uw-platform/mcp/verbs/claim-item.ts`, every `items.claim(` caller (grep; add `adoptBranch: false`)
 - Create: `sim/scenarios/GH-4.an-abandoned-branch-is-adopted-only-by-choice.ts`
-- Test: `apps/uw-app/mcp/harness-verbs.pg.test.ts` (one new case)
+- Test: `apps/uw-platform/mcp/harness-verbs.pg.test.ts` (one new case)
 
 **Interfaces:**
 - Consumes: `branchFor` (Task 3).
@@ -805,7 +805,7 @@ Run: `pnpm sim -- GH-4`. Expected: FAIL.
 - [ ] **Step 2: Contract (8.1.0, its own commit)**
 
 ```bash
-git add packages/contracts apps/uw-app/package.json apps/uw-ingest/package.json
+git add packages/contracts apps/uw-platform/package.json apps/uw-ingest/package.json
 git commit -m "feat(contracts): claim_item may adopt an abandoned branch and names the branch to work on (8.1.0)" -m "Shared root packages/contracts: GH-4's adoption is the claimant's explicit choice." -m "GH-4 CT-3"
 ```
 
@@ -830,10 +830,10 @@ git commit -m "feat(harness): a claim starts from the expected head unless it ad
 
 **Files:**
 - Create: `infra/github/app-manifest.json`; Modify: `infra/README.md` (a "GitHub App (GH-1)" section) — its own commit
-- Modify: `apps/uw-app/env.ts` (three optional secrets), `apps/uw-app/package.json` (`@octokit/core`), `pnpm-lock.yaml`
-- Create: `apps/uw-app/github/app-config.ts`, `apps/uw-app/github/token.ts`, `apps/uw-app/github/failures.ts`, `apps/uw-app/github/client.ts`, `apps/uw-app/github/testing/fixture-github.ts`
+- Modify: `apps/uw-platform/env.ts` (three optional secrets), `apps/uw-platform/package.json` (`@octokit/core`), `pnpm-lock.yaml`
+- Create: `apps/uw-platform/github/app-config.ts`, `apps/uw-platform/github/token.ts`, `apps/uw-platform/github/failures.ts`, `apps/uw-platform/github/client.ts`, `apps/uw-platform/github/testing/fixture-github.ts`
 - Modify: `.dependency-cruiser.mjs`
-- Test: `tools/infra/github-app.test.ts`, `apps/uw-app/github/client.test.ts`, `apps/uw-app/github/token.test.ts`
+- Test: `tools/infra/github-app.test.ts`, `apps/uw-platform/github/client.test.ts`, `apps/uw-platform/github/token.test.ts`
 
 **Interfaces:**
 - Produces:
@@ -880,11 +880,11 @@ export function createGitHubClient(config: GitHubAppConfig, transport: GitHubTra
 
 `tools/infra/github-app.test.ts`, `describe('GH-1 the GitHub App is declared with least privilege', …)`: the manifest's `default_permissions` equal exactly `{ metadata: 'read', issues: 'write', pull_requests: 'write', checks: 'read', contents: 'write' }`; `default_events` equal exactly `['issues', 'pull_request', 'pull_request_review', 'check_run', 'push']` (as a set); `hook_attributes.url` is `https://uw-ingest-staging.unfoldingword.workers.dev/webhooks/github` (the route `apps/uw-ingest/app.ts` serves); `public` is false; the manifest holds no key, secret or token text; no wrangler file under `infra/` declares `GITHUB_APP_ID`, `GITHUB_APP_INSTALLATION_ID`, `GITHUB_APP_PRIVATE_KEY` or `GITHUB_WEBHOOK_SECRET` in any `vars` block; `infra/README.md` names the four `wrangler secret put` commands.
 
-`apps/uw-app/github/token.test.ts` (workers project), `describe('GH-1 an installation token is minted per call', …)`: with a generated RS256 key exported as PKCS#8, two reads make two `POST /app/installations/77/access_tokens` requests, each with `Authorization: Bearer <jwt>` whose header is `RS256`, `iss` is the app id, `iat` is now less 60 s and `exp` now plus 9 minutes (decode with `jose.decodeJwt` and `decodeProtectedHeader`, verify with the public key); the read itself carries `Authorization: token ghs_fixture_1` then `ghs_fixture_2`; a PKCS#1 key (`-----BEGIN RSA PRIVATE KEY-----`) gives `{ ok: false, failure: 'key_not_pkcs8' }` and sends nothing; a token route answering 401 gives `unauthorized`.
+`apps/uw-platform/github/token.test.ts` (workers project), `describe('GH-1 an installation token is minted per call', …)`: with a generated RS256 key exported as PKCS#8, two reads make two `POST /app/installations/77/access_tokens` requests, each with `Authorization: Bearer <jwt>` whose header is `RS256`, `iss` is the app id, `iat` is now less 60 s and `exp` now plus 9 minutes (decode with `jose.decodeJwt` and `decodeProtectedHeader`, verify with the public key); the read itself carries `Authorization: token ghs_fixture_1` then `ghs_fixture_2`; a PKCS#1 key (`-----BEGIN RSA PRIVATE KEY-----`) gives `{ ok: false, failure: 'key_not_pkcs8' }` and sends nothing; a token route answering 401 gives `unauthorized`.
 
-`apps/uw-app/github/client.test.ts`, `describe('GH-1 write-back is a comment, the merge and the merge tag, and no token leaves the client', …)`: `Object.keys(client.writes).sort()` is `['comment', 'merge', 'tag']`; across every read and write, the recorded requests other than the token route are `GET`s plus exactly `POST /repos/o/r/issues/1/comments`, `PUT /repos/o/r/pulls/2/merge` (body `{ merge_method: 'squash', sha, commit_title, commit_message }`) and `POST /repos/o/r/git/refs` (body `{ ref: 'refs/tags/harness/x', sha }`); `JSON.stringify` of every returned value contains no `ghs_` and no `eyJ`; status mapping: 401 `unauthorized`, 403 with `x-ratelimit-remaining: 0` `rate_limited`, 403 otherwise `forbidden`, 404 `not_found`, 405 `not_mergeable`, 409 `conflict`, 422 `unprocessable`, 5xx `server_error`, a thrown fetch `unreachable`, a 200 with a non-JSON body `malformed_response`; `tag` on a 422 whose existing ref (`GET /repos/o/r/git/ref/tags/harness/x`) points at the same sha answers `{ ok: true, value: { created: false } }`, at another sha `conflict`; `pullRequestFiles` reads pages of 100 until a short page and answers `'too_many_files'` after 30 full pages; `issuesSince` passes `since` as ISO, `state=all`, `sort=updated`, `direction=asc`, `per_page=100`, and reports `capped: true` when `maxPages` full pages were read.
+`apps/uw-platform/github/client.test.ts`, `describe('GH-1 write-back is a comment, the merge and the merge tag, and no token leaves the client', …)`: `Object.keys(client.writes).sort()` is `['comment', 'merge', 'tag']`; across every read and write, the recorded requests other than the token route are `GET`s plus exactly `POST /repos/o/r/issues/1/comments`, `PUT /repos/o/r/pulls/2/merge` (body `{ merge_method: 'squash', sha, commit_title, commit_message }`) and `POST /repos/o/r/git/refs` (body `{ ref: 'refs/tags/harness/x', sha }`); `JSON.stringify` of every returned value contains no `ghs_` and no `eyJ`; status mapping: 401 `unauthorized`, 403 with `x-ratelimit-remaining: 0` `rate_limited`, 403 otherwise `forbidden`, 404 `not_found`, 405 `not_mergeable`, 409 `conflict`, 422 `unprocessable`, 5xx `server_error`, a thrown fetch `unreachable`, a 200 with a non-JSON body `malformed_response`; `tag` on a 422 whose existing ref (`GET /repos/o/r/git/ref/tags/harness/x`) points at the same sha answers `{ ok: true, value: { created: false } }`, at another sha `conflict`; `pullRequestFiles` reads pages of 100 until a short page and answers `'too_many_files'` after 30 full pages; `issuesSince` passes `since` as ISO, `state=all`, `sort=updated`, `direction=asc`, `per_page=100`, and reports `capped: true` when `maxPages` full pages were read.
 
-Run each (`pnpm vitest run tools/infra/github-app.test.ts`, then `pnpm vitest run --project workers apps/uw-app/github/token.test.ts`, then the client test). Expected: FAIL.
+Run each (`pnpm vitest run tools/infra/github-app.test.ts`, then `pnpm vitest run --project workers apps/uw-platform/github/token.test.ts`, then the client test). Expected: FAIL.
 
 - [ ] **Step 2: Declare the App (its own commit)**
 
@@ -910,7 +910,7 @@ Run each (`pnpm vitest run tools/infra/github-app.test.ts`, then `pnpm vitest ru
 }
 ```
 
-`infra/README.md` gains "GitHub App (GH-1)": how an org owner registers it from the manifest (GitHub's "Register a GitHub App from a manifest" flow), installs it on `unfoldingWord/uw-platform`, converts the key with `openssl pkcs8 -topk8 -nocrypt -in key.pem -out key.pkcs8.pem`, and sets `wrangler secret put GITHUB_APP_ID|GITHUB_APP_INSTALLATION_ID|GITHUB_APP_PRIVATE_KEY --env <name>` for `uw-app` and `wrangler secret put GITHUB_WEBHOOK_SECRET --env <name>` for `uw-ingest`; the production App is a second registration with production's ingest URL once that Worker has a route.
+`infra/README.md` gains "GitHub App (GH-1)": how an org owner registers it from the manifest (GitHub's "Register a GitHub App from a manifest" flow), installs it on `unfoldingWord/uw-platform`, converts the key with `openssl pkcs8 -topk8 -nocrypt -in key.pem -out key.pkcs8.pem`, and sets `wrangler secret put GITHUB_APP_ID|GITHUB_APP_INSTALLATION_ID|GITHUB_APP_PRIVATE_KEY --env <name>` for `uw-platform` and `wrangler secret put GITHUB_WEBHOOK_SECRET --env <name>` for `uw-ingest`; the production App is a second registration with production's ingest URL once that Worker has a route.
 
 ```bash
 git add infra/github infra/README.md
@@ -921,21 +921,21 @@ git commit -m "chore(infra): declare the GitHub App with least-privilege permiss
 
 - `env.ts` `Bindings` gains `GITHUB_APP_ID?: string; GITHUB_APP_INSTALLATION_ID?: string; GITHUB_APP_PRIVATE_KEY?: string`.
 - `app-config.ts` `githubAppOf` returns null unless all three are non-empty.
-- `token.ts` (module-private helpers, one export `installationToken(config, transport): Promise<GitHubResult<string>>` used only by `client.ts`): refuse a key that does not start with `-----BEGIN PRIVATE KEY-----` with `key_not_pkcs8`; `importPKCS8(key, 'RS256')`; `new SignJWT({}).setProtectedHeader({ alg: 'RS256' }).setIssuer(appId).setIssuedAt(seconds(now) - 60).setExpirationTime(seconds(now) + 540).sign(key)`; `POST https://api.github.com/app/installations/<id>/access_tokens` with `Authorization: Bearer <jwt>`, `Accept: application/vnd.github+json`, `X-GitHub-Api-Version: 2022-11-28`, `User-Agent: uw-platform`; parse `{ token: string }` with Zod. A dependency-cruiser rule `github-token-only-in-the-client` allows only `apps/uw-app/github/client.ts` to import `token.ts`.
+- `token.ts` (module-private helpers, one export `installationToken(config, transport): Promise<GitHubResult<string>>` used only by `client.ts`): refuse a key that does not start with `-----BEGIN PRIVATE KEY-----` with `key_not_pkcs8`; `importPKCS8(key, 'RS256')`; `new SignJWT({}).setProtectedHeader({ alg: 'RS256' }).setIssuer(appId).setIssuedAt(seconds(now) - 60).setExpirationTime(seconds(now) + 540).sign(key)`; `POST https://api.github.com/app/installations/<id>/access_tokens` with `Authorization: Bearer <jwt>`, `Accept: application/vnd.github+json`, `X-GitHub-Api-Version: 2022-11-28`, `User-Agent: uw-platform`; parse `{ token: string }` with Zod. A dependency-cruiser rule `github-token-only-in-the-client` allows only `apps/uw-platform/github/client.ts` to import `token.ts`.
 - `failures.ts`: `failureOf(status: number, headers: Headers): GitHubFailure` as tested.
 - `client.ts`: every method mints a token, then builds `new Octokit({ auth: token, userAgent: 'uw-platform', request: { fetch: transport.fetch } })` and calls `octokit.request('GET /repos/{owner}/{repo}/pulls/{pull_number}', …)` and so on; a `RequestError` maps through `failureOf`; any other thrown error is `unreachable`. Pagination is a loop over `page`, bounded as tested. The token string never appears in a returned value or a thrown error.
 - `testing/fixture-github.ts` as in Interfaces (a test helper; knip sees the tests importing it).
-- `.dependency-cruiser.mjs` adds `github-client-only-in-github-and-connectors` (from `pathNot: '^apps/uw-app/(github/|ports/connectors\\.ts$)'`, to `path: '^(apps/uw-app/github/(client|token)\\.ts|node_modules/@octokit/)'`, test files exempt) and `github-never-in-mcp-or-engines` (from `^apps/uw-app/(mcp|engines)/`, to `^apps/uw-app/github/`).
+- `.dependency-cruiser.mjs` adds `github-client-only-in-github-and-connectors` (from `pathNot: '^apps/uw-platform/(github/|ports/connectors\\.ts$)'`, to `path: '^(apps/uw-platform/github/(client|token)\\.ts|node_modules/@octokit/)'`, test files exempt) and `github-never-in-mcp-or-engines` (from `^apps/uw-platform/(mcp|engines)/`, to `^apps/uw-platform/github/`).
 
-`pnpm --filter @uw/uw-app add @octokit/core@^7.0.8`.
+`pnpm --filter @uw/uw-platform add @octokit/core@^7.0.8`.
 
 - [ ] **Step 4: Run, verify and commit**
 
 Run the three Step 1 files (one at a time), then `pnpm build` (the Workers bundle must build with `@octokit/core`), then `pnpm format && TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/uw_test pnpm verify`. Expected: PASS.
 
 ```bash
-git add apps/uw-app .dependency-cruiser.mjs pnpm-lock.yaml tools/infra/github-app.test.ts
-git commit -m "feat(uw-app): a GitHub client that mints the App JWT and an installation token per call and writes only a comment, the merge and the tag" -m "GH-1"
+git add apps/uw-platform .dependency-cruiser.mjs pnpm-lock.yaml tools/infra/github-app.test.ts
+git commit -m "feat(uw-platform): a GitHub client that mints the App JWT and an installation token per call and writes only a comment, the merge and the tag" -m "GH-1"
 ```
 
 ---
@@ -945,10 +945,10 @@ git commit -m "feat(uw-app): a GitHub client that mints the App JWT and an insta
 **Requirements:** GH-2 (redelivery is an idempotent upsert; one upsert path; each row with a freshness timestamp; the model answers is it open, the head, the checks on that head, who approved that head), GH-5 (the changed files at the head with renames' previous names; the declaration parsed from the body).
 
 **Files:**
-- Create: `apps/uw-app/github/payloads.ts`, `apps/uw-app/github/fixtures/*.json` (webhook: `issues-labeled`, `issues-unlabeled`, `pull-request-opened`, `pull-request-synchronize`, `pull-request-edited`, `pull-request-review-submitted`, `pull-request-review-dismissed`, `check-run-completed`, `push`; REST: `rest-pull`, `rest-files`, `rest-reviews`, `rest-check-runs`, `rest-issues`, `rest-installation-repositories`, `rest-issue-comments`)
-- Create: `apps/uw-app/github/facts/records.ts`, `apps/uw-app/github/facts/normalise.ts`, `apps/uw-app/github/facts/upsert.ts`, `apps/uw-app/github/facts/queries.ts`
-- Modify: `packages/harness/index.ts` (export `parseDeclaration`, `parseReviewProvider`, `fullSha`, `sameRepository`), `tools/architecture/owners.test.ts` (the owner `apps/uw-app/github/facts/`), `docs/exceptions.md` (rows for `upsert.ts` and `queries.ts`, in the same commit as the code)
-- Test: `apps/uw-app/github/facts/normalise.test.ts`, `apps/uw-app/github/facts/upsert.pg.test.ts`, `apps/uw-app/github/facts/queries.pg.test.ts`
+- Create: `apps/uw-platform/github/payloads.ts`, `apps/uw-platform/github/fixtures/*.json` (webhook: `issues-labeled`, `issues-unlabeled`, `pull-request-opened`, `pull-request-synchronize`, `pull-request-edited`, `pull-request-review-submitted`, `pull-request-review-dismissed`, `check-run-completed`, `push`; REST: `rest-pull`, `rest-files`, `rest-reviews`, `rest-check-runs`, `rest-issues`, `rest-installation-repositories`, `rest-issue-comments`)
+- Create: `apps/uw-platform/github/facts/records.ts`, `apps/uw-platform/github/facts/normalise.ts`, `apps/uw-platform/github/facts/upsert.ts`, `apps/uw-platform/github/facts/queries.ts`
+- Modify: `packages/harness/index.ts` (export `parseDeclaration`, `parseReviewProvider`, `fullSha`, `sameRepository`), `tools/architecture/owners.test.ts` (the owner `apps/uw-platform/github/facts/`), `docs/exceptions.md` (rows for `upsert.ts` and `queries.ts`, in the same commit as the code)
+- Test: `apps/uw-platform/github/facts/normalise.test.ts`, `apps/uw-platform/github/facts/upsert.pg.test.ts`, `apps/uw-platform/github/facts/queries.pg.test.ts`
 
 **Interfaces:**
 - Consumes: the tables (Task 1); `parseDeclaration`, `parseReviewProvider`, `fullSha` from `@uw/harness` (Task 3); `PullRequestFacts` (Task 4).
@@ -1003,16 +1003,16 @@ Run each with `TEST_DATABASE_URL` (normalise in the workers project). Expected: 
 - `normalise.ts`: a `Map<string, (payload: unknown) => NormalisedDelivery>` keyed by event name; each entry parses with its schema (`malformed` on failure) and builds records. Fixture JSON is imported `with { type: 'json' }` in tests only.
 - `upsert.ts`: one `db.transaction` per batch, in order repos, milestones, issues, pull requests, check runs, reviews, files. Before writing issues and pull requests, read their stored labels and heads `FOR UPDATE` by GitHub id. Each table is one `insert(...).values(rows).onConflictDoUpdate({ target: <table>.githubId, set: { …every value column from excluded… }, setWhere: <guard> }).returning({ githubId })`, where `<guard>` is: for issues, PRs and milestones `excluded.github_updated_at >= t.github_updated_at AND (t.<value columns>) IS DISTINCT FROM (excluded.<value columns>)`; for check runs `NOT (t.status = 'completed' AND excluded.status <> 'completed') AND (…) IS DISTINCT FROM (…)`; for reviews `t.state <> 'dismissed' AND (…) IS DISTINCT FROM (…)`; for repos `(…) IS DISTINCT FROM (…)`. The returned rows count as repaired. Then one `UPDATE <table> SET fresh_at = $freshAt WHERE github_id IN (…)` per table for the batch's ids whose stored `github_updated_at` is not newer than the record's (all ids for check runs, reviews and repos). A PR whose head changed sets `files`, `files_head` and `files_problem` to null in the same upsert. `recordFiles` is `UPDATE gh_prs SET files = $paths, files_head = $head, files_problem = $problem, fresh_at = $freshAt WHERE github_id = $id AND head_sha = $head RETURNING github_id`.
 - `queries.ts`: `pullRequestFacts` joins `gh_repos` by `lower(full_name) = lower($repo)`, selects the PR by `(repo_id, number)`, its check runs `WHERE repo_id = $repo AND head_sha = pr.head_sha`, and every review of the PR; `files` is set only when `files_head = head_sha` and `files` is not null; `declaration` is parsed with `pullRequestDeclarationSchema` (a stored value that fails is null); `freshAt` is the PR's `fresh_at`; the facts' `ref.repo` is the stored `full_name`.
-- `docs/exceptions.md`: two rows (rule 2) for `apps/uw-app/github/facts/upsert.ts` (owns the six tables, writes them with Drizzle, one transaction per batch) and `apps/uw-app/github/facts/queries.ts` (reads them; the GitHubFacts platform adapter and the sweep call it), worded as the `pages/store.ts` and `pages/reads.ts` rows are.
-- `owners.test.ts`: import `owns as githubFacts` from `apps/uw-app/github/facts/upsert.ts` and add `{ dir: 'apps/uw-app/github/facts/', tables: githubFacts }`.
+- `docs/exceptions.md`: two rows (rule 2) for `apps/uw-platform/github/facts/upsert.ts` (owns the six tables, writes them with Drizzle, one transaction per batch) and `apps/uw-platform/github/facts/queries.ts` (reads them; the GitHubFacts platform adapter and the sweep call it), worded as the `pages/store.ts` and `pages/reads.ts` rows are.
+- `owners.test.ts`: import `owns as githubFacts` from `apps/uw-platform/github/facts/upsert.ts` and add `{ dir: 'apps/uw-platform/github/facts/', tables: githubFacts }`.
 
 - [ ] **Step 3: Run, verify and commit**
 
 Run the three Step 1 files, then `pnpm vitest run tools/architecture/owners.test.ts`, then `pnpm format && TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/uw_test pnpm verify`. Expected: PASS.
 
 ```bash
-git add apps/uw-app/github tools/architecture/owners.test.ts docs/exceptions.md
-git commit -m "feat(uw-app): the GitHub read model: payloads to fact records, one guarded upsert keyed on the GitHub id, and the facts for a PR" -m "GH-2 GH-5"
+git add apps/uw-platform/github tools/architecture/owners.test.ts docs/exceptions.md
+git commit -m "feat(uw-platform): the GitHub read model: payloads to fact records, one guarded upsert keyed on the GitHub id, and the facts for a PR" -m "GH-2 GH-5"
 ```
 
 ---
@@ -1022,11 +1022,11 @@ git commit -m "feat(uw-app): the GitHub read model: payloads to fact records, on
 **Requirements:** GH-2 (the queue consumer uses the one upsert path; for a PR the model answers from its own tables), GH-5 (the platform GitHubFacts adapter; changed files fetched at the head).
 
 **Files:**
-- Create: `apps/uw-app/ports/github-facts.ts`, `apps/uw-app/ports/github-facts.contract.pg.test.ts`
-- Modify: `apps/uw-app/kernel.ts` (`githubFacts: database ? platformGitHubFacts(database.db) : githubFactsNotWired`), `apps/uw-app/ports/not-wired.contract.test.ts` (the label `uw-app with no database`)
-- Create: `apps/uw-app/github/ingest.ts`, `apps/uw-app/github/follow-up.ts`
-- Modify: `apps/uw-app/queue/consumer.ts` (the constant `ingestHandlers` becomes `notWiredHandlers`, used only when there is no database), `apps/uw-app/queue/worker.ts`, `apps/uw-app/queue/consumer.test.ts`
-- Test: `apps/uw-app/github/ingest.pg.test.ts`
+- Create: `apps/uw-platform/ports/github-facts.ts`, `apps/uw-platform/ports/github-facts.contract.pg.test.ts`
+- Modify: `apps/uw-platform/kernel.ts` (`githubFacts: database ? platformGitHubFacts(database.db) : githubFactsNotWired`), `apps/uw-platform/ports/not-wired.contract.test.ts` (the label `uw-platform with no database`)
+- Create: `apps/uw-platform/github/ingest.ts`, `apps/uw-platform/github/follow-up.ts`
+- Modify: `apps/uw-platform/queue/consumer.ts` (the constant `ingestHandlers` becomes `notWiredHandlers`, used only when there is no database), `apps/uw-platform/queue/worker.ts`, `apps/uw-platform/queue/consumer.test.ts`
+- Test: `apps/uw-platform/github/ingest.pg.test.ts`
 
 **Interfaces:**
 - Consumes: `upsertFacts`, `recordFiles`, `pullRequestFacts` (Task 8); `factsFromWebhook`, `filesFromRest` (Task 8); `GitHubClient`, `githubAppOf`, `createGitHubClient` (Task 7).
@@ -1044,7 +1044,7 @@ Run each. Expected: FAIL.
 
 - [ ] **Step 2: Implement**
 
-`apps/uw-app/ports/github-facts.ts`:
+`apps/uw-platform/ports/github-facts.ts`:
 
 ```ts
 export function platformGitHubFacts(db: Database): GitHubFacts {
@@ -1061,8 +1061,8 @@ export function platformGitHubFacts(db: Database): GitHubFacts {
 Run the Step 1 files, then `pnpm format && TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/uw_test pnpm verify`. Expected: PASS (the agent-boundary check still passes: `ingest.ts` and `follow-up.ts` name no gate, stage or connector).
 
 ```bash
-git add apps/uw-app
-git commit -m "feat(uw-app): the queue consumer feeds GitHub deliveries through the one upsert path, and the kernel reads GitHub facts from the read model" -m "GH-2 GH-5"
+git add apps/uw-platform
+git commit -m "feat(uw-platform): the queue consumer feeds GitHub deliveries through the one upsert path, and the kernel reads GitHub facts from the read model" -m "GH-2 GH-5"
 ```
 
 ---
@@ -1072,10 +1072,10 @@ git commit -m "feat(uw-app): the queue consumer feeds GitHub deliveries through 
 **Requirements:** GH-2 (a nightly sweep repairs missed webhooks from a watermark through the same upsert path and records what it repaired).
 
 **Files:**
-- Create: `apps/uw-app/cron/registry.ts`, `apps/uw-app/cron/scheduled.ts`, `apps/uw-app/github/sweep.ts`
-- Modify: `apps/uw-app/index.ts` (`scheduled: runScheduled`), `apps/uw-app/github/facts/upsert.ts` (`recordSweep`), `apps/uw-app/github/facts/queries.ts` (as needed)
-- Modify: `infra/uw-app/wrangler.toml`, `infra/uw-app/wrangler.go-live.toml` (its own commit)
-- Test: `apps/uw-app/github/sweep.pg.test.ts`, `apps/uw-app/cron/registry.test.ts`, `tools/infra/crons.test.ts`
+- Create: `apps/uw-platform/cron/registry.ts`, `apps/uw-platform/cron/scheduled.ts`, `apps/uw-platform/github/sweep.ts`
+- Modify: `apps/uw-platform/index.ts` (`scheduled: runScheduled`), `apps/uw-platform/github/facts/upsert.ts` (`recordSweep`), `apps/uw-platform/github/facts/queries.ts` (as needed)
+- Modify: `infra/uw-platform/wrangler.toml`, `infra/uw-platform/wrangler.go-live.toml` (its own commit)
+- Test: `apps/uw-platform/github/sweep.pg.test.ts`, `apps/uw-platform/cron/registry.test.ts`, `tools/infra/crons.test.ts`
 
 **Interfaces:**
 - Consumes: Tasks 7 to 9.
@@ -1093,7 +1093,7 @@ git commit -m "feat(uw-app): the queue consumer feeds GitHub deliveries through 
 
 `cron/registry.test.ts`: `describe('GH-2 the sweep is registered as a nightly cron', …)`: `cronJobs` has exactly `GITHUB_SWEEP_CRON`; `runScheduled` with that cron and no database logs `database_not_configured`; with a database and no GitHub secrets logs `github_not_configured` and makes no request.
 
-`tools/infra/crons.test.ts`: `describe('GH-2 the deployed crons are the registered ones', …)`: `env.staging.triggers.crons` and `env.production.triggers.crons` in both `infra/uw-app/wrangler.toml` and `wrangler.go-live.toml` equal `[GITHUB_SWEEP_CRON]` (read the registry key from `apps/uw-app/cron/registry.ts` as text or import it); `env.preview` declares none.
+`tools/infra/crons.test.ts`: `describe('GH-2 the deployed crons are the registered ones', …)`: `env.staging.triggers.crons` and `env.production.triggers.crons` in both `infra/uw-platform/wrangler.toml` and `wrangler.go-live.toml` equal `[GITHUB_SWEEP_CRON]` (read the registry key from `apps/uw-platform/cron/registry.ts` as text or import it); `env.preview` declares none.
 
 Run each. Expected: FAIL.
 
@@ -1102,7 +1102,7 @@ Run each. Expected: FAIL.
 Add `[env.staging.triggers]\ncrons = ["17 3 * * *"]` and the same for `env.production` in both wrangler files (the go-live test keeps them equal apart from the go-live bindings).
 
 ```bash
-git add infra/uw-app
+git add infra/uw-platform
 git commit -m "chore(infra): a nightly cron for the GitHub sweep in staging and production" -m "Shared root infra/: GH-2's sweep runs at 03:17 UTC." -m "GH-2"
 ```
 
@@ -1117,8 +1117,8 @@ git commit -m "chore(infra): a nightly cron for the GitHub sweep in staging and 
 Run the Step 1 files, then `pnpm format && TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/uw_test pnpm verify`. Expected: PASS.
 
 ```bash
-git add apps/uw-app tools/infra/crons.test.ts
-git commit -m "feat(uw-app): the nightly GitHub sweep re-reads from a watermark through the one upsert path and records what it repaired" -m "GH-2"
+git add apps/uw-platform tools/infra/crons.test.ts
+git commit -m "feat(uw-platform): the nightly GitHub sweep re-reads from a watermark through the one upsert path and records what it repaired" -m "GH-2"
 ```
 
 ---
@@ -1132,7 +1132,7 @@ git commit -m "feat(uw-app): the nightly GitHub sweep re-reads from a watermark 
 - Modify: `packages/core/principal.ts` (`INGEST_IDENTITY` re-exports `ingestIdentity`)
 - Modify: `packages/db/schema.ts`; Create: `packages/db/migrations/0015_item_issue.sql` (generated)
 - Modify: `packages/harness/ports.ts` (`HarnessItemsGateway.read.byIssue`)
-- Modify: `packages/db/store/items.ts`, `packages/db/store/rows.ts`, `packages/harness/items/fold.ts`, `packages/harness/items/record.ts` (`NewItem.issue`, `item_created` evidence), `packages/harness/items/enqueue.ts` (passes `issue: null`), `packages/harness/port-contracts/{store-gateways,store-gateway-fixtures}.ts`, `packages/db/test-seed.ts` (`seedItem` issue columns), `apps/uw-app/pages/gating.ts` (`issue: 'gated'`), every fixture or test that builds an `ItemState` or `item_created` evidence (grep `zulipTopic:` and `item_created`)
+- Modify: `packages/db/store/items.ts`, `packages/db/store/rows.ts`, `packages/harness/items/fold.ts`, `packages/harness/items/record.ts` (`NewItem.issue`, `item_created` evidence), `packages/harness/items/enqueue.ts` (passes `issue: null`), `packages/harness/port-contracts/{store-gateways,store-gateway-fixtures}.ts`, `packages/db/test-seed.ts` (`seedItem` issue columns), `apps/uw-platform/pages/gating.ts` (`issue: 'gated'`), every fixture or test that builds an `ItemState` or `item_created` evidence (grep `zulipTopic:` and `item_created`)
 - Test: `packages/db/item-issue.test.ts`, `packages/harness/items/fold.test.ts` (new case), `packages/contracts/page-types.test.ts` (new case)
 
 **Interfaces:**
@@ -1153,7 +1153,7 @@ Run each. Expected: FAIL.
 As in Interfaces; fixtures for `item_state`, `item_created`, `label_removed` and the `issue` page type (valid and invalid); `CONTRACT_VERSION = '9.0.0'`; lock; both apps. (`packages/core/principal.ts` switching `INGEST_IDENTITY` to `ingestIdentity` is feature code and lands in Step 5's commit, not this one.)
 
 ```bash
-git add packages/contracts apps/uw-app/package.json apps/uw-ingest/package.json
+git add packages/contracts apps/uw-platform/package.json apps/uw-ingest/package.json
 git commit -m "feat(contracts)!: an item remembers the issue it wraps, label removal has evidence, and issues get a page type (9.0.0)" -m "Shared root packages/contracts: GH-3's import and manual enqueue share item_created, now carrying the issue or null." -m "GH-3 CT-3"
 ```
 
@@ -1199,7 +1199,7 @@ git commit -m "feat(harness): items carry the issue they wrap through item_creat
 - Modify: `packages/harness/items/commands.ts`, `packages/harness/reads/index.ts`, `packages/harness/index.ts`
 - Modify: `tools/architecture/system-principal.test.ts` (a second `describe` for the ingest principal)
 - Create: `sim/scenarios/GH-3.a-labelled-issue-becomes-one-item.ts`
-- Test: `sim/kernel/import.test.ts`, `apps/uw-app/harness/import-race.pg.test.ts`
+- Test: `sim/kernel/import.test.ts`, `apps/uw-platform/harness/import-race.pg.test.ts`
 
 **Interfaces:**
 - Consumes: `IssueRef`, `ingestIdentity`, `byIssue`, `byRepository` (Tasks 2, 11).
@@ -1231,9 +1231,9 @@ export type ImportTarget = { readonly harnessId: string; readonly jdArea: JdArea
 
 `sim/kernel/import.test.ts`, `describe('GH-3 only the ingest principal or a writer on the area imports, onto the harness of the issue's repository', …)`: an agent device principal with `editor` is `not_permitted`; a viewer person is `not_permitted`; an issue whose repository is not the harness's is `not_permitted` `{ why: 'repository_mismatch' }`; `importTarget` for `UnfoldingWord/UW-Platform` answers the software harness and its area, for `unfoldingWord/other` `harness_not_found`, and for an agent `harness_not_found`; `labelRemoved` for an unknown issue is `item_not_found`, and from a person is `not_permitted`.
 
-`apps/uw-app/harness/import-race.pg.test.ts`, `describe.skipIf(!testServer)('GH-3 two imports of one issue on two connections make one item', …)`: two kernels over two `postgres` connections to one migrated database import the same issue at once (`Promise.all`); one answers `created: true`, the other `created: false` with the same item id; `harness_items` holds one row for the issue (the `github-issue:` lock serialises them; the unique index is the backstop). Use `kernelOn` from `apps/uw-app/testing/kernel.ts` and seed the harness as `apps/uw-app/harness/claims.pg.test.ts` does.
+`apps/uw-platform/harness/import-race.pg.test.ts`, `describe.skipIf(!testServer)('GH-3 two imports of one issue on two connections make one item', …)`: two kernels over two `postgres` connections to one migrated database import the same issue at once (`Promise.all`); one answers `created: true`, the other `created: false` with the same item id; `harness_items` holds one row for the issue (the `github-issue:` lock serialises them; the unique index is the backstop). Use `kernelOn` from `apps/uw-platform/testing/kernel.ts` and seed the harness as `apps/uw-platform/harness/claims.pg.test.ts` does.
 
-`system-principal.test.ts` gains `describe('GH-3 only the ingest edge, the GitHub module, the cron and the sim construct the ingest principal', …)`: `ingestPrincipal(` and `'agent:ingest'` appear only in `packages/contracts/identity.ts`, `packages/core/principal.ts` and its test, `packages/harness/access.ts`, `apps/uw-ingest/`, `apps/uw-app/github/`, `apps/uw-app/cron/`, `sim/`, and app tests; planted mentions elsewhere are flagged.
+`system-principal.test.ts` gains `describe('GH-3 only the ingest edge, the GitHub module, the cron and the sim construct the ingest principal', …)`: `ingestPrincipal(` and `'agent:ingest'` appear only in `packages/contracts/identity.ts`, `packages/core/principal.ts` and its test, `packages/harness/access.ts`, `apps/uw-ingest/`, `apps/uw-platform/github/`, `apps/uw-platform/cron/`, `sim/`, and app tests; planted mentions elsewhere are flagged.
 
 Run `pnpm sim -- GH-3`, then the test files. Expected: FAIL.
 
@@ -1260,14 +1260,14 @@ git commit -m "feat(harness): import an issue once onto its repository's harness
 **Requirements:** GH-3 (whether a webhook or the sweep finds it first; wrapping a page that links to the issue; exactly one cross-reference comment lands on the issue; removing the label records an event).
 
 **Files:**
-- Create: `apps/uw-app/pages/issue-pages.ts`, `apps/uw-app/github/import.ts`
-- Modify: `apps/uw-app/github/follow-up.ts` (issue follow-ups), `apps/uw-app/github/sweep.ts` (retry pending cross-references), `apps/uw-app/github/facts/upsert.ts` (`claimCrossReference`, `recordCrossReference`, `releaseCrossReference`), `apps/uw-app/github/facts/queries.ts` (`issuesAwaitingCrossReference`)
+- Create: `apps/uw-platform/pages/issue-pages.ts`, `apps/uw-platform/github/import.ts`
+- Modify: `apps/uw-platform/github/follow-up.ts` (issue follow-ups), `apps/uw-platform/github/sweep.ts` (retry pending cross-references), `apps/uw-platform/github/facts/upsert.ts` (`claimCrossReference`, `recordCrossReference`, `releaseCrossReference`), `apps/uw-platform/github/facts/queries.ts` (`issuesAwaitingCrossReference`)
 - Modify: `docs/exceptions.md` (rows for `issue-pages.ts`, in the same commit)
-- Test: `apps/uw-app/github/import.pg.test.ts`, `apps/uw-app/pages/issue-pages.pg.test.ts`
+- Test: `apps/uw-platform/github/import.pg.test.ts`, `apps/uw-platform/pages/issue-pages.pg.test.ts`
 
 **Interfaces:**
 - Consumes: `kernel.reads.importTarget`, `kernel.items.importIssue`, `kernel.items.labelRemoved` (Task 12); `client.reads.issueComments`, `client.writes.comment` (Task 7); `IssueChange` (Task 8).
-- Produces: `HARNESS_LABEL = 'harness'`; `ensureIssuePage(db: Database, input: { readonly jdArea: JdArea; readonly issue: IssueRef; readonly title: string; readonly url: string }, ids: { next(): string }, traceId: string): Promise<string>` (the page id; idempotent on slug `issue-<githubId>` in the area; `edit_source` `agent:ingest`; the new page's id from `ids.next()`; production passes `randomIds` from `apps/uw-app/ports/ids.ts`); `followIssue(deps: GitHubDeps, change: IssueChange, logger: Logger): Promise<void>`; `crossReferenceBody(itemId: string): string`; `claimCrossReference(db, githubId: number, at: Date): Promise<boolean>`, `recordCrossReference(db, githubId: number, commentId: number): Promise<void>`, `releaseCrossReference(db, githubId: number): Promise<void>`; `issuesAwaitingCrossReference(db, repoId: number): Promise<readonly IssueChange[]>`.
+- Produces: `HARNESS_LABEL = 'harness'`; `ensureIssuePage(db: Database, input: { readonly jdArea: JdArea; readonly issue: IssueRef; readonly title: string; readonly url: string }, ids: { next(): string }, traceId: string): Promise<string>` (the page id; idempotent on slug `issue-<githubId>` in the area; `edit_source` `agent:ingest`; the new page's id from `ids.next()`; production passes `randomIds` from `apps/uw-platform/ports/ids.ts`); `followIssue(deps: GitHubDeps, change: IssueChange, logger: Logger): Promise<void>`; `crossReferenceBody(itemId: string): string`; `claimCrossReference(db, githubId: number, at: Date): Promise<boolean>`, `recordCrossReference(db, githubId: number, commentId: number): Promise<void>`, `releaseCrossReference(db, githubId: number): Promise<void>`; `issuesAwaitingCrossReference(db, repoId: number): Promise<readonly IssueChange[]>`.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -1297,8 +1297,8 @@ Run each. Expected: FAIL.
 Run the Step 1 files, then `pnpm format && TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/uw_test pnpm verify`. Expected: PASS.
 
 ```bash
-git add apps/uw-app docs/exceptions.md
-git commit -m "feat(uw-app): a labelled issue becomes one item wrapping an issue page, with exactly one cross-reference comment, from the webhook or the sweep" -m "GH-3"
+git add apps/uw-platform docs/exceptions.md
+git commit -m "feat(uw-platform): a labelled issue becomes one item wrapping an issue page, with exactly one cross-reference comment, from the webhook or the sweep" -m "GH-3"
 ```
 
 ---
@@ -1310,11 +1310,11 @@ git commit -m "feat(uw-app): a labelled issue becomes one item wrapping an issue
 **Files:**
 - Modify: `packages/harness/ports.ts` (its own commit)
 - Modify: `packages/harness/connectors/registry.ts`, `packages/harness/gates/exit.ts` (`requestOf` passes the repository), `packages/harness/gates/approve-at-ship.ts` (`PendingExit.repository`), `packages/harness/gates/decide.ts` (fill it from the harness), `packages/harness/port-contracts/connectors.ts`, `sim/adapters/connectors.ts`
-- Create: `apps/uw-app/github/merge.ts`, `apps/uw-app/ports/connectors.ts`, `apps/uw-app/ports/connectors.contract.test.ts`
-- Delete: `apps/uw-app/ports/connectors.not-wired.ts` (grep confirms its only references are `apps/uw-app/kernel.ts`, `not-wired.contract.test.ts` and `tools/architecture/connector-callers.test.ts`, all updated here)
-- Modify: `apps/uw-app/kernel.ts` (`platformPorts(database, clock, github: GitHubClient | null = null)`; `connectors: platformConnectors(github)`), `apps/uw-app/queue/worker.ts` and `apps/uw-app/cron/scheduled.ts` (pass the client), `apps/uw-app/ports/not-wired.contract.test.ts`, `tools/architecture/connector-callers.test.ts`, `.dependency-cruiser.mjs`
+- Create: `apps/uw-platform/github/merge.ts`, `apps/uw-platform/ports/connectors.ts`, `apps/uw-platform/ports/connectors.contract.test.ts`
+- Delete: `apps/uw-platform/ports/connectors.not-wired.ts` (grep confirms its only references are `apps/uw-platform/kernel.ts`, `not-wired.contract.test.ts` and `tools/architecture/connector-callers.test.ts`, all updated here)
+- Modify: `apps/uw-platform/kernel.ts` (`platformPorts(database, clock, github: GitHubClient | null = null)`; `connectors: platformConnectors(github)`), `apps/uw-platform/queue/worker.ts` and `apps/uw-platform/cron/scheduled.ts` (pass the client), `apps/uw-platform/ports/not-wired.contract.test.ts`, `tools/architecture/connector-callers.test.ts`, `.dependency-cruiser.mjs`
 - Modify: the KN-18 tests that expect `deploy`, `send` or `post` to be refused at write time (grep `connector_not_registered`)
-- Test: `apps/uw-app/github/merge.test.ts`, `sim/kernel/connectors-not-wired.test.ts`
+- Test: `apps/uw-platform/github/merge.test.ts`, `sim/kernel/connectors-not-wired.test.ts`
 
 **Interfaces:**
 - Produces (`ports.ts`): `ConnectorRequest` gains `readonly repository: string | null` (the harness's); `Connectors = { run(request: ConnectorRequest): Promise<ConnectorOutcome>; outcomeOf(request: ConnectorRequest): Promise<ConnectorOutcome | null> }`.
@@ -1333,13 +1333,13 @@ git commit -m "feat(uw-app): a labelled issue becomes one item wrapping an issue
 - `outcomeOf`: merged at H answers the `succeeded` outcome without any write; open or merged elsewhere answers null;
 - no outcome or detail contains `ghs_`.
 
-`apps/uw-app/ports/connectors.contract.test.ts`: `describeConnectorsContract('the platform connectors over a fixture GitHub', open)` where `open` programs the fixture for an open PR at the contract request's head and `refuseNext('merge', 'head_mismatch')` programs the next merge to 409.
+`apps/uw-platform/ports/connectors.contract.test.ts`: `describeConnectorsContract('the platform connectors over a fixture GitHub', open)` where `open` programs the fixture for an open PR at the contract request's head and `refuseNext('merge', 'head_mismatch')` programs the next merge to 409.
 
 Change `port-contracts/connectors.ts`: the first case asserts every effect connector resolves (never rejects) to an outcome whose `outcome` is `succeeded` or `refused`; the merge connector succeeds; the refusal case stays on `merge`; the third case becomes "merge succeeds again after a refusal"; add `outcomeOf` cases: null before any merge, the succeeded outcome after one, and never rejects.
 
 `sim/kernel/connectors-not-wired.test.ts`, `describe('GH-7 deploy, publish, send and post are registered and answer not wired as an event', …)`: a stage with connector `deploy` (and each of the others) is accepted by the stage command; on the platform adapter (`platformConnectors(null)`) each answers `refused` `not_wired`; in the sim, a parked item at a `send` stage approved by a person with the sim connectors refusing `not_wired` records `connector_refused { connector: 'send', reason: 'not_wired' }` and stays parked.
 
-`connector-callers.test.ts` gains `describe('GH-6 the merge connector runs only from the kernel stage-exit path', …)`: `writes.merge(` and `mergeHandler(` appear only in `apps/uw-app/github/merge.ts` and `apps/uw-app/ports/connectors.ts`; a call matching `/connectors\s*\??\.\s*outcomeOf\b/` appears in no non-test source (Task 15 changes this to exactly `packages/harness/gates/recover.ts`); the wiring list is updated (`apps/uw-app/ports/connectors.ts` replaces `connectors.not-wired.ts`).
+`connector-callers.test.ts` gains `describe('GH-6 the merge connector runs only from the kernel stage-exit path', …)`: `writes.merge(` and `mergeHandler(` appear only in `apps/uw-platform/github/merge.ts` and `apps/uw-platform/ports/connectors.ts`; a call matching `/connectors\s*\??\.\s*outcomeOf\b/` appears in no non-test source (Task 15 changes this to exactly `packages/harness/gates/recover.ts`); the wiring list is updated (`apps/uw-platform/ports/connectors.ts` replaces `connectors.not-wired.ts`).
 
 Run each. Expected: FAIL.
 
@@ -1354,8 +1354,8 @@ git commit -m "feat(harness): a connector request names the harness's repository
 
 - Kernel: `PendingExit` and `ExitInput` gain `repository: string | null`, filled from `gate.harness.repository` in `decide.ts`; `requestOf` passes it. The registry gains `deploy`, `send`, `post`.
 - `merge.ts`: `run(request)`: `repository` and the PR's repo must match (`sameRepository`), else `repository_mismatch`; `pullRequest`/`expectedHead` null → `head_mismatch`; read the live PR (Zod `pullSchema` from `payloads.ts`, failure → `github_malformed_response`); merged → at the expected head → `ensureTag` and answer `already: 'true'`, else `head_mismatch`; closed → `pr_not_open`; head ≠ expected → `head_mismatch`; merge with the sha guard; map `conflict` → `head_mismatch`, `not_mergeable` → `not_mergeable`, other failures → `github_<failure>`; then `ensureTag` (`tag` result failure → `tag: 'failed'`). `outcomeOf` reads the PR only. Title is the message's first line plus ` (#<n>)`; body is the remaining lines trimmed, then a blank line and `Harness-Item: <itemId>`.
-- `apps/uw-app/ports/connectors.ts` as in Interfaces. `kernel.ts` and the two composition sites pass the client built from `githubAppOf(env)`; `platformKernel` gains the same optional parameter.
-- `.dependency-cruiser.mjs`: `merge-handler-only-in-the-connectors-adapter` (only `apps/uw-app/ports/connectors.ts` and tests import `apps/uw-app/github/merge.ts`).
+- `apps/uw-platform/ports/connectors.ts` as in Interfaces. `kernel.ts` and the two composition sites pass the client built from `githubAppOf(env)`; `platformKernel` gains the same optional parameter.
+- `.dependency-cruiser.mjs`: `merge-handler-only-in-the-connectors-adapter` (only `apps/uw-platform/ports/connectors.ts` and tests import `apps/uw-platform/github/merge.ts`).
 - Delete `connectors.not-wired.ts`, its `describeConnectorsNotWired` call in `not-wired.contract.test.ts`, and `describeConnectorsNotWired` itself from `port-contracts/connectors.ts` (no not-wired connectors adapter remains, so `tools/architecture/port-contracts.ts` no longer requires it).
 
 - [ ] **Step 4: Run, verify and commit**
@@ -1364,7 +1364,7 @@ Run the Step 1 files and `pnpm sim -- all`, then `pnpm build`, then `pnpm format
 
 ```bash
 git add packages apps sim tools .dependency-cruiser.mjs
-git commit -m "feat(uw-app): the merge connector re-checks the head, squash-merges once per item and head, tags the merge, and the other four connectors answer not wired" -m "GH-6 GH-7"
+git commit -m "feat(uw-platform): the merge connector re-checks the head, squash-merges once per item and head, tags the merge, and the other four connectors answer not wired" -m "GH-6 GH-7"
 ```
 
 ---
@@ -1420,11 +1420,11 @@ git commit -m "feat(harness): a person with admin recovers a parking whose conne
 
 - [ ] **Step 1: Check every requirement has its proof**
 
-Run `pnpm trace` and confirm none of GH-1 to GH-6 is listed. Grep the titles: GH-1 (`tools/infra/github-app.test.ts`, `apps/uw-app/github/token.test.ts`, `client.test.ts`), GH-2 (`packages/db/github-tables.test.ts`, `apps/uw-app/github/facts/*.test.ts`, `ingest.pg.test.ts`, `sweep.pg.test.ts`, `cron/registry.test.ts`, `tools/infra/crons.test.ts`), GH-3 (`sim/scenarios/GH-3.*`, `sim/kernel/import.test.ts`, `packages/db/item-issue.test.ts`, `apps/uw-app/github/import.pg.test.ts`, `apps/uw-app/pages/issue-pages.pg.test.ts`), GH-4 (`sim/scenarios/GH-4.*`, `harness-verbs.pg.test.ts`), GH-5 (`sim/scenarios/GH-5.*`, `packages/harness/gates/ship-input.test.ts`, `packages/harness/github/*.test.ts`, `sim/kernel/submit-facts.test.ts`, `apps/uw-app/mcp/submit-facts.pg.test.ts`), GH-6 (`sim/scenarios/GH-6.*`, `sim/kernel/harness-repository.test.ts`, `packages/db/harness-repository.test.ts`, `apps/uw-app/github/merge.test.ts`, `sim/kernel/recover.test.ts`, `tools/architecture/connector-callers.test.ts`), GH-7 (`sim/kernel/connectors-not-wired.test.ts`).
+Run `pnpm trace` and confirm none of GH-1 to GH-6 is listed. Grep the titles: GH-1 (`tools/infra/github-app.test.ts`, `apps/uw-platform/github/token.test.ts`, `client.test.ts`), GH-2 (`packages/db/github-tables.test.ts`, `apps/uw-platform/github/facts/*.test.ts`, `ingest.pg.test.ts`, `sweep.pg.test.ts`, `cron/registry.test.ts`, `tools/infra/crons.test.ts`), GH-3 (`sim/scenarios/GH-3.*`, `sim/kernel/import.test.ts`, `packages/db/item-issue.test.ts`, `apps/uw-platform/github/import.pg.test.ts`, `apps/uw-platform/pages/issue-pages.pg.test.ts`), GH-4 (`sim/scenarios/GH-4.*`, `harness-verbs.pg.test.ts`), GH-5 (`sim/scenarios/GH-5.*`, `packages/harness/gates/ship-input.test.ts`, `packages/harness/github/*.test.ts`, `sim/kernel/submit-facts.test.ts`, `apps/uw-platform/mcp/submit-facts.pg.test.ts`), GH-6 (`sim/scenarios/GH-6.*`, `sim/kernel/harness-repository.test.ts`, `packages/db/harness-repository.test.ts`, `apps/uw-platform/github/merge.test.ts`, `sim/kernel/recover.test.ts`, `tools/architecture/connector-callers.test.ts`), GH-7 (`sim/kernel/connectors-not-wired.test.ts`).
 
 - [ ] **Step 2: Update `docs/PRD.md`** (a `docs(prd):` commit of its own)
 
-FD-9's registered page types gain `issue` (GH-3); section 8.1 `harnesses` gains `repository` and `harness_items` gains the issue columns; the `gh_*` row lists the six tables' columns that matter (GitHub id, the facts, freshness, and on `gh_issues` the cross-reference claim) and its writer `apps/uw-app/github/facts/`; section 18.2 is unchanged (the decisions go to the tracker).
+FD-9's registered page types gain `issue` (GH-3); section 8.1 `harnesses` gains `repository` and `harness_items` gains the issue columns; the `gh_*` row lists the six tables' columns that matter (GitHub id, the facts, freshness, and on `gh_issues` the cross-reference claim) and its writer `apps/uw-platform/github/facts/`; section 18.2 is unchanged (the decisions go to the tracker).
 
 ```bash
 git add docs/PRD.md
@@ -1433,7 +1433,7 @@ git commit -m "docs(prd): the issue page type, the harness repository, the item'
 
 - [ ] **Step 3: Update `docs/architecture.md`**
 
-Add "GitHub facts" describing what is built: the App and its secrets; the client (per-call token, the three writes, the dependency rules); the read model (six tables, the guarded upsert, the two entry points, the facts query); the platform GitHubFacts adapter; the sweep and its watermark; the assembler as the ship rule's only caller and what counts on the head; risk from the files at the head; the branch convention; issue import and the cross-reference comment; the merge connector and `outcomeOf`; the recovery sweep. Update the `Kernel` listing (no `shipRule` member; `items.importIssue`, `items.labelRemoved`, `reads.importTarget`, `gates.recoverConnectors`), the ports table rows for GitHubFacts and Connectors, and "What is durable, and who writes it" (the `gh_*` row's writer is `apps/uw-app/github/facts/`).
+Add "GitHub facts" describing what is built: the App and its secrets; the client (per-call token, the three writes, the dependency rules); the read model (six tables, the guarded upsert, the two entry points, the facts query); the platform GitHubFacts adapter; the sweep and its watermark; the assembler as the ship rule's only caller and what counts on the head; risk from the files at the head; the branch convention; issue import and the cross-reference comment; the merge connector and `outcomeOf`; the recovery sweep. Update the `Kernel` listing (no `shipRule` member; `items.importIssue`, `items.labelRemoved`, `reads.importTarget`, `gates.recoverConnectors`), the ports table rows for GitHubFacts and Connectors, and "What is durable, and who writes it" (the `gh_*` row's writer is `apps/uw-platform/github/facts/`).
 
 - [ ] **Step 4: Update `docs/progress_tracker.md`**
 
@@ -1441,9 +1441,9 @@ Add "GitHub facts" describing what is built: the App and its secrets; the client
 - A `## Step 5 evidence by requirement` table: each of GH-1 to GH-7, its commits (`git log --oneline` for this step, leaving out the plan) and its scenario and test files.
 - Decisions made during the build: one row for each of this plan's decisions 1 to 22 (date 2026-10-02, the requirement, the decision, why, and cost if wrong), with these costs if wrong: (1) a sim scenario cannot exercise the read model's SQL, only the scripted facts; (2) a cached token would save a request per call; a PKCS#1 key must be converted by the person; (3) labels a person would want the harness to set are not set; (4) a repository with two harnesses cannot import; (5) a PR opened against a fork or a monorepo sibling cannot ship; (6) none known; (7) a declaration typed slightly off is undeclared and the gate refuses; (8) until the real logins are confirmed no review counts and nothing ships; (9) a provider written as a display name does not count toward diversity; (10) a reviewer who comments after approving still counts; a check from a non-Actions CI does not count; (11) a PR whose files GitHub cannot list (over 3000) cannot ship; (12) a person's PR on another branch cannot ship until pushed to `harness/<item>`; (13) a delivery over 120 000 bytes waits for the nightly sweep; (14) a missed webhook stays missed for up to a day; (15) a new page type to classify and render; (16) a comment can be posted twice if two attempts race past the 10-minute claim; (17) a label removal lost between the upsert and the kernel call is not recorded; (18) a merge made by a person on GitHub at the expected head is recorded as the harness's merge; (19) a person must run the recovery; nothing runs it on a timer; (20) none: each still refuses; (21) a caller wanting a dry evaluation of the rule must go through the gate; (22) none: no external consumer yet.
 - Close the step-5 carries in "Carried to later steps" by marking each closed with the task that closed it (as step 4 marked its closed rows).
-- New dependencies: `2026-10-02 | @octokit/core ^7.0.8 (MIT, apps/uw-app) | a hand-written GitHub REST request layer (URL templates, headers, error statuses)`; `2026-10-02 | Contract versions 7.0.0, 7.1.0, 8.0.0, 8.1.0, 9.0.0 | Not a dependency: contractVersion in both apps moved with each`. Add any `pnpm.overrides` Task 7 needed.
+- New dependencies: `2026-10-02 | @octokit/core ^7.0.8 (MIT, apps/uw-platform) | a hand-written GitHub REST request layer (URL templates, headers, error statuses)`; `2026-10-02 | Contract versions 7.0.0, 7.1.0, 8.0.0, 8.1.0, 9.0.0 | Not a dependency: contractVersion in both apps moved with each`. Add any `pnpm.overrides` Task 7 needed.
 - Not verified: the GitHub webhook payloads, REST responses and installation-token exchange against real GitHub (fixtures trimmed from GitHub's documentation only); the App manifest registered through GitHub's manifest flow; `@octokit/core` in a deployed Worker (only `pnpm build` and the Workers Vitest pool ran it); the merge's `sha` guard and the tag creation against a real repository; Cron Triggers firing on Cloudflare; the sweep's pagination on a repository with more than 100 updated issues; GitHub's review-state casing in webhooks versus REST beyond the documented examples.
-- Waiting on a person: `| 2026-10-02 | GH-1 | infra/github/app-manifest.json, apps/uw-app/github/{token,client}.ts | An org owner registers the App from the manifest, installs it on unfoldingWord/uw-platform, and sets GITHUB_APP_ID, GITHUB_APP_INSTALLATION_ID and GITHUB_APP_PRIVATE_KEY (PKCS#8) on uw-app and GITHUB_WEBHOOK_SECRET on uw-ingest, per environment | an org owner; the owner |`; `| 2026-10-02 | GH-2 | the read model, the queue handler and the nightly sweep | The first real deliveries and the first sweep on staging, after FD-12's switch-on | The owner |`; `| 2026-10-02 | GH-5 | packages/harness/github/reviewers.ts | Confirm the Reviewer identities' GitHub logins (uw-reviewer[bot], uw-reviewer-codex[bot] are placeholders) once PE-6 and HE-9 create them | an org owner |`; `| 2026-10-02 | GH-6 | apps/uw-app/github/merge.ts, apps/uw-app/ports/connectors.ts | A test repository for the merge connector's first live run (PRD 15) | The owner |`. Remove `connectors.not-wired.ts` and `github-facts.not-wired.ts` (now used only without a database) from the not-wired rows as appropriate: `github-facts.not-wired.ts` stays listed under the no-database adapters with `store.not-wired.ts`.
+- Waiting on a person: `| 2026-10-02 | GH-1 | infra/github/app-manifest.json, apps/uw-platform/github/{token,client}.ts | An org owner registers the App from the manifest, installs it on unfoldingWord/uw-platform, and sets GITHUB_APP_ID, GITHUB_APP_INSTALLATION_ID and GITHUB_APP_PRIVATE_KEY (PKCS#8) on uw-platform and GITHUB_WEBHOOK_SECRET on uw-ingest, per environment | an org owner; the owner |`; `| 2026-10-02 | GH-2 | the read model, the queue handler and the nightly sweep | The first real deliveries and the first sweep on staging, after FD-12's switch-on | The owner |`; `| 2026-10-02 | GH-5 | packages/harness/github/reviewers.ts | Confirm the Reviewer identities' GitHub logins (uw-reviewer[bot], uw-reviewer-codex[bot] are placeholders) once PE-6 and HE-9 create them | an org owner |`; `| 2026-10-02 | GH-6 | apps/uw-platform/github/merge.ts, apps/uw-platform/ports/connectors.ts | A test repository for the merge connector's first live run (PRD 15) | The owner |`. Remove `connectors.not-wired.ts` and `github-facts.not-wired.ts` (now used only without a database) from the not-wired rows as appropriate: `github-facts.not-wired.ts` stays listed under the no-database adapters with `store.not-wired.ts`.
 - Carried to later steps: `| 2026-10-02 | Step 5 | Step 6 | WB-1: the import command (a person imports an issue by ref through kernel.reads.importTarget, ensureIssuePage and kernel.items.importIssue) and the connector recovery command (kernel.gates.recoverConnectors) become command routes with can() |`; `| 2026-10-02 | Step 5 | Step 6 | WB-1: the gate command route builds its kernel with `platformKernel(database, clock, client)` so an approve at Ship reaches the merge connector; the MCP routes keep building it without a client |`; `| 2026-10-02 | Step 5 | Step 7 | HE-4: the Reviewer's review body carries the harness-review block with provider and model (packages/harness/github/declaration.ts parseReviewProvider) |`; `| 2026-10-02 | Step 5 | Step 8 | WB-6: the Gates view shows the assembled ship-rule input (assembleShipInput over platformGitHubFacts) |`; `| 2026-10-02 | Step 5 | Step 10 | PE-6, HE-9: the Reviewer personas' GitHub logins replace the placeholders in reviewers.ts (an acl-domain change) |`.
 
 - [ ] **Step 5: Verify and commit**

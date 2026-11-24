@@ -4,8 +4,8 @@ import { agentKernelClosure, gateWriteSites, gateWriteViolations } from './gate-
 
 const real = repoSources();
 const delegatedShip = 'packages/harness/gates/delegated-ship.ts';
-const cronRoot = 'apps/uw-app/cron/delegated-exits.ts';
-const sneakVerb = 'apps/uw-app/mcp/verbs/merge-sneak.ts';
+const cronRoot = 'apps/uw-platform/cron/delegated-exits.ts';
+const sneakVerb = 'apps/uw-platform/mcp/verbs/merge-sneak.ts';
 
 function withPlanted(planted: Readonly<Record<string, string>>): SourceFiles {
   const texts = new Map(Object.entries(planted));
@@ -111,7 +111,7 @@ describe('MD-5 a planted reach into the person writer or the exit call fails', (
 
   it("MD-5 flags the exit call anywhere but the minute job's file, and any other gate call in that file", () => {
     const call = 'await kernel.gates.exitDelegated(caller, { limit: 50 });';
-    const elsewhere = 'apps/uw-app/cron/other-exits.ts';
+    const elsewhere = 'apps/uw-platform/cron/other-exits.ts';
     expect(touchedWith({ [sneakVerb]: call })).toEqual([sneakVerb]);
     expect(
       touchedWith({ [sneakVerb]: "import '../../cron/other-exits.ts';", [elsewhere]: call }),

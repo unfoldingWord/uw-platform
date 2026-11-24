@@ -157,14 +157,14 @@ export const layerRules = [
   forbidden(
     'islands-never-call-the-kernel',
     'Islands call the command API, never the kernel, the database or a server module.',
-    '^apps/uw-app/islands/',
-    '^(?:packages/harness/|packages/db/|apps/uw-app/(?!islands/))',
+    '^apps/uw-platform/islands/',
+    '^(?:packages/harness/|packages/db/|apps/uw-platform/(?!islands/))',
   ),
   {
     name: 'islands-bundle-only-in-assets-and-views',
     comment: 'The built islands bundle is served by the asset routes and named by the screens.',
     severity: 'error',
-    from: { pathNot: ['^apps/uw-app/(?:assets|views)/', testFile] },
-    to: { path: '^apps/uw-app/generated/islands\\.ts$' },
+    from: { pathNot: ['^apps/uw-platform/(?:assets|views)/', testFile] },
+    to: { path: '^apps/uw-platform/generated/islands\\.ts$' },
   },
 ];

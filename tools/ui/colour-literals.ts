@@ -4,7 +4,7 @@ const hexColour = /(?<![\w&])#(?:[0-9a-fA-F]{8}|[0-9a-fA-F]{6}|[0-9a-fA-F]{3,4})
 const digitsOnly = /^#\d+$/;
 const colourFunction = /\b(?:rgba?|hsla?|oklch)\(/;
 
-const styleCarriers = [/\.(tsx|css|html)$/, /^packages\/ui\//, /^apps\/uw-app\/islands\//];
+const styleCarriers = [/\.(tsx|css|html)$/, /^packages\/ui\//, /^apps\/uw-platform\/islands\//];
 
 const literalKinds = new Set<ts.SyntaxKind>([
   ts.SyntaxKind.StringLiteral,

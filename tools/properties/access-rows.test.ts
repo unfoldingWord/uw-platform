@@ -1,6 +1,6 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { accessViewOf } from '../../apps/uw-app/views/parts/access-view.ts';
+import { accessViewOf } from '../../apps/uw-platform/views/parts/access-view.ts';
 import { principalSchema } from '../../packages/contracts/index.ts';
 
 const at = new Date('2026-10-01T12:00:00.000Z');

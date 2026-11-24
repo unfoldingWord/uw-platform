@@ -1,7 +1,7 @@
 import { execFileSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 
-const generatedRoots = ['apps/uw-app/generated/'];
+const generatedRoots = ['apps/uw-platform/generated/'];
 
 export function isGeneratedArtefact(path: string): boolean {
   return generatedRoots.some((root) => path.startsWith(root));

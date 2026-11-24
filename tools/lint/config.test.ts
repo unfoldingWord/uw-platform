@@ -42,7 +42,7 @@ describe('the ESLint config', () => {
 
 describe('the ESLint config gates', () => {
   it('fails a comment under apps, packages, sim and tests', async () => {
-    for (const path of ['apps/uw-app/a.ts', 'packages/core/a.ts', 'sim/a.ts', 'tests/a.ts']) {
+    for (const path of ['apps/uw-platform/a.ts', 'packages/core/a.ts', 'sim/a.ts', 'tests/a.ts']) {
       expect(await ruleIds(path, '// note\nexport const a = 1;\n')).toContain('uw/no-comments');
     }
   });
@@ -54,8 +54,8 @@ describe('the ESLint config gates', () => {
 
   it('fails a vendor SDK import outside an engine directory and allows it inside one', async () => {
     const code = "import OpenAI from 'openai';\nexport const client = OpenAI;\n";
-    expect(await ruleIds('apps/uw-app/a.ts', code)).toContain('no-restricted-imports');
-    expect(await ruleIds('apps/uw-app/engines/openrouter-messages/a.ts', code)).not.toContain(
+    expect(await ruleIds('apps/uw-platform/a.ts', code)).toContain('no-restricted-imports');
+    expect(await ruleIds('apps/uw-platform/engines/openrouter-messages/a.ts', code)).not.toContain(
       'no-restricted-imports',
     );
   });

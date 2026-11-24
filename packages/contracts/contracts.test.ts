@@ -463,7 +463,7 @@ describe('FL-1 FL-2 FL-3 FL-4 the fix claim contracts', () => {
       declaration: {
         closes: ['#12'],
         risks: 'the board renders slower on phones',
-        touches: 'apps/uw-app/board',
+        touches: 'apps/uw-platform/board',
         riskTier: 'standard',
         riskDomains: [],
       },

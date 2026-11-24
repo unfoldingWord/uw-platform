@@ -9,18 +9,18 @@ import {
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { owns as acl } from '../../apps/uw-app/acl/grant-commands.ts';
-import { owns as serviceTokens } from '../../apps/uw-app/agents/service-tokens.ts';
-import { owns as commandRequests } from '../../apps/uw-app/commands/requests.ts';
-import { owns as credentialStore } from '../../apps/uw-app/credentials/store.ts';
-import { owns as crosswalk } from '../../apps/uw-app/crosswalk/owns.ts';
-import { owns as githubFacts } from '../../apps/uw-app/github/facts/owns.ts';
-import { owns as notify } from '../../apps/uw-app/notify/push/owns.ts';
-import { owns as pages } from '../../apps/uw-app/pages/store.ts';
-import { owns as people } from '../../apps/uw-app/people/directory.ts';
-import { owns as queue } from '../../apps/uw-app/queue/watermarks.ts';
-import { owns as tasks } from '../../apps/uw-app/tasks/store.ts';
-import { owns as collections } from '../../apps/uw-app/collections/owns.ts';
+import { owns as acl } from '../../apps/uw-platform/acl/grant-commands.ts';
+import { owns as serviceTokens } from '../../apps/uw-platform/agents/service-tokens.ts';
+import { owns as commandRequests } from '../../apps/uw-platform/commands/requests.ts';
+import { owns as credentialStore } from '../../apps/uw-platform/credentials/store.ts';
+import { owns as crosswalk } from '../../apps/uw-platform/crosswalk/owns.ts';
+import { owns as githubFacts } from '../../apps/uw-platform/github/facts/owns.ts';
+import { owns as notify } from '../../apps/uw-platform/notify/push/owns.ts';
+import { owns as pages } from '../../apps/uw-platform/pages/store.ts';
+import { owns as people } from '../../apps/uw-platform/people/directory.ts';
+import { owns as queue } from '../../apps/uw-platform/queue/watermarks.ts';
+import { owns as tasks } from '../../apps/uw-platform/tasks/store.ts';
+import { owns as collections } from '../../apps/uw-platform/collections/owns.ts';
 import { owns as deliveries } from '../../apps/uw-ingest/deliveries/ledger.ts';
 import { owns as delegations } from '../../packages/harness/delegations/owns.ts';
 import { owns as gates } from '../../packages/harness/gates/owns.ts';
@@ -46,18 +46,18 @@ const narrowWrites: readonly NarrowWrite[] = [
 ];
 
 const owners: Owner[] = [
-  { dir: 'apps/uw-app/people/', tables: people },
-  { dir: 'apps/uw-app/acl/', tables: acl },
-  { dir: 'apps/uw-app/pages/', tables: pages },
-  { dir: 'apps/uw-app/queue/', tables: queue },
-  { dir: 'apps/uw-app/tasks/', tables: tasks },
-  { dir: 'apps/uw-app/collections/', tables: collections },
-  { dir: 'apps/uw-app/agents/', tables: serviceTokens },
-  { dir: 'apps/uw-app/commands/', tables: commandRequests },
-  { dir: 'apps/uw-app/credentials/', tables: credentialStore },
-  { dir: 'apps/uw-app/crosswalk/', tables: crosswalk },
-  { dir: 'apps/uw-app/github/facts/', tables: githubFacts },
-  { dir: 'apps/uw-app/notify/push/', tables: notify },
+  { dir: 'apps/uw-platform/people/', tables: people },
+  { dir: 'apps/uw-platform/acl/', tables: acl },
+  { dir: 'apps/uw-platform/pages/', tables: pages },
+  { dir: 'apps/uw-platform/queue/', tables: queue },
+  { dir: 'apps/uw-platform/tasks/', tables: tasks },
+  { dir: 'apps/uw-platform/collections/', tables: collections },
+  { dir: 'apps/uw-platform/agents/', tables: serviceTokens },
+  { dir: 'apps/uw-platform/commands/', tables: commandRequests },
+  { dir: 'apps/uw-platform/credentials/', tables: credentialStore },
+  { dir: 'apps/uw-platform/crosswalk/', tables: crosswalk },
+  { dir: 'apps/uw-platform/github/facts/', tables: githubFacts },
+  { dir: 'apps/uw-platform/notify/push/', tables: notify },
   { dir: 'apps/uw-ingest/deliveries/', tables: deliveries },
   { dir: 'packages/harness/stages/', tables: stages },
   { dir: 'packages/harness/items/', tables: items },
@@ -162,7 +162,7 @@ function packageRoots(base: string): string[] {
 }
 
 function scanRoots(base: string): string[] {
-  return ['apps/uw-app', 'apps/uw-ingest', ...packageRoots(base), 'sim'].filter((root) =>
+  return ['apps/uw-platform', 'apps/uw-ingest', ...packageRoots(base), 'sim'].filter((root) =>
     existsSync(join(base, root)),
   );
 }
@@ -193,22 +193,31 @@ describe('AGENTS.md rule 3: every table has one writer', () => {
 
 function plantedTree(): string {
   const base = mkdtempSync(join(tmpdir(), 'uw-owners-'));
-  mkdirSync(join(base, 'apps/uw-app/people'), { recursive: true });
-  mkdirSync(join(base, 'apps/uw-app/acl'), { recursive: true });
-  writeFileSync(join(base, 'apps/uw-app/people/directory.ts'), 'db.insert(people).values(row);');
-  writeFileSync(join(base, 'apps/uw-app/acl/stray.ts'), 'await db.insert(people).values(row);');
-  writeFileSync(join(base, 'apps/uw-app/acl/raw.ts'), 'sql`UPDATE people SET status = 1`;');
+  mkdirSync(join(base, 'apps/uw-platform/people'), { recursive: true });
+  mkdirSync(join(base, 'apps/uw-platform/acl'), { recursive: true });
+  writeFileSync(
+    join(base, 'apps/uw-platform/people/directory.ts'),
+    'db.insert(people).values(row);',
+  );
+  writeFileSync(
+    join(base, 'apps/uw-platform/acl/stray.ts'),
+    'await db.insert(people).values(row);',
+  );
+  writeFileSync(join(base, 'apps/uw-platform/acl/raw.ts'), 'sql`UPDATE people SET status = 1`;');
   return base;
 }
 
 function plantedOutsideApps(): string {
   const base = mkdtempSync(join(tmpdir(), 'uw-owners-'));
-  mkdirSync(join(base, 'apps/uw-app/people'), { recursive: true });
+  mkdirSync(join(base, 'apps/uw-platform/people'), { recursive: true });
   mkdirSync(join(base, 'packages/harness'), { recursive: true });
   mkdirSync(join(base, 'packages/db'), { recursive: true });
   mkdirSync(join(base, 'sim/adapters'), { recursive: true });
-  writeFileSync(join(base, 'apps/uw-app/people/directory.ts'), 'db.insert(people).values(row);');
-  writeFileSync(join(base, 'apps/uw-app/namespaced.ts'), 'tx.insert(schema.people);');
+  writeFileSync(
+    join(base, 'apps/uw-platform/people/directory.ts'),
+    'db.insert(people).values(row);',
+  );
+  writeFileSync(join(base, 'apps/uw-platform/namespaced.ts'), 'tx.insert(schema.people);');
   writeFileSync(join(base, 'packages/harness/store.ts'), 'await db.update(people).set(row);');
   writeFileSync(join(base, 'packages/db/schema.ts'), 'db.insert(people).values(row);');
   writeFileSync(join(base, 'sim/adapters/store.ts'), 'await tx.delete(schema.people);');
@@ -220,16 +229,16 @@ describe('AGENTS.md rule 3: the check scans packages and the sim', () => {
 
   it('scans every package except packages/db, and the sim when present', () => {
     const base = plantedOutsideApps();
-    expect(scanRoots(base)).toEqual(['apps/uw-app', 'packages/harness', 'sim']);
+    expect(scanRoots(base)).toEqual(['apps/uw-platform', 'packages/harness', 'sim']);
   });
 
   it('catches a namespaced write in an app, a package and the sim', () => {
     const base = plantedOutsideApps();
     const found = writersOutsideOwner(base, sourcesUnder(base, scanRoots(base)), people_, [
-      { dir: 'apps/uw-app/people/', tables: ['people'] },
+      { dir: 'apps/uw-platform/people/', tables: ['people'] },
     ]);
     expect(found.sort()).toEqual([
-      'apps/uw-app/namespaced.ts',
+      'apps/uw-platform/namespaced.ts',
       'packages/harness/store.ts',
       'sim/adapters/store.ts',
     ]);
@@ -240,7 +249,7 @@ describe('AGENTS.md rule 3: the check itself fails on a violation', () => {
   const people_: Entry = { exportName: 'people', table: 'people' };
 
   it('fails when a table is claimed by two modules', () => {
-    const doubled = [...owners, { dir: 'apps/uw-app/acl/', tables: ['people'] }];
+    const doubled = [...owners, { dir: 'apps/uw-platform/acl/', tables: ['people'] }];
     expect(claimProblems(doubled, ['people'])).toContain('people is claimed twice');
   });
 
@@ -250,10 +259,10 @@ describe('AGENTS.md rule 3: the check itself fails on a violation', () => {
 
   it('fails when a module outside the owner writes the table', () => {
     const base = plantedTree();
-    const found = writersOutsideOwner(base, sourcesUnder(base, ['apps/uw-app']), people_, [
-      { dir: 'apps/uw-app/people/', tables: ['people'] },
+    const found = writersOutsideOwner(base, sourcesUnder(base, ['apps/uw-platform']), people_, [
+      { dir: 'apps/uw-platform/people/', tables: ['people'] },
     ]);
-    expect(found.sort()).toEqual(['apps/uw-app/acl/raw.ts', 'apps/uw-app/acl/stray.ts']);
+    expect(found.sort()).toEqual(['apps/uw-platform/acl/raw.ts', 'apps/uw-platform/acl/stray.ts']);
   });
 });
 
@@ -345,7 +354,7 @@ describe('AGENTS.md rule 3: the persona flip is the one narrow write to pages', 
   it('allows activatePersona from the personas module and nothing else of pages anywhere', () => {
     const base = plantedNarrowWrites();
     const found = writersOutsideOwner(base, sourcesUnder(base, ['packages/harness']), pages_, [
-      { dir: 'apps/uw-app/pages/', tables: ['pages'] },
+      { dir: 'apps/uw-platform/pages/', tables: ['pages'] },
     ]);
     expect(found.sort()).toEqual(
       ['items/flip.ts', 'personas/both.ts', 'personas/other.ts', 'personas/raw.ts'].map(

@@ -63,10 +63,10 @@ describe('KN-4 one read function is the only event read path', () => {
     "import { harnessEvents as log } from '@uw/db/schema';\nawait db.select().from(log);",
     "import * as tables from '../../packages/db/schema.ts';\nconst t = tables.harnessEvents;",
   ])('flags %j', (source) => {
-    expect(readers(['apps/uw-app/x.ts'], () => source)).toEqual(['apps/uw-app/x.ts']);
+    expect(readers(['apps/uw-platform/x.ts'], () => source)).toEqual(['apps/uw-platform/x.ts']);
   });
 
-  it.each(['apps/uw-app/x.js', 'apps/uw-app/x.mjs'])('scans %s', (file) => {
+  it.each(['apps/uw-platform/x.js', 'apps/uw-platform/x.mjs'])('scans %s', (file) => {
     expect(readers([file], () => 'db.select().from(harnessEvents)')).toEqual([file]);
   });
 

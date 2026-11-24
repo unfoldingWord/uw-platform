@@ -9,7 +9,7 @@ import { createWorld } from '../world.ts';
 
 afterAll(closeEmbeddedTemplate);
 
-const pull = { 'apps/uw-app/board.tsx': 40 };
+const pull = { 'apps/uw-platform/board.tsx': 40 };
 
 type Work = (scene: FixWorld) => Promise<void>;
 
@@ -30,7 +30,10 @@ async function tailNames(scene: FixWorld, count: number): Promise<readonly strin
 }
 
 const passes: Work = async (scene) => {
-  pushedFix(scene, { pull, fix: { 'apps/uw-app/board.tsx': 8, 'apps/uw-app/board.test.tsx': 2 } });
+  pushedFix(scene, {
+    pull,
+    fix: { 'apps/uw-platform/board.tsx': 8, 'apps/uw-platform/board.test.tsx': 2 },
+  });
   expect(await submitFix(scene)).toMatchObject({
     status: 'accepted',
     value: { result: 'awaiting_review', failures: [] },
@@ -45,7 +48,7 @@ const passes: Work = async (scene) => {
 };
 
 const overTheCap: Work = async (scene) => {
-  pushedFix(scene, { pull, fix: { 'apps/uw-app/board.tsx': 11 } });
+  pushedFix(scene, { pull, fix: { 'apps/uw-platform/board.tsx': 11 } });
   expect(await submitFix(scene)).toMatchObject({ status: 'error', reason: 'fix_size_cap' });
   expect(await itemOf(scene.world, scene.itemId)).toMatchObject({
     expectedHead: scene.head,
@@ -56,13 +59,13 @@ const overTheCap: Work = async (scene) => {
 };
 
 const strayFile: Work = async (scene) => {
-  pushedFix(scene, { pull, fix: { 'apps/uw-app/billing.ts': 2 } });
+  pushedFix(scene, { pull, fix: { 'apps/uw-platform/billing.ts': 2 } });
   expect(await submitFix(scene)).toMatchObject({
     status: 'error',
     reason: 'fix_size_cap',
     detail: {
       failures: [
-        'fix_size_cap: the fix touches apps/uw-app/billing.ts, which the pull request does not',
+        'fix_size_cap: the fix touches apps/uw-platform/billing.ts, which the pull request does not',
       ],
     },
   });
@@ -75,7 +78,7 @@ const unmeasured: Work = async (scene) => {
 
 const purposeChanged: Work = async (scene) => {
   const changed = declared({ riskTier: 'low', riskDomains: [] });
-  pushedFix(scene, { pull, fix: { 'apps/uw-app/board.tsx': 4 }, declaration: changed });
+  pushedFix(scene, { pull, fix: { 'apps/uw-platform/board.tsx': 4 }, declaration: changed });
   expect(await submitFix(scene)).toMatchObject({ status: 'error', reason: 'fix_keeps_purpose' });
   expect(await itemOf(scene.world, scene.itemId)).toMatchObject({
     expectedHead: scene.head,
@@ -94,7 +97,7 @@ const changesNothing: Work = async (scene) => {
 };
 
 const otherPullRequest: Work = async (scene) => {
-  pushedFix(scene, { pull, fix: { 'apps/uw-app/board.tsx': 4 } });
+  pushedFix(scene, { pull, fix: { 'apps/uw-platform/board.tsx': 4 } });
   const other = { ...shipPullRequest, number: shipPullRequest.number + 1 };
   const outcome = await scene.world.kernel.items.submit(simCaller(scene.world, scene.fixer), {
     itemId: scene.itemId,
@@ -145,7 +148,7 @@ describe('FL-3 a claim that is not a fix claim runs no fix validator', () => {
       });
       const input = { itemId: scene.itemId, delegationId: null };
       value(await scene.world.kernel.items.claim(simCaller(world, author), input));
-      pushedFix(scene, { pull, fix: { 'apps/uw-app/billing.ts': 400 } });
+      pushedFix(scene, { pull, fix: { 'apps/uw-platform/billing.ts': 400 } });
       expect(await submitFix(scene, author)).toMatchObject({
         status: 'accepted',
         value: { result: 'advanced' },

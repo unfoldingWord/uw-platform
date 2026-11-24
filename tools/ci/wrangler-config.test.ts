@@ -28,18 +28,18 @@ describe('the deploy workflows deploy only the live wrangler file', () => {
     expect(problems).toEqual([]);
   });
 
-  it('finds the uw-app deploys it checks', () => {
+  it('finds the uw-platform deploys it checks', () => {
     const text = workflows.map((file) => readFileSync(join(workflowsDir, file), 'utf8')).join();
-    expect(text).toContain('--config ../../infra/uw-app/wrangler.toml');
+    expect(text).toContain('--config ../../infra/uw-platform/wrangler.toml');
   });
 
   it('flags a planted deploy of the go-live file and a deploy with no config', () => {
     const planted = [
-      'run: pnpm exec wrangler deploy --config ../../infra/uw-app/wrangler.go-live.toml --env staging',
+      'run: pnpm exec wrangler deploy --config ../../infra/uw-platform/wrangler.go-live.toml --env staging',
       'run: pnpm exec wrangler deploy --env staging',
     ].join('\n');
     expect(deployConfigProblems('planted.yml', planted)).toEqual([
-      'planted.yml deploys with ../../infra/uw-app/wrangler.go-live.toml',
+      'planted.yml deploys with ../../infra/uw-platform/wrangler.go-live.toml',
       'planted.yml has a wrangler deploy without --config',
       'planted.yml names wrangler.go-live.toml',
     ]);

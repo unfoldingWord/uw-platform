@@ -137,25 +137,25 @@ function secondPieces(path: string, text: string): string[] {
 }
 
 const planted: readonly (readonly [string, string])[] = [
-  ['apps/uw-app/pages/screen.tsx', '<div class="bg-side"><nav aria-label="Main"></nav></div>'],
-  ['apps/uw-app/pages/screen.tsx', '<header><nav aria-label="Breadcrumb"></nav></header>'],
-  ['apps/uw-app/pages/screen.tsx', '<h1 class="text-2xl">Board</h1>'],
-  ['apps/uw-app/pages/screen.tsx', 'export function PageHead() { return null; }'],
-  ['apps/uw-app/pages/screen.tsx', '<input type="radio" name="view" />'],
+  ['apps/uw-platform/pages/screen.tsx', '<div class="bg-side"><nav aria-label="Main"></nav></div>'],
+  ['apps/uw-platform/pages/screen.tsx', '<header><nav aria-label="Breadcrumb"></nav></header>'],
+  ['apps/uw-platform/pages/screen.tsx', '<h1 class="text-2xl">Board</h1>'],
+  ['apps/uw-platform/pages/screen.tsx', 'export function PageHead() { return null; }'],
+  ['apps/uw-platform/pages/screen.tsx', '<input type="radio" name="view" />'],
   ['packages/ui/components/card.tsx', 'export const Sidebar = () => null;'],
-  ['apps/uw-app/pages/spend.tsx', 'export function Badge() { return null; }'],
-  ['apps/uw-app/pages/spend.tsx', '<table><caption>Spend</caption></table>'],
-  ['apps/uw-app/pages/spend.tsx', '<p role="note">Hand-rolled note</p>'],
-  ['apps/uw-app/pages/spend.tsx', 'export const Kpi = () => null;'],
-  ['apps/uw-app/health/routes.tsx', '<nav aria-label="Main">second sidebar</nav>'],
-  ['apps/uw-app/pages/gate.tsx', 'export function HumanActionButton() { return null; }'],
+  ['apps/uw-platform/pages/spend.tsx', 'export function Badge() { return null; }'],
+  ['apps/uw-platform/pages/spend.tsx', '<table><caption>Spend</caption></table>'],
+  ['apps/uw-platform/pages/spend.tsx', '<p role="note">Hand-rolled note</p>'],
+  ['apps/uw-platform/pages/spend.tsx', 'export const Kpi = () => null;'],
+  ['apps/uw-platform/health/routes.tsx', '<nav aria-label="Main">second sidebar</nav>'],
+  ['apps/uw-platform/pages/gate.tsx', 'export function HumanActionButton() { return null; }'],
   ['packages/ui/components/lane.tsx', 'export const HumanGateMark = () => null;'],
-  ['apps/uw-app/pages/gate.tsx', 'export function GateCallout() { return null; }'],
-  ['apps/uw-app/pages/gate.tsx', 'export const GateFacts = () => null;'],
-  ['apps/uw-app/pages/board.tsx', 'export function Lane() { return null; }'],
-  ['apps/uw-app/pages/board.tsx', '<article class="rounded-lg">card</article>'],
+  ['apps/uw-platform/pages/gate.tsx', 'export function GateCallout() { return null; }'],
+  ['apps/uw-platform/pages/gate.tsx', 'export const GateFacts = () => null;'],
+  ['apps/uw-platform/pages/board.tsx', 'export function Lane() { return null; }'],
+  ['apps/uw-platform/pages/board.tsx', '<article class="rounded-lg">card</article>'],
   ['packages/ui/components/lane.tsx', 'export const KanbanCard = () => null;'],
-  ['apps/uw-app/pages/board.tsx', '<dl><dt>Stage</dt><dd>Build</dd></dl>'],
+  ['apps/uw-platform/pages/board.tsx', '<dl><dt>Stage</dt><dd>Build</dd></dl>'],
 ];
 
 describe('WB-11 each shell piece exists once', () => {
@@ -199,7 +199,7 @@ describe('WB-11 each shell piece exists once', () => {
 
   it('passes a page that renders inside the shell', () => {
     const page = '<Shell title="Board"><PageHead title="Board" /><p>Items</p></Shell>';
-    expect(secondPieces('apps/uw-app/pages/board.tsx', page)).toEqual([]);
+    expect(secondPieces('apps/uw-platform/pages/board.tsx', page)).toEqual([]);
   });
 });
 
@@ -213,7 +213,7 @@ describe('the human action is the only gate decision control', () => {
     '<HumanActionButton itemId={id} label="Approve" name="decision" value="approve" /><button value="approve">x</button>',
     '<form><Button variant="primary" value="approve" /></form>',
   ])('flags a planted hand-rolled decision control: %s', (text) => {
-    expect(handRolledDecisions('apps/uw-app/pages/gate.tsx', text)).not.toEqual([]);
+    expect(handRolledDecisions('apps/uw-platform/pages/gate.tsx', text)).not.toEqual([]);
   });
 
   it.each([
@@ -222,7 +222,7 @@ describe('the human action is the only gate decision control', () => {
     "const decision = command === 'approve';",
     '<button type="submit" name="decision" value={decision}>Go</button>',
   ])('passes the human action and code that names no decision control: %s', (text) => {
-    expect(handRolledDecisions('apps/uw-app/pages/gate.tsx', text)).toEqual([]);
+    expect(handRolledDecisions('apps/uw-platform/pages/gate.tsx', text)).toEqual([]);
   });
 
   it('lets the human action itself carry decision values', () => {

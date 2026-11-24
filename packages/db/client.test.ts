@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { createClient } from './client.ts';
 import { testServer, withEmptyDatabase } from './test-database.ts';
 
-describe.skipIf(!testServer)('the uw-app client factory against a real Postgres', () => {
+describe.skipIf(!testServer)('the uw-platform client factory against a real Postgres', () => {
   it('connects with a connection string and runs a query', () =>
     withEmptyDatabase(testServer ?? '', async (target) => {
       const db = createClient(target);

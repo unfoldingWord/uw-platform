@@ -3,8 +3,8 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { build, type Plugin } from 'esbuild';
 
-const generated = new URL('../../apps/uw-app/generated/islands.ts', import.meta.url);
-const generatedEditor = new URL('../../apps/uw-app/generated/editor.ts', import.meta.url);
+const generated = new URL('../../apps/uw-platform/generated/islands.ts', import.meta.url);
+const generatedEditor = new URL('../../apps/uw-platform/generated/editor.ts', import.meta.url);
 const shared = {
   bundle: true,
   minify: true,
@@ -49,8 +49,8 @@ async function stylesheet(entry: string): Promise<string> {
 }
 
 async function editorModuleText(): Promise<string> {
-  const editorJs = await bundled('apps/uw-app/islands/editor/main.ts', 'esm');
-  const editorCss = await stylesheet('apps/uw-app/islands/editor/editor.css');
+  const editorJs = await bundled('apps/uw-platform/islands/editor/main.ts', 'esm');
+  const editorCss = await stylesheet('apps/uw-platform/islands/editor/editor.css');
   return [
     `export const editorPath = ${JSON.stringify(hashedPath(editorJs, 'editor'))};`,
     `export const editorJs = ${JSON.stringify(editorJs)};`,
@@ -61,8 +61,8 @@ async function editorModuleText(): Promise<string> {
 }
 
 async function moduleText(): Promise<string> {
-  const islandsJs = await bundled('apps/uw-app/islands/browser/main.ts', 'esm');
-  const serviceWorkerJs = await bundled('apps/uw-app/islands/worker/sw.ts', 'iife');
+  const islandsJs = await bundled('apps/uw-platform/islands/browser/main.ts', 'esm');
+  const serviceWorkerJs = await bundled('apps/uw-platform/islands/worker/sw.ts', 'iife');
   return [
     `export const islandsPath = ${JSON.stringify(hashedPath(islandsJs))};`,
     `export const islandsJs = ${JSON.stringify(islandsJs)};`,
@@ -81,7 +81,7 @@ function committed(file: URL): string {
 if (process.argv.includes('--check')) {
   if (committed(generated) !== expected || committed(generatedEditor) !== expectedEditor) {
     console.error(
-      'apps/uw-app/generated/islands.ts or editor.ts is stale. Run pnpm ui:islands and commit them.',
+      'apps/uw-platform/generated/islands.ts or editor.ts is stale. Run pnpm ui:islands and commit them.',
     );
     process.exit(1);
   }
@@ -89,5 +89,5 @@ if (process.argv.includes('--check')) {
 } else {
   writeFileSync(generated, expected);
   writeFileSync(generatedEditor, expectedEditor);
-  console.log('Wrote apps/uw-app/generated/islands.ts and editor.ts.');
+  console.log('Wrote apps/uw-platform/generated/islands.ts and editor.ts.');
 }

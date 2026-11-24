@@ -51,7 +51,7 @@
         <!-- Band C: engine -->
         <text x="20" y="262" fill="#5A6E7A" stroke="none" font-size="11" font-weight="700" letter-spacing="1.5">ENGINE</text>
         <rect x="90" y="236" width="1010" height="120" rx="6" stroke="#014263" stroke-width="1.8" fill="#E6EEF2"/>
-        <text x="106" y="256" stroke="none" fill="#231F20" font-weight="800" font-size="13">Harness engine · inside uw-app</text>
+        <text x="106" y="256" stroke="none" fill="#231F20" font-weight="800" font-size="13">Harness engine · inside uw-platform</text>
         <g stroke="#014263" fill="#FFFFFF">
           <rect x="106" y="268" width="186" height="74" rx="4"/>
           <rect x="304" y="268" width="186" height="74" rx="4"/>
@@ -121,7 +121,7 @@
         <line x1="595" y1="544" x2="595" y2="566" marker-end="url(#arr)"/>
         <text x="603" y="560" stroke="none" fill="#231F20" font-size="11">a persona is configuration; it runs on either host, same verbs, same gates</text>
         <rect x="90" y="566" width="495" height="56" rx="4" stroke="#014263" fill="#FFFFFF"/>
-        <text x="106" y="588" stroke="none" fill="#231F20" font-weight="700">Cloudflare Workflow · inside uw-app</text>
+        <text x="106" y="588" stroke="none" fill="#231F20" font-weight="700">Cloudflare Workflow · inside uw-platform</text>
         <text x="106" y="607" stroke="none" fill="#5A6E7A" font-size="11.5">org keys via AI Gateway · OpenRouter always-on tier · Builder off</text>
         <rect x="605" y="566" width="495" height="56" rx="4" stroke="#31ADE3" stroke-width="1.8" fill="#E3F3FB"/>
         <text x="621" y="588" stroke="none" fill="#231F20" font-weight="700">External runner · Claude Code on a staff member's own machine</text>

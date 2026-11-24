@@ -2,7 +2,7 @@
 
 **Goal:** Finish the platform foundation the kernel will stand on: real Postgres in CI, the go-live wiring (written, switched off), Access sign-in and a typed `Principal`, `role_grants` and `can()`, pages and page versions, the ingest Worker and its queue, one trace id with a structured logger and `/health`, and the verb registry under a contract lock.
 
-**Architecture:** Everything durable is a table in `packages/db/schema.ts` with a migration and a real-Postgres test. Boundary shapes (principal, commands, pages, envelope, health, verbs) are Zod in `packages/contracts`, guarded by a contract lock that forces `CONTRACT_VERSION` to move with every closed set. `packages/core` holds the pure pieces later steps import: `Principal`, `can()`, the logger and the trace header. `apps/uw-app` and `apps/uw-ingest` are composition roots: Hono routes over small modules that each own their tables and export an `owns` constant. Anything that needs a Cloudflare, Neon or GitHub resource is declared in `infra/` or `.github/workflows/` and either skips cleanly or stays out of the deployed wrangler file until the resource exists.
+**Architecture:** Everything durable is a table in `packages/db/schema.ts` with a migration and a real-Postgres test. Boundary shapes (principal, commands, pages, envelope, health, verbs) are Zod in `packages/contracts`, guarded by a contract lock that forces `CONTRACT_VERSION` to move with every closed set. `packages/core` holds the pure pieces later steps import: `Principal`, `can()`, the logger and the trace header. `apps/uw-platform` and `apps/uw-ingest` are composition roots: Hono routes over small modules that each own their tables and export an `owns` constant. Anything that needs a Cloudflare, Neon or GitHub resource is declared in `infra/` or `.github/workflows/` and either skips cleanly or stays out of the deployed wrangler file until the resource exists.
 
 **Tech Stack:** TypeScript 6 strict, Hono 4.13, Zod 4.6, Drizzle ORM 0.45 over `postgres` 3.4, drizzle-kit 0.31, Vitest 4 (Workers pool and a node project), jose 6.2 (JWT and JWKS), @octokit/webhooks-methods 6.0 (webhook HMAC), smol-toml 1.9 (reading wrangler files in tests), GitHub Actions, Neon GitHub actions (`neondatabase/create-branch-action@v6`, `neondatabase/delete-branch-action@v3`).
 
@@ -16,13 +16,13 @@
 |---|---|---|
 | `Principal`, `Grant`, `principalSchema`, `grantSchema` | `packages/contracts/principal.ts`, re-exported with constructors from `packages/core/principal.ts` | every handler, queue message, MCP call (AB-2, AB-3, KN-13) |
 | `can(actor, action, resource)`, `AclAction`, `AclResource` | `packages/core/acl.ts` | every route, verb and command (KN-5, KN-13, AB-3, WB-1) |
-| `resolveGrants(db, personId)` | `apps/uw-app/acl/grant-store.ts` | the Grants port platform adapter (DX-1, KN-13) |
+| `resolveGrants(db, personId)` | `apps/uw-platform/acl/grant-store.ts` | the Grants port platform adapter (DX-1, KN-13) |
 | `people`, `role_grants`, `grant_audit`, `pages`, `page_versions`, `webhook_deliveries`, `queue_watermarks` | `packages/db/schema.ts` | KN-1, AB-5, GH-2 |
 | `createLogger`, `Logger`, `LogSink`, `TRACE_HEADER`, `traceIdSchema` | `packages/core/log.ts`, `packages/core/trace.ts` | every Worker, Workflow step and queue consumer (HE-1) |
-| `ingestEnvelopeSchema`, `IngestEnvelope`, `ingestHandlers` | `packages/contracts/ingest.ts`, `apps/uw-app/queue/consumer.ts` | GH-2 (the read-model writer replaces the `github` handler) |
+| `ingestEnvelopeSchema`, `IngestEnvelope`, `ingestHandlers` | `packages/contracts/ingest.ts`, `apps/uw-platform/queue/consumer.ts` | GH-2 (the read-model writer replaces the `github` handler) |
 | `verbRegistry`, `verbManifest()`, `findVerb()`, `verbNames`, `FORBIDDEN_VERBS` | `packages/contracts/verbs.ts`, `packages/contracts/verb-names.ts` | AB-1, AB-3, AB-8, PE-1 |
 | `pageTypeRegistry`, `pageTypeDefinition()` | `packages/contracts/page-types.ts` | AB-5, PE-1, KN-15 |
-| `healthReportSchema`, indicator functions | `packages/contracts/health.ts`, `apps/uw-app/health/indicators.ts` | WB-10, `get_health` |
+| `healthReportSchema`, indicator functions | `packages/contracts/health.ts`, `apps/uw-platform/health/indicators.ts` | WB-10, `get_health` |
 
 ---
 
@@ -46,7 +46,7 @@ Every task obeys every line here. The controller passes this section to each imp
 - Layering (dependency-cruiser and ESLint): `packages/contracts` imports only `zod`; `packages/core` imports `packages/contracts` and `zod`; `packages/db` imports `packages/contracts`, `packages/core`, `drizzle-orm`, `postgres`; `apps/*` are composition roots; `apps/uw-ingest` never imports `packages/harness`; no vendor SDK anywhere in this step.
 - Discovery by registry, never by a switch on a name: webhook sources, page types, verbs and queue handlers are looked up in a registry object or `Map`. Use `Map` or `Object.hasOwn` for lookups so `security/detect-object-injection` stays quiet.
 - Every table has exactly one writer module, which exports `export const owns = [...] as const` naming its tables. No other module writes them; others call the owner's exported functions.
-- Prefer a maintained package over custom code (`AGENTS.md` §5). The packages this step adds are exactly: `jose@^6.2.12` (apps/uw-app), `@octokit/webhooks-methods@^6.0.0` (apps/uw-ingest), `smol-toml@^1.9.0` (root devDependency), plus workspace links (`@uw/contracts`, `@uw/db`) and `drizzle-orm@^0.45.3`, `hono@^4.13.11`, `wrangler@^4.144.0`, `@cloudflare/workers-types@^5.20260930.1` where a package newly needs them. Add nothing else without recording it in the tracker.
+- Prefer a maintained package over custom code (`AGENTS.md` §5). The packages this step adds are exactly: `jose@^6.2.12` (apps/uw-platform), `@octokit/webhooks-methods@^6.0.0` (apps/uw-ingest), `smol-toml@^1.9.0` (root devDependency), plus workspace links (`@uw/contracts`, `@uw/db`) and `drizzle-orm@^0.45.3`, `hono@^4.13.11`, `wrangler@^4.144.0`, `@cloudflare/workers-types@^5.20260930.1` where a package newly needs them. Add nothing else without recording it in the tracker.
 
 **Shared roots**
 
@@ -55,7 +55,7 @@ Every task obeys every line here. The controller passes this section to each imp
 **Contracts**
 
 - Every exported Zod schema in `packages/contracts` is registered in `packages/contracts/registry.ts` under a kebab-case key and has `fixtures/<key>/valid/*.json` and `fixtures/<key>/invalid/*.json` (at least one each). The existing `contracts.test.ts` fails otherwise.
-- From Task 2 on, any change to a closed set (any `z.enum` in the registry) appends an entry to `packages/contracts/contract-lock.json` and changes `CONTRACT_VERSION` in `packages/contracts/version.ts`, and every consumer's `package.json` `contractVersion` (`apps/uw-app`, `apps/uw-ingest`) moves to the same value. Removing or renaming a value is a major bump; only adding is a minor bump. The versions this plan uses: Task 2 locks `1.0.0`, Task 3 moves to `2.0.0`, Task 4 to `2.1.0`, Task 5 to `2.2.0`.
+- From Task 2 on, any change to a closed set (any `z.enum` in the registry) appends an entry to `packages/contracts/contract-lock.json` and changes `CONTRACT_VERSION` in `packages/contracts/version.ts`, and every consumer's `package.json` `contractVersion` (`apps/uw-platform`, `apps/uw-ingest`) moves to the same value. Removing or renaming a value is a major bump; only adding is a minor bump. The versions this plan uses: Task 2 locks `1.0.0`, Task 3 moves to `2.0.0`, Task 4 to `2.1.0`, Task 5 to `2.2.0`.
 
 **Tests**
 
@@ -102,19 +102,19 @@ packages/contracts/{page-types,ingest}.ts, page-types.test.ts   Task 5
 packages/core/{principal,acl}.ts (+ tests)   Task 6
 packages/core/{log,trace}.ts (+ tests)       Task 8
 packages/db/{schema,checks}.ts, migrations/, foundation.test.ts   Task 7
-apps/uw-app/{env,deps,database,observe,app}.ts(x)   Task 8
-apps/uw-app/http/outcomes.ts                 Task 9
-apps/uw-app/auth/{access,principal-middleware,dev-principal}.ts   Task 9, 10
-apps/uw-app/testing/{access-keys,postgres}.ts   Task 9, 10
-apps/uw-app/people/directory.ts              Task 10
-apps/uw-app/acl/{grant-store,grant-commands,routes}.ts   Task 10, 11
-apps/uw-app/pages/{validate,store,routes}.ts   Task 12
+apps/uw-platform/{env,deps,database,observe,app}.ts(x)   Task 8
+apps/uw-platform/http/outcomes.ts                 Task 9
+apps/uw-platform/auth/{access,principal-middleware,dev-principal}.ts   Task 9, 10
+apps/uw-platform/testing/{access-keys,postgres}.ts   Task 9, 10
+apps/uw-platform/people/directory.ts              Task 10
+apps/uw-platform/acl/{grant-store,grant-commands,routes}.ts   Task 10, 11
+apps/uw-platform/pages/{validate,store,routes}.ts   Task 12
 apps/uw-ingest/**                            Task 13
 infra/uw-ingest/wrangler.toml                Task 13
-apps/uw-app/queue/{consumer,watermarks}.ts, index.ts   Task 14
-apps/uw-app/health/{indicators,routes}.tsx   Task 15
+apps/uw-platform/queue/{consumer,watermarks}.ts, index.ts   Task 14
+apps/uw-platform/health/{indicators,routes}.tsx   Task 15
 infra/logs/*.json, infra/*/wrangler.toml [observability]   Task 15
-infra/access/uw-app.json                     Task 9
+infra/access/uw-platform.json                     Task 9
 infra/*/wrangler.go-live.toml, .github/workflows/{neon-pr,cleanup-pr,deploy-staging,deploy-production}.yml, .github/scripts/secret-gate.sh   Task 13, 16
 tools/infra/*.test.ts, tools/ci/*.test.ts    Task 9, 13, 15, 16
 tools/architecture/owners.test.ts, packages/core/modules.ts   Task 17
@@ -133,8 +133,8 @@ docs/progress_tracker.md, infra/README.md    Task 16, 17
 - Modify: `.github/workflows/ci.yml` (own commit, shared root)
 - Modify: `vitest.config.ts`
 - Modify: `packages/db/test-database.ts`, `packages/db/package.json`
-- Modify: `apps/uw-app/tsconfig.json`, `apps/uw-app/package.json`, `apps/uw-ingest/tsconfig.json`, `apps/uw-ingest/package.json`
-- Create: `apps/uw-app/tsconfig.node.json`, `apps/uw-ingest/tsconfig.node.json`
+- Modify: `apps/uw-platform/tsconfig.json`, `apps/uw-platform/package.json`, `apps/uw-ingest/tsconfig.json`, `apps/uw-ingest/package.json`
+- Create: `apps/uw-platform/tsconfig.node.json`, `apps/uw-ingest/tsconfig.node.json`
 - Create: `tools/ci/test-database.test.ts`
 - Modify: `package.json` (root devDependency `smol-toml@^1.9.0`; Task 9 onward reads TOML with it, and adding it here keeps the lockfile change in one place)
 
@@ -305,7 +305,7 @@ with `import { applyMigrations } from './migrate.ts';` at the top. `createMigrat
 
 `vitest.config.ts`: in the `workers` project add `exclude: ['**/*.pg.test.ts', '**/node_modules/**']`; in the `node` project change `include` to `['packages/**/*.test.ts', 'tools/**/*.test.ts', 'sim/**/*.test.ts', 'apps/**/*.pg.test.ts']`.
 
-For each of `apps/uw-app` and `apps/uw-ingest`:
+For each of `apps/uw-platform` and `apps/uw-ingest`:
 - `tsconfig.json`: change `exclude` to `["node_modules", "**/*.pg.test.ts", "testing/postgres.ts"]`.
 - Create `tsconfig.node.json`:
 
@@ -325,7 +325,7 @@ For each of `apps/uw-app` and `apps/uw-ingest`:
   (`apps/uw-ingest/tsconfig.node.json` omits the two `jsx` keys.)
 - `package.json`: `"check": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.node.json"`, and add `"@uw/db": "workspace:*"` to `dependencies` and `"@types/node": "^22.20.4"` to `devDependencies`.
 
-`tsc -p tsconfig.node.json` with an include that matches no file errors with TS18003. Until Task 10 adds the first `*.pg.test.ts`, each app needs one: create `apps/uw-app/database.pg.test.ts` and `apps/uw-ingest/database.pg.test.ts` with this body (the uw-ingest copy names `uw-ingest` in the describe):
+`tsc -p tsconfig.node.json` with an include that matches no file errors with TS18003. Until Task 10 adds the first `*.pg.test.ts`, each app needs one: create `apps/uw-platform/database.pg.test.ts` and `apps/uw-ingest/database.pg.test.ts` with this body (the uw-ingest copy names `uw-ingest` in the describe):
 
 ```ts
 import { sql } from 'drizzle-orm';
@@ -333,7 +333,7 @@ import { describe, expect, it } from 'vitest';
 import { createClient } from '@uw/db/client';
 import { testServer, withMigratedDatabase } from '@uw/db/test-database';
 
-describe.skipIf(!testServer)('FD-6 uw-app reaches the migrated test database', () => {
+describe.skipIf(!testServer)('FD-6 uw-platform reaches the migrated test database', () => {
   it('runs a query against a database with every migration applied', () =>
     withMigratedDatabase(testServer ?? '', async (target) => {
       const db = createClient(target);
@@ -358,7 +358,7 @@ Run: `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/uw_test pnpm verify`
 - [ ] **Step 7: Commit**
 
 ```bash
-git add vitest.config.ts packages/db apps/uw-app apps/uw-ingest tools/ci/test-database.test.ts package.json pnpm-lock.yaml knip.json
+git add vitest.config.ts packages/db apps/uw-platform apps/uw-ingest tools/ci/test-database.test.ts package.json pnpm-lock.yaml knip.json
 git commit -m "test: run app database tests in node against real Postgres
 
 apps/**/*.pg.test.ts run in the Vitest node project against TEST_DATABASE_URL,
@@ -514,7 +514,7 @@ CT-3"
   - `fixtures/health-indicator/valid/database.json` `{"name":"database","status":"not_configured","detail":"no Hyperdrive binding"}`, `invalid/bad-name.json` `{"name":"Database!","status":"ok","detail":""}`
   - `fixtures/health-report/valid/no-database.json`, `invalid/unknown-status.json`
   - Modify: `fixtures/error-reason/valid/first.json` → `"pr_not_open"`, `fixtures/error-reason/valid/last.json` → `"parent_cycle"`, `fixtures/outcome/valid/not-wired.json` and `fixtures/error-outcome/valid/not-wired.json` → `"reason": "not_wired"`
-- Modify: `apps/uw-app/package.json`, `apps/uw-ingest/package.json` (`contractVersion` → `2.0.0`, in a second commit; see Step 5)
+- Modify: `apps/uw-platform/package.json`, `apps/uw-ingest/package.json` (`contractVersion` → `2.0.0`, in a second commit; see Step 5)
 
 **Interfaces (produces, exact):**
 
@@ -798,11 +798,11 @@ grant and principal schemas, grant and revoke commands, and the health report.
 CT-3 FD-7 FD-8 FD-11"
 ```
 
-Then set `"contractVersion": "2.0.0"` in `apps/uw-app/package.json` and `apps/uw-ingest/package.json`, run `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/uw_test pnpm verify` → green, and commit:
+Then set `"contractVersion": "2.0.0"` in `apps/uw-platform/package.json` and `apps/uw-ingest/package.json`, run `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/uw_test pnpm verify` → green, and commit:
 
 ```bash
-git add apps/uw-app/package.json apps/uw-ingest/package.json
-git commit -m "chore: pin uw-app and uw-ingest to contract 2.0.0
+git add apps/uw-platform/package.json apps/uw-ingest/package.json
+git commit -m "chore: pin uw-platform and uw-ingest to contract 2.0.0
 
 CT-3"
 ```
@@ -818,7 +818,7 @@ CT-3"
 - Create: `verb-fixtures/<verb>/<input|output>/<valid|invalid>/*.json`, at least one file in each of the 52 directories (13 verbs × input/output × valid/invalid)
 - Modify: `platform-commands.ts` (add `create_page`, `update_page`), `registry.ts`, `index.ts`, `version.ts` (`2.1.0`), `contract-lock.json`, `fixtures/platform-command-name/valid/last.json` → `"update_page"`
 - Create fixtures: `page-type` (first `"skill"`, last `"data_sources"`, invalid `"policy"`), `page-status` (first `"draft"`, last `"retired"`, invalid `"published"`), `slug` (valid `"harness-skill"`, invalid `"Harness Skill"`, invalid `"-leading"`), `frontmatter` (valid `{"confidence":"observed"}`, invalid `[]`), `page` (valid one full page, invalid version 0), `create-page-command` (valid, invalid missing `pageId`), `update-page-command` (valid, invalid `expectedVersion` 0), `verb-name` (first `"search_pages"`, last `"get_health"`, invalid `"approve"`), `forbidden-verb` (first `"approve"`, last `"advance"`, invalid `"merge_pr"`), `verb-group` (first `"pages_and_context"`, last `"harness"`, invalid `"admin"`), `verb-grant` (valid `{"scope":"resource_area","role":"editor"}`, valid `{"scope":"fixed_area","role":"editor","area":"40-49"}`, invalid `{"scope":"fixed_area","role":"editor"}`)
-- Modify: `apps/uw-app/package.json`, `apps/uw-ingest/package.json` (`contractVersion` → `2.1.0`)
+- Modify: `apps/uw-platform/package.json`, `apps/uw-ingest/package.json` (`contractVersion` → `2.1.0`)
 
 **Interfaces (produces, exact):**
 
@@ -1238,7 +1238,7 @@ create and update page commands. CONTRACT_VERSION 2.1.0.
 CT-2 CT-3 FD-9"
 ```
 
-Then `contractVersion` → `2.1.0` in both apps, `pnpm verify` green with `TEST_DATABASE_URL` set, and `git commit -m "chore: pin uw-app and uw-ingest to contract 2.1.0" -m "CT-3"`.
+Then `contractVersion` → `2.1.0` in both apps, `pnpm verify` green with `TEST_DATABASE_URL` set, and `git commit -m "chore: pin uw-platform and uw-ingest to contract 2.1.0" -m "CT-3"`.
 
 ---
 
@@ -1471,7 +1471,7 @@ its sources and refusal reasons. CONTRACT_VERSION 2.2.0.
 FD-9 FD-10 CT-3"
 ```
 
-Then pin both apps to `2.2.0`, `pnpm verify` green, `git commit -m "chore: pin uw-app and uw-ingest to contract 2.2.0" -m "CT-3"`.
+Then pin both apps to `2.2.0`, `pnpm verify` green, `git commit -m "chore: pin uw-platform and uw-ingest to contract 2.2.0" -m "CT-3"`.
 
 ### Task 6: The principal and `can()` in packages/core
 
@@ -2172,15 +2172,15 @@ FD-6 FD-8 FD-9 FD-10"
 
 ---
 
-### Task 8: One trace id and a structured logger in both Workers' shared core, and uw-app's request log
+### Task 8: One trace id and a structured logger in both Workers' shared core, and uw-platform's request log
 
 **Proves:** FD-11 (trace id per request, structured JSON log line with `trace_id`, `principal`, `route`, `latency_ms`, `outcome`, commit; bodies never logged).
 
 **Files:**
 - Create: `packages/core/log.ts`, `packages/core/log.test.ts`, `packages/core/trace.ts`
 - Modify: `packages/core/package.json` (exports `"./log"`, `"./trace"`)
-- Create: `apps/uw-app/env.ts`, `apps/uw-app/database.ts`, `apps/uw-app/deps.ts`, `apps/uw-app/observe.ts`, `apps/uw-app/observe.test.ts`
-- Modify: `apps/uw-app/app.tsx`, `apps/uw-app/app.test.ts`
+- Create: `apps/uw-platform/env.ts`, `apps/uw-platform/database.ts`, `apps/uw-platform/deps.ts`, `apps/uw-platform/observe.ts`, `apps/uw-platform/observe.test.ts`
+- Modify: `apps/uw-platform/app.tsx`, `apps/uw-platform/app.test.ts`
 
 **Interfaces:**
 - Produces (exact):
@@ -2213,7 +2213,7 @@ export function createLogger(context: LogContext, sink: LogSink): Logger;
 
 Every line is one JSON object with exactly these keys first, in this order: `level`, `message`, `trace_id`, `principal`, `route`, `latency_ms` (number or `null`), `outcome`, `commit`, then any extra fields (primitive values only; a key that collides with one of the eight is dropped).
 
-`apps/uw-app/env.ts`:
+`apps/uw-platform/env.ts`:
 
 ```ts
 export type HyperdriveBinding = { readonly connectionString: string };
@@ -2237,7 +2237,7 @@ export function commitOf(env: Bindings): string {
 
 The binding types are structural on purpose, so app modules type-check under both the Workers and the node tsconfig; Cloudflare's `Hyperdrive` and `Queue` satisfy them.
 
-`apps/uw-app/database.ts`:
+`apps/uw-platform/database.ts`:
 
 ```ts
 import type { MiddlewareHandler } from 'hono';
@@ -2266,7 +2266,7 @@ export function withDatabase(deps: Pick<AppDeps, 'openDatabase'>): MiddlewareHan
 }
 ```
 
-`apps/uw-app/deps.ts`:
+`apps/uw-platform/deps.ts`:
 
 ```ts
 import type { LogSink, Logger } from '@uw/core/log';
@@ -2337,7 +2337,7 @@ describe('FD-11 the structured logger', () => {
 });
 ```
 
-`apps/uw-app/observe.test.ts` (Workers pool):
+`apps/uw-platform/observe.test.ts` (Workers pool):
 
 ```ts
 import { describe, expect, it } from 'vitest';
@@ -2382,11 +2382,11 @@ describe('FD-11 one trace id per request, and the request log line', () => {
 });
 ```
 
-Keep the existing tests in `apps/uw-app/app.test.ts`, changing each `createApp()` call to `createApp(recordingDeps().deps)` (move `recordingDeps` into `apps/uw-app/testing/deps.ts` and import it from both files).
+Keep the existing tests in `apps/uw-platform/app.test.ts`, changing each `createApp()` call to `createApp(recordingDeps().deps)` (move `recordingDeps` into `apps/uw-platform/testing/deps.ts` and import it from both files).
 
 - [ ] **Step 2: Run and see them fail**
 
-Run: `pnpm exec vitest run --project node packages/core/log.test.ts` and `pnpm exec vitest run --project workers apps/uw-app/observe.test.ts` → FAIL.
+Run: `pnpm exec vitest run --project node packages/core/log.test.ts` and `pnpm exec vitest run --project workers apps/uw-platform/observe.test.ts` → FAIL.
 
 - [ ] **Step 3: Implement**
 
@@ -2462,7 +2462,7 @@ export function createLogger(context: LogContext, sink: LogSink): Logger {
 
 `packages/core` has no `console` type (its tsconfig loads no DOM or node types), which is why the sink is always passed in.
 
-`apps/uw-app/observe.ts`:
+`apps/uw-platform/observe.ts`:
 
 ```ts
 import type { MiddlewareHandler } from 'hono';
@@ -2502,10 +2502,10 @@ export function observe(deps: Pick<AppDeps, 'newId' | 'sink'>): MiddlewareHandle
 `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/uw_test pnpm verify` → green.
 
 ```bash
-git add packages/core apps/uw-app pnpm-lock.yaml
-git commit -m "feat(uw-app): one trace id per request and a structured JSON log line
+git add packages/core apps/uw-platform pnpm-lock.yaml
+git commit -m "feat(uw-platform): one trace id per request and a structured JSON log line
 
-packages/core gains createLogger, TRACE_HEADER and traceIdSchema; uw-app mints a
+packages/core gains createLogger, TRACE_HEADER and traceIdSchema; uw-platform mints a
 trace id at the edge, returns it in x-trace-id and logs trace_id, principal,
 route, latency_ms, outcome and the deployed commit on every request, never a body.
 
@@ -2519,10 +2519,10 @@ FD-11"
 **Proves:** FD-7 (signature, audience, issuer, expiry verified on every request; tampered, expired or wrong-audience JWT gets 401; service token yields a non-interactive principal; Access declared in `infra/`).
 
 **Files:**
-- Modify: `apps/uw-app/package.json` (dependency `"jose": "^6.2.12"`)
-- Create: `apps/uw-app/auth/access.ts`, `apps/uw-app/auth/principal-middleware.ts`, `apps/uw-app/http/outcomes.ts`, `apps/uw-app/testing/access-keys.ts`, `apps/uw-app/auth/access.test.ts`
-- Modify: `apps/uw-app/deps.ts` (add `accessKeys`), `apps/uw-app/app.tsx`, `apps/uw-app/app.test.ts`, `apps/uw-app/testing/deps.ts`
-- Create: `infra/access/uw-app.json`, `tools/infra/access.test.ts` (shared root `infra/`, own commit)
+- Modify: `apps/uw-platform/package.json` (dependency `"jose": "^6.2.12"`)
+- Create: `apps/uw-platform/auth/access.ts`, `apps/uw-platform/auth/principal-middleware.ts`, `apps/uw-platform/http/outcomes.ts`, `apps/uw-platform/testing/access-keys.ts`, `apps/uw-platform/auth/access.test.ts`
+- Modify: `apps/uw-platform/deps.ts` (add `accessKeys`), `apps/uw-platform/app.tsx`, `apps/uw-platform/app.test.ts`, `apps/uw-platform/testing/deps.ts`
+- Create: `infra/access/uw-platform.json`, `tools/infra/access.test.ts` (shared root `infra/`, own commit)
 - Modify: `infra/README.md` (Access section, same infra commit)
 - Modify: `docs/exceptions.md` (the `/health` entry, in the feature commit)
 - Modify: `knip.json` (drop any temporary `smol-toml` ignore from Task 1)
@@ -2592,9 +2592,9 @@ export async function verifyAccessJwt(
 }
 ```
 
-`apps/uw-app` adds `zod` (`^4.6.5`) to `dependencies` for this import.
+`apps/uw-platform` adds `zod` (`^4.6.5`) to `dependencies` for this import.
 
-`apps/uw-app/testing/access-keys.ts` (runtime-agnostic, used by Workers and node tests):
+`apps/uw-platform/testing/access-keys.ts` (runtime-agnostic, used by Workers and node tests):
 
 ```ts
 import { createLocalJWKSet, exportJWK, generateKeyPair, SignJWT, type JWTVerifyGetKey } from 'jose';
@@ -2629,7 +2629,7 @@ export async function createAccessFixture(): Promise<AccessFixture> {
 
 - [ ] **Step 1: Write the failing tests**
 
-`apps/uw-app/auth/access.test.ts` (Workers pool), with a `beforeAll` that creates one `AccessFixture` and a `request(path, token?, env?)` helper calling `createApp({ ...recordingDeps().deps, accessKeys: () => fixture.keys }).request(path, { headers: token ? { 'cf-access-jwt-assertion': token } : {} }, { ...fixtureAccessEnv, ...env })`. Cases, each asserting the status and, for refusals, that the body parses with `refusalSchema` and names the reason:
+`apps/uw-platform/auth/access.test.ts` (Workers pool), with a `beforeAll` that creates one `AccessFixture` and a `request(path, token?, env?)` helper calling `createApp({ ...recordingDeps().deps, accessKeys: () => fixture.keys }).request(path, { headers: token ? { 'cf-access-jwt-assertion': token } : {} }, { ...fixtureAccessEnv, ...env })`. Cases, each asserting the status and, for refusals, that the body parses with `refusalSchema` and names the reason:
 
 | Case | Expect |
 |---|---|
@@ -2648,7 +2648,7 @@ export async function createAccessFixture(): Promise<AccessFixture> {
 
 Change the existing `app.test.ts` root-page test to send a valid service token with the fixture Access env (the page still renders `<h1>unfoldingWord</h1>` and the commit), and its 404 test to expect the 404 for an unknown path when signed in as a service token.
 
-`tools/infra/access.test.ts` (node), reading `infra/access/uw-app.json`:
+`tools/infra/access.test.ts` (node), reading `infra/access/uw-platform.json`:
 
 ```ts
 import { readFileSync } from 'node:fs';
@@ -2663,13 +2663,13 @@ type Declaration = {
   health_bypass: { application: Application; policies: Policy[] };
 };
 
-const declaration: Declaration = JSON.parse(readFileSync('infra/access/uw-app.json', 'utf8'));
+const declaration: Declaration = JSON.parse(readFileSync('infra/access/uw-platform.json', 'utf8'));
 
-describe('FD-7 Cloudflare Access in front of uw-app, declared in infra', () => {
+describe('FD-7 Cloudflare Access in front of uw-platform, declared in infra', () => {
   it('covers staging and every per-PR Worker', () => {
     expect(declaration.application.destinations?.map((d) => d.uri)).toEqual([
-      'uw-app-staging.unfoldingword.workers.dev',
-      'uw-app-pr-*.unfoldingword.workers.dev',
+      'uw-platform-staging.unfoldingword.workers.dev',
+      'uw-platform-pr-*.unfoldingword.workers.dev',
     ]);
   });
 
@@ -2680,7 +2680,7 @@ describe('FD-7 Cloudflare Access in front of uw-app, declared in infra', () => {
   });
 
   it('bypasses Access for /health only', () => {
-    expect(declaration.health_bypass.application.domain).toBe('uw-app-staging.unfoldingword.workers.dev/health');
+    expect(declaration.health_bypass.application.domain).toBe('uw-platform-staging.unfoldingword.workers.dev/health');
     expect(declaration.health_bypass.policies).toEqual([
       { name: 'Deploy health probe', decision: 'bypass', include: [{ everyone: {} }] },
     ]);
@@ -2694,17 +2694,17 @@ describe('FD-7 Cloudflare Access in front of uw-app, declared in infra', () => {
 
 - [ ] **Step 2: Run and see them fail** → FAIL.
 
-- [ ] **Step 3: Implement** `access.ts`, `principal-middleware.ts`, `http/outcomes.ts`, `testing/access-keys.ts`, the `deps.ts` and `app.tsx` changes. Write `infra/access/uw-app.json`:
+- [ ] **Step 3: Implement** `access.ts`, `principal-middleware.ts`, `http/outcomes.ts`, `testing/access-keys.ts`, the `deps.ts` and `app.tsx` changes. Write `infra/access/uw-platform.json`:
 
 ```json
 {
   "application": {
-    "name": "uw-app",
+    "name": "uw-platform",
     "type": "self_hosted",
-    "domain": "uw-app-staging.unfoldingword.workers.dev",
+    "domain": "uw-platform-staging.unfoldingword.workers.dev",
     "destinations": [
-      { "type": "public", "uri": "uw-app-staging.unfoldingword.workers.dev" },
-      { "type": "public", "uri": "uw-app-pr-*.unfoldingword.workers.dev" }
+      { "type": "public", "uri": "uw-platform-staging.unfoldingword.workers.dev" },
+      { "type": "public", "uri": "uw-platform-pr-*.unfoldingword.workers.dev" }
     ],
     "allowed_idps": ["<google-idp-id>"],
     "auto_redirect_to_identity": true,
@@ -2716,9 +2716,9 @@ describe('FD-7 Cloudflare Access in front of uw-app, declared in infra', () => {
   ],
   "health_bypass": {
     "application": {
-      "name": "uw-app health probe",
+      "name": "uw-platform health probe",
       "type": "self_hosted",
-      "domain": "uw-app-staging.unfoldingword.workers.dev/health",
+      "domain": "uw-platform-staging.unfoldingword.workers.dev/health",
       "allowed_idps": []
     },
     "policies": [{ "name": "Deploy health probe", "decision": "bypass", "include": [{ "everyone": {} }] }]
@@ -2726,27 +2726,27 @@ describe('FD-7 Cloudflare Access in front of uw-app, declared in infra', () => {
 }
 ```
 
-The allow policy admits any Google account on purpose: a person outside `@unfoldingword.org` must reach the app to be recorded as pending (FD-7); authorization is the grants table, not Access. Add to `infra/README.md` a section "Access (FD-7)" stating: the file is the body of the Cloudflare API calls `POST /accounts/{account_id}/access/apps` and `POST /accounts/{account_id}/access/apps/{app_id}/policies`, applied by a person with an API token holding Access: Apps and Policies Edit; `<google-idp-id>` is replaced with the Google identity provider's id from `GET /accounts/{account_id}/access/identity_providers`; after creation, the application's AUD tag and the team domain go into `ACCESS_AUD` and `ACCESS_TEAM_DOMAIN` in `infra/uw-app/wrangler.go-live.toml` (Task 16); production gets its own application when `uw-app` has a production route.
+The allow policy admits any Google account on purpose: a person outside `@unfoldingword.org` must reach the app to be recorded as pending (FD-7); authorization is the grants table, not Access. Add to `infra/README.md` a section "Access (FD-7)" stating: the file is the body of the Cloudflare API calls `POST /accounts/{account_id}/access/apps` and `POST /accounts/{account_id}/access/apps/{app_id}/policies`, applied by a person with an API token holding Access: Apps and Policies Edit; `<google-idp-id>` is replaced with the Google identity provider's id from `GET /accounts/{account_id}/access/identity_providers`; after creation, the application's AUD tag and the team domain go into `ACCESS_AUD` and `ACCESS_TEAM_DOMAIN` in `infra/uw-platform/wrangler.go-live.toml` (Task 16); production gets its own application when `uw-platform` has a production route.
 
-Add this row to `docs/exceptions.md`, dated 2026-10-01: rule "Section 10: no route without `can()`; PRD FD-7: the Access JWT is verified on every request"; file `apps/uw-app/app.tsx` (`GET /health`), `infra/access/uw-app.json`; why: the deploy jobs' health probe (`.github/scripts/await-health.sh`) must read the deployed commit without a credential, and `/health` returns only the commit and indicator statuses, no harness, page or person data; review: when WB-10 adds drill-through lists, those live under a path behind Access and `can()`.
+Add this row to `docs/exceptions.md`, dated 2026-10-01: rule "Section 10: no route without `can()`; PRD FD-7: the Access JWT is verified on every request"; file `apps/uw-platform/app.tsx` (`GET /health`), `infra/access/uw-platform.json`; why: the deploy jobs' health probe (`.github/scripts/await-health.sh`) must read the deployed commit without a credential, and `/health` returns only the commit and indicator statuses, no harness, page or person data; review: when WB-10 adds drill-through lists, those live under a path behind Access and `can()`.
 
-- [ ] **Step 4: Run** `pnpm exec vitest run --project workers apps/uw-app` and `pnpm exec vitest run --project node tools/infra` → PASS.
+- [ ] **Step 4: Run** `pnpm exec vitest run --project workers apps/uw-platform` and `pnpm exec vitest run --project node tools/infra` → PASS.
 
 - [ ] **Step 5: Verify and commit (infra in its own commit)**
 
 `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/uw_test pnpm verify` → green.
 
 ```bash
-git add infra/access/uw-app.json infra/README.md tools/infra/access.test.ts
-git commit -m "feat(infra): declare Cloudflare Access with Google in front of uw-app
+git add infra/access/uw-platform.json infra/README.md tools/infra/access.test.ts
+git commit -m "feat(infra): declare Cloudflare Access with Google in front of uw-platform
 
 Shared root infra/: the Access application and policies for staging and per-PR
 Workers, Google sign-in for people, any valid service token as non-identity for
 agents, and a bypass for /health only. Applied by a person; awaiting go-live.
 
 FD-7"
-git add apps/uw-app docs/exceptions.md knip.json pnpm-lock.yaml
-git commit -m "feat(uw-app): verify the Access JWT on every request
+git add apps/uw-platform docs/exceptions.md knip.json pnpm-lock.yaml
+git commit -m "feat(uw-platform): verify the Access JWT on every request
 
 jose checks signature, issuer, audience, expiry and RS256; a missing, tampered,
 expired or wrong-audience token gets 401 with the closed reason unauthenticated;
@@ -2763,11 +2763,11 @@ FD-7"
 **Proves:** FD-7 (email to `people` row, auto-provision `@unfoldingword.org`, everyone else pending with an explicit "pending approval" response, principal available to every handler), FD-8 (grants resolve from the table on every request with no cross-request cache), P21 (dev-only principal).
 
 **Files:**
-- Create: `apps/uw-app/people/directory.ts`, `apps/uw-app/acl/grant-store.ts`, `apps/uw-app/auth/dev-principal.ts`, `apps/uw-app/auth/me.ts`, `apps/uw-app/testing/postgres.ts`
-- Modify: `apps/uw-app/auth/principal-middleware.ts`, `apps/uw-app/app.tsx`
-- Create: `apps/uw-app/auth/principal.pg.test.ts`, `apps/uw-app/auth/dev-principal.test.ts` (Workers pool)
+- Create: `apps/uw-platform/people/directory.ts`, `apps/uw-platform/acl/grant-store.ts`, `apps/uw-platform/auth/dev-principal.ts`, `apps/uw-platform/auth/me.ts`, `apps/uw-platform/testing/postgres.ts`
+- Modify: `apps/uw-platform/auth/principal-middleware.ts`, `apps/uw-platform/app.tsx`
+- Create: `apps/uw-platform/auth/principal.pg.test.ts`, `apps/uw-platform/auth/dev-principal.test.ts` (Workers pool)
 - Create: `tools/infra/wrangler.test.ts`
-- Delete: `apps/uw-app/database.pg.test.ts` (the Task 1 placeholder; `principal.pg.test.ts` replaces it. Grep first: `grep -rn "database.pg.test" .` must show no references.)
+- Delete: `apps/uw-platform/database.pg.test.ts` (the Task 1 placeholder; `principal.pg.test.ts` replaces it. Grep first: `grep -rn "database.pg.test" .` must show no references.)
 
 **Interfaces:**
 - Consumes: `people`, `roleGrants` (Task 7), `personPrincipal`, `serviceTokenPrincipal` (Task 6), `withPrincipal` (Task 9), `Executor` (Task 7).
@@ -2804,7 +2804,7 @@ export function meRoutes(): Hono<AppEnv>;
 6. `person = await signIn(db, email)`; `pending` → 403 `pending_approval`: JSON refusal by default, and when the `accept` header includes `text/html`, an HTML page with `<h1>Your sign-in is waiting for approval</h1>` and `<p>An unfoldingWord admin needs to approve your account before you can continue.</p>`, status 403, and `c.var.outcome = 'pending_approval'`.
 7. `grants = await resolveGrants(db, person.personId)`; `c.set('principal', personPrincipal({ personId, email, grants, interactive: true }))`; `next()`.
 
-`apps/uw-app/testing/postgres.ts` (node only, excluded from the Workers tsconfig in Task 1):
+`apps/uw-platform/testing/postgres.ts` (node only, excluded from the Workers tsconfig in Task 1):
 
 ```ts
 import { createClient, type Database } from '@uw/db/client';
@@ -2837,7 +2837,7 @@ export function postgresDeps(db: Database, fixture: AccessFixture, sink: AppDeps
 
 - [ ] **Step 1: Write the failing tests**
 
-`apps/uw-app/auth/principal.pg.test.ts`, inside `describe.skipIf(!testServer)`, each case using `withAppDatabase`, `createAccessFixture`, `postgresDeps`, `fixtureAccessEnv`, and a helper `me(app, email)` that signs `{ email }` and GETs `/api/me`:
+`apps/uw-platform/auth/principal.pg.test.ts`, inside `describe.skipIf(!testServer)`, each case using `withAppDatabase`, `createAccessFixture`, `postgresDeps`, `fixtureAccessEnv`, and a helper `me(app, email)` that signs `{ email }` and GETs `/api/me`:
 
 ```ts
 describe.skipIf(!testServer)('FD-7 FD-8 the principal minted at the edge', () => {
@@ -2864,7 +2864,7 @@ with these exact expectations:
 - Request once (no grants), insert an `editor` grant on `80-89` with SQL, request again → the second principal holds it.
 - `parsePrincipal(JSON.parse(JSON.stringify(body.principal)))` equals `body.principal`.
 
-`apps/uw-app/auth/dev-principal.test.ts` (Workers pool, pure function):
+`apps/uw-platform/auth/dev-principal.test.ts` (Workers pool, pure function):
 
 ```ts
 describe('P21 the dev-only principal', () => {
@@ -2873,7 +2873,7 @@ describe('P21 the dev-only principal', () => {
     expect(devEmail({ DEV_PRINCIPAL_EMAIL: 'dev@unfoldingword.org' }, 'http://127.0.0.1:8787/')).toBe('dev@unfoldingword.org');
   });
   it('ignores it on any other host', () => {
-    expect(devEmail({ DEV_PRINCIPAL_EMAIL: 'dev@unfoldingword.org' }, 'https://uw-app-staging.unfoldingword.workers.dev/')).toBeNull();
+    expect(devEmail({ DEV_PRINCIPAL_EMAIL: 'dev@unfoldingword.org' }, 'https://uw-platform-staging.unfoldingword.workers.dev/')).toBeNull();
   });
   it('ignores it whenever Access is configured', () => {
     expect(devEmail({ ...fixtureAccessEnv, DEV_PRINCIPAL_EMAIL: 'dev@unfoldingword.org' }, 'http://localhost/')).toBeNull();
@@ -2908,7 +2908,7 @@ describe('P21 no deployed environment can set the dev principal', () => {
 });
 ```
 
-- [ ] **Step 2: Run and see them fail** (`TEST_DATABASE_URL=… pnpm exec vitest run --project node apps/uw-app tools/infra`; `pnpm exec vitest run --project workers apps/uw-app/auth`) → FAIL.
+- [ ] **Step 2: Run and see them fail** (`TEST_DATABASE_URL=… pnpm exec vitest run --project node apps/uw-platform tools/infra`; `pnpm exec vitest run --project workers apps/uw-platform/auth`) → FAIL.
 
 - [ ] **Step 3: Implement** the files above; mount `meRoutes()` at `/api/me` after `withPrincipal`.
 
@@ -2919,8 +2919,8 @@ describe('P21 no deployed environment can set the dev principal', () => {
 `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/uw_test pnpm verify` → green.
 
 ```bash
-git add apps/uw-app tools/infra/wrangler.test.ts
-git commit -m "feat(uw-app): sign a person in by email and resolve grants on every request
+git add apps/uw-platform tools/infra/wrangler.test.ts
+git commit -m "feat(uw-platform): sign a person in by email and resolve grants on every request
 
 The Access email maps to a people row: @unfoldingword.org is provisioned active,
 anyone else pending with an explicit pending-approval response. Grants are read
@@ -2937,9 +2937,9 @@ FD-7 FD-8"
 **Proves:** FD-8 (grant and revoke are commands requiring `admin` in the target scope, writing an audit record with actor, time, before and after), FD-11 (the request's trace id reaches the database write), P21 (a pending person is approved by an org admin through the grants command).
 
 **Files:**
-- Create: `apps/uw-app/acl/grant-commands.ts`, `apps/uw-app/acl/routes.ts`, `apps/uw-app/http/commands.ts`, `apps/uw-app/http/pg-errors.ts`
-- Modify: `apps/uw-app/app.tsx` (mount `aclRoutes()` at `/api/acl`)
-- Create: `apps/uw-app/acl/grant-commands.pg.test.ts`, `apps/uw-app/acl/last-org-admin.pg.test.ts`
+- Create: `apps/uw-platform/acl/grant-commands.ts`, `apps/uw-platform/acl/routes.ts`, `apps/uw-platform/http/commands.ts`, `apps/uw-platform/http/pg-errors.ts`
+- Modify: `apps/uw-platform/app.tsx` (mount `aclRoutes()` at `/api/acl`)
+- Create: `apps/uw-platform/acl/grant-commands.pg.test.ts`, `apps/uw-platform/acl/last-org-admin.pg.test.ts`
 
 **Interfaces:**
 - Consumes: `can`, `AclResource` (Task 6), `lockPerson`, `activatePerson` (Task 10), `toGrant` (Task 10), `grantRoleCommandSchema`, `revokeRoleCommandSchema` (Task 3), `reply`, `refuse` (Task 9).
@@ -2981,7 +2981,7 @@ Locking all live org-admin rows in id order before counting is what makes two co
 
 - [ ] **Step 1: Write the failing tests**
 
-`apps/uw-app/acl/grant-commands.pg.test.ts`, inside `describe.skipIf(!testServer)('FD-8 grant and revoke commands', …)`. Helpers: `as(email)` signs a person token; `command(email, body)` POSTs `body` to `/api/acl/commands/<body.command>` and returns `{ status, body, traceId }`; `personId(email)` signs in once through `/api/me` and returns the id; the owner is the bootstrap org admin. Cases:
+`apps/uw-platform/acl/grant-commands.pg.test.ts`, inside `describe.skipIf(!testServer)('FD-8 grant and revoke commands', …)`. Helpers: `as(email)` signs a person token; `command(email, body)` POSTs `body` to `/api/acl/commands/<body.command>` and returns `{ status, body, traceId }`; `personId(email)` signs in once through `/api/me` and returns the id; the owner is the bootstrap org admin. Cases:
 
 | Case | Expect |
 |---|---|
@@ -3005,18 +3005,18 @@ Locking all live org-admin rows in id order before counting is what makes two co
 
 Run the "the owner revokes the sponsor's org admin, then their own" case in its own `withAppDatabase` (it removes an org admin the other cases rely on); the rest may share one database in table order.
 
-`apps/uw-app/acl/last-org-admin.pg.test.ts` (review focus 3): in one migrated database, open two separate clients with `createClient(target)` (two connections), build the owner's and the sponsor's principals with `personPrincipal` and their bootstrap grants, and run `Promise.all([revokeRole(dbA, rowan, revokeSponsor, traceA), revokeRole(dbB, sponsor, revokeRowan, traceB)])` ten times over fresh databases or after re-inserting the revoked grant. Every round: exactly one result is `{ ok: true }` and the other is `{ ok: false, reason: 'last_org_admin' }`, and `SELECT count(*) FROM role_grants WHERE role = 'admin' AND scope_kind = 'org' AND revoked_at IS NULL` is 1.
+`apps/uw-platform/acl/last-org-admin.pg.test.ts` (review focus 3): in one migrated database, open two separate clients with `createClient(target)` (two connections), build the owner's and the sponsor's principals with `personPrincipal` and their bootstrap grants, and run `Promise.all([revokeRole(dbA, rowan, revokeSponsor, traceA), revokeRole(dbB, sponsor, revokeRowan, traceB)])` ten times over fresh databases or after re-inserting the revoked grant. Every round: exactly one result is `{ ok: true }` and the other is `{ ok: false, reason: 'last_org_admin' }`, and `SELECT count(*) FROM role_grants WHERE role = 'admin' AND scope_kind = 'org' AND revoked_at IS NULL` is 1.
 
 - [ ] **Step 2: Run and see them fail** → FAIL.
 - [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/uw_test pnpm exec vitest run --project node apps/uw-app/acl` → PASS.
+- [ ] **Step 4: Run** `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/uw_test pnpm exec vitest run --project node apps/uw-platform/acl` → PASS.
 - [ ] **Step 5: Verify and commit**
 
 `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/uw_test pnpm verify` → green.
 
 ```bash
-git add apps/uw-app
-git commit -m "feat(uw-app): grant and revoke commands with an audit record
+git add apps/uw-platform
+git commit -m "feat(uw-platform): grant and revoke commands with an audit record
 
 POST /api/acl/commands/grant_role and revoke_role require admin in the target
 scope, write grant_audit with the actor, time, before and after rows and the
@@ -3033,8 +3033,8 @@ FD-8 FD-11"
 **Proves:** FD-9 (create, read and update handlers validate frontmatter by page type, refuse unknown types, write one version per save with `edit_source`, check `can()` with the page's `jd_area`; no editor UI).
 
 **Files:**
-- Create: `apps/uw-app/pages/validate.ts`, `apps/uw-app/pages/validate.test.ts` (Workers pool), `apps/uw-app/pages/store.ts`, `apps/uw-app/pages/routes.ts`, `apps/uw-app/pages/pages.pg.test.ts`
-- Modify: `apps/uw-app/app.tsx` (mount `pageRoutes()` at `/api/pages`)
+- Create: `apps/uw-platform/pages/validate.ts`, `apps/uw-platform/pages/validate.test.ts` (Workers pool), `apps/uw-platform/pages/store.ts`, `apps/uw-platform/pages/routes.ts`, `apps/uw-platform/pages/pages.pg.test.ts`
+- Modify: `apps/uw-platform/app.tsx` (mount `pageRoutes()` at `/api/pages`)
 
 **Interfaces:**
 - Consumes: `pageTypeDefinition`, `pageTypeSchema`, `pageSchema`, `createPageCommandSchema`, `updatePageCommandSchema` (Tasks 4, 5); `can`; `readJson`, `malformed`, `reply`, `refuse`, `pgErrorCode`, `pgConstraint` (Task 11).
@@ -3074,9 +3074,9 @@ SELECT 1 FROM chain WHERE id = $pageId LIMIT 1
 
 - [ ] **Step 1: Write the failing tests**
 
-`apps/uw-app/pages/validate.test.ts`: `checkFrontmatter('policy', {})` → `unknown_page_type`; `checkFrontmatter('constructor', {})` → `unknown_page_type`; a valid persona frontmatter (the object from Task 5's test) → `ok` with `type: 'persona'`; the same with `toolset: ['approve']` → `invalid_frontmatter`; a learning with `confidence: 'certain'` → `invalid_frontmatter`; a skill with an extra key → `invalid_frontmatter` (frontmatter schemas are strict).
+`apps/uw-platform/pages/validate.test.ts`: `checkFrontmatter('policy', {})` → `unknown_page_type`; `checkFrontmatter('constructor', {})` → `unknown_page_type`; a valid persona frontmatter (the object from Task 5's test) → `ok` with `type: 'persona'`; the same with `toolset: ['approve']` → `invalid_frontmatter`; a learning with `confidence: 'certain'` → `invalid_frontmatter`; a skill with an extra key → `invalid_frontmatter` (frontmatter schemas are strict).
 
-`apps/uw-app/pages/pages.pg.test.ts`, inside `describe.skipIf(!testServer)('FD-9 pages and page versions', …)`. The owner grants, through the grants command, `editor` on `80-89` to `ed@`, `viewer` on `80-89` to `vw@`, `editor` on `20-29` to `fin@`, `viewer` on `20-29` to `fv@`. Cases:
+`apps/uw-platform/pages/pages.pg.test.ts`, inside `describe.skipIf(!testServer)('FD-9 pages and page versions', …)`. The owner grants, through the grants command, `editor` on `80-89` to `ed@`, `viewer` on `80-89` to `vw@`, `editor` on `20-29` to `fin@`, `viewer` on `20-29` to `fv@`. Cases:
 
 | Case | Expect |
 |---|---|
@@ -3101,14 +3101,14 @@ SELECT 1 FROM chain WHERE id = $pageId LIMIT 1
 
 - [ ] **Step 2: Run and see them fail** → FAIL.
 - [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** the Workers and node tests for `apps/uw-app/pages` → PASS.
+- [ ] **Step 4: Run** the Workers and node tests for `apps/uw-platform/pages` → PASS.
 - [ ] **Step 5: Verify and commit**
 
 `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/uw_test pnpm verify` → green.
 
 ```bash
-git add apps/uw-app
-git commit -m "feat(uw-app): create, read and update pages with a version per save
+git add apps/uw-platform
+git commit -m "feat(uw-platform): create, read and update pages with a version per save
 
 Frontmatter is validated by the page-type registry and unknown types refused;
 every save writes a full page_versions snapshot with the editor's identity and
@@ -3123,7 +3123,7 @@ FD-9 FD-11"
 **Proves:** FD-10 (second Hono Worker, not behind Access, own wrangler config and deploy job; signature verified over the raw body; unsigned, badly signed and replayed deliveries refused with a logged refusal and no queue message; a trace id minted; a Zod-validated envelope enqueued), FD-11 (trace id and log line in uw-ingest), P19 (replay detection stores only the delivery id; the ingest identity is `agent:ingest`).
 
 **Files:**
-- Modify: `apps/uw-ingest/package.json` (dependencies `hono@^4.13.11`, `@octokit/webhooks-methods@^6.0.0`, `zod@^4.6.5`; devDependencies `wrangler@^4.144.0`, `@cloudflare/workers-types@^5.20260930.1`; scripts `build` and `deploy:staging` mirroring `apps/uw-app` with `../../infra/uw-ingest/wrangler.toml`)
+- Modify: `apps/uw-ingest/package.json` (dependencies `hono@^4.13.11`, `@octokit/webhooks-methods@^6.0.0`, `zod@^4.6.5`; devDependencies `wrangler@^4.144.0`, `@cloudflare/workers-types@^5.20260930.1`; scripts `build` and `deploy:staging` mirroring `apps/uw-platform` with `../../infra/uw-ingest/wrangler.toml`)
 - Create: `apps/uw-ingest/env.ts`, `apps/uw-ingest/app.ts`, `apps/uw-ingest/index.ts`, `apps/uw-ingest/receive.ts`, `apps/uw-ingest/observe.ts`, `apps/uw-ingest/sources/registry.ts`, `apps/uw-ingest/sources/github.ts`, `apps/uw-ingest/deliveries/ledger.ts`
 - Create: `apps/uw-ingest/testing/doubles.ts`, `apps/uw-ingest/fixtures/github/pull_request.opened.json`, `apps/uw-ingest/app.test.ts` (Workers pool), `apps/uw-ingest/deliveries/ledger.pg.test.ts`
 - Delete: `apps/uw-ingest/database.pg.test.ts` (the Task 1 placeholder; grep for references first)
@@ -3247,7 +3247,7 @@ No queue or Hyperdrive binding goes here until the resource exists (FD-12; Task 
 
 - [ ] **Step 2: Run and see them fail** → FAIL.
 
-- [ ] **Step 3: Implement the Worker.** `index.ts` is `export default createIngestApp();`. `hyperdriveLedger(env)` mirrors uw-app's `hyperdriveDatabase`: `null` without `env.HYPERDRIVE`, otherwise a client per request whose `release` ends it.
+- [ ] **Step 3: Implement the Worker.** `index.ts` is `export default createIngestApp();`. `hyperdriveLedger(env)` mirrors uw-platform's `hyperdriveDatabase`: `null` without `env.HYPERDRIVE`, otherwise a client per request whose `release` ends it.
 
 Add this row to `docs/exceptions.md`, dated 2026-10-01: rule "Section 10: no route without `can()`"; file `apps/uw-ingest/app.ts` (`POST /webhooks/:source`, `GET /health`); why: uw-ingest is not behind Access by design (plan §1) and a webhook has no principal to check; each source authenticates by its signature over the raw body, the route writes only `webhook_deliveries` and the queue, and the envelope carries `agent:ingest` (P19) so every downstream write is checked against that identity; review: when a second source (Stripe) is added, its verifier ships with its own signature tests.
 
@@ -3343,14 +3343,14 @@ FD-10 FD-11"
 
 ---
 
-### Task 14: The queue consumer in uw-app, with a dead-letter queue and duplicate tolerance
+### Task 14: The queue consumer in uw-platform, with a dead-letter queue and duplicate tolerance
 
-**Proves:** FD-10 (uw-app consumes the queue, sends a malformed message to a declared dead-letter queue, tolerates duplicates), FD-11 (the envelope's trace id is on every consumer log line; consumer lag is recorded for `/health`, P18).
+**Proves:** FD-10 (uw-platform consumes the queue, sends a malformed message to a declared dead-letter queue, tolerates duplicates), FD-11 (the envelope's trace id is on every consumer log line; consumer lag is recorded for `/health`, P18).
 
 **Files:**
-- Create: `apps/uw-app/queue/consumer.ts`, `apps/uw-app/queue/watermarks.ts`, `apps/uw-app/queue/worker.ts`
-- Modify: `apps/uw-app/index.ts`
-- Create: `apps/uw-app/queue/consumer.test.ts` (Workers pool), `apps/uw-app/queue/watermarks.pg.test.ts`, `apps/uw-app/index.test.ts` (Workers pool)
+- Create: `apps/uw-platform/queue/consumer.ts`, `apps/uw-platform/queue/watermarks.ts`, `apps/uw-platform/queue/worker.ts`
+- Modify: `apps/uw-platform/index.ts`
+- Create: `apps/uw-platform/queue/consumer.test.ts` (Workers pool), `apps/uw-platform/queue/watermarks.pg.test.ts`, `apps/uw-platform/index.test.ts` (Workers pool)
 
 **Interfaces:**
 - Consumes: `ingestEnvelopeSchema`, `IngestEnvelope`, `IngestSource` (Task 5); `createLogger`, `Logger`, `LogSink` (Task 8); `queueWatermarks` (Task 7); `QueueProducer`, `Bindings`, `commitOf` (Task 8); `hyperdriveDatabase` (Task 8).
@@ -3411,7 +3411,7 @@ export default {
 
 - [ ] **Step 1: Write the failing tests**
 
-`apps/uw-app/queue/consumer.test.ts` with a `fakeMessage(body, timestamp)` that records `acked` and `retried`, a recording dead-letter producer, a recording handler map, and a valid envelope built from the Task 5 fixture `ingest-envelope/valid` shape:
+`apps/uw-platform/queue/consumer.test.ts` with a `fakeMessage(body, timestamp)` that records `acked` and `retried`, a recording dead-letter producer, a recording handler map, and a valid envelope built from the Task 5 fixture `ingest-envelope/valid` shape:
 
 | Case | Expect |
 |---|---|
@@ -3423,20 +3423,20 @@ export default {
 | a batch of three with timestamps t1 < t3 < t2 | `watermarks.record('ingest', t2, now)` called once |
 | the watermark recorder throws | every message still acked; a line with `outcome: 'watermark_failed'` |
 
-`apps/uw-app/index.test.ts`: the default export has a `fetch` and a `queue` function.
+`apps/uw-platform/index.test.ts`: the default export has a `fetch` and a `queue` function.
 
-`apps/uw-app/queue/watermarks.pg.test.ts`: record twice with a later then an earlier enqueue time → `readWatermark` returns the later enqueue time and the second consume time; one row.
+`apps/uw-platform/queue/watermarks.pg.test.ts`: record twice with a later then an earlier enqueue time → `readWatermark` returns the later enqueue time and the second consume time; one row.
 
 - [ ] **Step 2: Run and see them fail** → FAIL.
 - [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** the Workers and node tests for `apps/uw-app/queue` and `apps/uw-app/index.test.ts` → PASS; `pnpm build` bundles the `queue` export.
+- [ ] **Step 4: Run** the Workers and node tests for `apps/uw-platform/queue` and `apps/uw-platform/index.test.ts` → PASS; `pnpm build` bundles the `queue` export.
 - [ ] **Step 5: Verify and commit**
 
 `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/uw_test pnpm verify` → green.
 
 ```bash
-git add apps/uw-app
-git commit -m "feat(uw-app): consume the ingest queue with a dead-letter queue
+git add apps/uw-platform
+git commit -m "feat(uw-platform): consume the ingest queue with a dead-letter queue
 
 The consumer validates each envelope, sends a malformed one to the dead-letter
 queue, acks duplicates within a batch, retries a failed handler, logs under the
@@ -3452,9 +3452,9 @@ FD-10 FD-11"
 **Proves:** FD-11 (`/health` returns JSON with a named list of indicators and an overall status and renders a screen: deployed commit, database reachability, queue depth; an unreachable database turns its indicator amber or red and never errors the route; log shipping and 30-day retention declared in `infra/`), FD-12 (without a database binding `/health` reports the database indicator as `not_configured`).
 
 **Files:**
-- Create: `apps/uw-app/health/indicators.ts`, `apps/uw-app/health/routes.tsx`, `apps/uw-app/health/health.test.ts` (Workers pool), `apps/uw-app/health/health.pg.test.ts`
-- Modify: `apps/uw-app/app.tsx` (replace the inline `/health` with `healthRoutes(deps)`), `apps/uw-app/app.test.ts` (health shape)
-- Create: `infra/logs/logpush-workers.json`, `infra/logs/r2-lifecycle.json`; Modify: `infra/uw-app/wrangler.toml`, `infra/uw-ingest/wrangler.toml` (`[observability]`), `infra/README.md` (log section) — shared root `infra/`, own commit
+- Create: `apps/uw-platform/health/indicators.ts`, `apps/uw-platform/health/routes.tsx`, `apps/uw-platform/health/health.test.ts` (Workers pool), `apps/uw-platform/health/health.pg.test.ts`
+- Modify: `apps/uw-platform/app.tsx` (replace the inline `/health` with `healthRoutes(deps)`), `apps/uw-platform/app.test.ts` (health shape)
+- Create: `infra/logs/logpush-workers.json`, `infra/logs/r2-lifecycle.json`; Modify: `infra/uw-platform/wrangler.toml`, `infra/uw-ingest/wrangler.toml` (`[observability]`), `infra/README.md` (log section) — shared root `infra/`, own commit
 - Create: `tools/infra/logs.test.ts`
 
 **Interfaces:**
@@ -3553,7 +3553,7 @@ enabled = true
 
 - [ ] **Step 1: Write the failing tests**
 
-`apps/uw-app/health/health.test.ts` (Workers pool, `createApp` with `recordingDeps`):
+`apps/uw-platform/health/health.test.ts` (Workers pool, `createApp` with `recordingDeps`):
 
 | Case | Expect |
 |---|---|
@@ -3565,7 +3565,7 @@ enabled = true
 
 Build the failing handles with a small object `{ db: { execute: () => Promise.reject(new Error('down')) }, release: async () => undefined }` and type it through a `satisfies Pick<DatabaseHandle, 'release'>` plus a narrow `HealthDatabase = { execute(query: SQL): Promise<unknown> }` that `databaseIndicator` accepts instead of the full `Database`; `DatabaseHandle['db']` satisfies it.
 
-`apps/uw-app/health/health.pg.test.ts` with a real migrated database: `database` is `ok` with a detail matching `/^reachable in \d+ ms$/`; with `INGEST_DLQ` set and no watermark row, `queue` is `ok` `no messages consumed yet`; after `record('ingest', t, t + 120 s)` `queue` is `amber`; after `record('ingest', t, t + 400 s)` it is `red` and overall `red`; with lag 10 s it is `ok`.
+`apps/uw-platform/health/health.pg.test.ts` with a real migrated database: `database` is `ok` with a detail matching `/^reachable in \d+ ms$/`; with `INGEST_DLQ` set and no watermark row, `queue` is `ok` `no messages consumed yet`; after `record('ingest', t, t + 120 s)` `queue` is `amber`; after `record('ingest', t, t + 400 s)` it is `red` and overall `red`; with lag 10 s it is `ok`.
 
 `tools/infra/logs.test.ts`: the lifecycle `maxAge` is `2592000` (30 days) and its prefix covers everything; the Logpush dataset is `workers_trace_events` into `r2://uw-logs/`; every credential in `destination_conf` is a `${…}` placeholder; both wrangler files enable observability at the top level and in `staging` and `production` (parse with `smol-toml`).
 
@@ -3577,16 +3577,16 @@ Build the failing handles with a small object `{ db: { execute: () => Promise.re
 `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/uw_test pnpm verify` → green.
 
 ```bash
-git add infra/logs infra/uw-app/wrangler.toml infra/uw-ingest/wrangler.toml infra/README.md tools/infra/logs.test.ts
+git add infra/logs infra/uw-platform/wrangler.toml infra/uw-ingest/wrangler.toml infra/README.md tools/infra/logs.test.ts
 git commit -m "feat(infra): Workers Logs on, and 30-day log retention declared
 
-Shared root infra/: observability enabled for uw-app and uw-ingest in every
+Shared root infra/: observability enabled for uw-platform and uw-ingest in every
 environment; a Logpush job into the uw-logs R2 bucket and a 30-day lifecycle
 rule, applied by a person and awaiting go-live.
 
 FD-11"
-git add apps/uw-app
-git commit -m "feat(uw-app): /health with named indicators and an overall status
+git add apps/uw-platform
+git commit -m "feat(uw-platform): /health with named indicators and an overall status
 
 Commit, database reachability and queue consumer lag, as JSON or a screen. A
 database that is slow turns amber, one that is down or silent turns red, and
@@ -3604,13 +3604,13 @@ FD-11 FD-12"
 **Files:**
 - Create: `.github/scripts/secret-gate.sh`
 - Create: `.github/workflows/neon-pr.yml`; Modify: `.github/workflows/cleanup-pr.yml`, `.github/workflows/deploy-staging.yml`, `.github/workflows/deploy-production.yml` — shared root, one commit
-- Create: `infra/uw-app/wrangler.go-live.toml`, `infra/uw-ingest/wrangler.go-live.toml`; Modify: `infra/README.md` ("Switching on the go-live wiring") — shared root, one commit
+- Create: `infra/uw-platform/wrangler.go-live.toml`, `infra/uw-ingest/wrangler.go-live.toml`; Modify: `infra/README.md` ("Switching on the go-live wiring") — shared root, one commit
 - Modify: `packages/db/bin/migrate.ts` (optional folder argument)
 - Create: `tools/ci/go-live.test.ts`, `tools/infra/go-live.test.ts`
 - Modify: `tools/ci/workflow-trust.test.ts`
 
 **Interfaces:**
-- Produces: secrets and variables a person adds at go-live, by exact name: secret `NEON_API_KEY`, variable `NEON_PROJECT_ID`, secret `NEON_DIRECT_URL_STAGING`, secret `NEON_DIRECT_URL_PRODUCTION`. Queues `uw-ingest-events-staging`, `uw-ingest-events-staging-dlq`, `uw-ingest-events-production`, `uw-ingest-events-production-dlq`. Bindings `HYPERDRIVE` (both Workers), `INGEST_QUEUE` (uw-ingest producer), `INGEST_DLQ` (uw-app producer), and uw-app's consumer of the events queue with `max_retries = 3` and `dead_letter_queue` set.
+- Produces: secrets and variables a person adds at go-live, by exact name: secret `NEON_API_KEY`, variable `NEON_PROJECT_ID`, secret `NEON_DIRECT_URL_STAGING`, secret `NEON_DIRECT_URL_PRODUCTION`. Queues `uw-ingest-events-staging`, `uw-ingest-events-staging-dlq`, `uw-ingest-events-production`, `uw-ingest-events-production-dlq`. Bindings `HYPERDRIVE` (both Workers), `INGEST_QUEUE` (uw-ingest producer), `INGEST_DLQ` (uw-platform producer), and uw-platform's consumer of the events queue with `max_retries = 3` and `dead_letter_queue` set.
 - Produces: `node packages/db/bin/migrate.ts [migrationsFolder]` (no argument keeps today's behaviour).
 
 `.github/scripts/secret-gate.sh`:
@@ -3759,11 +3759,11 @@ Only main's code runs with the secret; the PR's SQL files are read as data and t
 
 `packages/db/bin/migrate.ts`: `await applyMigrations(target, process.argv[2] ?? migrationsFolder);` with `migrationsFolder` imported from `../migrate.ts`.
 
-`infra/uw-app/wrangler.go-live.toml` is `infra/uw-app/wrangler.toml` exactly, plus, in each of `staging` and `production` (shown for staging):
+`infra/uw-platform/wrangler.go-live.toml` is `infra/uw-platform/wrangler.toml` exactly, plus, in each of `staging` and `production` (shown for staging):
 
 ```toml
 [env.staging]
-name = "uw-app-staging"
+name = "uw-platform-staging"
 workers_dev = true
 logpush = true
 
@@ -3869,7 +3869,7 @@ describe('FD-12 the go-live jobs skip cleanly while their secret is absent', () 
 `tools/infra/go-live.test.ts` (parse with `smol-toml`):
 - For each app, removing `logpush`, `hyperdrive`, `queues` from each environment and `ACCESS_TEAM_DOMAIN`, `ACCESS_AUD` from each environment's `vars` turns the go-live file into exactly the live file (`toEqual`).
 - No live `wrangler.toml` declares `hyperdrive`, `queues`, `logpush`, `ACCESS_TEAM_DOMAIN` or `ACCESS_AUD` anywhere.
-- In each environment, uw-ingest's `INGEST_QUEUE` producer queue equals uw-app's consumer queue; uw-app's consumer `dead_letter_queue` equals its `INGEST_DLQ` producer queue and is the events queue name plus `-dlq`; `max_retries` is 3; both Hyperdrive bindings are named `HYPERDRIVE`.
+- In each environment, uw-ingest's `INGEST_QUEUE` producer queue equals uw-platform's consumer queue; uw-platform's consumer `dead_letter_queue` equals its `INGEST_DLQ` producer queue and is the events queue name plus `-dlq`; `max_retries` is 3; both Hyperdrive bindings are named `HYPERDRIVE`.
 - Every Hyperdrive `id` and `ACCESS_AUD` is `set-at-go-live` or 32 lowercase hex characters; every `ACCESS_TEAM_DOMAIN` matches `^https://[a-z0-9-]+\.cloudflareaccess\.com$`.
 
 - [ ] **Step 2: Run and see them fail** → FAIL (files and jobs missing).
@@ -3890,7 +3890,7 @@ its deploys. Every job gates its go-live steps on its secret and stays green
 while it is absent.
 
 FD-12"
-git add infra/uw-app/wrangler.go-live.toml infra/uw-ingest/wrangler.go-live.toml infra/README.md tools/infra/go-live.test.ts
+git add infra/uw-platform/wrangler.go-live.toml infra/uw-ingest/wrangler.go-live.toml infra/README.md tools/infra/go-live.test.ts
 git commit -m "feat(infra): Hyperdrive, queue and Access bindings, kept out of the deployed config
 
 Shared root infra/: wrangler.go-live.toml holds the bindings whose resources do not
@@ -3916,7 +3916,7 @@ FD-12"
 - Modify: `docs/progress_tracker.md`
 
 **Interfaces:**
-- Consumes: the `owns` exports of `apps/uw-app/people/directory.ts`, `apps/uw-app/acl/grant-commands.ts`, `apps/uw-app/pages/store.ts`, `apps/uw-app/queue/watermarks.ts`, `apps/uw-ingest/deliveries/ledger.ts`; the tables in `packages/db/schema.ts`.
+- Consumes: the `owns` exports of `apps/uw-platform/people/directory.ts`, `apps/uw-platform/acl/grant-commands.ts`, `apps/uw-platform/pages/store.ts`, `apps/uw-platform/queue/watermarks.ts`, `apps/uw-ingest/deliveries/ledger.ts`; the tables in `packages/db/schema.ts`.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -3929,17 +3929,17 @@ import { getTableName, is } from 'drizzle-orm';
 import { PgTable } from 'drizzle-orm/pg-core';
 import { describe, expect, it } from 'vitest';
 import * as schema from '../../packages/db/schema.ts';
-import { owns as acl } from '../../apps/uw-app/acl/grant-commands.ts';
-import { owns as pages } from '../../apps/uw-app/pages/store.ts';
-import { owns as people } from '../../apps/uw-app/people/directory.ts';
-import { owns as queue } from '../../apps/uw-app/queue/watermarks.ts';
+import { owns as acl } from '../../apps/uw-platform/acl/grant-commands.ts';
+import { owns as pages } from '../../apps/uw-platform/pages/store.ts';
+import { owns as people } from '../../apps/uw-platform/people/directory.ts';
+import { owns as queue } from '../../apps/uw-platform/queue/watermarks.ts';
 import { owns as deliveries } from '../../apps/uw-ingest/deliveries/ledger.ts';
 
 const owners: { dir: string; tables: readonly string[] }[] = [
-  { dir: 'apps/uw-app/people/', tables: people },
-  { dir: 'apps/uw-app/acl/', tables: acl },
-  { dir: 'apps/uw-app/pages/', tables: pages },
-  { dir: 'apps/uw-app/queue/', tables: queue },
+  { dir: 'apps/uw-platform/people/', tables: people },
+  { dir: 'apps/uw-platform/acl/', tables: acl },
+  { dir: 'apps/uw-platform/pages/', tables: pages },
+  { dir: 'apps/uw-platform/queue/', tables: queue },
   { dir: 'apps/uw-ingest/deliveries/', tables: deliveries },
 ];
 
@@ -3947,7 +3947,7 @@ const tables = Object.entries(schema).flatMap(([exportName, value]) =>
   is(value, PgTable) ? [{ exportName, table: getTableName(value) }] : [],
 );
 
-const sources = ['apps/uw-app', 'apps/uw-ingest'].flatMap((root) =>
+const sources = ['apps/uw-platform', 'apps/uw-ingest'].flatMap((root) =>
   readdirSync(root, { recursive: true, encoding: 'utf8' })
     .filter((file) => /\.tsx?$/.test(file) && !/\.test\.ts$/.test(file) && !file.includes('node_modules'))
     .map((file) => join(root, file)),
@@ -3978,7 +3978,7 @@ describe('AGENTS.md rule 3: every table has one writer', () => {
 
 If `security/detect-non-literal-regexp` fires on the two `new RegExp` calls, add `tools/architecture/owners.test.ts` to the existing `tools/**` override that already relaxes the fs and object-injection rules for tools, rather than writing a directive.
 
-- [ ] **Step 2: Run it.** It should already pass if Tasks 10 to 14 kept their writes inside their modules. Prove it can fail: add `await db.insert(people)` to `apps/uw-app/acl/grant-store.ts` temporarily, run the test, see "people is written only inside its owner" FAIL naming that file, then revert with `git checkout apps/uw-app/acl/grant-store.ts`.
+- [ ] **Step 2: Run it.** It should already pass if Tasks 10 to 14 kept their writes inside their modules. Prove it can fail: add `await db.insert(people)` to `apps/uw-platform/acl/grant-store.ts` temporarily, run the test, see "people is written only inside its owner" FAIL naming that file, then revert with `git checkout apps/uw-platform/acl/grant-store.ts`.
 
 - [ ] **Step 3: Declare the tables and page types in the module registry**
 
@@ -4032,7 +4032,7 @@ Status row for step 1: state `Built`, evidence `docs/plans/2026-10-01-step-01-fo
 
 | Requirement | What is written | What is needed to verify it live | From whom |
 |---|---|---|---|
-| FD-7 | Access JWT verification, `infra/access/uw-app.json` | The Access application with Google as IdP, its AUD tag and team domain, a service token | The owner, the sponsor |
+| FD-7 | Access JWT verification, `infra/access/uw-platform.json` | The Access application with Google as IdP, its AUD tag and team domain, a service token | The owner, the sponsor |
 | FD-8 | Bootstrap migration | Confirm the sponsor's sign-in address | The sponsor |
 | FD-10 | uw-ingest Worker, deploy jobs, queue bindings in `wrangler.go-live.toml` | The four queues; `GITHUB_WEBHOOK_SECRET` as a Worker secret (with GH-1's App) | The owner, an org owner |
 | FD-11 | Workers Logs, `infra/logs/*.json` | Workers Paid for Logpush; the `uw-logs` bucket; R2 credentials | The owner |

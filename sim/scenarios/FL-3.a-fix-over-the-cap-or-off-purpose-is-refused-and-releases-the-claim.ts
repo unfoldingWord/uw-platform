@@ -11,8 +11,8 @@ export const scenario = defineScenario({
     const scene = await fixWorld(world);
     value(await claimFix(scene));
     pushedFix(scene, {
-      pull: { 'apps/uw-app/board.tsx': 40 },
-      fix: { 'apps/uw-app/board.tsx': 11 },
+      pull: { 'apps/uw-platform/board.tsx': 40 },
+      fix: { 'apps/uw-platform/board.tsx': 11 },
     });
     const reason = reasonOf(await submitFix(scene));
     assert.equal(reason, 'fix_size_cap');

@@ -9,12 +9,12 @@
 @import './page-body.css';
 
 @source './components/**/*.tsx';
-@source '../../apps/uw-app/**/*.tsx';
+@source '../../apps/uw-platform/**/*.tsx';
 @source './components/flow-layout.ts';
 @source not './dist';
-@source not '../../apps/uw-app/dist';
+@source not '../../apps/uw-platform/dist';
 @source not './components/**/*.test.tsx';
-@source not '../../apps/uw-app/**/*.test.tsx';
+@source not '../../apps/uw-platform/**/*.test.tsx';
 
 @theme {
   --*: initial;

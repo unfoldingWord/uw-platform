@@ -2,7 +2,7 @@ import { domainOf } from '../../packages/harness/risk/derive.ts';
 import { describe, expect, it } from 'vitest';
 import { repoFiles } from '../repo-files.ts';
 
-const surface = ['apps/uw-app/github/', 'apps/uw-app/ports/'];
+const surface = ['apps/uw-platform/github/', 'apps/uw-platform/ports/'];
 
 function underSurface(): string[] {
   return repoFiles().filter((path) => surface.some((root) => path.startsWith(root)));

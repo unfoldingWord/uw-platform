@@ -2,7 +2,7 @@
 
 **Goal:** Run personas on both hosts: a hosted run is one Cloudflare Workflow per claim with read, scout, work and submit as checkpointed steps that hibernate at a human gate, behind one engine seam with six engines, metered and stopped by a spend breaker; an external run is a person's own Claude Code or Codex over the MCP surface on their subscription, guided by a synced harness skill.
 
-**Architecture:** The kernel gains a runs module (the only writer of `harness_runs`) and a breaker. `kernel.runs.start` claims an item under a delegation, writes the run row and `run_started` in one transaction, then starts a Workflow through the Runs port. Each Workflow step asks `kernel.runs.scene(runId)` for the beat principal derived from the run's delegation and opens one in-process MCP connection with it, so a hosted run reaches the platform only through the verbs. The engine seam is a platform registry keyed by the six engine keys under `apps/uw-app/engines/<key>/`; the two message engines run one shared tool loop (pure, in `packages/harness`) over their vendor SDK's turn; the two container engines run a CLI in a Cloudflare Sandbox whose model key and MCP route are injected by an egress proxy; `claude-managed-agent` is reserved and `external` never runs on the platform. The breaker reads AI Gateway's month-to-date cost through the ModelEngine port once a minute, records each level change as an event on every harness, holds new hosted claims at 75 percent and hibernates running hosted runs at 90.
+**Architecture:** The kernel gains a runs module (the only writer of `harness_runs`) and a breaker. `kernel.runs.start` claims an item under a delegation, writes the run row and `run_started` in one transaction, then starts a Workflow through the Runs port. Each Workflow step asks `kernel.runs.scene(runId)` for the beat principal derived from the run's delegation and opens one in-process MCP connection with it, so a hosted run reaches the platform only through the verbs. The engine seam is a platform registry keyed by the six engine keys under `apps/uw-platform/engines/<key>/`; the two message engines run one shared tool loop (pure, in `packages/harness`) over their vendor SDK's turn; the two container engines run a CLI in a Cloudflare Sandbox whose model key and MCP route are injected by an egress proxy; `claude-managed-agent` is reserved and `external` never runs on the platform. The breaker reads AI Gateway's month-to-date cost through the ModelEngine port once a minute, records each level change as an event on every harness, holds new hosted claims at 75 percent and hibernates running hosted runs at 90.
 
 **Tech Stack:** TypeScript strict, Zod 4, Hono 4, Drizzle over Postgres, Cloudflare Workers, Cloudflare Workflows (`WorkflowEntrypoint`, `step.do`, `step.waitForEvent`), Cloudflare Sandbox (`@cloudflare/sandbox`), `@anthropic-ai/sdk`, `openai` (OpenRouter's OpenAI-compatible API), `@modelcontextprotocol/sdk` (in-memory transport), Vitest (Node and Workers pools), PGlite in the sim.
 
@@ -17,16 +17,16 @@ Every task obeys every line here. Copy exact values; do not paraphrase them in c
 - **Verify, at the end of every task, green:** `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/uw_test pnpm verify`. If the local server is down: `/usr/lib/postgresql/16/bin/pg_ctl -D ~/.local/share/uw-platform-test-pg -o "-p 54329 -k '' -c listen_addresses=127.0.0.1" -l ~/.local/share/uw-platform-test-pg.log start`. The local server is private; CI uses a Postgres service container. Run `pnpm format` before verify.
 - **R37:** never run two test suites at once. No parallel `pnpm verify`, `pnpm test`, `vitest` or `pnpm sim:all`; wait for one to finish before starting another (concurrent suites kill the WSL VM).
 - **DX-8:** no test, binding or job may need a live account or a secret. Engines, the AI Gateway spend reader, the Workflows adapter, the Sandbox host, the GitHub review writer and the diff read are proven against fixtures and fakes (a fake `fetch`, a fake Workflow binding, a fake container host); their live run is recorded under "Waiting on a person". Never add a binding, job or test that fails when a secret is absent: with a secret missing, the code answers `not_wired` (a `PortNotWiredError` or a `not_wired` refusal) and logs, it does not throw at startup.
-- **Production:** every Workflows, Durable Object, container, cron or queue binding and every Cloudflare migration goes in `infra/uw-app/wrangler.go-live.toml` only, never `infra/uw-app/wrangler.toml` (S5-R32, S6-R38); each adds a "Waiting on a person" row in the final task. Model and provider credentials are live secrets; nothing may need a live API key.
-- **Layering (dependency-cruiser and ESLint enforce it):** `packages/contracts` → nothing; `packages/core` → contracts; `packages/db` → contracts, core; `packages/harness` → contracts, core types, pure (no Workers, Drizzle, vendor SDK, MCP SDK or network); `apps/uw-app` → harness, db, contracts, core, ui; `sim/` → harness, contracts, db and the Node built-ins AGENTS.md lists. A vendor SDK (`@anthropic-ai/*`, `openai`, OpenRouter) is imported only under `apps/uw-app/engines/<key>/` (`pnpm lint:vendor`). `@cloudflare/sandbox` is imported only under `apps/uw-app/engines/`.
+- **Production:** every Workflows, Durable Object, container, cron or queue binding and every Cloudflare migration goes in `infra/uw-platform/wrangler.go-live.toml` only, never `infra/uw-platform/wrangler.toml` (S5-R32, S6-R38); each adds a "Waiting on a person" row in the final task. Model and provider credentials are live secrets; nothing may need a live API key.
+- **Layering (dependency-cruiser and ESLint enforce it):** `packages/contracts` → nothing; `packages/core` → contracts; `packages/db` → contracts, core; `packages/harness` → contracts, core types, pure (no Workers, Drizzle, vendor SDK, MCP SDK or network); `apps/uw-platform` → harness, db, contracts, core, ui; `sim/` → harness, contracts, db and the Node built-ins AGENTS.md lists. A vendor SDK (`@anthropic-ai/*`, `openai`, OpenRouter) is imported only under `apps/uw-platform/engines/<key>/` (`pnpm lint:vendor`). `@cloudflare/sandbox` is imported only under `apps/uw-platform/engines/`.
 - **Code:** no comments of any kind (no line, block, JSDoc or directive comments, no commented-out code). Files under 500 lines; functions under 50 lines; ESLint fitness limits: 25 statements, complexity 10, depth 4, 3 nested callbacks, 5 parameters. TypeScript strict, no `any`, no `@ts-ignore`.
 - **Commits:** Conventional Commits. The body's last line lists the requirement IDs the commit proves or serves (for example `HE-1 HE-5`). No `Co-Authored-By` and no attribution footer of any kind. Hooks always pass; never `--no-verify`.
 - **Shared roots** (`packages/db/schema.ts`, `packages/db/schema-*.ts`, `packages/contracts/`, `packages/harness/ports.ts`, `packages/core/acl.ts`, `infra/`, `.github/workflows/`, `AGENTS.md`, `CONTEXT.md`, `docs/adr/`): a change goes in its own commit with no feature code, and the message names the shared root and why it changed. Migrations travel with the `schema*.ts` commit that needs them.
 - **Exceptions:** any exception to AGENTS.md rules 1 to 4 gets its `docs/exceptions.md` row in the same commit as the code, written before it.
-- **Contract version:** Task 1 moves `CONTRACT_VERSION` from `10.0.0` to `11.0.0` and moves `contractVersion` in `apps/uw-app/package.json` and `apps/uw-ingest/package.json` with it. No later task changes `packages/contracts/`.
+- **Contract version:** Task 1 moves `CONTRACT_VERSION` from `10.0.0` to `11.0.0` and moves `contractVersion` in `apps/uw-platform/package.json` and `apps/uw-ingest/package.json` with it. No later task changes `packages/contracts/`.
 - **New closed values (contract 11.0.0):** events `run_completed`, `run_prompted`, `hosted_builder_set`; reason `run_not_found`; command `set_hosted_builder`; persona activation refusal `engine_not_available`; closed sets `run-hibernation` (`gate`, `paused`, `breaker`), `run-stop` (`stopped_by_person`, `released`, `lease_expired`, `delegation_lapsed`, `gate_wait_expired`), `run-failure` (`retries_exhausted`, `provider_mismatch`, `start_failed`, `turn_limit`, `lease_lost`), `run-result` (`submitted`, `premise_held`, `decided`, `review_posted`, `review_withheld`, `review_refused`), `breaker-level` (`open`, `holding`, `pausing`), `review-verdict` (`approve`, `request_changes`).
 - **Only humans decide gates.** No agent identity can approve, merge, deploy, publish or advance past a human gate by any route or step. A hosted run submits and hibernates; only a person's decision through `kernel.gates.decide` moves a parked item. No Workflow step calls `kernel.gates`, `kernel.stages` or `kernel.delegations.grant`/`revoke`.
-- **Agents never hold a GitHub client.** The verbs a hosted run calls are served by a kernel with no GitHub wiring (`hubWiring`). Only the run host's own kernel (`apps/uw-app/runs/`) gets the GitHub read client (for the review diff) and the Reviewer review writes; no model process, sandbox, MCP reply or log line ever carries a token.
+- **Agents never hold a GitHub client.** The verbs a hosted run calls are served by a kernel with no GitHub wiring (`hubWiring`). Only the run host's own kernel (`apps/uw-platform/runs/`) gets the GitHub read client (for the review diff) and the Reviewer review writes; no model process, sandbox, MCP reply or log line ever carries a token.
 - **What an agent sees equals what it may act on** (R27, R32, R33); hidden equals missing (`*_not_found`, byte-identical); delegations are checked on every beat and every step (AB-6, R35).
 - **Cost basis is set by the host:** `record_run_step` from HTTP is `subscription` and carries no cost (`costMinor` and `computeMinor` null); in process it is `metered`. Subscription tokens are never counted against the spend cap.
 - **Lock order** (`docs/architecture.md`): stage lock (`harness-stages:<harnessId>` before `harness-stage-claims:<stageId>`), then item rows (ascending id), then run rows (ascending id), then grants, then appends; no lock after the first append. Transactions never nest. No port call (Runs, ModelEngine, GitHubFacts, Connectors) inside a Store transaction.
@@ -63,7 +63,7 @@ Choices the PRD, the spec and AGENTS.md leave open. The final task copies each i
 | S7-D9 | Contract 11.0.0 (major: typed evidence replaces any-object evidence for the run, breaker and premise events): the values in Global Constraints; persona frontmatter `provider` (nullable, default null); `persona_activation_failed` evidence `verb` becomes nullable and gains `engine` | None: no external consumer yet |
 | S7-D10 | Engine descriptors are kernel data in `packages/harness/engines.ts` (availability, kind, run shapes, default provider, needs hosted Builder, reviewer id); the kernel and the run host read flags and never branch on an engine key | A seventh engine needs a descriptor row as well as a directory |
 | S7-D11 | The breaker reads AI Gateway's month-to-date cost through a new `ModelEngine.spend()`; the cap is `AI_SPEND_CAP_MINOR` (default `125000`, currency `USD`); levels by `floor(spent * 100 / cap)`: `open` below 75, `holding` 75 to 89, `pausing` 90 and above; a level change appends `breaker_<level>` to every harness; the current level is the latest breaker event on any harness (none means `open`); `holding` and `pausing` refuse a hosted start and a bare persona's claim `spend_held` with nothing recorded; `pausing` hibernates every running hosted run (`breaker`); `open` resumes runs hibernated for `breaker`; an unreadable spend changes nothing and is logged `breaker_unreadable` | A Gateway outage leaves the breaker at its last level until a reading lands |
-| S7-D12 | The engine seam is the platform registry `apps/uw-app/engines/registry.ts` of `EngineAdapter.work(input)` keyed by the six keys; the message engines' `work` is the shared tool loop over their own `turn`; the platform ModelEngine port adapter dispatches `turn` by key over the message engines and reads spend; `claude-managed-agent` and `external` answer `EngineNotAvailableError` | The ModelEngine port carries turn-based engines only; container engines are reached through the registry, not the port |
+| S7-D12 | The engine seam is the platform registry `apps/uw-platform/engines/registry.ts` of `EngineAdapter.work(input)` keyed by the six keys; the message engines' `work` is the shared tool loop over their own `turn`; the platform ModelEngine port adapter dispatches `turn` by key over the message engines and reads spend; `claude-managed-agent` and `external` answer `EngineNotAvailableError` | The ModelEngine port carries turn-based engines only; container engines are reached through the registry, not the port |
 | S7-D13 | Vendor SDKs: `@anthropic-ai/sdk` for `claude-messages` with base URL `https://gateway.ai.cloudflare.com/v1/<AI_GATEWAY_ACCOUNT_ID>/<AI_GATEWAY_ID>/anthropic` and `ANTHROPIC_API_KEY`; `openai` for `openrouter-messages` with base URL `.../openrouter/v1` and `OPENROUTER_API_KEY`; `AI_GATEWAY_TOKEN`, when set, is sent as `cf-aig-authorization: Bearer <token>`. Any of account, gateway or key absent is not configured (`not_wired`) | AI Gateway's path for a provider differs from its documentation; fixed at go-live |
 | S7-D14 | Every run pins a provider: the persona's `provider`, else the engine's default (`anthropic`, `openai`); an `openrouter-messages` persona without one is refused at start `malformed_command` `{ why: 'provider_required' }`. OpenRouter requests carry `provider: { order: [<pin>], allow_fallbacks: false }`; the resolved provider is the response's `provider` lowercased and NFKC-normalised; a mismatch is `ProviderMismatchError`, the run fails `provider_mismatch` and posts no review | A provider whose OpenRouter slug and response name differ fails every run until the persona names the response form |
 | S7-D15 | The tool loop stops at 40 turns (`turn_limit`, the run fails, the item is released); a tool error goes back to the model as the tool result; costs are carried as integer micro-units of the currency (`costMicros`) per turn and converted once per step to minor units, rounding half up; the run host renews the lease through `kernel.items.renewLease` when 5 minutes have passed since the last renewal inside a step | A step that costs under half a cent records 0 |
@@ -89,7 +89,7 @@ Shared root `packages/contracts/` in one commit; `docs/PRD.md` and `CONTEXT.md` 
 **Files:**
 - Modify: `packages/contracts/closed-sets.ts`, `packages/contracts/events.ts`, `packages/contracts/event-evidence.ts`, `packages/contracts/outcomes.ts`, `packages/contracts/commands.ts`, `packages/contracts/verb-io.ts`, `packages/contracts/page-types.ts`, `packages/contracts/registry.ts`, `packages/contracts/index.ts`, `packages/contracts/version.ts`, `packages/contracts/contract-lock.json`, `packages/contracts/events.test.ts`, `packages/contracts/commands.test.ts`, `packages/contracts/page-types.test.ts`
 - Create: `packages/contracts/runs.ts`, `packages/contracts/runs.test.ts`; fixtures `packages/contracts/fixtures/{run-hibernation,run-stop,run-failure,run-result,breaker-level,review-verdict,provider-id}/{valid,invalid}/*.json`; new cases under `packages/contracts/fixtures/{event,command,error-reason,persona-frontmatter,persona-activation-refusal}/` and `packages/contracts/verb-fixtures/record_run_step/` (follow the existing layouts exactly)
-- Modify: `apps/uw-app/package.json`, `apps/uw-ingest/package.json` (`"contractVersion": "11.0.0"`)
+- Modify: `apps/uw-platform/package.json`, `apps/uw-ingest/package.json` (`"contractVersion": "11.0.0"`)
 - Modify (second commit): `docs/PRD.md` (8.1 `harness_runs` columns, 8.3 the six new sets, 8.5 `run_not_found`, 8.6 the three new events and a paragraph on run evidence, PE-1 frontmatter gains `provider`), `CONTEXT.md` (new words: **Breaker**, **Run scene**, **Egress proxy**, **Scout verdict**, **Review verdict**, **Hosted Builder**, **Engine descriptor**)
 
 **Interfaces produced:** `runHibernationSchema`, `runStopSchema`, `runFailureSchema`, `runResultSchema`, `breakerLevelSchema`, `reviewVerdictSchema` and their types `RunHibernation`, `RunStop`, `RunFailure`, `RunResult`, `BreakerLevel`, `ReviewVerdict`; `providerIdSchema`, `ProviderId`; `reviewRecordSchema`, `ReviewRecord`; `runStepRecordSchema`, `RunStepRecord`; `recordRunStepReplySchema`; `harnessCommandSchemas.set_hosted_builder`.
@@ -304,7 +304,7 @@ Run: `pnpm format && TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/uw_te
 Expected: PASS. The kernel's existing `run_step_recorded` drafts still type-check because the new fields default.
 
 ```bash
-git add packages/contracts apps/uw-app/package.json apps/uw-ingest/package.json
+git add packages/contracts apps/uw-platform/package.json apps/uw-ingest/package.json
 git commit -m "feat(contracts): contract 11.0.0, run and breaker evidence, record_run_step costs and prompts, set_hosted_builder
 
 Shared root packages/contracts: typed evidence replaces any-object evidence
@@ -458,7 +458,7 @@ Shared root `packages/harness/ports.ts` in one commit; the contract suites, the 
 **Files:**
 - Modify: `packages/harness/ports.ts`, `packages/harness/index.ts`
 - Modify: `packages/harness/port-contracts/model-engine.ts`, `packages/harness/port-contracts/github-facts.ts`, `packages/harness/port-contracts/connectors.ts`
-- Modify: `sim/adapters/model-engine.ts`, `sim/adapters/github-facts.ts`, `sim/adapters/connectors.ts`, `apps/uw-app/ports/model-engine.not-wired.ts`, `apps/uw-app/ports/github-facts.ts`, `apps/uw-app/ports/github-facts.not-wired.ts`, `apps/uw-app/ports/connectors.ts`
+- Modify: `sim/adapters/model-engine.ts`, `sim/adapters/github-facts.ts`, `sim/adapters/connectors.ts`, `apps/uw-platform/ports/model-engine.not-wired.ts`, `apps/uw-platform/ports/github-facts.ts`, `apps/uw-platform/ports/github-facts.not-wired.ts`, `apps/uw-platform/ports/connectors.ts`
 - Modify: every test fixture that builds a `TurnUsage` (grep `costMinor:` under `packages/harness/port-contracts/` and `sim/`)
 
 **Port changes** (`packages/harness/ports.ts`):
@@ -517,7 +517,7 @@ export type Connectors = {
 
 **Platform stubs (wired for real in Tasks 13 and 17):** `modelEngineNotWired.spend` is `notWiredCall('modelEngine', 'spend')`; `platformGitHubFacts(...).diff` answers `{ kind: 'unavailable', reason: 'not_wired' }` until Task 17; `platformConnectors(...).review` answers `{ outcome: 'refused', reason: 'not_wired' }` until Task 17.
 
-- [ ] **Step 1:** Write the contract cases first; run `pnpm vitest run sim/adapters apps/uw-app/ports`; expected FAIL.
+- [ ] **Step 1:** Write the contract cases first; run `pnpm vitest run sim/adapters apps/uw-platform/ports`; expected FAIL.
 - [ ] **Step 2:** Make the ports commit, then the adapters and stubs; rename every `costMinor` in a `TurnUsage` fixture to `costMicros` (value × 10,000 for USD minor to micros).
 - [ ] **Step 3: Verify and commit**
 
@@ -532,7 +532,7 @@ Shared root packages/harness/ports.ts: turn usage moves to integer micro-units
 so a cheap turn is not rounded to zero before a step sums it.
 
 HE-4 HE-5 HE-9"
-git add packages/harness sim/adapters apps/uw-app/ports
+git add packages/harness sim/adapters apps/uw-platform/ports
 git commit -m "feat(sim): spend, diff and review on the test adapters, not-wired stubs on the platform
 
 HE-4 HE-5 HE-9 DX-3"
@@ -672,7 +672,7 @@ HE-2 HE-10"
 
 **Files:**
 - Create: `packages/harness/runs/rows.ts` (run row helpers: `newHostedRun`, `newExternalRun`, `withStep`, `ended`), `packages/harness/runs/persona.ts` (`personaOfPage(facts): RunPersona | Refused`), `packages/harness/runs/start.ts`, `packages/harness/runs/scene.ts`, `packages/harness/runs/steps.ts`, `packages/harness/runs/commands.ts`, `packages/harness/runs/breaker-level.ts` (`currentLevel(tx)`; Task 8 adds the rest of the breaker)
-- Modify: `packages/harness/delegations/commands.ts` (export `beatWithin`; `beatIn` becomes it), `packages/harness/items/claim.ts` (export `claimWithin(ports, tx, caller, input, at)`; `claim` calls it), `packages/harness/items/run-steps.ts` (calls `recordStepIn` from `runs/steps.ts` inside `renewIn` when an input is given; answers `prompts`), `packages/harness/kernel.ts` (`runs: RunCommands`), `packages/harness/index.ts`, `apps/uw-app/mcp/verbs/record-run-step.ts` (pass the new fields; answer `prompts`)
+- Modify: `packages/harness/delegations/commands.ts` (export `beatWithin`; `beatIn` becomes it), `packages/harness/items/claim.ts` (export `claimWithin(ports, tx, caller, input, at)`; `claim` calls it), `packages/harness/items/run-steps.ts` (calls `recordStepIn` from `runs/steps.ts` inside `renewIn` when an input is given; answers `prompts`), `packages/harness/kernel.ts` (`runs: RunCommands`), `packages/harness/index.ts`, `apps/uw-platform/mcp/verbs/record-run-step.ts` (pass the new fields; answer `prompts`)
 - Create tests: `sim/kernel/run-start.test.ts`, `sim/kernel/run-scene.test.ts`, `sim/kernel/run-steps.test.ts`, `sim/runs.ts` (scene helper: a harness from the software template, an active persona page, a live delegation, an item in Scope)
 
 **Interfaces** (`packages/harness/runs/commands.ts`; Tasks 6, 7, 8 and 17 add members):
@@ -761,13 +761,13 @@ The MCP `record_run_step` handler passes the new fields through and answers `pro
 - `HE-1 the 201st step is refused run_step_limit`
 
 - [ ] **Step 2:** Run `pnpm vitest run sim/kernel/run-start.test.ts sim/kernel/run-scene.test.ts sim/kernel/run-steps.test.ts`; expected FAIL.
-- [ ] **Step 3:** Implement as specified; extend `apps/uw-app/mcp/harness-verbs.pg.test.ts` with `HE-6 record_run_step over HTTP answers prompts and creates the external run` (the existing external-host fixtures).
+- [ ] **Step 3:** Implement as specified; extend `apps/uw-platform/mcp/harness-verbs.pg.test.ts` with `HE-6 record_run_step over HTTP answers prompts and creates the external run` (the existing external-host fixtures).
 - [ ] **Step 4: Verify and commit**
 
 Run: `pnpm format && TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/uw_test pnpm verify`
 
 ```bash
-git add packages/harness sim apps/uw-app/mcp
+git add packages/harness sim apps/uw-platform/mcp
 git commit -m "feat(harness): start a hosted run under its delegation, derive each step's principal, record steps on both hosts
 
 HE-1 HE-6 HE-8 HE-10"
@@ -849,7 +849,7 @@ HE-1"
 - Create: `packages/harness/runs/suspend.ts` (`hibernateRunsWhere(ports, select, why)`, the counterpart of `resumeRunsWhere`), `packages/harness/runs/ends.ts` (`endRunDrafts(tx, item, holder, end)`: locks the item's live external run held by `holder`, updates it and returns the drafts)
 - Modify: `packages/harness/stages/pause.ts` (after an accepted pause, `hibernateRunsWhere` for live `workflow-run` runs whose items are in the paused lane or harness; after an accepted resume, `resumeRunsWhere` for runs hibernated for `paused` whose item's lane and harness are both unpaused), `packages/harness/items/submit.ts` (the holder's submit → `endRunDrafts(..., { outcome: 'completed', result: 'submitted' })`), `packages/harness/items/release.ts` (→ `stopped` `released`), `packages/harness/items/leases.ts` (`expireLapsedLease` → `stopped` `lease_expired`); the drafts join the command's own `recordItemEvents` call so the run row lock precedes the first append
 - Create: `sim/kernel/run-pause.test.ts`, `sim/kernel/external-runs.test.ts`, `sim/scenarios/HE-6.an-external-run-reports-subscription-tokens-and-ends-on-expiry.ts`
-- Modify: `apps/uw-app/mcp/conformance.pg.test.ts` only if a pinned outcome changes (it should not)
+- Modify: `apps/uw-platform/mcp/conformance.pg.test.ts` only if a pinned outcome changes (it should not)
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -889,7 +889,7 @@ HE-1 HE-6"
 
 **Files:**
 - Create: `packages/harness/runs/breaker.ts`, `packages/harness/runs/breaker.test.ts`, `sim/kernel/breaker.test.ts`, `sim/scenarios/HE-5.a-cost-spike-trips-both-thresholds.ts`
-- Modify: `packages/harness/runs/breaker-level.ts`, `packages/harness/kernel.ts` (`breaker: BreakerCommands`), `packages/harness/items/claim.ts` (a bare persona's claim reads the level after the stage lock: `holding` or `pausing` → `spend_held` `{ level }`, nothing recorded), `packages/harness/index.ts`, `apps/uw-app/mcp/verbs/get-health.ts` (the `breaker` indicator), `apps/uw-app/mcp/harness-verbs.pg.test.ts`
+- Modify: `packages/harness/runs/breaker-level.ts`, `packages/harness/kernel.ts` (`breaker: BreakerCommands`), `packages/harness/items/claim.ts` (a bare persona's claim reads the level after the stage lock: `holding` or `pausing` → `spend_held` `{ level }`, nothing recorded), `packages/harness/index.ts`, `apps/uw-platform/mcp/verbs/get-health.ts` (the `breaker` indicator), `apps/uw-platform/mcp/harness-verbs.pg.test.ts`
 
 **Interface** (`packages/harness/runs/breaker.ts`):
 
@@ -944,7 +944,7 @@ export function levelOf(spentMinor: number, capMinor: number): { readonly level:
 - `HE-5 subscription tokens recorded by an external run never move the level`
 - `HE-5 only the system principal may check the breaker`
 
-`apps/uw-app/mcp/harness-verbs.pg.test.ts`: `HE-5 get_health shows the breaker as an indicator`.
+`apps/uw-platform/mcp/harness-verbs.pg.test.ts`: `HE-5 get_health shows the breaker as an indicator`.
 
 Scenario `sim/scenarios/HE-5.a-cost-spike-trips-both-thresholds.ts`: two harnesses, one running hosted run; spend 10 percent (no event), 80 percent (`breaker_holding` on both, a start refused `spend_held`), 95 percent (`breaker_pausing`, the run hibernated), 50 percent (`breaker_open`, the run resumed); the state is the event names in order and the run's outcome.
 
@@ -955,7 +955,7 @@ Scenario `sim/scenarios/HE-5.a-cost-spike-trips-both-thresholds.ts`: two harness
 Run: `pnpm format && TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/uw_test pnpm verify`
 
 ```bash
-git add packages/harness sim apps/uw-app/mcp
+git add packages/harness sim apps/uw-platform/mcp
 git commit -m "feat(harness): the spend breaker holds hosted claims at 75 percent and hibernates hosted runs at 90
 
 HE-5"
@@ -1021,26 +1021,26 @@ HE-1 HE-8"
 **Requirements:** HE-8 ("through a command"), HE-1 (stop and prompt), the step-6 carry.
 
 **Files:**
-- Create: `apps/uw-app/commands/handlers/runs.ts` (`stopRunCommand`, `promptRunCommand`, action `write`; the kernel adds the ownership-or-admin rule), `apps/uw-app/commands/runs.pg.test.ts`
-- Modify: `apps/uw-app/commands/person/stages.ts` (`setHostedBuilderCommand`, action `admin`, through `kernel.stages.setHostedBuilder`), `apps/uw-app/commands/registry.ts` (replace the two `notWiredCommand` rows; add `setHostedBuilderCommand`), `apps/uw-app/commands/registry.test.ts` (`set_hosted_builder: 'admin'`), `apps/uw-app/commands/items.pg.test.ts` and `apps/uw-app/commands/commands.pg.test.ts` (the two `not_wired` cases become real outcomes; retitle so no test claims WB-1 for what is now HE-1, R36)
+- Create: `apps/uw-platform/commands/handlers/runs.ts` (`stopRunCommand`, `promptRunCommand`, action `write`; the kernel adds the ownership-or-admin rule), `apps/uw-platform/commands/runs.pg.test.ts`
+- Modify: `apps/uw-platform/commands/person/stages.ts` (`setHostedBuilderCommand`, action `admin`, through `kernel.stages.setHostedBuilder`), `apps/uw-platform/commands/registry.ts` (replace the two `notWiredCommand` rows; add `setHostedBuilderCommand`), `apps/uw-platform/commands/registry.test.ts` (`set_hosted_builder: 'admin'`), `apps/uw-platform/commands/items.pg.test.ts` and `apps/uw-platform/commands/commands.pg.test.ts` (the two `not_wired` cases become real outcomes; retitle so no test claims WB-1 for what is now HE-1, R36)
 
 Each handler follows the step-6 builder pattern (`commandHandler`, a contract body, the dispatcher's `can()` before the kernel); `stop_run` and `prompt_run` map `run_not_found`, `not_permitted` and `item_not_found` through the outcome envelope unchanged.
 
-- [ ] **Step 1: Write the failing tests** (`apps/uw-app/commands/runs.pg.test.ts`, on the Postgres server with the step-6 command helpers):
+- [ ] **Step 1: Write the failing tests** (`apps/uw-platform/commands/runs.pg.test.ts`, on the Postgres server with the step-6 command helpers):
   - `HE-8 an admin turns hosted Builder on through set_hosted_builder; an editor is refused not_permitted`
   - `HE-1 stop_run by the delegating person stops the run and releases the item`
   - `HE-1 stop_run and prompt_run by an editor who does not own the run are not_permitted`
   - `HE-1 prompt_run queues a message the run's next record_run_step answers`
   - `HE-1 stop_run on an item with no live run is run_not_found`
   - `HE-1 a repeated requestId replays the first stop outcome` (the ledger)
-- [ ] **Step 2:** Run `pnpm vitest run apps/uw-app/commands`; expected FAIL.
+- [ ] **Step 2:** Run `pnpm vitest run apps/uw-platform/commands`; expected FAIL.
 - [ ] **Step 3:** Implement; `pnpm vitest run tools/architecture` stays green (the person surface holds the `kernel.stages` call; `kernel.runs.stop`/`prompt` are not gate touches).
 - [ ] **Step 4: Verify and commit**
 
 Run: `pnpm format && TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/uw_test pnpm verify`
 
 ```bash
-git add apps/uw-app/commands
+git add apps/uw-platform/commands
 git commit -m "feat(commands): set_hosted_builder, stop_run and prompt_run are wired
 
 HE-1 HE-8"
@@ -1105,7 +1105,7 @@ model: <model>
 - <finding>
 ````
 
-with `provider` validated as a `providerIdSchema` slug, `model` stripped of every character outside `[A-Za-z0-9._/:-]` and cut to 200, and each finding folded to one line by the same rule the merge commit uses (control, format and separator characters to a space, runs collapsed, cut to 500; written in `packages/harness/github/review-body.ts`, since the harness cannot import `apps/uw-app/github/merge-commit.ts`) with any leading fence characters removed.
+with `provider` validated as a `providerIdSchema` slug, `model` stripped of every character outside `[A-Za-z0-9._/:-]` and cut to 200, and each finding folded to one line by the same rule the merge commit uses (control, format and separator characters to a space, runs collapsed, cut to 500; written in `packages/harness/github/review-body.ts`, since the harness cannot import `apps/uw-platform/github/merge-commit.ts`) with any leading fence characters removed.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -1141,11 +1141,11 @@ HE-1 HE-3 HE-4"
 **Requirements:** HE-2, HE-10.
 
 **Files:**
-- Create: `apps/uw-app/engines/seam.ts`, `apps/uw-app/engines/registry.ts`, `apps/uw-app/engines/config.ts`, `apps/uw-app/engines/registry.test.ts`, and one directory per engine with an `index.ts` exporting its adapter: `apps/uw-app/engines/claude-messages/index.ts`, `apps/uw-app/engines/openrouter-messages/index.ts`, `apps/uw-app/engines/claude-code-sandbox/index.ts`, `apps/uw-app/engines/codex-sandbox/index.ts` (these four answer `not_wired` until Tasks 13, 14, 19 and 20), `apps/uw-app/engines/claude-managed-agent/index.ts`, `apps/uw-app/engines/external/index.ts` (both answer `EngineNotAvailableError` for good)
-- Create: `apps/uw-app/ports/model-engine.ts` (the platform ModelEngine adapter), `apps/uw-app/ports/model-engine.contract.test.ts`
-- Modify: `apps/uw-app/kernel.ts` (`modelEngine` from `platformModelEngine(engineRegistryOf(env), spendReaderOf(env))` where a factory needs the environment; until Task 13 the spend reader is not wired), `apps/uw-app/env.ts` (the configuration names below, all optional strings), `tools/architecture/port-contracts.ts` (`modelEngine` also accepts contract tests under `apps/uw-app/engines/<key>/`), `.dependency-cruiser.mjs` (rule `engines-only-from-the-seam`: `apps/uw-app/engines/<key>/` is imported only by `apps/uw-app/engines/registry.ts` and tests; `apps/uw-app/engines/` imports nothing under `apps/uw-app/github/`, `apps/uw-app/commands/` or `apps/uw-app/mcp/` except the type-only `ToolCaller` from `packages/harness`), `packages/harness/port-errors.ts` (`EngineNotAvailableError(engine)`, name `EngineNotAvailableError`)
+- Create: `apps/uw-platform/engines/seam.ts`, `apps/uw-platform/engines/registry.ts`, `apps/uw-platform/engines/config.ts`, `apps/uw-platform/engines/registry.test.ts`, and one directory per engine with an `index.ts` exporting its adapter: `apps/uw-platform/engines/claude-messages/index.ts`, `apps/uw-platform/engines/openrouter-messages/index.ts`, `apps/uw-platform/engines/claude-code-sandbox/index.ts`, `apps/uw-platform/engines/codex-sandbox/index.ts` (these four answer `not_wired` until Tasks 13, 14, 19 and 20), `apps/uw-platform/engines/claude-managed-agent/index.ts`, `apps/uw-platform/engines/external/index.ts` (both answer `EngineNotAvailableError` for good)
+- Create: `apps/uw-platform/ports/model-engine.ts` (the platform ModelEngine adapter), `apps/uw-platform/ports/model-engine.contract.test.ts`
+- Modify: `apps/uw-platform/kernel.ts` (`modelEngine` from `platformModelEngine(engineRegistryOf(env), spendReaderOf(env))` where a factory needs the environment; until Task 13 the spend reader is not wired), `apps/uw-platform/env.ts` (the configuration names below, all optional strings), `tools/architecture/port-contracts.ts` (`modelEngine` also accepts contract tests under `apps/uw-platform/engines/<key>/`), `.dependency-cruiser.mjs` (rule `engines-only-from-the-seam`: `apps/uw-platform/engines/<key>/` is imported only by `apps/uw-platform/engines/registry.ts` and tests; `apps/uw-platform/engines/` imports nothing under `apps/uw-platform/github/`, `apps/uw-platform/commands/` or `apps/uw-platform/mcp/` except the type-only `ToolCaller` from `packages/harness`), `packages/harness/port-errors.ts` (`EngineNotAvailableError(engine)`, name `EngineNotAvailableError`)
 
-**Seam** (`apps/uw-app/engines/seam.ts`):
+**Seam** (`apps/uw-platform/engines/seam.ts`):
 
 ```ts
 export type EngineWork = {
@@ -1180,32 +1180,32 @@ export type EngineAdapter = {
 
 `registry.ts`: `engineRegistryOf(config: EngineConfig): ReadonlyMap<Engine, EngineAdapter>` built from the six directories' factories (each `(config) => EngineAdapter`) and refusing at construction a missing key, a duplicate key, or a key whose `adapter.key` differs; `engineAdapter(registry, key)` looks up by key. `messageWork(turn)` (in `seam.ts`) is the shared `work` for message engines: `runToolLoop(turn, tools, { engine, model, pinnedProvider, persona, instructions, tools: toolset, traceId, prompt }, onTurn)` mapped to `EngineWorkResult` with `computeMinor: null`.
 
-`apps/uw-app/ports/model-engine.ts`: `platformModelEngine(registry, spend)`: `turn(request)` is `registry.get(request.engine)?.turn` or `EngineNotAvailableError(request.engine)`; `spend(since)` is the reader's. The adapter imports no vendor SDK.
+`apps/uw-platform/ports/model-engine.ts`: `platformModelEngine(registry, spend)`: `turn(request)` is `registry.get(request.engine)?.turn` or `EngineNotAvailableError(request.engine)`; `spend(since)` is the reader's. The adapter imports no vendor SDK.
 
 `config.ts`: `EngineConfig` read from `Bindings`: `AI_GATEWAY_ACCOUNT_ID`, `AI_GATEWAY_ID`, `AI_GATEWAY_TOKEN`, `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `OPENROUTER_API_KEY`, `AI_GATEWAY_ANALYTICS_TOKEN`, `AI_SPEND_CAP_MINOR`, `ALWAYS_ON_MODEL`, `ALWAYS_ON_PROVIDER`, `SANDBOX_MINOR_PER_HOUR`, plus the injected `fetch`. No name ends in `_OAUTH_TOKEN`, `_SESSION` or `_SUBSCRIPTION`.
 
 - [ ] **Step 1: Write the failing tests**
 
-`apps/uw-app/engines/registry.test.ts`:
+`apps/uw-platform/engines/registry.test.ts`:
 - `HE-2 the registry holds exactly the six engine keys, each from its own directory`
 - `HE-2 the registry refuses a missing, duplicated or misnamed engine at construction`
-- `HE-2 no file outside apps/uw-app/engines/ names an engine key in a branch` (a scan over `apps/uw-app/**/*.ts` and `packages/harness/**/*.ts`, tests excluded, for `=== '<key>'`, `case '<key>'` and `'<key>' ===` for every engine key, with a planted case)
+- `HE-2 no file outside apps/uw-platform/engines/ names an engine key in a branch` (a scan over `apps/uw-platform/**/*.ts` and `packages/harness/**/*.ts`, tests excluded, for `=== '<key>'`, `case '<key>'` and `'<key>' ===` for every engine key, with a planted case)
 - `HE-10 claude-managed-agent answers engine_not_available for a turn and for work`
 - `HE-2 external never runs on the platform`
 - `HE-2 an engine reaches the platform only through the MCP tool caller` (an `expectTypeOf` case: `EngineWork` has no kernel, database, GitHub or environment member; and the dependency rule below with a planted import)
 
-Add to `.dependency-cruiser.mjs` in this task: `engines-reach-only-the-tool-caller`: nothing under `apps/uw-app/engines/` imports `@uw/db`, `apps/uw-app/kernel.ts`, `apps/uw-app/database.ts`, `apps/uw-app/ports/` (except `apps/uw-app/ports/model-engine.ts` importing the registry, which is the other direction) or `apps/uw-app/github/`.
+Add to `.dependency-cruiser.mjs` in this task: `engines-reach-only-the-tool-caller`: nothing under `apps/uw-platform/engines/` imports `@uw/db`, `apps/uw-platform/kernel.ts`, `apps/uw-platform/database.ts`, `apps/uw-platform/ports/` (except `apps/uw-platform/ports/model-engine.ts` importing the registry, which is the other direction) or `apps/uw-platform/github/`.
 
-`apps/uw-app/ports/model-engine.contract.test.ts`: `describeModelEngineNotWired`-style cases for keys without a configured turn, and the full `describeModelEngineContract('platform', …)` over a registry whose `openrouter-messages` turn is a scripted fake (the real engine contract runs in Task 14).
+`apps/uw-platform/ports/model-engine.contract.test.ts`: `describeModelEngineNotWired`-style cases for keys without a configured turn, and the full `describeModelEngineContract('platform', …)` over a registry whose `openrouter-messages` turn is a scripted fake (the real engine contract runs in Task 14).
 
-- [ ] **Step 2:** Run `pnpm vitest run apps/uw-app/engines apps/uw-app/ports/model-engine.contract.test.ts tools/architecture`; expected FAIL.
-- [ ] **Step 3:** Implement. Delete `apps/uw-app/ports/model-engine.not-wired.ts` only if nothing imports it after `kernel.ts` moves (grep first; the DX-3 check requires a not-wired export only where a not-wired adapter exists, so update `apps/uw-app/ports/not-wired.contract.test.ts` with it and say so in the commit body).
+- [ ] **Step 2:** Run `pnpm vitest run apps/uw-platform/engines apps/uw-platform/ports/model-engine.contract.test.ts tools/architecture`; expected FAIL.
+- [ ] **Step 3:** Implement. Delete `apps/uw-platform/ports/model-engine.not-wired.ts` only if nothing imports it after `kernel.ts` moves (grep first; the DX-3 check requires a not-wired export only where a not-wired adapter exists, so update `apps/uw-platform/ports/not-wired.contract.test.ts` with it and say so in the commit body).
 - [ ] **Step 4: Verify and commit**
 
 Run: `pnpm format && TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/uw_test pnpm verify`
 
 ```bash
-git add apps/uw-app packages/harness/port-errors.ts packages/harness/index.ts tools/architecture .dependency-cruiser.mjs
+git add apps/uw-platform packages/harness/port-errors.ts packages/harness/index.ts tools/architecture .dependency-cruiser.mjs
 git commit -m "feat(engines): one seam and a registry of six engines, each in its own directory
 
 HE-2 HE-10"
@@ -1218,14 +1218,14 @@ HE-2 HE-10"
 **Requirements:** HE-3, HE-5 (the reading).
 
 **Files:**
-- Create: `apps/uw-app/engines/claude-messages/turn.ts`, `apps/uw-app/engines/claude-messages/prices.ts`, `apps/uw-app/engines/claude-messages/turn.contract.test.ts`, `apps/uw-app/engines/claude-messages/turn.test.ts`, `apps/uw-app/engines/gateway/spend.ts`, `apps/uw-app/engines/gateway/spend.test.ts`, `apps/uw-app/engines/fixtures/` (recorded-shape responses trimmed from vendor documentation), `apps/uw-app/engines/no-subscription-credential.test.ts`
-- Modify: `apps/uw-app/engines/claude-messages/index.ts`, `apps/uw-app/package.json` (`@anthropic-ai/sdk`)
+- Create: `apps/uw-platform/engines/claude-messages/turn.ts`, `apps/uw-platform/engines/claude-messages/prices.ts`, `apps/uw-platform/engines/claude-messages/turn.contract.test.ts`, `apps/uw-platform/engines/claude-messages/turn.test.ts`, `apps/uw-platform/engines/gateway/spend.ts`, `apps/uw-platform/engines/gateway/spend.test.ts`, `apps/uw-platform/engines/fixtures/` (recorded-shape responses trimmed from vendor documentation), `apps/uw-platform/engines/no-subscription-credential.test.ts`
+- Modify: `apps/uw-platform/engines/claude-messages/index.ts`, `apps/uw-platform/package.json` (`@anthropic-ai/sdk`)
 
-**Dependency:** `pnpm --filter @uw/uw-app add @anthropic-ai/sdk` (MIT, fetch-based, runs on Workers); record the resolved version. The SDK is constructed with `{ apiKey: ANTHROPIC_API_KEY, baseURL: 'https://gateway.ai.cloudflare.com/v1/<account>/<gateway>/anthropic', fetch: config.fetch, defaultHeaders: token ? { 'cf-aig-authorization': `Bearer ${token}` } : {} , maxRetries: 0 }` (the Workflow step owns retries).
+**Dependency:** `pnpm --filter @uw/uw-platform add @anthropic-ai/sdk` (MIT, fetch-based, runs on Workers); record the resolved version. The SDK is constructed with `{ apiKey: ANTHROPIC_API_KEY, baseURL: 'https://gateway.ai.cloudflare.com/v1/<account>/<gateway>/anthropic', fetch: config.fetch, defaultHeaders: token ? { 'cf-aig-authorization': `Bearer ${token}` } : {} , maxRetries: 0 }` (the Workflow step owns retries).
 
-**Turn mapping:** `TurnRequest` to `messages.create({ model, system: instructions, max_tokens: 4096, tools, messages })`: each verb in `request.tools` becomes a tool whose input schema is `z.toJSONSchema(verbIo[verb].input)` computed in the engine (a few lines in `apps/uw-app/engines/tool-schemas.ts`, shared by both message engines; the engines import nothing under `apps/uw-app/mcp/`); assistant `toolCalls` become `tool_use` blocks, `tool` messages `tool_result` blocks with `is_error`; the reply's `tool_use` blocks become `ToolCall`s whose verb must be in `request.tools` (`ToolOutsideToolsetError` otherwise); `stop_reason` maps `end_turn`→`end_turn`, `tool_use`→`tool_use`, `max_tokens`→`max_tokens`, `refusal`→`refused`; `resolvedProvider` is `'anthropic'` and a pin other than `anthropic` throws `ProviderMismatchError`; usage `costMicros` = tokens × the model's price in `prices.ts` (micro-USD per token for input and output; an unknown model is `null`); `costBasis: 'metered'`.
+**Turn mapping:** `TurnRequest` to `messages.create({ model, system: instructions, max_tokens: 4096, tools, messages })`: each verb in `request.tools` becomes a tool whose input schema is `z.toJSONSchema(verbIo[verb].input)` computed in the engine (a few lines in `apps/uw-platform/engines/tool-schemas.ts`, shared by both message engines; the engines import nothing under `apps/uw-platform/mcp/`); assistant `toolCalls` become `tool_use` blocks, `tool` messages `tool_result` blocks with `is_error`; the reply's `tool_use` blocks become `ToolCall`s whose verb must be in `request.tools` (`ToolOutsideToolsetError` otherwise); `stop_reason` maps `end_turn`→`end_turn`, `tool_use`→`tool_use`, `max_tokens`→`max_tokens`, `refusal`→`refused`; `resolvedProvider` is `'anthropic'` and a pin other than `anthropic` throws `ProviderMismatchError`; usage `costMicros` = tokens × the model's price in `prices.ts` (micro-USD per token for input and output; an unknown model is `null`); `costBasis: 'metered'`.
 
-**Spend** (`apps/uw-app/engines/gateway/spend.ts`): `gatewaySpend(config)` POSTs to `https://api.cloudflare.com/client/v4/graphql` with `Authorization: Bearer <AI_GATEWAY_ANALYTICS_TOKEN>` the query
+**Spend** (`apps/uw-platform/engines/gateway/spend.ts`): `gatewaySpend(config)` POSTs to `https://api.cloudflare.com/client/v4/graphql` with `Authorization: Bearer <AI_GATEWAY_ANALYTICS_TOKEN>` the query
 
 ```graphql
 query Spend($account: string!, $gateway: string!, $since: Time!, $until: Time!) {
@@ -1248,15 +1248,15 @@ and parses the reply with Zod; `spentMinor` is `Math.round(cost * 100)` (USD), `
   - `turn.contract.test.ts`: `describeModelEngineContract('claude-messages', …)` with a fake `fetch` answering fixture Messages API bodies (its `respondNextWith` translates a `TurnResult` into a fixture reply).
   - `turn.test.ts`: `HE-3 calls go to AI Gateway's anthropic path with the organization key`; `HE-3 the tools offered are exactly the request's toolset with each verb's schema`; `HE-3 a reply calling a verb outside the toolset is refused`; `HE-4 a pin other than anthropic fails closed`; `HE-3 an engine with no key answers not_wired`.
   - `spend.test.ts`: `HE-5 the spend is AI Gateway's summed cost for the month in minor units`; `HE-5 an unconfigured reader is not_wired and an error reply is unreadable without its body`.
-  - `no-subscription-credential.test.ts`: `HE-3 no hosted engine's configuration names a subscription credential` (scan `apps/uw-app/engines/**`, `apps/uw-app/env.ts` and both wrangler files for `CLAUDE_CODE_OAUTH_TOKEN`, `ANTHROPIC_AUTH_TOKEN`, `OAUTH`, `setup-token`, `CODEX_`, `CHATGPT`, `OPENAI_ACCESS_TOKEN`; a planted case fails).
-- [ ] **Step 2:** Run `pnpm vitest run apps/uw-app/engines`; expected FAIL.
-- [ ] **Step 3:** Implement; `pnpm lint:vendor` passes with the SDK only in `apps/uw-app/engines/claude-messages/`; `pnpm audit:prod` stays clean.
+  - `no-subscription-credential.test.ts`: `HE-3 no hosted engine's configuration names a subscription credential` (scan `apps/uw-platform/engines/**`, `apps/uw-platform/env.ts` and both wrangler files for `CLAUDE_CODE_OAUTH_TOKEN`, `ANTHROPIC_AUTH_TOKEN`, `OAUTH`, `setup-token`, `CODEX_`, `CHATGPT`, `OPENAI_ACCESS_TOKEN`; a planted case fails).
+- [ ] **Step 2:** Run `pnpm vitest run apps/uw-platform/engines`; expected FAIL.
+- [ ] **Step 3:** Implement; `pnpm lint:vendor` passes with the SDK only in `apps/uw-platform/engines/claude-messages/`; `pnpm audit:prod` stays clean.
 - [ ] **Step 4: Verify and commit**
 
 Run: `pnpm format && TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/uw_test pnpm verify`
 
 ```bash
-git add apps/uw-app pnpm-lock.yaml
+git add apps/uw-platform pnpm-lock.yaml
 git commit -m "feat(engines): claude-messages through AI Gateway on the organization key, and the AI Gateway spend reader
 
 HE-3 HE-5"
@@ -1269,10 +1269,10 @@ HE-3 HE-5"
 **Requirements:** HE-4, HE-3 (the same loop).
 
 **Files:**
-- Create: `apps/uw-app/engines/openrouter-messages/turn.ts`, `apps/uw-app/engines/openrouter-messages/turn.contract.test.ts`, `apps/uw-app/engines/openrouter-messages/turn.test.ts`
-- Modify: `apps/uw-app/engines/openrouter-messages/index.ts`, `apps/uw-app/package.json` (`openai`)
+- Create: `apps/uw-platform/engines/openrouter-messages/turn.ts`, `apps/uw-platform/engines/openrouter-messages/turn.contract.test.ts`, `apps/uw-platform/engines/openrouter-messages/turn.test.ts`
+- Modify: `apps/uw-platform/engines/openrouter-messages/index.ts`, `apps/uw-platform/package.json` (`openai`)
 
-**Dependency:** `pnpm --filter @uw/uw-app add openai` (Apache-2.0, fetch-based, runs on Workers); record the resolved version. Client: `{ apiKey: OPENROUTER_API_KEY, baseURL: 'https://gateway.ai.cloudflare.com/v1/<account>/<gateway>/openrouter/v1', fetch: config.fetch, defaultHeaders: { 'cf-aig-authorization': … when set }, maxRetries: 0 }`.
+**Dependency:** `pnpm --filter @uw/uw-platform add openai` (Apache-2.0, fetch-based, runs on Workers); record the resolved version. Client: `{ apiKey: OPENROUTER_API_KEY, baseURL: 'https://gateway.ai.cloudflare.com/v1/<account>/<gateway>/openrouter/v1', fetch: config.fetch, defaultHeaders: { 'cf-aig-authorization': … when set }, maxRetries: 0 }`.
 
 **Turn mapping:** `chat.completions.create({ model, messages, tools, tool_choice: 'auto', provider: { order: [pinnedProvider], allow_fallbacks: false }, usage: { include: true } })` (the two OpenRouter fields pass through the SDK's body; type them with a local intersection, never `any`); system message from `instructions`; assistant `tool_calls` and `tool` messages map one to one; the resolved provider is the reply's `provider` field, NFKC-normalised, trimmed, lowercased; a reply without it, or with a provider other than the pin, throws `ProviderMismatchError(pin, resolved)` (S7-D14); `costMicros` is `Math.round(usage.cost * 1_000_000)` when OpenRouter reports `usage.cost`, else `null`; `finish_reason` maps `stop`→`end_turn`, `tool_calls`→`tool_use`, `length`→`max_tokens`, `content_filter`→`refused`.
 
@@ -1286,7 +1286,7 @@ HE-3 HE-5"
 Run: `pnpm format && TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/uw_test pnpm verify`
 
 ```bash
-git add apps/uw-app pnpm-lock.yaml
+git add apps/uw-platform pnpm-lock.yaml
 git commit -m "feat(engines): openrouter-messages pins its provider, refuses fallbacks and fails closed on a mismatch
 
 HE-3 HE-4"
@@ -1301,32 +1301,32 @@ Shared root `infra/` in its own commit.
 **Requirements:** HE-5 (the breaker runs), HE-1 (the beat runs), KN-5's P8 sweep (unscheduled until now).
 
 **Files:**
-- Create: `apps/uw-app/cron/minute.ts`, `apps/uw-app/cron/minute.pg.test.ts`
-- Modify: `apps/uw-app/cron/registry.ts` (`MINUTE_CRON = '* * * * *'` → `minuteJob`), `apps/uw-app/cron/registry.test.ts`, `apps/uw-app/cron/job.ts` (`CronDeps` gains `engines: EngineConfig` read from `env`), `infra/uw-app/wrangler.go-live.toml` (`crons = ["17 3 * * *", "* * * * *"]` under staging and production), `tools/infra/crons.test.ts` (the minute cron is in the go-live file only; a planted case in `wrangler.toml` fails), `.dependency-cruiser.mjs` if the cron imports `apps/uw-app/engines/gateway/spend.ts` (allow `apps/uw-app/cron/minute.ts` to import it)
+- Create: `apps/uw-platform/cron/minute.ts`, `apps/uw-platform/cron/minute.pg.test.ts`
+- Modify: `apps/uw-platform/cron/registry.ts` (`MINUTE_CRON = '* * * * *'` → `minuteJob`), `apps/uw-platform/cron/registry.test.ts`, `apps/uw-platform/cron/job.ts` (`CronDeps` gains `engines: EngineConfig` read from `env`), `infra/uw-platform/wrangler.go-live.toml` (`crons = ["17 3 * * *", "* * * * *"]` under staging and production), `tools/infra/crons.test.ts` (the minute cron is in the go-live file only; a planted case in `wrangler.toml` fails), `.dependency-cruiser.mjs` if the cron imports `apps/uw-platform/engines/gateway/spend.ts` (allow `apps/uw-platform/cron/minute.ts` to import it)
 
-**`minuteJob(env, deps)`:** without a database, log `database_not_configured` and return. Otherwise, with the system principal (`systemPrincipal()` from `@uw/core/principal`, allowed under `apps/uw-app/cron/`): (1) `kernel.items.expireLeases(caller, { limit: 200 })`; (2) `kernel.breaker.check(caller, { capMinor, currency: 'USD', since: <first instant of the current UTC month> })`, `capMinor` from `AI_SPEND_CAP_MINOR` (a positive integer) else `DEFAULT_SPEND_CAP.capMinor`; a `PortNotWiredError` logs `breaker_not_configured`, any other throw logs `breaker_unreadable` with `errorFields`, and neither stops the job; (3) `kernel.runs.beat(caller, { limit: 10 })`, logging the started and skipped counts. Each step is caught and logged separately so one failure never skips the others. The kernel is built with `hubWiring(hubOf(env, logger))` and the platform Runs adapter (Task 16; until then `runsNotWired`, so starts answer `not_wired` and the beat logs them as skipped).
+**`minuteJob(env, deps)`:** without a database, log `database_not_configured` and return. Otherwise, with the system principal (`systemPrincipal()` from `@uw/core/principal`, allowed under `apps/uw-platform/cron/`): (1) `kernel.items.expireLeases(caller, { limit: 200 })`; (2) `kernel.breaker.check(caller, { capMinor, currency: 'USD', since: <first instant of the current UTC month> })`, `capMinor` from `AI_SPEND_CAP_MINOR` (a positive integer) else `DEFAULT_SPEND_CAP.capMinor`; a `PortNotWiredError` logs `breaker_not_configured`, any other throw logs `breaker_unreadable` with `errorFields`, and neither stops the job; (3) `kernel.runs.beat(caller, { limit: 10 })`, logging the started and skipped counts. Each step is caught and logged separately so one failure never skips the others. The kernel is built with `hubWiring(hubOf(env, logger))` and the platform Runs adapter (Task 16; until then `runsNotWired`, so starts answer `not_wired` and the beat logs them as skipped).
 
-- [ ] **Step 1: Write the failing tests** (`apps/uw-app/cron/minute.pg.test.ts`, the Postgres server, a fake spend reader injected through `deps`):
+- [ ] **Step 1: Write the failing tests** (`apps/uw-platform/cron/minute.pg.test.ts`, the Postgres server, a fake spend reader injected through `deps`):
   - `HE-5 the minute cron checks the breaker against the configured cap`
   - `HE-5 an unreadable spend is logged and the sweep and the beat still run`
   - `HE-1 the minute cron runs the hosted beat as the system principal`
   - a test titled without an ID: the lease sweep expires a lapsed lease once a minute
-  - `apps/uw-app/cron/registry.test.ts`: the minute job is registered
-- [ ] **Step 2:** Run `pnpm vitest run apps/uw-app/cron tools/infra`; expected FAIL.
+  - `apps/uw-platform/cron/registry.test.ts`: the minute job is registered
+- [ ] **Step 2:** Run `pnpm vitest run apps/uw-platform/cron tools/infra`; expected FAIL.
 - [ ] **Step 3:** Implement; infra commit first.
 - [ ] **Step 4: Verify and commit**
 
 Run: `pnpm format && TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/uw_test pnpm verify`
 
 ```bash
-git add infra/uw-app/wrangler.go-live.toml
+git add infra/uw-platform/wrangler.go-live.toml
 git commit -m "build(infra): a one-minute cron trigger, for go-live only
 
 Shared root infra/: the lease sweep, the spend breaker and the hosted beat
 need a minute's cadence; nothing live runs them before the switch-on.
 
 HE-1 HE-5"
-git add apps/uw-app tools/infra .dependency-cruiser.mjs
+git add apps/uw-platform tools/infra .dependency-cruiser.mjs
 git commit -m "feat(cron): the minute job sweeps leases, checks the breaker and runs the hosted beat
 
 HE-1 HE-5"
@@ -1341,12 +1341,12 @@ Shared root `infra/` in its own commit.
 **Requirements:** HE-1 (the Workflow per claim), the step-2 carry (`RunsSubject.finish`).
 
 **Files:**
-- Create: `apps/uw-app/ports/runs.ts`, `apps/uw-app/ports/runs.contract.test.ts`, `apps/uw-app/runs/testing.ts` (`fakeWorkflowBinding()`: instances in a map with a settable status, recording `create`, `pause`, `resume`, `terminate`, `sendEvent`)
-- Modify: `apps/uw-app/env.ts` (`HARNESS_RUN?: WorkflowBinding`, a structural type with `create({ id, params })` and `get(id)` answering `{ id, status(): Promise<{ status: string }>, pause(), resume(), terminate(), sendEvent({ type, payload }) }`), `apps/uw-app/kernel.ts` (`runs: runsOf(env)`: `platformRuns(env.HARNESS_RUN)` when bound, else `runsNotWired`; thread `env` or the binding through `KernelWiring` as `runs`), `apps/uw-app/ports/not-wired.contract.test.ts` (keeps `runsNotWired`), `infra/uw-app/wrangler.go-live.toml`, `tools/infra/go-live.test.ts`
+- Create: `apps/uw-platform/ports/runs.ts`, `apps/uw-platform/ports/runs.contract.test.ts`, `apps/uw-platform/runs/testing.ts` (`fakeWorkflowBinding()`: instances in a map with a settable status, recording `create`, `pause`, `resume`, `terminate`, `sendEvent`)
+- Modify: `apps/uw-platform/env.ts` (`HARNESS_RUN?: WorkflowBinding`, a structural type with `create({ id, params })` and `get(id)` answering `{ id, status(): Promise<{ status: string }>, pause(), resume(), terminate(), sendEvent({ type, payload }) }`), `apps/uw-platform/kernel.ts` (`runs: runsOf(env)`: `platformRuns(env.HARNESS_RUN)` when bound, else `runsNotWired`; thread `env` or the binding through `KernelWiring` as `runs`), `apps/uw-platform/ports/not-wired.contract.test.ts` (keeps `runsNotWired`), `infra/uw-platform/wrangler.go-live.toml`, `tools/infra/go-live.test.ts`
 
 **Adapter:** S7-D18's mapping. `start` refuses (`RunTransitionError(runId, <state>, 'start')`) when `get(runId)` finds an instance, then `create({ id: runId, params: run })`; `hibernate` requires `running`; `resume` requires `hibernated`, then `resume()` if the instance is `paused`, else `sendEvent({ type: 'run-resumed', payload: {} })`; `stop` requires `running` or `hibernated`, then `terminate()`; `status` answers `null` for an id `get` cannot find. The contract's `finish` sets the fake instance's status to `complete` or `errored`.
 
-**go-live** (`infra/uw-app/wrangler.go-live.toml`), per environment, staging and production only:
+**go-live** (`infra/uw-platform/wrangler.go-live.toml`), per environment, staging and production only:
 
 ```toml
 [[env.staging.workflows]]
@@ -1357,7 +1357,7 @@ class_name = "HarnessRun"
 
 (and `harness-run-production` under `env.production`). `tools/infra/go-live.test.ts` gains a case: `HARNESS_RUN` and `HarnessRun` appear in the go-live file under staging and production only, never in `wrangler.toml` and never under `preview` (a planted case fails).
 
-- [ ] **Step 1: Write the failing tests**: `apps/uw-app/ports/runs.contract.test.ts` runs `describeRunsContract('platform', …)` over `platformRuns(fakeWorkflowBinding())` with `finish` from the fake; plus `HE-1 resume sends run-resumed to a Workflow waiting at a gate and resumes a paused one` (titled HE-1 since it proves the gate resume half).
+- [ ] **Step 1: Write the failing tests**: `apps/uw-platform/ports/runs.contract.test.ts` runs `describeRunsContract('platform', …)` over `platformRuns(fakeWorkflowBinding())` with `finish` from the fake; plus `HE-1 resume sends run-resumed to a Workflow waiting at a gate and resumes a paused one` (titled HE-1 since it proves the gate resume half).
 - [ ] **Step 2:** Run; expected FAIL.
 - [ ] **Step 3:** Implement; infra commit first. The `HarnessRun` class is exported in Task 18; until then the go-live file names a class the bundle lacks, which is acceptable only because nothing deploys the go-live file (the switch-on PR comes after the build) — say so in the commit body.
 - [ ] **Step 4: Verify and commit**
@@ -1365,14 +1365,14 @@ class_name = "HarnessRun"
 Run: `pnpm format && TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/uw_test pnpm verify`
 
 ```bash
-git add infra/uw-app/wrangler.go-live.toml tools/infra/go-live.test.ts
+git add infra/uw-platform/wrangler.go-live.toml tools/infra/go-live.test.ts
 git commit -m "build(infra): declare the HarnessRun Workflow for go-live only
 
 Shared root infra/: one Workflow binding per environment, none for preview.
 
 HE-1"
-git add apps/uw-app
-git commit -m "feat(uw-app): the platform Runs adapter over Cloudflare Workflows runs the Runs contract
+git add apps/uw-platform
+git commit -m "feat(uw-platform): the platform Runs adapter over Cloudflare Workflows runs the Runs contract
 
 HE-1"
 ```
@@ -1384,9 +1384,9 @@ HE-1"
 **Requirements:** HE-4 (records provider and model on the review; fails closed; the diff budget), HE-9 (the second identity's review read back), the step-5 carry (the `harness-review` block).
 
 **Files:**
-- Create: `apps/uw-app/github/diff.ts` (the read client's `GET /repos/{o}/{r}/compare/{base}...{head}` with `Accept: application/vnd.github.diff`, reading at most `budget + 1` bytes), `apps/uw-app/github/review-writes.ts` (a Reviewer App's session with `pull_requests: write`, `metadata: read`, one repository; `POST /repos/{o}/{r}/pulls/{n}/reviews` with `commit_id: head`, `event: 'APPROVE' | 'REQUEST_CHANGES'`, `body`), `apps/uw-app/github/reviewer-apps.ts` (configuration per reviewer id: `REVIEWER_GITHUB_APP_ID`/`_INSTALLATION_ID`/`_PRIVATE_KEY` for `uw-reviewer`, `REVIEWER_CODEX_GITHUB_APP_ID`/`_INSTALLATION_ID`/`_PRIVATE_KEY` for `uw-reviewer-codex`), tests beside each
-- Create: `packages/harness/runs/review.ts` (`reviewDiff`, `postReview`), `sim/kernel/run-review.test.ts`, `sim/scenarios/HE-4.a-provider-mismatch-fails-the-run-and-posts-no-review.ts`, `apps/uw-app/github/review-readback.pg.test.ts`
-- Modify: `apps/uw-app/ports/github-facts.ts` (`diff` through `diff.ts` with the read client; `unavailable` `not_wired` without one), `apps/uw-app/ports/connectors.ts` (`review` through `review-writes.ts`; `refused` `not_wired` without the reviewer's App), `apps/uw-app/kernel.ts` (`KernelWiring` gains `reviews: ReviewGitHub | null`; `hubWiring` keeps it null; a new `runWiring(hub, reads, reviews)` used only under `apps/uw-app/runs/`), `.dependency-cruiser.mjs` (`review-writes.ts` imported only by `apps/uw-app/ports/connectors.ts`; `runWiring`'s GitHub openers only from `apps/uw-app/runs/`), `tools/architecture/connector-callers.test.ts` (the MCP, queue, cron and command kernels never pass `reviews`), `infra/github/reviewer-app-manifest.json` and `infra/github/reviewer-codex-app-manifest.json` (permissions `metadata: read`, `pull_requests: write`; no events) in an infra commit, `infra/README.md` (registering the two Reviewer Apps), `packages/harness/runs/commands.ts`
+- Create: `apps/uw-platform/github/diff.ts` (the read client's `GET /repos/{o}/{r}/compare/{base}...{head}` with `Accept: application/vnd.github.diff`, reading at most `budget + 1` bytes), `apps/uw-platform/github/review-writes.ts` (a Reviewer App's session with `pull_requests: write`, `metadata: read`, one repository; `POST /repos/{o}/{r}/pulls/{n}/reviews` with `commit_id: head`, `event: 'APPROVE' | 'REQUEST_CHANGES'`, `body`), `apps/uw-platform/github/reviewer-apps.ts` (configuration per reviewer id: `REVIEWER_GITHUB_APP_ID`/`_INSTALLATION_ID`/`_PRIVATE_KEY` for `uw-reviewer`, `REVIEWER_CODEX_GITHUB_APP_ID`/`_INSTALLATION_ID`/`_PRIVATE_KEY` for `uw-reviewer-codex`), tests beside each
+- Create: `packages/harness/runs/review.ts` (`reviewDiff`, `postReview`), `sim/kernel/run-review.test.ts`, `sim/scenarios/HE-4.a-provider-mismatch-fails-the-run-and-posts-no-review.ts`, `apps/uw-platform/github/review-readback.pg.test.ts`
+- Modify: `apps/uw-platform/ports/github-facts.ts` (`diff` through `diff.ts` with the read client; `unavailable` `not_wired` without one), `apps/uw-platform/ports/connectors.ts` (`review` through `review-writes.ts`; `refused` `not_wired` without the reviewer's App), `apps/uw-platform/kernel.ts` (`KernelWiring` gains `reviews: ReviewGitHub | null`; `hubWiring` keeps it null; a new `runWiring(hub, reads, reviews)` used only under `apps/uw-platform/runs/`), `.dependency-cruiser.mjs` (`review-writes.ts` imported only by `apps/uw-platform/ports/connectors.ts`; `runWiring`'s GitHub openers only from `apps/uw-platform/runs/`), `tools/architecture/connector-callers.test.ts` (the MCP, queue, cron and command kernels never pass `reviews`), `infra/github/reviewer-app-manifest.json` and `infra/github/reviewer-codex-app-manifest.json` (permissions `metadata: read`, `pull_requests: write`; no events) in an infra commit, `infra/README.md` (registering the two Reviewer Apps), `packages/harness/runs/commands.ts`
 
 **Kernel members:**
 
@@ -1410,7 +1410,7 @@ postReview(runId: string, input: { readonly verdict: ReviewVerdict; readonly fin
 
 Scenario `sim/scenarios/HE-4.a-provider-mismatch-fails-the-run-and-posts-no-review.ts`: a review run on `openrouter-messages` pinned to `deepinfra`; the sim model engine serves its work turn from `together`; the run's work fails with `ProviderMismatchError`; `kernel.runs.fail(runId, { step: 'work', why: 'provider_mismatch', detail: 'deepinfra/together' })`; the sim connectors recorded no review; the item is released.
 
-`apps/uw-app/github/diff.test.ts`, `review-writes.test.ts` (fixture transport): `HE-4 the diff is read by base and head SHA and refused over the budget without reading further`; `HE-4 a Reviewer's review is posted on the head commit with its own App's token scoped to one repository`. `apps/uw-app/github/review-readback.pg.test.ts`: `HE-9 a codex review posted on the head is read back from gh_reviews and counts as the second provider` (a `pull_request_review` webhook fixture whose body is `reviewBody({ provider: 'openai', … })` from `uw-reviewer-codex[bot]`, then the assembler counts two reviewers with distinct providers).
+`apps/uw-platform/github/diff.test.ts`, `review-writes.test.ts` (fixture transport): `HE-4 the diff is read by base and head SHA and refused over the budget without reading further`; `HE-4 a Reviewer's review is posted on the head commit with its own App's token scoped to one repository`. `apps/uw-platform/github/review-readback.pg.test.ts`: `HE-9 a codex review posted on the head is read back from gh_reviews and counts as the second provider` (a `pull_request_review` webhook fixture whose body is `reviewBody({ provider: 'openai', … })` from `uw-reviewer-codex[bot]`, then the assembler counts two reviewers with distinct providers).
 
 - [ ] **Step 2:** Run; expected FAIL.
 - [ ] **Step 3:** Implement; infra commit (the two manifests and the README section) first.
@@ -1426,7 +1426,7 @@ Shared root infra/: each Reviewer identity is its own App with pull request
 write and nothing else.
 
 HE-4 HE-9"
-git add apps/uw-app packages/harness sim tools .dependency-cruiser.mjs
+git add apps/uw-platform packages/harness sim tools .dependency-cruiser.mjs
 git commit -m "feat(harness): a review run reads the diff at the head and posts its review under its own Reviewer identity, or withholds it
 
 HE-4 HE-9"
@@ -1439,11 +1439,11 @@ HE-4 HE-9"
 **Requirements:** HE-1 (named checkpointed steps, retry from the failed step, a deploy mid-run, hibernation, the run record), HE-3 (the loop inside the step, the persona's toolset), HE-4 (fail closed), the step-4 SECURITY carries.
 
 **Files:**
-- Modify: `apps/uw-app/mcp/in-process.ts` (complete below), `apps/uw-app/mcp/in-process.test.ts`, `apps/uw-app/mcp/conformance.pg.test.ts` (the Workflow-host principal is now a run scene's), `apps/uw-app/testing/conformance.test.ts` and `apps/uw-app/testing/conformance.ts` (serve an arbitrary principal through the new test helper)
-- Create: `apps/uw-app/testing/in-process.ts` (`serveVerbsForTest(context, handlers)`: the server pair with any principal, for tests only), `apps/uw-app/runs/step-runner.ts`, `apps/uw-app/runs/run-core.ts`, `apps/uw-app/runs/steps.ts`, `apps/uw-app/runs/prompts.ts`, `apps/uw-app/runs/workflow.ts`, `apps/uw-app/runs/deps.ts`, `apps/uw-app/runs/run-core.pg.test.ts`, `apps/uw-app/runs/step-connection.pg.test.ts`
-- Modify: `apps/uw-app/index.ts` (`export { HarnessRun } from './runs/workflow.ts';`), `.dependency-cruiser.mjs` (rename `in-process-host-only-in-tests` to `in-process-host-only-in-run-steps`: from anything but test files and `^apps/uw-app/runs/steps\.ts$` to `apps/uw-app/mcp/in-process.ts`; new rule `run-host-only-from-the-workflow`: `apps/uw-app/runs/` is imported only by `apps/uw-app/index.ts`, `apps/uw-app/runs/` itself and tests; `apps/uw-app/mcp/` imports nothing under `apps/uw-app/runs/`), `tools/architecture/runs-callers.test.ts` (new: `kernel.runs.scene`, `hibernateAtGate`, `complete`, `fail`, `holdPremise`, `halt`, `reviewDiff`, `postReview` are named only under `apps/uw-app/runs/`, `apps/uw-app/mcp/in-process.ts` (scene), `sim/` and tests; `kernel.runs.beat` only under `apps/uw-app/cron/`; planted cases fail), `docs/architecture.md` ("The agent boundary": the Workflow host paragraph; "Transactions and locks": run rows after item rows)
+- Modify: `apps/uw-platform/mcp/in-process.ts` (complete below), `apps/uw-platform/mcp/in-process.test.ts`, `apps/uw-platform/mcp/conformance.pg.test.ts` (the Workflow-host principal is now a run scene's), `apps/uw-platform/testing/conformance.test.ts` and `apps/uw-platform/testing/conformance.ts` (serve an arbitrary principal through the new test helper)
+- Create: `apps/uw-platform/testing/in-process.ts` (`serveVerbsForTest(context, handlers)`: the server pair with any principal, for tests only), `apps/uw-platform/runs/step-runner.ts`, `apps/uw-platform/runs/run-core.ts`, `apps/uw-platform/runs/steps.ts`, `apps/uw-platform/runs/prompts.ts`, `apps/uw-platform/runs/workflow.ts`, `apps/uw-platform/runs/deps.ts`, `apps/uw-platform/runs/run-core.pg.test.ts`, `apps/uw-platform/runs/step-connection.pg.test.ts`
+- Modify: `apps/uw-platform/index.ts` (`export { HarnessRun } from './runs/workflow.ts';`), `.dependency-cruiser.mjs` (rename `in-process-host-only-in-tests` to `in-process-host-only-in-run-steps`: from anything but test files and `^apps/uw-platform/runs/steps\.ts$` to `apps/uw-platform/mcp/in-process.ts`; new rule `run-host-only-from-the-workflow`: `apps/uw-platform/runs/` is imported only by `apps/uw-platform/index.ts`, `apps/uw-platform/runs/` itself and tests; `apps/uw-platform/mcp/` imports nothing under `apps/uw-platform/runs/`), `tools/architecture/runs-callers.test.ts` (new: `kernel.runs.scene`, `hibernateAtGate`, `complete`, `fail`, `holdPremise`, `halt`, `reviewDiff`, `postReview` are named only under `apps/uw-platform/runs/`, `apps/uw-platform/mcp/in-process.ts` (scene), `sim/` and tests; `kernel.runs.beat` only under `apps/uw-platform/cron/`; planted cases fail), `docs/architecture.md` ("The agent boundary": the Workflow host paragraph; "Transactions and locks": run rows after item rows)
 
-**`apps/uw-app/mcp/in-process.ts`** (complete):
+**`apps/uw-platform/mcp/in-process.ts`** (complete):
 
 ```ts
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
@@ -1497,9 +1497,9 @@ export async function connectInProcess(
 }
 ```
 
-(Match `KernelOutcome`'s real accepted shape in `packages/harness/outcome.ts`; `verbKernel` is the kernel built with `hubWiring` that serves the verbs, `runKernel` is the run host's kernel built with `runWiring`; the two share one database and clock. `apps/uw-app/runs/steps.ts` holds `openStep(deps, runId)`, the only caller of `connectInProcess`.)
+(Match `KernelOutcome`'s real accepted shape in `packages/harness/outcome.ts`; `verbKernel` is the kernel built with `hubWiring` that serves the verbs, `runKernel` is the run host's kernel built with `runWiring`; the two share one database and clock. `apps/uw-platform/runs/steps.ts` holds `openStep(deps, runId)`, the only caller of `connectInProcess`.)
 
-**Step runner** (`apps/uw-app/runs/step-runner.ts`):
+**Step runner** (`apps/uw-platform/runs/step-runner.ts`):
 
 ```ts
 export type StepConfig = { readonly retries: number; readonly timeout: string };
@@ -1515,7 +1515,7 @@ export function workflowStepRunner(step: WorkflowStep): StepRunner;
 
 `workflowStepRunner` maps `do` to `step.do(name, { retries: { limit: config.retries, delay: '10 seconds', backoff: 'exponential' }, timeout: config.timeout }, body)` and `waitForResume` to `step.waitForEvent(name, { type: 'run-resumed', timeout })`, answering `timed_out` when it throws its timeout error. `Serializable` is a local JSON type. `NonRetryable` failures are thrown as `NonRetryableError` from `cloudflare:workflows` inside `workflow.ts` only; the core throws its own `RunStop` and `RunFailed` errors and `workflowStepRunner` wraps them as non-retryable.
 
-**Run core** (`apps/uw-app/runs/run-core.ts`, `runWorkflow(start: RunStart, steps: StepRunner, deps: RunDeps)`), in order, each a named `steps.do`:
+**Run core** (`apps/uw-platform/runs/run-core.ts`, `runWorkflow(start: RunStart, steps: StepRunner, deps: RunDeps)`), in order, each a named `steps.do`:
 1. `read`: open the step (`connectInProcess`), call `resolve_context` `{ itemId }` through the client, record `record_run_step` `{ step: 'read', tokensIn: 0, tokensOut: 0, costBasis: 'metered' }`, close; answers `{ context }` (the reply's text cut to 60,000 characters) and any prompts.
 2. `scout`: open; the scout engine (`openrouter-messages` per S7-D16) through `engineAdapter(...).work` with the read-only toolset and the scout prompt (instructions, context, prompts, and the scout verdict format); `record_run_step` `{ step: 'scout', … }` with the usage, the step's minor cost (`costMicros` → minor, half up), the resolved provider and model, the tools called and the write count (tool calls whose verb's registry grant role is `editor`); close; answers the parsed verdict.
 3. Held premise: `steps.do('hold premise', …, () => kernel.runs.holdPremise(runId, { reason }))` and end.
@@ -1527,17 +1527,17 @@ export function workflowStepRunner(step: WorkflowStep): StepRunner;
 
 A scene refused `run_hibernated` (paused or breaker) inside any step throws `RunHibernated`; the core then `waitForResume('resume after hibernation', GATE_WAIT)` and runs the step again. A scene refused `lease_lost` → `kernel.runs.fail(runId, { step, why: 'lease_lost' })`; `delegation_lapsed`, `run_stopped` or `run_failed` (the run already ended) → end quietly. `ProviderMismatchError` → `kernel.runs.fail(runId, { step, why: 'provider_mismatch', detail: '<pinned>/<resolved>' })`, never retried, no review. Any other error that exhausts a step's retries → `steps.do('record failure', …, () => kernel.runs.fail(runId, { step, why: 'retries_exhausted', detail: <error name> }))`.
 
-**Workflow class** (`apps/uw-app/runs/workflow.ts`): `export class HarnessRun extends WorkflowEntrypoint<Bindings, RunStart>` whose `run(event, step)` parses `event.payload` with a Zod schema of `RunStart` and calls `runWorkflow(payload, workflowStepRunner(step), runDepsOf(this.env))`. `runDepsOf` (`deps.ts`) builds the database, the two kernels (`hubWiring` and `runWiring` with the GitHub read client and the reviewer writes when configured), the engine registry, a logger carrying the run's trace id, and the clock. The class file is the only one importing `cloudflare:workers` and `cloudflare:workflows` under `runs/`; it is excluded from the Node Vitest project like `live/harness-hub.ts`.
+**Workflow class** (`apps/uw-platform/runs/workflow.ts`): `export class HarnessRun extends WorkflowEntrypoint<Bindings, RunStart>` whose `run(event, step)` parses `event.payload` with a Zod schema of `RunStart` and calls `runWorkflow(payload, workflowStepRunner(step), runDepsOf(this.env))`. `runDepsOf` (`deps.ts`) builds the database, the two kernels (`hubWiring` and `runWiring` with the GitHub read client and the reviewer writes when configured), the engine registry, a logger carrying the run's trace id, and the clock. The class file is the only one importing `cloudflare:workers` and `cloudflare:workflows` under `runs/`; it is excluded from the Node Vitest project like `live/harness-hub.ts`.
 
 - [ ] **Step 1: Write the failing tests**
 
-`apps/uw-app/runs/step-connection.pg.test.ts`:
+`apps/uw-platform/runs/step-connection.pg.test.ts`:
 - `HE-1 a step connects as the run's beat principal and never as a principal it is given` (the type has no principal field; the connection's `tools/list` equals an external principal's with the same owner grants)
 - `HE-1 each step opens its own connection at its own instant`
 - `HE-1 record_run_step from a step is metered and a subscription basis is refused`
 - `HE-1 a step for a run whose delegation lapsed opens no connection`
 
-`apps/uw-app/runs/run-core.pg.test.ts` (the Postgres server, a fake `StepRunner` that checkpoints step results by name and implements retries, a scripted engine registry):
+`apps/uw-platform/runs/run-core.pg.test.ts` (the Postgres server, a fake `StepRunner` that checkpoints step results by name and implements retries, a scripted engine registry):
 - `HE-1 a run records read, scout, work and submit as named steps, each through record_run_step with its cost`
 - `HE-1 a step that fails is retried from that step without re-running the steps before it`
 - `HE-1 a run replayed after a crash between steps resumes from the last checkpoint` (run the core, throw after `scout` completes, run it again on the same fake: the engine was asked for one scout and one work)
@@ -1552,7 +1552,7 @@ A scene refused `run_hibernated` (paused or breaker) inside any step throws `Run
 
 `tools/architecture/runs-callers.test.ts` (titled without an ID: it guards the boundary, not a requirement clause) with planted cases.
 
-- [ ] **Step 2:** Run `pnpm vitest run apps/uw-app/runs apps/uw-app/mcp tools/architecture`; expected FAIL.
+- [ ] **Step 2:** Run `pnpm vitest run apps/uw-platform/runs apps/uw-platform/mcp tools/architecture`; expected FAIL.
 - [ ] **Step 3:** Implement. Close the FD-11 "run-step leg of the trace id" Not verified row's test half: `run-core.pg.test.ts` asserts every event the run appends carries the run's trace id.
 - [ ] **Step 4: Verify and commit**
 
@@ -1560,7 +1560,7 @@ Run: `pnpm format && TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/uw_te
 Expected: PASS, including `pnpm build` (the Workflow class bundles).
 
 ```bash
-git add apps/uw-app tools/architecture .dependency-cruiser.mjs docs/architecture.md
+git add apps/uw-platform tools/architecture .dependency-cruiser.mjs docs/architecture.md
 git commit -m "feat(runs): the HarnessRun Workflow: read, scout, work and submit as checkpointed steps, each connected as the run's beat principal
 
 HE-1 HE-3 HE-4"
@@ -1573,10 +1573,10 @@ HE-1 HE-3 HE-4"
 **Requirements:** HE-8.
 
 **Files:**
-- Create: `apps/uw-app/engines/sandbox/host.ts` (the `ContainerHost` interface and `sandboxHost(namespace)` over `@cloudflare/sandbox`), `apps/uw-app/engines/sandbox/egress.ts`, `apps/uw-app/engines/sandbox/egress.test.ts`, `apps/uw-app/engines/sandbox/session.ts` (`runSession(host, spec)`: start, write files, exec, collect, destroy, measure wall time), `apps/uw-app/engines/sandbox/session.test.ts`, `apps/uw-app/engines/sandbox/testing.ts` (`fakeContainerHost()`), `apps/uw-app/engines/claude-code-sandbox/work.ts`, `apps/uw-app/engines/claude-code-sandbox/work.test.ts`, `apps/uw-app/engines/sandbox/classes.ts` (`export { Sandbox as ClaudeCodeSandbox, Sandbox as CodexSandbox } from '@cloudflare/sandbox'` or the subclasses the egress hook needs)
-- Modify: `apps/uw-app/engines/claude-code-sandbox/index.ts`, `apps/uw-app/engines/seam.ts` (`EngineWork` gains `egress: EgressRoutes`, built by the run core from the step's open connection), `apps/uw-app/runs/run-core.ts` (pass it), `apps/uw-app/package.json` (`@cloudflare/sandbox`), `apps/uw-app/index.ts` (re-export the two classes from `engines/sandbox/classes.ts` if `pnpm build` bundles them; if it does not, leave them out and record it), `.dependency-cruiser.mjs` (`@cloudflare/sandbox` only under `apps/uw-app/engines/`)
+- Create: `apps/uw-platform/engines/sandbox/host.ts` (the `ContainerHost` interface and `sandboxHost(namespace)` over `@cloudflare/sandbox`), `apps/uw-platform/engines/sandbox/egress.ts`, `apps/uw-platform/engines/sandbox/egress.test.ts`, `apps/uw-platform/engines/sandbox/session.ts` (`runSession(host, spec)`: start, write files, exec, collect, destroy, measure wall time), `apps/uw-platform/engines/sandbox/session.test.ts`, `apps/uw-platform/engines/sandbox/testing.ts` (`fakeContainerHost()`), `apps/uw-platform/engines/claude-code-sandbox/work.ts`, `apps/uw-platform/engines/claude-code-sandbox/work.test.ts`, `apps/uw-platform/engines/sandbox/classes.ts` (`export { Sandbox as ClaudeCodeSandbox, Sandbox as CodexSandbox } from '@cloudflare/sandbox'` or the subclasses the egress hook needs)
+- Modify: `apps/uw-platform/engines/claude-code-sandbox/index.ts`, `apps/uw-platform/engines/seam.ts` (`EngineWork` gains `egress: EgressRoutes`, built by the run core from the step's open connection), `apps/uw-platform/runs/run-core.ts` (pass it), `apps/uw-platform/package.json` (`@cloudflare/sandbox`), `apps/uw-platform/index.ts` (re-export the two classes from `engines/sandbox/classes.ts` if `pnpm build` bundles them; if it does not, leave them out and record it), `.dependency-cruiser.mjs` (`@cloudflare/sandbox` only under `apps/uw-platform/engines/`)
 
-**Dependency:** `pnpm --filter @uw/uw-app add @cloudflare/sandbox`; record the resolved version; read its type declarations for the real method names (`getSandbox`, `exec`, `writeFile`, `destroy`) and for an outbound-interception hook. Write `ContainerHost` as the smallest interface the session needs:
+**Dependency:** `pnpm --filter @uw/uw-platform add @cloudflare/sandbox`; record the resolved version; read its type declarations for the real method names (`getSandbox`, `exec`, `writeFile`, `destroy`) and for an outbound-interception hook. Write `ContainerHost` as the smallest interface the session needs:
 
 ```ts
 export type ContainerHost = {
@@ -1589,7 +1589,7 @@ export type ContainerSession = {
 };
 ```
 
-**Egress proxy** (`apps/uw-app/engines/sandbox/egress.ts`, pure over `Request`):
+**Egress proxy** (`apps/uw-platform/engines/sandbox/egress.ts`, pure over `Request`):
 
 ```ts
 export type EgressRoutes = {
@@ -1615,7 +1615,7 @@ Rules: the URL's host `mcp.internal` → `routes.mcp(request)` (a Streamable HTT
 Run: `pnpm format && TEST_DATABASE_URL=postgres://postgres@127.0.0.1:54329/uw_test pnpm verify`
 
 ```bash
-git add apps/uw-app pnpm-lock.yaml .dependency-cruiser.mjs
+git add apps/uw-platform pnpm-lock.yaml .dependency-cruiser.mjs
 git commit -m "feat(engines): claude-code-sandbox runs Claude Code headless in a Sandbox behind an egress proxy that holds the key
 
 HE-8"
@@ -1630,8 +1630,8 @@ Shared root `infra/` in its own commit.
 **Requirements:** HE-9.
 
 **Files:**
-- Create: `apps/uw-app/engines/codex-sandbox/work.ts`, `apps/uw-app/engines/codex-sandbox/work.test.ts`, `infra/containers/claude-code/Dockerfile`, `infra/containers/codex/Dockerfile`, `tools/infra/containers.test.ts`
-- Modify: `apps/uw-app/engines/codex-sandbox/index.ts`, `infra/uw-app/wrangler.go-live.toml`, `infra/README.md`, `tools/infra/go-live.test.ts`
+- Create: `apps/uw-platform/engines/codex-sandbox/work.ts`, `apps/uw-platform/engines/codex-sandbox/work.test.ts`, `infra/containers/claude-code/Dockerfile`, `infra/containers/codex/Dockerfile`, `tools/infra/containers.test.ts`
+- Modify: `apps/uw-platform/engines/codex-sandbox/index.ts`, `infra/uw-platform/wrangler.go-live.toml`, `infra/README.md`, `tools/infra/go-live.test.ts`
 
 **`codex-sandbox` work:** the session pattern of Task 19; files `/workspace/.codex/config.toml` (one MCP server `uw-platform` at `http://mcp.internal/mcp`, `model = "<model>"`, `model_provider` pointing at `http://model.internal` with no key) and `/workspace/PROMPT.md`; command `codex exec --json --skip-git-repo-check --cd /workspace "$(cat /workspace/PROMPT.md)"`; the last `agent_message` event's text is the result, `token_count` events the usage; resolved provider `openai`; `costMicros` null unless the JSON reports a cost; compute as Task 19. The run core posts its verdict through `postReview` as `uw-reviewer-codex` (the descriptor's reviewer), on a provider distinct from the first review's (Task 17 withholds otherwise).
 
@@ -1678,7 +1678,7 @@ Shared root infra/: Claude Code and Codex images with no key baked in; the
 Durable Object classes and their v2 migration wait for the switch-on.
 
 HE-8 HE-9"
-git add apps/uw-app
+git add apps/uw-platform
 git commit -m "feat(engines): codex-sandbox, the second Reviewer identity on its own provider
 
 HE-9"
@@ -1694,7 +1694,7 @@ HE-9"
 - Create: `skills/harness/SKILL.md`, `tools/skills/sync-harness-skill.ts`, `tools/skills/sync-harness-skill.test.ts`, `tools/skills/fixtures/harness-skill-page.json`, `tools/architecture/skill-scripts.test.ts`
 - Modify: `package.json` (`"skill:sync": "node tools/skills/sync-harness-skill.ts"`), `knip.json` or the knip config if the new tool needs an entry
 
-**`skills/harness/SKILL.md`:** agentskills.io format: YAML frontmatter `name: harness`, `description: <one sentence>` (the fields `skillFrontmatterSchema` requires; read it), then sections, sentence case, second person: Sign in (`cloudflared access` and the MCP server entry for `https://<uw-app>/mcp` with the `x-uw-device` header), Poll (`poll_queue`), Claim (`claim_item`, with `delegation_id` for a scheduled routine), Worktree (`git worktree add ../<item> -b harness/<item> <expected head>`, or the adopted branch), Context (`resolve_context`), Work and record (`record_run_step` on every step with `tokensIn`, `tokensOut` and `costBasis: subscription`, no cost; read `prompts` in the reply), The lease warning (when a reply carries `leaseWarning: true`, commit everything as `wip: <item>` and push to `harness/<item>` with your own git credentials), Pull request (open it with the fenced `harness` declaration first in the body: `closes`, `risks`, `touches`, `risk_tier`, `risk_domains`), Submit (`submit_to_gate` with the pull request and head), What you never do (approve, merge, deploy, publish; no verb exists for them). No `scripts/` folder in v1.
+**`skills/harness/SKILL.md`:** agentskills.io format: YAML frontmatter `name: harness`, `description: <one sentence>` (the fields `skillFrontmatterSchema` requires; read it), then sections, sentence case, second person: Sign in (`cloudflared access` and the MCP server entry for `https://<uw-platform>/mcp` with the `x-uw-device` header), Poll (`poll_queue`), Claim (`claim_item`, with `delegation_id` for a scheduled routine), Worktree (`git worktree add ../<item> -b harness/<item> <expected head>`, or the adopted branch), Context (`resolve_context`), Work and record (`record_run_step` on every step with `tokensIn`, `tokensOut` and `costBasis: subscription`, no cost; read `prompts` in the reply), The lease warning (when a reply carries `leaseWarning: true`, commit everything as `wip: <item>` and push to `harness/<item>` with your own git credentials), Pull request (open it with the fenced `harness` declaration first in the body: `closes`, `risks`, `touches`, `risk_tier`, `risk_domains`), Submit (`submit_to_gate` with the pull request and head), What you never do (approve, merge, deploy, publish; no verb exists for them). No `scripts/` folder in v1.
 
 **Sync** (`tools/skills/sync-harness-skill.ts`): reads a page JSON (the `read_page` verb's output shape) from the path argument, refuses one whose `type` is not `skill` or whose frontmatter fails `skillFrontmatterSchema`, and writes `skills/harness/SKILL.md` as `---\n<frontmatter as YAML>\n---\n\n<body_md>`; `--check` compares instead of writing and exits 1 on a difference.
 

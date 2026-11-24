@@ -27,30 +27,30 @@ export const simMayImport = [
   '^(node:)?(fs|fs/promises|path|url|process|os|assert|assert/strict|child_process)$',
 ];
 
-export const github = (file) => `^apps/uw-app/github/${file}\\.ts$`;
+export const github = (file) => `^apps/uw-platform/github/${file}\\.ts$`;
 export const octokitWebhookSignatures = npm('@octokit/webhooks-methods');
-export const appTesting = '^apps/(uw-app|uw-ingest)/(github/)?testing/';
-export const gateKernel = '^apps/uw-app/commands/person/gate-kernel\\.ts$';
-export const gateGitHub = '^apps/uw-app/commands/person/gate-github\\.ts$';
-export const commandCapabilities = '^apps/uw-app/commands/capabilities\\.ts$';
-export const runHostDeps = '^apps/uw-app/runs/deps\\.ts$';
-export const delegatedExitJob = '^apps/uw-app/cron/delegated-exits\\.ts$';
+export const appTesting = '^apps/(uw-platform|uw-ingest)/(github/)?testing/';
+export const gateKernel = '^apps/uw-platform/commands/person/gate-kernel\\.ts$';
+export const gateGitHub = '^apps/uw-platform/commands/person/gate-github\\.ts$';
+export const commandCapabilities = '^apps/uw-platform/commands/capabilities\\.ts$';
+export const runHostDeps = '^apps/uw-platform/runs/deps\\.ts$';
+export const delegatedExitJob = '^apps/uw-platform/cron/delegated-exits\\.ts$';
 export const readRoots = [
-  '^apps/uw-app/queue/worker\\.ts$',
+  '^apps/uw-platform/queue/worker\\.ts$',
   gateKernel,
   gateGitHub,
   runHostDeps,
   delegatedExitJob,
 ];
 export const appConfigRoots = [
-  '^apps/uw-app/(queue/worker|cron/github-sweep|cron/delegated-exits)\\.ts$',
+  '^apps/uw-platform/(queue/worker|cron/github-sweep|cron/delegated-exits)\\.ts$',
   gateGitHub,
   runHostDeps,
 ];
 
 export const engineKeys =
   '(claude-messages|openrouter-messages|claude-code-sandbox|codex-sandbox|claude-managed-agent|external)';
-export const engineDirectory = `^apps/uw-app/engines/${engineKeys}/`;
+export const engineDirectory = `^apps/uw-platform/engines/${engineKeys}/`;
 
 export const forbidden = (name, comment, from, to) => ({
   name,

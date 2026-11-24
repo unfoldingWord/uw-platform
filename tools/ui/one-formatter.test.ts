@@ -33,19 +33,19 @@ describe('WB-11 Intl.NumberFormat appears only in packages/core/money.ts', () =>
   it('flags a planted second formatter', () => {
     const planted = new Map([
       [owner, 'new Intl.NumberFormat()'],
-      ['apps/uw-app/pages/spend.tsx', 'const f = new Intl.NumberFormat("en-US");'],
+      ['apps/uw-platform/pages/spend.tsx', 'const f = new Intl.NumberFormat("en-US");'],
       ['packages/ui/components/x.ts', 'Intl . NumberFormat'],
-      ['apps/uw-app/pages/spend.test.ts', 'new Intl.NumberFormat()'],
-      ['apps/uw-app/pages/a.tsx', 'Intl["NumberFormat"]'],
-      ['apps/uw-app/pages/b.tsx', 'const { NumberFormat } = Intl;'],
+      ['apps/uw-platform/pages/spend.test.ts', 'new Intl.NumberFormat()'],
+      ['apps/uw-platform/pages/a.tsx', 'Intl["NumberFormat"]'],
+      ['apps/uw-platform/pages/b.tsx', 'const { NumberFormat } = Intl;'],
       ['sim/d.ts', 'total.toFixed(2)'],
-      ['apps/uw-app/pages/fine.tsx', 'const money = formatMoney(m);'],
+      ['apps/uw-platform/pages/fine.tsx', 'const money = formatMoney(m);'],
     ]);
     expect(offenders(planted)).toEqual([
-      'apps/uw-app/pages/spend.tsx',
+      'apps/uw-platform/pages/spend.tsx',
       'packages/ui/components/x.ts',
-      'apps/uw-app/pages/a.tsx',
-      'apps/uw-app/pages/b.tsx',
+      'apps/uw-platform/pages/a.tsx',
+      'apps/uw-platform/pages/b.tsx',
       'sim/d.ts',
     ]);
   });

@@ -10,35 +10,38 @@ function rule(appliedIn: string): ReadGovernance {
   return { how: 'rule', appliedIn };
 }
 
-const accessView = 'apps/uw-app/views/parts/access-view.ts';
-const credentialRecords = 'apps/uw-app/credentials/records.ts';
+const accessView = 'apps/uw-platform/views/parts/access-view.ts';
+const credentialRecords = 'apps/uw-platform/credentials/records.ts';
 const readableDelegations = 'packages/harness/delegations/readable.ts';
 
 export const restrictedReads: ReadonlyMap<string, ReadGovernance> = new Map<string, ReadGovernance>(
   [
     ['packages/db/store/access.ts', rule(accessView)],
-    ['apps/uw-app/agents/routines.ts', rule('apps/uw-app/views/screens/agents.tsx')],
+    ['apps/uw-platform/agents/routines.ts', rule('apps/uw-platform/views/screens/agents.tsx')],
     ['packages/harness/delegations/commands.ts', rule(readableDelegations)],
     ['packages/harness/views/plane-list.ts', rule(readableDelegations)],
     ['packages/harness/views/agents.ts', rule('packages/harness/views/agents.ts')],
     ['packages/harness/views/persona.ts', rule('packages/harness/views/persona.ts')],
     ['packages/harness/views/waiting.ts', rule('packages/harness/views/waiting.ts')],
     [credentialRecords, rule(credentialRecords)],
-    ['apps/uw-app/collections/query/run.ts', rule('apps/uw-app/collections/query/scope.ts')],
+    [
+      'apps/uw-platform/collections/query/run.ts',
+      rule('apps/uw-platform/collections/query/scope.ts'),
+    ],
     ['packages/harness/views/gates.ts', derived],
     ['packages/harness/views/holder.ts', derived],
     ['packages/harness/views/look.ts', derived],
     ['packages/harness/views/plane.ts', derived],
-    ['apps/uw-app/acl/default-grant.ts', platform],
-    ['apps/uw-app/acl/grant-commands.ts', platform],
-    ['apps/uw-app/agents/service-tokens.ts', platform],
-    ['apps/uw-app/credentials/bindings.ts', platform],
-    ['apps/uw-app/credentials/open.ts', platform],
-    ['apps/uw-app/credentials/reveal-grants.ts', platform],
-    ['apps/uw-app/credentials/revoke.ts', platform],
-    ['apps/uw-app/credentials/standing.ts', platform],
-    ['apps/uw-app/credentials/store.ts', platform],
-    ['apps/uw-app/notify/push/store.ts', platform],
+    ['apps/uw-platform/acl/default-grant.ts', platform],
+    ['apps/uw-platform/acl/grant-commands.ts', platform],
+    ['apps/uw-platform/agents/service-tokens.ts', platform],
+    ['apps/uw-platform/credentials/bindings.ts', platform],
+    ['apps/uw-platform/credentials/open.ts', platform],
+    ['apps/uw-platform/credentials/reveal-grants.ts', platform],
+    ['apps/uw-platform/credentials/revoke.ts', platform],
+    ['apps/uw-platform/credentials/standing.ts', platform],
+    ['apps/uw-platform/credentials/store.ts', platform],
+    ['apps/uw-platform/notify/push/store.ts', platform],
     ['packages/db/bootstrap-admin.ts', platform],
     ['packages/db/store/delegations.ts', platform],
     ['packages/db/store/gate-decisions.ts', platform],

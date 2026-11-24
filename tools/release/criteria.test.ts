@@ -19,10 +19,10 @@ const allowedConditions = new Set([
 
 const staticCheck = 'tools/architecture/agent-boundary.test.ts';
 const runtimeCheck = 'sim/kernel/agent-boundary-runtime.test.ts';
-const conformanceCheck = 'apps/uw-app/mcp/conformance.pg.test.ts';
-const plantedConformance = 'apps/uw-app/testing/conformance.test.ts';
-const grantRace = 'apps/uw-app/harness/grant-race.pg.test.ts';
-const claimsRace = 'apps/uw-app/harness/claims.pg.test.ts';
+const conformanceCheck = 'apps/uw-platform/mcp/conformance.pg.test.ts';
+const plantedConformance = 'apps/uw-platform/testing/conformance.test.ts';
+const grantRace = 'apps/uw-platform/harness/grant-race.pg.test.ts';
+const claimsRace = 'apps/uw-platform/harness/claims.pg.test.ts';
 const storeRace = 'packages/db/store/claim-race.test.ts';
 const ciDatabase = 'tools/ci/test-database.test.ts';
 const templatePropertyTest = 'packages/harness/template-property.test.ts';

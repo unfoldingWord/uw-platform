@@ -13,7 +13,7 @@
 
 On 2026-10-21 the owner looked at the screens v0.2.0 renders and called them horrible. They had never been looked at: ADR 0007 and WB-11 carried the prototype's tokens but not its components, the font was named and never loaded, and no check compared a rendered screen with anything. The pull requests were reviewed as code.
 
-Between 2026-10-21 and 2026-11-04 the look was designed in ten rounds of a mockup, each round judged by the owner on rendered screens in light and dark, at desktop and phone width. This document records where the rounds ended. v0.3.0 builds it into `apps/uw-app` and adds the check that stops it drifting back: every screen is rendered in CI and compared with a committed picture of itself.
+Between 2026-10-21 and 2026-11-04 the look was designed in ten rounds of a mockup, each round judged by the owner on rendered screens in light and dark, at desktop and phone width. This document records where the rounds ended. v0.3.0 builds it into `apps/uw-platform` and adds the check that stops it drifting back: every screen is rendered in CI and compared with a committed picture of itself.
 
 v0.3.0 changes how the harness looks and what it shows. It does not change what the kernel does, what an agent may do, or who decides a gate.
 
