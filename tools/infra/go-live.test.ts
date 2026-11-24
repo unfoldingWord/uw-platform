@@ -400,11 +400,14 @@ describe('FD-7 the Access variables and ids are placeholders or well formed', ()
 });
 
 describe('P13 per-PR Workers never register as a queue consumer', () => {
-  it.each([live, goLive])('uw-platform %s has a preview environment with no queue consumer', (file) => {
-    const preview = environment('uw-platform', 'preview', file);
-    expect(Object.keys(preview).length).toBeGreaterThan(0);
-    expect(queuesOf(preview).consumers ?? []).toEqual([]);
-  });
+  it.each([live, goLive])(
+    'uw-platform %s has a preview environment with no queue consumer',
+    (file) => {
+      const preview = environment('uw-platform', 'preview', file);
+      expect(Object.keys(preview).length).toBeGreaterThan(0);
+      expect(queuesOf(preview).consumers ?? []).toEqual([]);
+    },
+  );
 
   it('only staging and production declare a consumer', () => {
     const consumers = Object.entries(environments(load(`infra/uw-platform/${goLive}`)))

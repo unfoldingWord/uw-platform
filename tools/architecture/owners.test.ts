@@ -197,8 +197,14 @@ function plantedTree(): string {
   const base = mkdtempSync(join(tmpdir(), 'uw-owners-'));
   mkdirSync(join(base, 'apps/uw-platform/people'), { recursive: true });
   mkdirSync(join(base, 'apps/uw-platform/acl'), { recursive: true });
-  writeFileSync(join(base, 'apps/uw-platform/people/directory.ts'), 'db.insert(people).values(row);');
-  writeFileSync(join(base, 'apps/uw-platform/acl/stray.ts'), 'await db.insert(people).values(row);');
+  writeFileSync(
+    join(base, 'apps/uw-platform/people/directory.ts'),
+    'db.insert(people).values(row);',
+  );
+  writeFileSync(
+    join(base, 'apps/uw-platform/acl/stray.ts'),
+    'await db.insert(people).values(row);',
+  );
   writeFileSync(join(base, 'apps/uw-platform/acl/raw.ts'), 'sql`UPDATE people SET status = 1`;');
   return base;
 }
@@ -209,7 +215,10 @@ function plantedOutsideApps(): string {
   mkdirSync(join(base, 'packages/harness'), { recursive: true });
   mkdirSync(join(base, 'packages/db'), { recursive: true });
   mkdirSync(join(base, 'sim/adapters'), { recursive: true });
-  writeFileSync(join(base, 'apps/uw-platform/people/directory.ts'), 'db.insert(people).values(row);');
+  writeFileSync(
+    join(base, 'apps/uw-platform/people/directory.ts'),
+    'db.insert(people).values(row);',
+  );
   writeFileSync(join(base, 'apps/uw-platform/namespaced.ts'), 'tx.insert(schema.people);');
   writeFileSync(join(base, 'packages/harness/store.ts'), 'await db.update(people).set(row);');
   writeFileSync(join(base, 'packages/db/schema.ts'), 'db.insert(people).values(row);');
