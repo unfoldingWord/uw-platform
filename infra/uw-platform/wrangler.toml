@@ -235,3 +235,43 @@ class_name = "PageDraft"
 [[env.preview.r2_buckets]]
 binding = "FILES"
 bucket_name = "uw-files-staging"
+
+[[env.staging.migrations]]
+tag = "v1"
+new_sqlite_classes = ["HarnessHub"]
+
+[[env.staging.migrations]]
+tag = "v2"
+new_sqlite_classes = ["ClaudeCodeSandbox", "CodexSandbox"]
+
+[[env.staging.migrations]]
+tag = "v3"
+new_sqlite_classes = ["PageDraft"]
+
+[[env.staging.migrations]]
+tag = "v4"
+deleted_classes = ["HarnessHub", "ClaudeCodeSandbox", "CodexSandbox", "PageDraft"]
+
+[[env.staging.migrations]]
+tag = "v5"
+new_sqlite_classes = ["HarnessHub", "ClaudeCodeSandbox", "CodexSandbox", "PageDraft"]
+
+[[env.production.migrations]]
+tag = "v1"
+new_sqlite_classes = ["HarnessHub"]
+
+[[env.production.migrations]]
+tag = "v2"
+new_sqlite_classes = ["ClaudeCodeSandbox", "CodexSandbox"]
+
+[[env.production.migrations]]
+tag = "v3"
+new_sqlite_classes = ["PageDraft"]
+
+[[env.production.migrations]]
+tag = "v4"
+deleted_classes = ["HarnessHub", "ClaudeCodeSandbox", "CodexSandbox", "PageDraft"]
+
+[[env.production.migrations]]
+tag = "v5"
+new_sqlite_classes = ["HarnessHub", "ClaudeCodeSandbox", "CodexSandbox", "PageDraft"]
