@@ -12,7 +12,7 @@ export function Popover(props: {
   readonly id: string;
   readonly label: string;
   readonly wide?: boolean | undefined;
-  readonly role?: 'menu' | 'dialog' | undefined;
+  readonly role?: 'group' | 'dialog' | undefined;
   readonly children?: Child | undefined;
 }) {
   const width = props.wide === true ? 'w-col-max' : 'w-aside';
@@ -20,7 +20,7 @@ export function Popover(props: {
     <div
       id={props.id}
       popover="auto"
-      role={props.role ?? 'menu'}
+      role={props.role ?? 'group'}
       aria-label={props.label}
       data-anchored=""
       class={`m-0 max-w-full flex-col gap-1 rounded-lg border-0 bg-surface p-1 text-text shadow-3 ${width} open:flex`}
@@ -47,7 +47,6 @@ export function Menu(props: {
       <button
         type="button"
         popovertarget={id}
-        aria-haspopup="menu"
         aria-label={square ? props.label : undefined}
         title={square ? props.label : undefined}
         class={buttonClass(props.variant ?? 'ghost', props.size, square)}
@@ -71,7 +70,7 @@ export function MenuLink(props: {
   const href = safeHref(props.href);
   if (href === undefined) return null;
   return (
-    <a role="menuitem" href={href} class={item}>
+    <a href={href} class={item}>
       {props.icon === undefined ? null : <Icon name={props.icon} size={1} />}
       <span class="min-w-0 flex-1 truncate">{props.children}</span>
       {props.hint === undefined ? null : (
@@ -92,7 +91,6 @@ export function MenuItem(props: {
 }) {
   return (
     <button
-      role="menuitem"
       type={props.type ?? 'button'}
       name={props.name}
       value={props.value}

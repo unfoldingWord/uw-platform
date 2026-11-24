@@ -210,6 +210,8 @@ async function peekBesideTheList(world: GateWorld): Promise<void> {
   expect(rowButtons(document)).toEqual(['Approve merge', 'Send back']);
   const plain = await documentOf(world, world.kimEmail, waitingPath(harnessId));
   expect(plain.querySelector('main aside[data-peek]')).toBeNull();
+  const preview = plain.querySelector('a[aria-label^="Preview "]');
+  expect(preview?.getAttribute('href')).toBe(`${path}#${panel?.id}`);
 }
 
 async function noProblems(world: GateWorld): Promise<void> {

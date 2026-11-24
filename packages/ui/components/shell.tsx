@@ -52,7 +52,7 @@ function SkipLink() {
 function ViewTabs(props: { readonly tabs: readonly Tab[] }) {
   if (props.tabs.length === 0) return null;
   return (
-    <div class="bg-surface px-5 pt-2 md:px-6">
+    <div data-chrome="" class="bg-surface px-5 pt-2 md:px-6">
       <div class="mx-auto w-full max-w-content">
         <Tabs tabs={props.tabs} />
       </div>

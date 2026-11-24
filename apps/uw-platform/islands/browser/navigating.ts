@@ -1,6 +1,6 @@
 const NAVIGATING = 'data-navigating';
 
-function plainClick(event: MouseEvent): boolean {
+export function plainClick(event: MouseEvent): boolean {
   if (event.defaultPrevented || event.button !== 0) return false;
   return !(event.metaKey || event.ctrlKey || event.shiftKey || event.altKey);
 }
@@ -41,5 +41,9 @@ export function wireNavigating(document: Document): void {
   document.addEventListener('submit', (event) => {
     if (!event.defaultPrevented) start();
   });
-  document.defaultView?.addEventListener('pageshow', () => root.removeAttribute(NAVIGATING));
+  const stop = () => root.removeAttribute(NAVIGATING);
+  document.defaultView?.addEventListener('beforeunload', (event) => {
+    if (event.defaultPrevented) stop();
+  });
+  document.defaultView?.addEventListener('pageshow', stop);
 }

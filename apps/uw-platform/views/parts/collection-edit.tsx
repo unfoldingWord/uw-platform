@@ -258,14 +258,18 @@ export function EditInPlace(props: {
 
 export function Confirmed(props: {
   readonly opener: string;
+  readonly subject: string;
   readonly loss: string;
   readonly children: Child;
 }) {
   return (
     <details>
-      <summary class={`${buttonClass('ghost', 'sm')} list-none`}>{props.opener}</summary>
+      <summary class={`${buttonClass('ghost', 'sm')} list-none`}>
+        {props.opener}
+        <span class="sr-only">{` ${props.subject}`}</span>
+      </summary>
       <div class="absolute top-full right-0 z-10 mt-1 flex w-col-max max-w-full flex-col gap-3 rounded-lg bg-surface p-3 shadow-3">
-        <p class="m-0 text-sm text-text">{props.loss}</p>
+        <p class="m-0 text-sm break-words text-text">{props.loss}</p>
         {props.children}
       </div>
     </details>

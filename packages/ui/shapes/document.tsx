@@ -21,7 +21,7 @@ export function DocumentShape(props: {
           <div class={reading}>{props.children}</div>
           <aside
             aria-label={props.railLabel ?? 'Properties'}
-            class={`order-first min-w-0 flex-col gap-5 text-sm lg:order-none lg:flex lg:border-l lg:border-line-soft lg:pl-5 ${props.railOnPhone === false ? 'hidden' : 'flex'}`}
+            class={`min-w-0 flex-col gap-5 text-sm lg:order-none lg:flex lg:border-l lg:border-line-soft lg:pl-5 ${props.railOnPhone === false ? 'hidden md:flex' : 'order-first flex'}`}
           >
             {props.rail}
           </aside>

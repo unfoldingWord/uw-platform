@@ -60,6 +60,12 @@ describe('WB-11 the shell', () => {
     expect(document.querySelectorAll('[data-side]')).toHaveLength(2);
   });
 
+  it('keeps view tabs in the chrome hidden in print', async () => {
+    const tabs = [{ label: 'Queue', href: '/queue', current: true }];
+    const document = documentOf(await render({ tabs }));
+    expect(document.querySelector('[data-chrome] nav[aria-label="Views"]')).not.toBeNull();
+  });
+
   it('the current page is marked aria-current="page"', async () => {
     const document = documentOf(await render({ current: '/health' }));
     const current = [...document.querySelectorAll('nav[aria-label="Main"] a[aria-current]')];

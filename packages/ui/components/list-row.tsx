@@ -44,7 +44,9 @@ export function ListRow(props: {
             {props.title}
           </a>
         )}
-        {props.meta === undefined ? null : <p class="m-0 text-sm text-text-3">{props.meta}</p>}
+        {props.meta === undefined ? null : (
+          <p class="m-0 text-sm text-text-3 [&_a]:relative">{props.meta}</p>
+        )}
       </div>
       {props.trail === undefined ? null : (
         <div class="relative flex shrink-0 items-center gap-2">{props.trail}</div>

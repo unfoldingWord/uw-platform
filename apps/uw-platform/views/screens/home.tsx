@@ -113,17 +113,15 @@ function shown(row: WaitingRow, viewer: string | null): Shown {
   };
 }
 
-function countWords(count: number, capped: boolean): string {
-  if (capped) return `At least ${formatCount(count)} things are waiting on you`;
-  return count === 1
-    ? '1 thing is waiting on you'
-    : `${formatCount(count)} things are waiting on you`;
-}
-
-function lede(count: number, capped: boolean, uncounted: number): string {
-  const head = countWords(count, capped);
-  if (uncounted === 0) return head;
-  return `${head}, not counting ${formatCount(uncounted)} on pull requests by bot accounts`;
+function waitingSummary(count: number, capped: boolean, uncounted: number) {
+  const number = formatCount(count);
+  const value = capped ? `At least ${number}` : number;
+  const head = `${value} ${count === 1 ? 'thing is' : 'things are'} waiting on you`;
+  const lede =
+    uncounted === 0
+      ? head
+      : `${head}, not counting ${formatCount(uncounted)} on pull requests by bot accounts`;
+  return { value, lede };
 }
 
 const cappedNote = `At least ${formatCount(FAILED_RUNS_LIMIT)} runs failed on your items in the last 7 days. The newest ${formatCount(FAILED_RUNS_LIMIT)} are listed.`;
@@ -178,6 +176,7 @@ function WaitingList(props: { readonly rows: readonly Shown[] }) {
 function WaitingSection(props: {
   readonly rows: readonly Shown[];
   readonly notes: readonly string[];
+  readonly waiting: string;
 }) {
   const count = props.rows.length;
   return (
@@ -186,7 +185,7 @@ function WaitingSection(props: {
       sub={
         count === 0
           ? 'an agent cannot advance these'
-          : `${formatCount(count)} · an agent cannot advance these`
+          : `${props.waiting} · an agent cannot advance these`
       }
     >
       {props.notes.map((note) => (
@@ -331,7 +330,7 @@ function PushControl() {
 }
 
 function Figures(props: {
-  readonly waiting: number;
+  readonly waiting: string;
   readonly cards: readonly WorkflowCard[];
   readonly toReview: number;
 }) {
@@ -341,7 +340,7 @@ function Figures(props: {
   );
   return (
     <>
-      <Kpi label="Waiting on you" value={formatCount(props.waiting)} person />
+      <Kpi label="Waiting on you" value={props.waiting} person />
       <Kpi label="Workflows" value={formatCount(props.cards.length)} detail="in Agent Queues" />
       <Kpi label="In progress" value={formatCount(moving)} detail="items across workflows" />
       <Kpi
@@ -376,16 +375,21 @@ export async function homeScreen(c: Context<AppEnv>): Promise<Response> {
     crumbs: [{ label: pageNames.home }],
     live: { screen: 'home' as const, harnesses, refreshEveryMs: REFRESH_EVERY_MS },
   };
-  const head =
-    rows.length === 0
-      ? {}
-      : { lede: lede(rows.length - waiting.uncounted, notes.length > 0, waiting.uncounted) };
+  const summary = waitingSummary(
+    rows.length - waiting.uncounted,
+    notes.length > 0,
+    waiting.uncounted,
+  );
   return renderScreen(
     c,
     spec,
     <OverviewShape
-      head={{ eyebrow: `Today · ${formatDate(screen.at)}`, title: greeting(person), ...head }}
-      figures={<Figures waiting={rows.length} cards={cards} toReview={toReview.length} />}
+      head={{
+        eyebrow: `Today · ${formatDate(screen.at)}`,
+        title: greeting(person),
+        lede: rows.length === 0 ? undefined : summary.lede,
+      }}
+      figures={<Figures waiting={summary.value} cards={cards} toReview={toReview.length} />}
       side={
         <>
           <ToReview pages={toReview} at={screen.at} />
@@ -393,7 +397,7 @@ export async function homeScreen(c: Context<AppEnv>): Promise<Response> {
         </>
       }
     >
-      <WaitingSection rows={rows} notes={notes} />
+      <WaitingSection rows={rows} notes={notes} waiting={summary.value} />
       <HarnessCards cards={cards} />
     </OverviewShape>,
   );

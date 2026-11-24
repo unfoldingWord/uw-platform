@@ -48,6 +48,7 @@ describe.skipIf(!testServer)('OB-4 the Board and Home say what their counts leav
       await parkedByBot(db);
       const page = await getHtml(db, ROWAN, '/', {}, clock);
       const { document } = new JSDOM(page.text).window;
+      expect(document.querySelector('main dl dt + dd')?.textContent).toBe('0');
       expect(document.querySelector('main h1 + p')?.textContent).toBe(
         '0 things are waiting on you, not counting 1 on pull requests by bot accounts',
       );

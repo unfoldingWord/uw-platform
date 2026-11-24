@@ -80,7 +80,7 @@ const columns: readonly Column[] = [
 
 function peekPath(shown: Shown): string {
   const { harness, item } = shown.row;
-  return `${waitingPath(harness.id)}?peek=${encodeURIComponent(item.itemId)}`;
+  return `${waitingPath(harness.id)}?peek=${encodeURIComponent(item.itemId)}#${encodeURIComponent(item.itemId)}`;
 }
 
 function ItemCell(props: { readonly shown: Shown; readonly selected: boolean }) {

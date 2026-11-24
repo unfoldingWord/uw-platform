@@ -85,7 +85,7 @@ function SettingRow(props: {
         <p class="m-0 text-sm text-text-3">{props.meta}</p>
       </div>
       {props.actions === undefined ? null : (
-        <div class={`relative ${revealed} has-open:opacity-100`}>{props.actions}</div>
+        <div class={`${revealed} has-open:opacity-100`}>{props.actions}</div>
       )}
     </li>
   );
@@ -99,7 +99,8 @@ function RemoveProperty(props: {
   const scope = `${props.collection}-${props.property.key}`;
   return (
     <Confirmed
-      opener={`Remove ${name}`}
+      opener="Remove"
+      subject={name}
       loss={`Every row loses its ${name} value, and saved views drop their filters and sorts on it. You cannot undo this.`}
     >
       <PlatformCommandForm
@@ -110,7 +111,9 @@ function RemoveProperty(props: {
       >
         <input type="hidden" name="collection" value={props.collection} />
         <input type="hidden" name="property" value={props.property.key} />
-        <Button type="submit" size="sm">{`Confirm remove ${name}`}</Button>
+        <Button type="submit" size="sm">
+          Confirm<span class="sr-only">{` remove ${name}`}</span>
+        </Button>
       </PlatformCommandForm>
     </Confirmed>
   );
@@ -121,7 +124,8 @@ function DeleteView(props: { readonly view: SavedView }) {
   const who = view.settings.scope === 'shared' ? 'everyone who uses it' : 'you';
   return (
     <Confirmed
-      opener={`Delete ${view.settings.name}`}
+      opener="Delete"
+      subject={view.settings.name}
       loss={`${view.settings.name} goes away for ${who}, with its filters, sorts, groups and card order. Page embeds of it stop showing. You cannot undo this.`}
     >
       <PlatformCommandForm
@@ -131,7 +135,9 @@ function DeleteView(props: { readonly view: SavedView }) {
         done="Deleted"
       >
         <input type="hidden" name="viewId" value={view.id} />
-        <Button type="submit" size="sm">{`Confirm delete ${view.settings.name}`}</Button>
+        <Button type="submit" size="sm">
+          Confirm<span class="sr-only">{` delete ${view.settings.name}`}</span>
+        </Button>
       </PlatformCommandForm>
     </Confirmed>
   );

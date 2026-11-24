@@ -14,6 +14,8 @@ export function SidePanel(props: {
   const headingId = domId('peek', props.id);
   return (
     <aside
+      id={props.id}
+      tabindex={-1}
       aria-labelledby={headingId}
       data-peek={props.id}
       class="flex min-w-0 flex-col gap-4 rounded-lg bg-surface p-5 shadow-3 lg:sticky lg:top-0 lg:self-start"

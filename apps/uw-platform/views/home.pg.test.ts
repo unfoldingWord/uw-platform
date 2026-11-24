@@ -177,6 +177,7 @@ async function cappedSaysAtLeast(db: Database): Promise<void> {
   expect(document.querySelector('main [role="note"]')?.textContent).toBe(
     'At least 50 runs failed on your items in the last 7 days. The newest 50 are listed.',
   );
+  expect(document.querySelector('main dl dt + dd')?.textContent).toBe('At least 52');
   expect(linksOf(page.text)).toHaveLength(52);
 }
 
