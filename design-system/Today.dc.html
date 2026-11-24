@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Today</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@400;600;800&amp;family=JetBrains+Mono:wght@400;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+.light{--surface:#ffffff;--raised:#f4f8fa;--hover:#e7eef2;--line:#c4d3db;--soft:#e7eef2;--text:#0c171f;--text2:#404c55;--text3:#5a6e7a;--side:#014263;--sideHover:#32607e;--sideText:#f0f8fe;--sideText3:#aec8db;--accent:#31ade3;--accentText:#014964;--accentSoft:#daf1fe;--human:#e59d33;--humanText:#5c3a02;--humanSoft:#fff5ea;--humanLine:#ffd29c;--okText:#214a4b;--okSoft:#defeff;--title:#014263;--depth:rgba(4,13,21,.12)}
+.dark{--surface:#0c171f;--raised:#162129;--hover:#243038;--line:#243038;--soft:#162129;--text:#f4f8fa;--text2:#c4d3db;--text3:#9da6ad;--side:#022c44;--sideHover:#014263;--sideText:#f0f8fe;--sideText3:#aec8db;--accent:#31ade3;--accentText:#75d1ff;--accentSoft:#012d40;--human:#e59d33;--humanText:#ffd29c;--humanSoft:#3b2300;--humanLine:#7c5008;--okText:#9eebed;--okSoft:#0f2e2f;--title:#f4f8fa;--depth:rgba(0,0,0,.55)}
+a{color:var(--accentText)}a:hover{color:var(--accent)}
+.meta{font-size:13px;line-height:1.5;color:var(--text3);margin:0}
+.label{font-size:12px;font-weight:600;color:var(--text3);margin:0}
+.mono{font-family:'JetBrains Mono',ui-monospace,monospace;font-size:12px;color:var(--text3)}
+.nav{display:flex;align-items:center;gap:10px;padding:6px 10px;border-radius:8px;color:var(--sideText);font-size:14px;text-decoration:none;transition:background .12s ease-out}
+.nav:hover{background:var(--sideHover);color:var(--sideText)}
+.nav-on{background:var(--sideHover);font-weight:600}
+.grp{color:var(--sideText3);font-size:12px;font-weight:600;padding:16px 10px 4px;margin:0}
+.fig{display:flex;flex-direction:column;gap:4px;padding:16px;border-radius:8px;background:var(--surface);box-shadow:0 0 0 1px var(--soft);border-top:3px solid var(--accent)}
+.row{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:8px;transition:background .12s ease-out;text-decoration:none;color:var(--text)}
+.row:hover,.row:focus-visible{background:var(--raised);color:var(--text)}
+.row .acts{opacity:0;transition:opacity .12s ease-out;display:flex;gap:4px}
+.row:hover .acts,.row:focus-visible .acts{opacity:1}
+.ib{font-family:inherit;display:inline-grid;place-items:center;width:28px;height:28px;border-radius:8px;border:0;background:transparent;color:var(--text2);cursor:pointer}
+.ib:hover{background:var(--hover);color:var(--text)}
+.badge{display:inline-flex;align-items:center;padding:0 6px;height:20px;border-radius:4px;font-size:12px;font-weight:600;white-space:nowrap}
+.btn{font-family:inherit;display:inline-flex;align-items:center;gap:8px;height:32px;padding:0 12px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;border:1px solid var(--line);background:var(--surface);color:var(--text)}
+.btn:hover{border-color:var(--accent);color:var(--accentText)}
+.av{display:inline-grid;place-items:center;width:28px;height:28px;border-radius:9999px;background:var(--accentSoft);color:var(--accentText);font-size:11px;font-weight:800;flex-shrink:0}
+</style>
+</helmet>
+<div class="{{theme}}" style="font-family:'Nunito Sans',Avenir,system-ui,sans-serif;background:var(--surface);color:var(--text);display:flex;flex-wrap:wrap;min-height:1040px">
+
+<nav aria-label="Main" style="flex:1 1 232px;max-width:100%;background:var(--side);padding:16px 12px;display:flex;flex-direction:column;gap:2px;box-sizing:border-box">
+<div style="display:flex;align-items:center;gap:10px;padding:4px 10px 12px"><span style="width:24px;height:24px;border-radius:6px;background:#31ade3;display:grid;place-items:center;color:#011624;font-size:12px;font-weight:800">uW</span><span style="color:var(--sideText);font-size:15px;font-weight:800">unfoldingWord</span></div>
+<a href="#" class="nav nav-on" aria-current="page"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5L19 19M5 19l1.5-1.5M17.5 6.5L19 5"></path></svg>Today<span style="flex:1"></span><span style="background:#e59d33;color:#011624;border-radius:9999px;padding:0 7px;font-size:11px;font-weight:800;font-family:'JetBrains Mono',monospace">4</span></a>
+<a href="#" class="nav"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="3" y="4" width="5" height="16" rx="1.5"></rect><rect x="10" y="4" width="5" height="11" rx="1.5"></rect><rect x="17" y="4" width="4" height="7" rx="1.5"></rect></svg>Agent Queues</a>
+<a href="#" class="nav"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M3 12h4l3-8 4 16 3-8h4"></path></svg>Health</a>
+<p class="grp">Knowledge</p>
+<a href="#" class="nav"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 5a2 2 0 012-2h12v18H6a2 2 0 01-2-2z"></path><path d="M8 7h6"></path></svg>Wiki</a>
+<a href="#" class="nav"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"></rect><path d="M3 9h18M9 21V9"></path></svg>Collections</a>
+<p class="grp">Admin</p>
+<a href="#" class="nav"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"></circle><path d="M2.5 20a6.5 6.5 0 0113 0M17 11l2 2 3-3"></path></svg>Access</a>
+<a href="#" class="nav"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="8" cy="15" r="4"></circle><path d="M11 12l9-9M17 6l3 3"></path></svg>Credentials</a>
+<a href="#" class="nav" style="color:var(--sideText3)"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.8"></circle><circle cx="12" cy="12" r="1.8"></circle><circle cx="19" cy="12" r="1.8"></circle></svg>More</a>
+</nav>
+
+<div style="flex:999 1 640px;min-width:0;display:flex;flex-direction:column">
+<header style="height:52px;display:flex;align-items:center;gap:12px;padding:0 32px;border-bottom:1px solid var(--soft);box-sizing:border-box">
+<span style="font-size:14px;font-weight:600">Today</span>
+<span style="flex:1"></span>
+<span title="All systems working" style="width:8px;height:8px;border-radius:9999px;background:#56a0a3"></span>
+<button class="btn" style="width:240px;max-width:40vw;justify-content:flex-start;color:var(--text3);background:var(--raised);border-color:transparent"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg>Search<span style="flex:1"></span><span class="mono">⌘K</span></button>
+<span class="av" style="background:var(--raised);color:var(--text2)">JG</span>
+</header>
+
+<main style="padding:40px 32px 64px;display:flex;flex-direction:column;gap:48px;max-width:1080px;width:100%;box-sizing:border-box;margin:0 auto">
+<div style="display:flex;align-items:flex-end;gap:16px;flex-wrap:wrap">
+<div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:6px"><p class="meta">Tuesday, 2026-11-24 · sample data</p><h1 style="margin:0;font-size:24px;font-weight:800;letter-spacing:-0.02em;color:var(--title)">Good morning</h1></div>
+<button class="btn">New page</button>
+</div>
+
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px">
+<div class="fig" style="border-top-color:var(--human)"><span class="label">Waiting on you</span><span style="font-size:24px;font-weight:800;color:var(--humanText)">4</span><span class="meta">oldest 1 day</span></div>
+<div class="fig"><span class="label">Agents working</span><span style="font-size:24px;font-weight:800">7</span><span class="meta">across 3 workflows</span></div>
+<div class="fig"><span class="label">Shipped this week</span><span style="font-size:24px;font-weight:800">12</span><span class="meta">3 more than last week</span></div>
+<div class="fig"><span class="label">Health</span><span style="font-size:24px;font-weight:800;color:var(--okText)">Working</span><span class="meta">checked 2 min ago</span></div>
+</div>
+
+<div style="display:flex;gap:48px;flex-wrap:wrap">
+<section style="flex:2 1 420px;min-width:0;display:flex;flex-direction:column;gap:12px">
+<div style="display:flex;align-items:baseline;gap:8px"><h2 style="margin:0;font-size:16px;font-weight:800">Waiting on you</h2><span class="meta">4</span><span style="flex:1"></span><a href="#" style="font-size:13px;font-weight:600;text-decoration:none">See all</a></div>
+<div style="display:flex;flex-direction:column;margin:0 -12px">
+<sc-for list="{{waiting}}" as="w" hint-placeholder-count="4">
+<a href="#" class="row"><span class="av">{{w.who}}</span><span style="flex:1;min-width:0;display:flex;flex-direction:column"><span style="font-size:14px;font-weight:600">{{w.title}}</span><span class="meta">{{w.where}}</span></span><span class="badge" style="background:var(--humanSoft);color:var(--humanText);border:1px solid var(--humanLine)">{{w.stage}}</span><span class="meta" style="width:36px;text-align:right">{{w.age}}</span><span class="acts"><span class="ib" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"></rect><path d="M14 4v16"></path></svg></span></span></a>
+</sc-for>
+</div>
+</section>
+<section style="flex:1 1 240px;min-width:0;display:flex;flex-direction:column;gap:12px">
+<h2 style="margin:0;font-size:16px;font-weight:800">Agents working now</h2>
+<div style="display:flex;flex-direction:column;margin:0 -12px">
+<sc-for list="{{agents}}" as="a" hint-placeholder-count="3">
+<a href="#" class="row"><span style="width:8px;height:8px;border-radius:9999px;background:var(--accent);flex-shrink:0"></span><span style="flex:1;min-width:0;display:flex;flex-direction:column"><span style="font-size:14px;font-weight:600">{{a.title}}</span><span class="meta">{{a.where}}</span></span></a>
+</sc-for>
+</div>
+<h2 style="margin:24px 0 0;font-size:16px;font-weight:800">Recently viewed</h2>
+<div style="display:flex;flex-direction:column;gap:8px">
+<a href="#" style="font-size:14px;text-decoration:none;color:var(--text2)">Translation review workflow</a>
+<a href="#" style="font-size:14px;text-decoration:none;color:var(--text2)">Partner onboarding guide</a>
+<a href="#" style="font-size:14px;text-decoration:none;color:var(--text2)">Health · Database</a>
+</div>
+</section>
+</div>
+</main>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false},"$preview":{"width":1440,"height":1040}}'>
+class Component extends DCLogic {
+renderVals() {
+return {
+theme: this.props.dark ? 'dark' : 'light',
+waiting: [
+{ who: 'AI', title: 'Approve PDF export for the page band', where: 'Development', stage: 'Ship', age: '2 h' },
+{ who: 'MK', title: 'Review Titus 2 translation notes', where: 'Translation review', stage: 'Review', age: '5 h' },
+{ who: 'JL', title: 'Publish the partner onboarding guide', where: 'Wiki · Training', stage: 'Publish', age: '1 d' },
+{ who: 'AI', title: 'Merge Durable Object storage labels', where: 'Development', stage: 'Ship', age: '1 d' }
+],
+agents: [
+{ title: 'Drafting release notes', where: 'Development · Build' },
+{ title: 'Checking key terms in Ruth', where: 'Translation review · Check' },
+{ title: 'Summarising partner reports', where: 'Reporting · Draft' }
+]
+};
+}
+}
+</script>
+</body>
+</html>

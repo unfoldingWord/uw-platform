@@ -1,8 +1,11 @@
 ---
-status: accepted
+status: amended
 date: 2026-11-21
+amended: 2026-11-24
 ---
 # A page is read under a band beside its page tree, and edited in focus mode
+
+> Point 3 overturned on 2026-11-24 by [ADR 0029](0029-the-design-system-is-a-calm-page-with-edit-in-place.md). Edit mode keeps its address, form post and editor hooks, but no longer drops the sidebar, top bar and status bar or raises a sheet: it draws the read view's frame and layout, so nothing moves when a person starts or stops editing. Points 1, 2, 4 and 5 stand.
 
 The owner was not happy with how a person moves between pages or with the switch from reading a page to editing it. Three designs were drawn on a Claude Design canvas (a page tree beside every page; tabs with a side rail; and the one chosen here) and the owner chose the third, "Focus", on 2026-11-21. This ADR records it, because it departs from the prototype ADR 0014 makes the visual authority: the prototype has no knowledge base, and its frame is the same on every screen.
 

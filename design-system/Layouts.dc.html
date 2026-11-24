@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Page shapes</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@400;600;800&amp;family=JetBrains+Mono:wght@400;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#ffffff}
+a{color:#014964}a:hover{color:#31ade3}
+.h2{font-size:20px;font-weight:800;letter-spacing:-0.02em;margin:0;color:#0c171f}
+.h3{font-size:16px;font-weight:800;margin:0;color:#0c171f}
+.meta{font-size:13px;line-height:1.5;color:#5a6e7a;margin:0}
+.label{font-size:12px;font-weight:600;color:#5a6e7a;margin:0}
+.mono{font-family:'JetBrains Mono',ui-monospace,monospace;font-size:12px;color:#5a6e7a}
+.hair{height:1px;background:#e7eef2;border:0;margin:0}
+.wf{display:flex;height:260px;border-radius:12px;overflow:hidden;box-shadow:0 0 0 1px #c4d3db;background:#fff}
+.side{width:56px;background:#014263;display:flex;flex-direction:column;gap:8px;padding:12px 10px;box-sizing:border-box}
+.side i{display:block;height:6px;border-radius:3px;background:#32607e}
+.side i.on{background:#75d1ff}
+.main{flex:1;min-width:0;padding:16px 20px;display:flex;flex-direction:column;gap:10px;box-sizing:border-box}
+.bar{height:8px;border-radius:4px;background:#e7eef2}
+.t{height:12px;border-radius:4px;background:#0c171f;width:40%}
+.acc{background:#31ade3}
+.tpl{display:flex;flex-direction:column;gap:12px}
+</style>
+</helmet>
+<div style="font-family:'Nunito Sans',Avenir,system-ui,sans-serif;color:#0c171f;background:#ffffff;box-sizing:border-box;padding:64px 24px 96px">
+<div style="max-width:1080px;margin:0 auto;display:flex;flex-direction:column;gap:48px">
+
+<header style="display:flex;flex-direction:column;gap:8px">
+<p class="label" style="color:#014964">Layout</p>
+<h1 style="margin:0;font-size:30px;line-height:1.15;font-weight:800;letter-spacing:-0.035em;color:#014263">Five page shapes. Every screen is one of them.</h1>
+<p class="meta" style="font-size:14px;max-width:720px">A new screen names its page shape in the pull request, the way AGENTS.md rule 1 already asks for code. Each shape is a component in <span class="mono">packages/ui/shapes/</span>, so a screen fills slots instead of arranging boxes.</p>
+</header>
+
+<section style="display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:48px;align-items:start">
+<div style="display:flex;height:300px;border-radius:12px;overflow:hidden;box-shadow:0 0 0 1px #c4d3db">
+<div style="width:200px;background:#014263;padding:16px 12px;display:flex;flex-direction:column;gap:6px;box-sizing:border-box">
+<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px"><span style="width:20px;height:20px;border-radius:6px;background:#31ade3"></span><span style="color:#f0f8fe;font-size:13px;font-weight:800">unfoldingWord</span></div>
+<span style="color:#aec8db;font-size:11px;font-weight:600;padding:8px 8px 2px">Work</span>
+<span style="color:#f0f8fe;font-size:13px;font-weight:600;padding:5px 8px;border-radius:6px;background:#32607e">Today</span>
+<span style="color:#f0f8fe;font-size:13px;padding:5px 8px">Agent Queues</span>
+<span style="color:#f0f8fe;font-size:13px;padding:5px 8px">Health</span>
+<span style="color:#aec8db;font-size:11px;font-weight:600;padding:12px 8px 2px">Knowledge</span>
+<span style="color:#f0f8fe;font-size:13px;padding:5px 8px">Wiki</span>
+<span style="color:#f0f8fe;font-size:13px;padding:5px 8px">Collections</span>
+</div>
+<div style="flex:1;min-width:0;display:flex;flex-direction:column;background:#fff">
+<div style="height:44px;display:flex;align-items:center;gap:8px;padding:0 20px;border-bottom:1px solid #e7eef2"><span class="meta">Agent Queues</span><span class="meta">/</span><span style="font-size:13px;font-weight:600">Development</span><span style="flex:1"></span><span style="width:160px;height:26px;border-radius:8px;background:#f4f8fa;display:flex;align-items:center;padding:0 8px" class="meta">Search  ⌘K</span></div>
+<div style="padding:24px 32px;display:flex;flex-direction:column;gap:12px"><div class="t" style="width:30%;height:16px"></div><div class="bar" style="width:60%"></div><div class="bar" style="width:100%;margin-top:16px"></div><div class="bar" style="width:100%"></div><div class="bar" style="width:80%"></div></div>
+</div>
+</div>
+<div style="display:flex;flex-direction:column;gap:16px">
+<h2 class="h2">The frame</h2>
+<p class="meta">Kept from ADR 0014, made quieter.</p>
+<p class="meta">• <strong style="color:#0c171f">Sidebar</strong> stays Ocean. Area codes move from every row to group labels; unbuilt modules are hidden behind "More" instead of shown dimmed.</p>
+<p class="meta">• <strong style="color:#0c171f">Top bar</strong> holds breadcrumb and search only. Page actions live in the page head, not the bar.</p>
+<p class="meta">• <strong style="color:#0c171f">Content</strong> is white, not canvas grey, with a max width of 1080 and a 32 gutter (24 on phone).</p>
+<p class="meta">• <strong style="color:#0c171f">Status bar</strong> folds into a single dot in the top bar that opens the same facts.</p>
+</div>
+</section>
+
+<hr class="hair">
+
+<section style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:48px 40px">
+
+<div class="tpl">
+<div class="wf"><div class="side"><i class="on"></i><i></i><i></i><i></i></div><div class="main"><div style="display:flex;gap:8px;align-items:center"><div class="t"></div><span style="flex:1"></span><div class="bar acc" style="width:64px;height:20px;border-radius:6px"></div></div><div style="display:flex;gap:6px"><div class="bar" style="width:32px;height:14px;border-radius:9px;background:#daf1fe"></div><div class="bar" style="width:32px;height:14px;border-radius:9px"></div><div class="bar" style="width:32px;height:14px;border-radius:9px"></div></div><div class="bar" style="height:24px;background:#f4f8fa"></div><div class="bar" style="height:24px;background:#fff;box-shadow:inset 0 -1px 0 #f4f8fa"></div><div class="bar" style="height:24px;background:#fff;box-shadow:inset 0 -1px 0 #f4f8fa"></div><div class="bar" style="height:24px;background:#fff;box-shadow:inset 0 -1px 0 #f4f8fa"></div></div></div>
+<div style="display:flex;align-items:baseline;gap:8px"><p class="h3">List</p><span class="mono">ListShape</span></div>
+<p class="meta">Page head, filter chips, ListRow or Table. Row opens a side panel. For: Waiting On You, Runs, Collections, Credentials, Search, Agents, Health list.</p>
+</div>
+
+<div class="tpl">
+<div class="wf"><div class="side"><i></i><i class="on"></i><i></i><i></i></div><div class="main" style="flex-direction:row;gap:20px"><div style="flex:1;display:flex;flex-direction:column;gap:10px;min-width:0"><div class="bar" style="width:30%;background:#c9deee"></div><div class="t" style="width:70%;height:16px;background:#014263"></div><div class="bar" style="width:100%;margin-top:8px"></div><div class="bar" style="width:100%"></div><div class="bar" style="width:90%"></div><div class="bar" style="width:100%"></div><div class="bar" style="width:60%"></div></div><div style="width:120px;display:flex;flex-direction:column;gap:8px;border-left:1px solid #e7eef2;padding-left:12px"><div class="bar" style="width:60%"></div><div class="bar" style="width:90%"></div><div class="bar" style="width:70%"></div><div class="bar" style="width:80%"></div></div></div></div>
+<div style="display:flex;align-items:baseline;gap:8px"><p class="h3">Document</p><span class="mono">DocumentShape</span></div>
+<p class="meta">Reading column of 48rem, properties in a quiet right rail that collapses under the title on phone. For: wiki and pages, a run, play-by-play, persona, a record.</p>
+</div>
+
+<div class="tpl">
+<div class="wf"><div class="side"><i></i><i></i><i class="on"></i><i></i></div><div class="main" style="align-items:center"><div style="width:62%;display:flex;flex-direction:column;gap:10px"><div class="t" style="width:50%"></div><div class="bar" style="width:80%"></div><div class="bar" style="width:30%;margin-top:10px"></div><div class="bar" style="height:22px;background:#fff;box-shadow:0 0 0 1px #c4d3db"></div><div class="bar" style="width:30%"></div><div class="bar" style="height:22px;background:#fff;box-shadow:0 0 0 1px #c4d3db"></div><div style="display:flex;gap:6px;justify-content:flex-end;margin-top:8px"><div class="bar" style="width:48px;height:20px;border-radius:6px"></div><div class="bar acc" style="width:64px;height:20px;border-radius:6px"></div></div></div></div></div>
+<div style="display:flex;align-items:baseline;gap:8px"><p class="h3">Form</p><span class="mono">FormShape</span></div>
+<p class="meta">One centred column, one field per row, the primary action bottom right, outcome shown under it. For: new workflow, new agent, new page, access, settings, export.</p>
+</div>
+
+<div class="tpl">
+<div class="wf"><div class="side"><i></i><i class="on"></i><i></i><i></i></div><div class="main"><div style="display:flex;gap:8px;align-items:center"><div class="t" style="width:30%"></div><span style="flex:1"></span><div class="bar" style="width:80px;height:18px;border-radius:6px"></div></div><div style="flex:1;display:flex;gap:10px;min-height:0"><div style="flex:1;background:#f4f8fa;border-radius:8px;padding:6px;display:flex;flex-direction:column;gap:6px"><div style="height:34px;background:#fff;border-radius:6px;box-shadow:0 0 0 1px #c4d3db"></div><div style="height:34px;background:#fff;border-radius:6px;box-shadow:0 0 0 1px #c4d3db"></div></div><div style="flex:1;background:#f4f8fa;border-radius:8px;padding:6px;display:flex;flex-direction:column;gap:6px"><div style="height:34px;background:#fff;border-radius:6px;box-shadow:0 0 0 1px #c4d3db"></div></div><div style="flex:1;background:#f4f8fa;border-radius:8px;padding:6px;display:flex;flex-direction:column;gap:6px;box-shadow:inset 0 0 0 1px #ffd29c"><div style="height:34px;background:#fff;border-radius:6px;box-shadow:0 0 0 1px #ffd29c"></div></div></div></div></div>
+<div style="display:flex;align-items:baseline;gap:8px"><p class="h3">Board</p><span class="mono">BoardShape</span></div>
+<p class="meta">Full-width lanes of ObjectCards, the one place cards stack on a grey ground. Lanes scroll sideways on phone. For: queue, Agent Queues, epic board, flow.</p>
+</div>
+
+<div class="tpl">
+<div class="wf"><div class="side"><i class="on"></i><i></i><i></i><i></i></div><div class="main"><div class="t" style="width:24%"></div><div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px"><div style="height:44px;border-top:3px solid #31ade3;background:#fff;box-shadow:0 0 0 1px #e7eef2;border-radius:6px"></div><div style="height:44px;border-top:3px solid #31ade3;background:#fff;box-shadow:0 0 0 1px #e7eef2;border-radius:6px"></div><div style="height:44px;border-top:3px solid #e59d33;background:#fff;box-shadow:0 0 0 1px #e7eef2;border-radius:6px"></div><div style="height:44px;border-top:3px solid #31ade3;background:#fff;box-shadow:0 0 0 1px #e7eef2;border-radius:6px"></div></div><div style="display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:16px;margin-top:6px"><div style="display:flex;flex-direction:column;gap:8px"><div class="bar" style="width:30%"></div><div class="bar" style="height:18px;background:#f4f8fa"></div><div class="bar" style="height:18px;background:#fff;box-shadow:inset 0 -1px 0 #f4f8fa"></div><div class="bar" style="height:18px;background:#fff;box-shadow:inset 0 -1px 0 #f4f8fa"></div></div><div style="display:flex;flex-direction:column;gap:8px"><div class="bar" style="width:40%"></div><div style="height:64px;background:#f4f8fa;border-radius:6px"></div></div></div></div></div>
+<div style="display:flex;align-items:baseline;gap:8px"><p class="h3">Overview</p><span class="mono">OverviewShape</span></div>
+<p class="meta">A row of up to four figures, then a main list and a narrow side list. Figures are the only cards. For: Today, Health.</p>
+</div>
+
+<div class="tpl" style="justify-content:center;padding:24px;background:#f4f8fa;border-radius:12px">
+<p class="h3">Doesn't fit?</p>
+<p class="meta">Pick the nearest shape, say which and why in the pull request, and add the gap to this canvas. A sixth shape is a design change, the same as a new token.</p>
+<p class="mono" style="margin-top:8px">Rule: a screen file may import from packages/ui/shapes and packages/ui/components; it may not set grid, max-width or page padding itself.</p>
+</div>
+
+</section>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":1960}}'>
+class Component extends DCLogic {
+renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

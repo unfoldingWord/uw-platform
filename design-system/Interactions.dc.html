@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Reveal and disclosure</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@400;600;800&amp;family=JetBrains+Mono:wght@400;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#ffffff}
+a{color:#014964}a:hover{color:#31ade3}
+.h2{font-size:20px;font-weight:800;letter-spacing:-0.02em;margin:0;color:#0c171f}
+.h3{font-size:14px;font-weight:800;margin:0;color:#0c171f}
+.meta{font-size:13px;line-height:1.5;color:#5a6e7a;margin:0}
+.label{font-size:12px;font-weight:600;color:#5a6e7a;margin:0}
+.mono{font-family:'JetBrains Mono',ui-monospace,monospace;font-size:12px;color:#5a6e7a}
+.hair{height:1px;background:#e7eef2;border:0;margin:0}
+.step{display:flex;flex-direction:column;gap:8px;padding-top:16px;border-top:2px solid #c9deee}
+.btn{font-family:inherit;display:inline-flex;align-items:center;justify-content:center;gap:8px;height:28px;min-width:28px;padding:0 8px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;background:transparent;border:1px solid transparent;color:#404c55;transition:background .12s ease-out}
+.btn:hover{background:#e7eef2;color:#0c171f}
+.btn:focus-visible{outline:2px solid #014964;outline-offset:2px}
+.row{display:flex;align-items:center;gap:12px;padding:8px 12px;border-radius:8px;cursor:pointer;transition:background .12s ease-out;font-family:inherit;border:0;background:transparent;width:100%;text-align:left;color:inherit}
+.row:hover,.row:focus-visible{background:#f4f8fa}
+.row-on{background:#daf1fe}
+.row-on:hover{background:#daf1fe}
+.row .acts{opacity:0;transition:opacity .12s ease-out;display:flex}
+.row:hover .acts,.row:focus-visible .acts{opacity:1}
+.badge{display:inline-flex;align-items:center;padding:0 6px;height:20px;border-radius:4px;font-size:12px;font-weight:600}
+.menu-item{font-family:inherit;display:flex;align-items:center;gap:12px;padding:6px 8px;border-radius:4px;font-size:14px;color:#0c171f;cursor:pointer;background:none;border:0;text-align:left;width:100%}
+.menu-item:hover{background:#e7eef2}
+.prim{font-family:inherit;display:inline-flex;align-items:center;height:32px;padding:0 12px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;background:#e59d33;border:1px solid #e59d33;color:#011624}
+.sec{font-family:inherit;display:inline-flex;align-items:center;height:32px;padding:0 12px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;background:#fff;border:1px solid #c4d3db;color:#0c171f}
+.sec:hover{border-color:#31ade3;color:#014964}
+</style>
+</helmet>
+<div style="font-family:'Nunito Sans',Avenir,system-ui,sans-serif;color:#0c171f;background:#ffffff;box-sizing:border-box;padding:64px 24px 96px">
+<div style="max-width:1080px;margin:0 auto;display:flex;flex-direction:column;gap:48px">
+
+<header style="display:flex;flex-direction:column;gap:8px">
+<p class="label" style="color:#014964">Interaction · try the demo below</p>
+<h1 style="margin:0;font-size:30px;line-height:1.15;font-weight:800;letter-spacing:-0.035em;color:#014263">Show more only when someone reaches for it</h1>
+<p class="meta" style="font-size:14px;max-width:720px">Four steps of disclosure. Each step keeps the person where they are a little longer before taking them somewhere new.</p>
+</header>
+
+<section style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:24px">
+<div class="step"><p class="mono" style="color:#31ade3">1 · Hover or focus</p><p class="h3">Hint</p><p class="meta">Row tint, row actions, tooltip after 500 ms. Shows what can be done, does nothing yet.</p></div>
+<div class="step"><p class="mono" style="color:#31ade3">2 · Click ⋯</p><p class="h3">Menu or popover</p><p class="meta">Anchored to the control. Short choices, a picker, a quick edit. Esc or a click outside closes it.</p></div>
+<div class="step"><p class="mono" style="color:#31ade3">3 · Click the row</p><p class="h3">Side panel</p><p class="meta">Opens on the right, list stays visible, the URL updates so it can be shared. Read and act here.</p></div>
+<div class="step"><p class="mono" style="color:#31ade3">4 · Open full page</p><p class="h3">Page</p><p class="meta">For long work: editing a page, a run's play-by-play, a flow. Back returns to the list with the row still selected.</p></div>
+</section>
+
+<section style="display:flex;flex-direction:column;gap:16px">
+<div style="display:flex;align-items:baseline;gap:12px"><h2 class="h2">Waiting On You</h2><span class="meta">Demo: hover a row, open its menu, click it to peek.</span></div>
+<div style="display:flex;gap:0;border:1px solid #e7eef2;border-radius:12px;overflow:hidden;min-height:440px;flex-wrap:wrap">
+<div style="flex:999 1 420px;min-width:0;padding:12px;display:flex;flex-direction:column;gap:2px;position:relative">
+<sc-for list="{{items}}" as="it" hint-placeholder-count="5">
+<div style="position:relative">
+<button class="{{it.cls}}" onClick="{{it.open}}" aria-label="Open {{it.title}}">
+<span style="display:inline-grid;place-items:center;width:24px;height:24px;border-radius:9999px;background:#ddf0fd;color:#014263;font-size:11px;font-weight:800;flex-shrink:0">{{it.who}}</span>
+<span style="flex:1;min-width:0;display:flex;flex-direction:column"><span style="font-size:14px;font-weight:600">{{it.title}}</span><span class="meta">{{it.where}}</span></span>
+<span class="meta" style="white-space:nowrap">{{it.age}}</span>
+<span class="acts" style="width:28px"></span>
+</button>
+<button class="btn" style="position:absolute;right:12px;top:10px" aria-label="Actions for {{it.title}}" onClick="{{it.menu}}"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.8"></circle><circle cx="12" cy="12" r="1.8"></circle><circle cx="19" cy="12" r="1.8"></circle></svg></button>
+<sc-if value="{{it.menuOpen}}" hint-placeholder-val="{{false}}">
+<div role="menu" style="position:absolute;right:12px;top:44px;z-index:2;width:220px;background:#fff;border-radius:12px;box-shadow:0 0 0 1px #9da6ad,0 12px 28px -12px rgba(4,13,21,.12);padding:4px">
+<button class="menu-item" role="menuitem" onClick="{{it.open}}">Open in side panel</button>
+<button class="menu-item" role="menuitem" onClick="{{closeMenu}}">Copy link</button>
+<button class="menu-item" role="menuitem" onClick="{{closeMenu}}">Snooze until tomorrow</button>
+</div>
+</sc-if>
+</div>
+</sc-for>
+</div>
+<sc-if value="{{hasSel}}" hint-placeholder-val="{{true}}">
+<aside aria-label="Item details" style="flex:1 1 360px;min-width:0;max-width:100%;border-left:1px solid #e7eef2;background:#ffffff;box-shadow:-24px 0 48px -32px rgba(4,13,21,.25);padding:24px;display:flex;flex-direction:column;gap:16px;box-sizing:border-box">
+<div style="display:flex;align-items:center;gap:8px"><span class="mono">{{sel.ref}}</span><span style="flex:1"></span><button class="btn" aria-label="Open full page"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M14 4h6v6M20 4l-8 8M10 6H5a1 1 0 00-1 1v12a1 1 0 001 1h12a1 1 0 001-1v-5"></path></svg></button><button class="btn" aria-label="Close panel" onClick="{{close}}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg></button></div>
+<h3 style="margin:0;font-size:20px;font-weight:800;letter-spacing:-0.02em">{{sel.title}}</h3>
+<div style="display:grid;grid-template-columns:96px minmax(0,1fr);gap:8px 12px;font-size:13px"><span class="label">Workflow</span><span>{{sel.where}}</span><span class="label">Stage</span><span>{{sel.stage}}</span><span class="label">From</span><span>{{sel.from}}</span><span class="label">Waiting</span><span>{{sel.age}}</span></div>
+<p style="margin:0;font-size:14px;line-height:1.5;color:#404c55">{{sel.summary}}</p>
+<div style="flex:1"></div>
+<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="prim">{{sel.action}}</button><button class="sec">Send back</button></div>
+</aside>
+</sc-if>
+</div>
+</section>
+
+<hr class="hair">
+
+<section style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:32px">
+<div style="display:flex;flex-direction:column;gap:8px"><p class="h3">Touch and keyboard</p><p class="meta">No hover on a phone, so row actions are always shown there. Every hover reveal also shows on focus-within, and every menu opens from Enter and closes on Esc.</p></div>
+<div style="display:flex;flex-direction:column;gap:8px"><p class="h3">Never hide</p><p class="meta">A gate, a refusal reason, a count of what waits on you, or the one primary action. Those stay visible at rest.</p></div>
+<div style="display:flex;flex-direction:column;gap:8px"><p class="h3">How it is built</p><p class="meta">Menus and tooltips use the native <span class="mono">popover</span> attribute and render on the server. The side panel is a route with a <span class="mono">?peek=</span> parameter, so it works without JavaScript.</p></div>
+</section>
+
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":1640}}'>
+class Component extends DCLogic {
+constructor(props) { super(props); this.state = { sel: 0, menu: -1 }; }
+renderVals() {
+const data = [
+{ ref: '#228', who: 'AI', title: 'Approve PDF export for the page band', where: 'Development', stage: 'Ship', from: 'Build agent', age: '2 h', action: 'Approve and ship', summary: 'All checks passed on the pull request. The change adds a print view and a download control to the page band. Risk tier is low.' },
+{ ref: 'TR-41', who: 'MK', title: 'Review Titus 2 translation notes', where: 'Translation review', stage: 'Review', from: 'Mary K.', age: '5 h', action: 'Mark reviewed', summary: 'Twelve notes changed since your last review. Two of them touch key terms that the checking team flagged.' },
+{ ref: 'WK-9', who: 'JL', title: 'Publish the partner onboarding guide', where: 'Wiki · Training', stage: 'Publish', from: 'Jo L.', age: '1 d', action: 'Publish page', summary: 'The guide is ready for partners. Publishing makes it visible to every viewer of the Training area.' },
+{ ref: '#219', who: 'AI', title: 'Merge Durable Object storage labels', where: 'Development', stage: 'Ship', from: 'Infra agent', age: '1 d', action: 'Approve and ship', summary: 'Recreates the classes on staging and production so their storage is labelled uw-platform. Touches infra, so it needs a person.' }
+];
+const sel = this.state.sel;
+return {
+items: data.map((d, i) => ({
+...d,
+cls: i === sel ? 'row row-on' : 'row',
+menuOpen: this.state.menu === i,
+open: () => this.setState({ sel: i, menu: -1 }),
+menu: () => this.setState({ menu: this.state.menu === i ? -1 : i })
+})),
+hasSel: sel >= 0,
+sel: sel >= 0 ? data[sel] : data[0],
+close: () => this.setState({ sel: -1, menu: -1 }),
+closeMenu: () => this.setState({ menu: -1 })
+};
+}
+}
+</script>
+</body>
+</html>

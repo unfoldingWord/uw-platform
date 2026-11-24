@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Edit in place</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@400;600;800&amp;family=JetBrains+Mono:wght@400;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#ffffff}
+a{color:#014964}a:hover{color:#31ade3}
+.h2{font-size:20px;font-weight:800;letter-spacing:-0.02em;margin:0;color:#0c171f}
+.h3{font-size:14px;font-weight:800;margin:0;color:#0c171f}
+.meta{font-size:13px;line-height:1.5;color:#5a6e7a;margin:0}
+.label{font-size:12px;font-weight:600;color:#5a6e7a;margin:0}
+.mono{font-family:'JetBrains Mono',ui-monospace,monospace;font-size:12px;color:#5a6e7a}
+.hair{height:1px;background:#e7eef2;border:0;margin:0}
+.btn{font-family:inherit;display:inline-flex;align-items:center;justify-content:center;gap:8px;height:32px;padding:0 12px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;transition:background .12s ease-out,border-color .12s ease-out,color .12s ease-out}
+.btn:focus-visible{outline:2px solid #014964;outline-offset:2px}
+.sec{background:#fff;border:1px solid #c4d3db;color:#0c171f}.sec:hover{border-color:#31ade3;color:#014964}
+.ghost{background:transparent;border:1px solid transparent;color:#404c55}.ghost:hover{background:#e7eef2;color:#0c171f}
+.human{background:#e59d33;border:1px solid #e59d33;color:#011624}.human:hover{background:#c28326;border-color:#c28326}
+.ib{width:28px;height:28px;padding:0}
+.prop{display:grid;grid-template-columns:120px minmax(0,1fr) 64px;align-items:center;gap:12px;height:36px;padding:0 8px;margin:0 -8px;border-radius:8px;transition:background .12s ease-out}
+.prop:hover,.prop:focus-within{background:#f4f8fa}
+.prop .pen{opacity:0;transition:opacity .12s ease-out;justify-self:end}
+.prop:hover .pen,.prop:focus-within .pen{opacity:1}
+.ed .prop .pen{opacity:0;pointer-events:none}
+.val{font-family:inherit;font-size:14px;color:#0c171f;height:28px;box-sizing:border-box;padding:0 8px;margin:0 -8px;border-radius:6px;border:1px solid transparent;background:transparent;width:100%;display:flex;align-items:center}
+.inp{border-color:#c4d3db;background:#fff}
+.inp:focus{outline:2px solid #31ade3;outline-offset:-1px;border-color:#31ade3}
+.ttl{font-family:inherit;font-size:30px;line-height:1.15;font-weight:800;letter-spacing:-0.035em;color:#014263;margin:0 -8px;padding:4px 8px;border-radius:8px;border:1px solid transparent;background:transparent;width:100%;box-sizing:border-box;height:46px}
+.ttl-ed{border-color:#e7eef2}.ttl-ed:hover{border-color:#c4d3db}.ttl:focus{outline:2px solid #31ade3;outline-offset:-1px}
+.bodytxt{font-family:inherit;font-size:15px;line-height:1.6;color:#404c55;margin:0 -8px;padding:8px;border-radius:8px;border:1px solid transparent;background:transparent;width:100%;box-sizing:border-box;height:196px;resize:none;display:block}
+.body-ed{border-color:#e7eef2}.body-ed:hover{border-color:#c4d3db}.bodytxt:focus{outline:2px solid #31ade3;outline-offset:-1px}
+.tb{font-family:inherit;display:inline-grid;place-items:center;width:32px;height:32px;border-radius:8px;border:0;background:transparent;color:#f0f8fe;cursor:pointer;font-size:13px;font-weight:800}
+.tb:hover{background:#32607e}
+.cmp{display:flex;flex-direction:column;gap:8px;padding:20px;border-radius:12px}
+</style>
+</helmet>
+<div style="font-family:'Nunito Sans',Avenir,system-ui,sans-serif;color:#0c171f;background:#ffffff;box-sizing:border-box;padding:64px 24px 96px">
+<div style="max-width:1080px;margin:0 auto;display:flex;flex-direction:column;gap:48px">
+
+<header style="display:flex;flex-direction:column;gap:8px">
+<p class="label" style="color:#014964">Editing · try the demo</p>
+<h1 style="margin:0;font-size:30px;line-height:1.15;font-weight:800;letter-spacing:-0.035em;color:#014263">Edit where you read. Nothing moves.</h1>
+<p class="meta" style="font-size:14px;max-width:760px">Editing is something you ask for, with a pencil or an Edit button, so reading never makes a stray change. Once you ask, the same page becomes editable in the same place. The sidebar, the title and every line of text stay where they were.</p>
+</header>
+
+<section style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px">
+<div class="cmp" style="background:#f4f8fa"><p class="mono">Always editable (Notion)</p><p class="h3">Stray edits</p><p class="meta">Every click is a cursor. A tap to select text can change it. No moment where you chose to edit.</p></div>
+<div class="cmp" style="background:#f4f8fa"><p class="mono">Separate edit screen (today, ADR 0026)</p><p class="h3">The page repaints</p><p class="meta">Sidebar and top bar vanish, a sheet rises, the title moves. You lose your place to make a one-word fix.</p></div>
+<div class="cmp" style="background:#daf1fe"><p class="mono" style="color:#014964">Edit in place (proposed)</p><p class="h3">Ask, then edit right there</p><p class="meta" style="color:#014964">Pencil or Edit turns the text you are looking at into fields, in the same spot. Save or Esc returns it.</p></div>
+</section>
+
+<section style="display:flex;flex-direction:column;gap:16px">
+<div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap"><h2 class="h2">Demo</h2><span class="meta">Press Edit for the whole page, or hover a property and use its pencil to change just that one.</span></div>
+<div style="border:1px solid #e7eef2;border-radius:12px;overflow:hidden;display:flex;flex-wrap:wrap;position:relative">
+<div style="flex:1 1 200px;background:#014263;padding:16px 12px;display:flex;flex-direction:column;gap:4px;box-sizing:border-box;min-height:620px">
+<span style="color:#aec8db;font-size:12px;font-weight:600;padding:4px 8px">Training</span>
+<span style="color:#f0f8fe;font-size:13px;padding:5px 8px">Field guides</span>
+<span style="color:#f0f8fe;font-size:13px;padding:5px 8px 5px 20px;background:#32607e;border-radius:6px;font-weight:600">Partner onboarding</span>
+<span style="color:#f0f8fe;font-size:13px;padding:5px 8px 5px 20px">Checking basics</span>
+<span style="color:#f0f8fe;font-size:13px;padding:5px 8px">Workshops</span>
+</div>
+<div class="{{rootCls}}" style="flex:999 1 560px;min-width:0;display:flex;flex-direction:column;position:relative">
+<div style="height:52px;display:flex;align-items:center;gap:8px;padding:0 32px;border-bottom:1px solid #e7eef2;box-sizing:border-box">
+<span class="meta">Wiki / Training /</span><span style="font-size:13px;font-weight:600">Partner onboarding</span>
+<span style="flex:1"></span>
+<span class="meta" style="min-width:150px;text-align:right">{{status}}</span>
+<div style="display:flex;gap:8px;width:184px;justify-content:flex-end">
+<sc-if value="{{reading}}" hint-placeholder-val="{{true}}">
+<button class="btn ghost ib" aria-label="Comment"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"></path></svg></button>
+<button class="btn ghost ib" aria-label="More actions"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.8"></circle><circle cx="12" cy="12" r="1.8"></circle><circle cx="19" cy="12" r="1.8"></circle></svg></button>
+<button class="btn sec" onClick="{{startEdit}}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z"></path><path d="M13 7l4 4"></path></svg>Edit</button>
+</sc-if>
+<sc-if value="{{editing}}" hint-placeholder-val="{{false}}">
+<button class="btn ghost" onClick="{{cancel}}">Cancel</button>
+<button class="btn human" onClick="{{save}}">Save</button>
+</sc-if>
+</div>
+</div>
+<div style="padding:32px;display:flex;flex-direction:column;gap:20px;max-width:720px;box-sizing:border-box;width:100%">
+<p class="mono" style="margin:0;color:#014964">31.02.04</p>
+<sc-if value="{{reading}}" hint-placeholder-val="{{true}}"><h1 class="ttl" style="display:flex;align-items:center">{{title}}</h1></sc-if>
+<sc-if value="{{editing}}" hint-placeholder-val="{{false}}"><input class="ttl ttl-ed" aria-label="Title" value="{{title}}" onInput="{{setTitle}}"></sc-if>
+<div style="display:flex;flex-direction:column">
+<sc-for list="{{props}}" as="p" hint-placeholder-count="3">
+<div class="prop">
+<span class="label">{{p.label}}</span>
+<sc-if value="{{p.asInput}}" hint-placeholder-val="{{false}}"><input class="val inp" aria-label="{{p.label}}" value="{{p.value}}" onInput="{{p.set}}"></sc-if>
+<sc-if value="{{p.asText}}" hint-placeholder-val="{{true}}"><span class="val">{{p.value}}</span></sc-if>
+<span style="display:flex;justify-content:flex-end;gap:2px">
+<sc-if value="{{p.single}}" hint-placeholder-val="{{false}}">
+<button class="btn ghost ib" aria-label="Save {{p.label}}" onClick="{{saveProp}}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#56a0a3" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5L20 7"></path></svg></button>
+<button class="btn ghost ib" aria-label="Cancel" onClick="{{cancelProp}}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg></button>
+</sc-if>
+<sc-if value="{{p.showPen}}" hint-placeholder-val="{{true}}">
+<button class="btn ghost ib pen" aria-label="Edit {{p.label}}" onClick="{{p.edit}}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z"></path><path d="M13 7l4 4"></path></svg></button>
+</sc-if>
+</span>
+</div>
+</sc-for>
+</div>
+<hr class="hair">
+<sc-if value="{{reading}}" hint-placeholder-val="{{true}}"><p class="bodytxt" style="white-space:pre-line">{{body}}</p></sc-if>
+<sc-if value="{{editing}}" hint-placeholder-val="{{false}}"><textarea class="bodytxt body-ed" aria-label="Page text" onInput="{{setBody}}">{{body}}</textarea></sc-if>
+</div>
+<sc-if value="{{editing}}" hint-placeholder-val="{{false}}">
+<div role="toolbar" aria-label="Formatting" style="position:absolute;left:50%;bottom:20px;transform:translateX(-50%);display:flex;gap:2px;padding:4px;background:#014263;border-radius:9999px;box-shadow:0 12px 28px -12px rgba(4,13,21,.4)">
+<button class="tb" aria-label="Bold">B</button><button class="tb" aria-label="Italic" style="font-style:italic;font-weight:600">I</button><button class="tb" aria-label="Heading">H</button><button class="tb" aria-label="Link"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M10 14a4 4 0 006 0l3-3a4 4 0 00-6-6l-1 1M14 10a4 4 0 00-6 0l-3 3a4 4 0 006 6l1-1"></path></svg></button><button class="tb" aria-label="Attach a file"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M20 11l-8 8a5 5 0 01-7-7l8-8a3 3 0 014 4l-8 8a1 1 0 01-2-2l7-7"></path></svg></button>
+</div>
+</sc-if>
+</div>
+</div>
+</section>
+
+<hr class="hair">
+
+<section style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:32px 48px">
+<div style="display:flex;gap:16px"><span class="mono" style="color:#31ade3;font-size:14px;font-weight:600">01</span><div style="display:flex;flex-direction:column;gap:4px"><p class="h3">Read rows are drawn at field height</p><p class="body meta">A property row is 36 tall and the title box 46 tall in both modes. A field differs from text only by a faint outline, so switching mode shifts nothing.</p></div></div>
+<div style="display:flex;gap:16px"><span class="mono" style="color:#31ade3;font-size:14px;font-weight:600">02</span><div style="display:flex;flex-direction:column;gap:4px"><p class="h3">The Edit button turns into Cancel and Save</p><p class="meta">Same spot, same reserved width. Comment and More step aside while editing. Save is Kindle, because saving is the human act; Edit is a secondary button with a pencil.</p></div></div>
+<div style="display:flex;gap:16px"><span class="mono" style="color:#31ade3;font-size:14px;font-weight:600">03</span><div style="display:flex;flex-direction:column;gap:4px"><p class="h3">Scope matches the reach</p><p class="meta">A pencil on hover edits one property and saves on its own check mark or Enter. Edit opens the whole page. A record's section can have its own Edit. Only one scope is open at a time.</p></div></div>
+<div style="display:flex;gap:16px"><span class="mono" style="color:#31ade3;font-size:14px;font-weight:600">04</span><div style="display:flex;flex-direction:column;gap:4px"><p class="h3">Tools float, never push</p><p class="meta">The formatting pill sits over the bottom of the content. The "Editing" status uses a slot the top bar already reserves. Nothing inserts above the text.</p></div></div>
+<div style="display:flex;gap:16px"><span class="mono" style="color:#31ade3;font-size:14px;font-weight:600">05</span><div style="display:flex;flex-direction:column;gap:4px"><p class="h3">Leaving is always safe</p><p class="meta">Esc or Cancel goes back to reading. With unsaved text and no working draft, it asks first. A refused save keeps the fields open with the reason under Save.</p></div></div>
+<div style="display:flex;gap:16px"><span class="mono" style="color:#31ade3;font-size:14px;font-weight:600">06</span><div style="display:flex;flex-direction:column;gap:4px"><p class="h3">Keeps ADR 0026's reasons</p><p class="meta">The edit view can keep its own <span class="mono">/edit</span> address, its form post and its lazily loaded editor. It just renders the read view's frame and layout, so the read view still has no field and still skips the 1 MB script.</p></div></div>
+</section>
+
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":1560}}'>
+class Component extends DCLogic {
+constructor(props) {
+super(props);
+const saved = { title: 'Partner onboarding guide', body: 'This guide walks a partner church through its first ninety days with unfoldingWord resources.\n\nStart with the checking basics, then choose one workshop the team can run on its own. Each step ends with something the church can use right away.', props: ['Jo L.', 'Draft', '2026-12-01'] };
+this.state = { mode: 'read', one: -1, saved: saved, draft: JSON.parse(JSON.stringify(saved)), note: '' };
+}
+renderVals() {
+const s = this.state;
+const editing = s.mode === 'edit';
+const labels = ['Owner', 'Status', 'Review by'];
+const src = editing || s.one >= 0 ? s.draft : s.saved;
+return {
+reading: !editing,
+editing: editing,
+rootCls: editing ? 'ed' : '',
+status: editing ? 'Editing · Esc to cancel' : s.note,
+title: src.title,
+body: src.body,
+props: labels.map((l, i) => ({
+label: l,
+value: src.props[i],
+asInput: editing || s.one === i,
+asText: !(editing || s.one === i),
+single: !editing && s.one === i,
+showPen: !editing && s.one !== i,
+edit: () => this.setState({ one: i, draft: JSON.parse(JSON.stringify(s.saved)), note: '' }),
+set: (e) => { const d = JSON.parse(JSON.stringify(this.state.draft)); d.props[i] = e.target.value; this.setState({ draft: d }); }
+})),
+startEdit: () => this.setState({ mode: 'edit', one: -1, draft: JSON.parse(JSON.stringify(s.saved)), note: '' }),
+cancel: () => this.setState({ mode: 'read', note: '' }),
+save: () => this.setState({ mode: 'read', saved: JSON.parse(JSON.stringify(this.state.draft)), note: 'Saved just now' }),
+saveProp: () => this.setState({ one: -1, saved: JSON.parse(JSON.stringify(this.state.draft)), note: 'Saved just now' }),
+cancelProp: () => this.setState({ one: -1 }),
+setTitle: (e) => { const d = JSON.parse(JSON.stringify(this.state.draft)); d.title = e.target.value; this.setState({ draft: d }); },
+setBody: (e) => { const d = JSON.parse(JSON.stringify(this.state.draft)); d.body = e.target.value; this.setState({ draft: d }); }
+};
+}
+}
+</script>
+</body>
+</html>
