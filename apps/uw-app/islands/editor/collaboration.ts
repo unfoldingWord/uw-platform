@@ -141,6 +141,15 @@ function markDirtyOnEdits(root: HTMLElement, doc: Doc): void {
       { capture: true },
     );
   }
+  (root.closest('form') ?? root).addEventListener(
+    'change',
+    (event) => {
+      if (event.target instanceof Element && event.target.matches('[data-upload-input]')) {
+        touched = true;
+      }
+    },
+    { capture: true },
+  );
   doc.on('update', (_update: Uint8Array, origin: unknown) => {
     if (touched && origin === ySyncPluginKey && meta.get('dirty') !== true) meta.set('dirty', true);
   });

@@ -272,6 +272,23 @@ async function controlsThatStopEventsStillCount(): Promise<void> {
   expect(shared.seats[0]?.doc.getMap('meta').get('dirty')).toBe(true);
 }
 
+async function anUploadOutsideTheEditorCounts(): Promise<void> {
+  const shared = room();
+  const root = seatFor('ana@uw.example');
+  const first = await join(root, shared.connect);
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.setAttribute('data-upload-input', '');
+  root.closest('form')?.append(input);
+  input.dispatchEvent(new Event('change', { bubbles: true }));
+  await tick();
+  first.editor.editor.action((ctx) => {
+    const view = ctx.get(editorViewCtx);
+    view.dispatch(view.state.tr.insertText('![Map](/api/files/f1)', 1));
+  });
+  expect(shared.seats[0]?.doc.getMap('meta').get('dirty')).toBe(true);
+}
+
 async function undoesOnlyYourOwnEdit(): Promise<void> {
   const shared = room();
   const first = await join(seatFor('ana@uw.example'), shared.connect);
@@ -290,6 +307,10 @@ describe('#175 a draft is shared, and nothing changes for readers until someone 
   it(
     'counts an edit made through a control that stops its events',
     controlsThatStopEventsStillCount,
+  );
+  it(
+    'counts a file added through the upload control outside the editor',
+    anUploadOutsideTheEditorCounts,
   );
   it('seeds the draft for the first person and joins the second to it', seedsThenJoins);
   it('tells a person who joins later that they are continuing a draft', continuesADraft);
