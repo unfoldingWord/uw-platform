@@ -9,7 +9,7 @@ export type TemplateNow = {
   readonly status: string;
 };
 
-export type DriftState = 'behind' | 'source_retired' | 'source_missing';
+type DriftState = 'behind' | 'source_retired' | 'source_missing';
 
 export type TemplateDrift = {
   readonly copyId: string;

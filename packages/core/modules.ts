@@ -77,6 +77,8 @@ export const modules = [
       '/access',
       '/wiki',
       '/wiki/:category',
+      '/wiki/policies',
+      '/pages/:pageId/suggestions/:suggestionId',
       '/search',
       '/credentials',
       '/credentials/:credentialId',

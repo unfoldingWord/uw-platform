@@ -345,7 +345,7 @@ A page of type `learning`: a measured fact or working rule with a confidence lab
 _Avoid_: note, insight, lesson, memory (the plan's phrase is institutional memory; a learning is one unit of it)
 
 **Confirmation**:
-A person turning a `suggested` learning, skill, policy or charter page `active` at the version they read, with `write` on its area. Agents cannot confirm. A persona is not confirmed but activated.
+A person turning a `suggested` learning, skill, policy, charter or decision page `active` at the version they read, with `write` on its area. Agents cannot confirm. A persona is not confirmed but activated.
 _Avoid_: approval (that is a gate decision), activation (that is for personas), sign-off
 
 **Contradiction**:
@@ -595,12 +595,28 @@ How a policy binds below its level. `required` holds whatever a descendant says;
 _Avoid_: severity, strength, mandatory/optional
 
 **Policy resolution**:
-Working out the policies in force for an entity on a date: walk its **policy chain**, product, then its placement's node and that node's parents, then the organization; keep each policy in force on that date; drop a `default` that a policy further down supersedes; keep a `required` one whatever supersedes it, and record the attempt as a conflict. The pure function is `resolvePolicies` in `packages/harness/policies/`.
+Working out the policies in force for an entity on a date: walk its **policy chain**, product, then its placement's node and that node's parents, then the organization; keep each policy in force on that date; drop a `default` that a policy further down supersedes; keep a `required` one whatever supersedes it, and record the attempt as a **policy conflict**. A supersession from the same level or above changes nothing and is a conflict too. The pure function is `resolvePolicies` in `packages/harness/policies/`; a policy's page and the Policies screen show its conflicts.
 _Avoid_: inheritance, cascade (that is the axis), merge
+
+**Template copy**:
+A policy made from a template policy, whose `copied_from` names the template page and the version copied. Its text is its own: a later change to the template reaches it only when a person adopts it, as one new version.
+_Avoid_: instance, clone, inherited policy
+
+**Template drift**:
+A template copy whose template has a newer version, or is retired or gone. Listed on the Policies screen and worked out by `templateDrift` in `packages/harness/policies/`.
+_Avoid_: out of sync, stale copy
 
 **Charter**:
 A page of type `charter` in the NISO format: level-two headings Need, Idea, Strategy, Outcomes, Risks and Roadmap, in that order, so any level's charter can be read by a machine. A save without them is refused with `sections_missing`. It names the node or product it charters, or none for the organization.
 _Avoid_: brief, proposal, one-pager
+
+**Decision page**:
+A page of type `decision`: level-two headings Context, Decision and Consequences, the date it was decided, what it applies to and what it supersedes. `resolve_context` answers the decision pages on an item's policy chain that the caller may read, most specific and then newest first, leaving out any a later decision page supersedes. Not a **Decision** (an entry of `docs/decisions.md`).
+_Avoid_: ADR (that is a Decision), ruling, minute
+
+**Suggestion set**:
+A whole proposed new title, properties and text for one page over a base version, waiting for a person: a row of `page_suggestion_sets`. An agent's save to an active policy or charter becomes one, and each agent has at most one pending set per page, which a later save replaces. A person accepts it as one new version or rejects it; once decided it never changes. A set whose base is no longer the page's version can only be rejected.
+_Avoid_: draft (that is a working draft), revision, proposal, pull request
 
 ## What GitHub says
 

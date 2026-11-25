@@ -14,7 +14,7 @@ export const levelWords: Readonly<Record<PolicyReading['level'], string>> = {
   product: 'Product',
 };
 
-export const enforcementWords: Readonly<Record<PolicyReading['enforcement'], string>> = {
+const enforcementWords: Readonly<Record<PolicyReading['enforcement'], string>> = {
   required: 'Required: holds below whatever a lower policy says',
   default: 'Default: a lower policy may replace it',
   template: 'Template: copied into what is made from it',

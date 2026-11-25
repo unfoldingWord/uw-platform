@@ -647,23 +647,28 @@ This number was used and withdrawn. It is not reused.
 
 ---
 
-## 0034 Policies and charters are gated page types, resolved by a pure function over a policy chain
+## 0034 Policies, charters and decision pages are gated page types; policies resolve by a pure function over a policy chain
 
-*2026-11-25. Builds on 0027.*
+*2026-11-25. Builds on 0027. Changed by 0035.*
 
-**Decision.** A policy is a page of type `policy` (Core) and a charter a page of type `charter` (Strategy). Both are gated: an agent's write lands `suggested` and only a person confirms it. A policy's frontmatter holds its enforcement (`required`, `default` or `template`), `applies_to` (a cascade node or product page, or none for the whole organization), `supersedes` (policy ids) and `effective_from` and `effective_until`. Its level is the type of the page it applies to, or `organization` when it applies to none; it is never stored on its own. A save is refused with `applies_to_not_found` when that page is not a live node or product the writer can read.
+**Decision.** A policy is a page of type `policy` (Core), a charter a page of type `charter` (Strategy) and a decision page a page of type `decision` (Agents). All three are gated: an agent's new page lands `suggested` and only a person confirms it; an agent's save to an active policy or charter is held as a suggestion set (0035). A policy's frontmatter holds its enforcement (`required`, `default` or `template`), `applies_to` (a cascade node or product page, or none for the whole organization), `supersedes` (policy ids), `effective_from`, `effective_until`, and `copied_from` (the template page and version a copy was made from). Its level is the type of the page it applies to, or `organization` when it applies to none; it is never stored on its own. A save is refused with `applies_to_not_found` when that page is not a live node or product the writer can read. Charters and decision pages name what they apply to the same way.
 
-The policies for an item are worked out by `resolvePolicies` in `packages/harness/policies/`, a pure function over a **policy chain**: the item's product (its page or the nearest product above it), the item's own placement or else the product's, that node's parents through the program and portfolio relations, then the organization. Most specific first; a `default` drops when a policy further down supersedes it; a `required` one stays and the attempt is recorded as a conflict; a supersession from the same level or above has no effect and is recorded too. Resolution runs over every active policy, then the answer keeps only the policies the reader may read. `resolve_context` returns them beside the learnings.
+The policies for an item are worked out by `resolvePolicies` in `packages/harness/policies/`, a pure function over a **policy chain**: the item's product (its page or the nearest product above it), the item's own placement or else the product's, that node's parents through the program and portfolio relations, then the organization. Most specific first; a `default` drops when a policy further down supersedes it; a `required` one stays and the attempt is recorded as a conflict; a supersession from the same level or above has no effect and is recorded too. Resolution runs over every active policy, then the answer keeps only the policies the reader may read. `resolve_context` returns them beside the learnings, with the decision pages on the same chain.
 
-A charter's NISO sections are level-two headings in its body, Need, Idea, Strategy, Outcomes, Risks and Roadmap, in that order. A save without them is refused with `sections_missing`, naming the missing ones.
+A copy of a template policy keeps its own text. `templateDrift` (kernel) reports a copy whose template has a newer version, or is retired or gone; adopting the update is a person's save of the template's current text and version.
+
+A charter's NISO sections are level-two headings in its body, Need, Idea, Strategy, Outcomes, Risks and Roadmap, in that order; a decision page's are Context, Decision and Consequences. A save without them is refused with `sections_missing`, naming the missing ones.
+
+A policy's page and the Policies screen show its level, target, enforcement, dates, template and every conflict it is part of.
 
 **Why.**
 - **One fact, one place.** Storing a level beside `applies_to` would let the two disagree; reading it from the page's type cannot.
-- **Supersession is judged when it is read.** Whether one policy is below another, and whether the replaced one is `required`, can change after a save: a node is moved, a policy is confirmed or retired. Refusing on save would let a later change make a saved page wrong without anyone touching it.
-- **The kernel can prove precedence.** A pure function runs in the sim and in unit tests without a database, the way the ship rule does (0001, 0003).
+- **Supersession is judged when it is read.** Whether one policy is below another, and whether the replaced one is `required`, can change after a save: a node is moved, a policy is confirmed or retired. Refusing on save would let a later change make a saved page wrong without anyone touching it. Showing the conflicts where people read policies makes that judgment visible instead of silent.
+- **The kernel can prove precedence and drift.** Pure functions run in the sim and in unit tests without a database, the way the ship rule does (0001, 0003).
 - **The organization needs no node.** 0027 keeps the tiers above a portfolio off the cascade; an empty `applies_to` says "everywhere" without reopening it.
-- **People edit bodies, not frontmatter.** The page editor shows the body; NISO as headings keeps a charter editable in place and still readable by a machine.
-- **Agents suggest; people decide.** 0002 keeps agents short of decisions. Until suggestion sets exist, whole-page suggestion is the way an agent proposes a rule.
+- **People edit bodies, not frontmatter.** The page editor shows the body; sections as headings keep a charter or decision page editable in place and still readable by a machine.
+- **Obligations never change silently.** A copy records the version it took; a newer template is a report and a deliberate save, not a live link.
+- **Agents suggest; people decide.** 0002 keeps agents short of decisions.
 
 **Rejected.**
 - A `level` field beside `applies_to`. Two facts that can disagree.
@@ -672,8 +677,33 @@ A charter's NISO sections are level-two headings in its body, Need, Idea, Strate
 - NISO sections as frontmatter fields. The editor does not edit frontmatter, so charters would be writable only through the API.
 - A separate `resolve_policies` verb. `resolve_context` is what every agent session reads first, and the verb registry stays small (0002).
 - Leaving out policies the reader cannot read before resolving. A readable default would then look in force when an unreadable descendant has replaced it.
+- A copy that follows its template live. A template edit would change every obligation made from it without anyone deciding.
 
-**Consequences.** An agent reads policies through `resolve_context`; a person sees a policy or charter as an ordinary page. A policy in an area the reader cannot read still takes part in resolution, so a readable default may be absent from the answer without the reader seeing why; the conflicts are not yet shown anywhere. Not built here, and each its own piece of work: copying a template policy with its source and version, and the drift report (PRD "The policy engine"); attestation (#203); the lean default policies (#255); anchored suggestion sets that would let an agent propose a change to an active policy or charter (#197); a decision page type for `resolve_context`.
+**Consequences.** An agent reads policies and decision pages through `resolve_context`; a person reads them on their pages and on the Policies screen. A policy in an area the reader cannot read still takes part in resolution, so a readable default may be absent from the answer; its page names the conflict only when the reader can read both policies. Working out a policy's conflicts reads each policy that names it, so the Policies screen does work in proportion to the policies it lists. Not built here, each its own piece of work: attestation (#203) and the lean default policies (#255).
+
+**Changes / changed by.** 0035 replaces the refusal of an agent's save to an active policy or charter with a suggestion set.
+
+---
+
+## 0035 An agent's save to an active policy or charter is a whole-document suggestion set a person decides
+
+*2026-11-25. Builds on 0002 and 0034. Part of #197.*
+
+**Decision.** `page_suggestion_sets`, owned by the pages module, holds a proposed title, frontmatter and body for one page over a base version. An agent's `write_page` to an active page whose type declares `agentSuggests` (policy and charter) runs every check a save runs and is then held as a set instead of written; `write_page` answers the set's id. Each agent holds at most one pending set per page, and a later save replaces it. `accept_suggestion` saves the set through the ordinary save path as exactly one new version and records who accepted it and the version made; `reject_suggestion` records the decision and changes nothing. Both are person-only, only the page routes and the review screen import them (a dependency rule holds this), and a database trigger keeps a decided set as it was decided. A set whose base version is no longer the page's version is refused as stale and can only be rejected.
+
+**Why.**
+- **The PRD says the in-place write does not exist** for these types (PRD, Suggested changes); before this, the only alternative was to refuse the agent outright.
+- **A whole document is enough to decide on.** The review screen shows text and properties as a line diff against the base version, which is all a person needs to accept or reject the set as a whole.
+- **Accepting is a save.** Going through the save path keeps every check (frontmatter, sections, `applies_to`, links) and the one-version-per-save history, so a suggestion can never write something a person's save could not.
+- **One writer per table.** The pages module owns the set, as it owns versions.
+
+**Rejected.**
+- Anchored suggestions per passage now. They need anchors that survive edits and an export format; the PRD's whole-set accept does not need them. They stay in #197.
+- A pending row in `page_versions`. Versions are immutable history; a pending change is not part of it.
+- Rebasing a stale set automatically. A person would accept text written against a page that has since changed.
+- Holding agents' saves to every gated type. Learnings, skills and personas keep their own confirmation and activation rules; the PRD names policies, charters, contracts and work orders.
+
+**Consequences.** Contract and work order pages, when they exist, declare `agentSuggests` and get the same path. Anchored suggestions, named review sets and revision marks in markdown, PDF and DOCX remain #197's.
 
 # Part 2. Workflow design decisions
 
