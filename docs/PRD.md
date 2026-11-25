@@ -1,959 +1,1398 @@
-# unfoldingWord Platform, Harness: Product Requirements Document
+# unfoldingWord Platform: Product Requirements
 
-> **Reference, not the list of work (2026-11-12).** Work is tracked in GitHub issues; this document records how the platform was designed. Its process items are superseded by `AGENTS.md`: the requirement trace (`pnpm trace`, `pnpm trace:built`, DX-5, DX-9, P35) was removed on 2026-11-12, the build order (section 13) and step plans are history, and `docs/progress_tracker.md` is frozen. Where this document and `AGENTS.md` disagree on how work is done, `AGENTS.md` wins.
+This document says what the unfoldingWord Platform is, who it is for, and what each part of it does and must never do. It covers the whole platform. It is kept current: when a feature or a rule changes, this text changes in the same pull request.
 
-| | |
+It does not carry status. What exists and what is still to come is tracked in the GitHub epic and the issue named on each section's `Issue:` line. Every section is written in the same voice, as the design the platform is held to.
+
+Companions, each with one job:
+
+| Read | For |
 |---|---|
-| Status | Approved. v1 (sections 7.1 to 7.10) was built as v0.1.0, merge commit `83e3f64`, tagged 2026-10-12. v0.2.0 (section 7.11), approved on 2026-10-15, was built on `build/v0.2.0`, reviewed by the owner with Codex, merged as `2135ad5` (pull request #84) and tagged `v0.2.0` on 2026-10-20, with CI green on the merge commit; GL-1's live switch and the week of shadow mode are a person's, on the tag (`docs/progress_tracker.md`, Release criteria, v0.2.0). v0.3.0 (section 7.12), the look, approved on 2026-11-04 (#87); its design is `docs/specs/2026-11-04-harness-v0-3-0-design.md`. Built on `feat/ui-redesign`, pull request #89, with every v0.3.0 release item but the owner's review and merge holding on 2026-11-06 |
-| Version | 0.3 |
-| Date | 2026-11-04 (v0.2.0 text dated 2026-10-15, v1 text 2026-10-01) |
-| Owner | The product owner |
-| Sponsor | unfoldingWord leadership |
-| Repository | https://github.com/unfoldingWord/uw-platform |
-| Design | From v0.3.0, section 5 of [`docs/specs/2026-11-04-harness-v0-3-0-design.md`](specs/2026-11-04-harness-v0-3-0-design.md) (ADR 0011), built into `packages/ui/tokens/`, until a `design-system/` folder lands. Before it, the brand tokens extracted from the Claude Design prototype (removed from the repository on 2026-10-20) and [`prd/An App For Everything - Key Visuals.html`](../prd/An%20App%20For%20Everything%20-%20Key%20Visuals.html) |
-| Companions | [`prd/Harness v1 - Architecture.md`](../prd/Harness%20v1%20-%20Architecture.md) for the ratified design and its figures, [`prd/An App For Everything - Platform Architecture Plan.md`](../prd/An%20App%20For%20Everything%20-%20Platform%20Architecture%20Plan.md) for the platform it sits in, [`CONTEXT.md`](../CONTEXT.md) for the words, [`architecture.md`](architecture.md) for the shape, [`adr/`](adr/) for why |
-| Sources | The architecture spec v1.1, the sponsor's review of it, and GitHub issues #4 to #82 (67 issues: 7 closed, 60 open). Appendix B maps every issue to the requirements that replace it |
-
-This document is the single list of what v1 is. Where it and an issue disagree, this document wins. Where it and the architecture spec disagree on design, the spec wins and this document is corrected. "The spec" below means the architecture spec; "the plan" means the Platform Architecture Plan.
+| [`CONTEXT.md`](../CONTEXT.md) | The words. This document uses them and no synonyms |
+| [`docs/architecture.md`](architecture.md) | How the platform is put together: Workers, packages, ports, schema layout, enforcement |
+| [`docs/decisions.md`](decisions.md) | Why a rule is the way it is, and what was rejected. Cited here as "ADR NNNN" |
+| [`AGENTS.md`](../AGENTS.md) | How work is done in the repository |
 
 ---
 
-## 1. Vision
+## 1. What the platform is and why
 
-**Tagline**
+### 1.1 Vision
+
+> One operating platform for the whole organization: one database, one login, every module built on the same pages, records, access rules and agent boundary.
+
+unfoldingWord runs on disconnected systems: an accounting system for actuals, a CRM for contacts and giving, a wiki and project tool for knowledge and plans, a spreadsheet for the rolling budget, a separate database for field reporting, and GitHub for software work. Program leads reconcile money, work and outcomes across them by hand, and document the discrepancies by hand. The same program is named three different ways in three systems.
+
+The platform replaces that with one integrated system the organization owns, where a single chain of joins answers the question that today takes a week of stitching:
+
+> a training event or language engagement → its program → its portfolio → its fund → the grants and gifts behind it → the people who gave
+
+It is designed so that a very small team, working with AI agents as governed coworkers, can make and run it. Agents take part in real work everywhere on the platform, and a person decides wherever the work would have an effect on the world.
 
 > Agents do the work. A person decides what reaches the world.
 
-**Vision statement**
+### 1.2 Why build it
 
-> Run every piece of unfoldingWord's work through one loop, Build, Measure, Learn, with AI agents as governed coworkers and a person at every gate that has an effect on the world.
+- **Integration is the product.** Each system being replaced is adequate alone. The cost is in the seams: duplicated taxonomies, hand-kept foreign keys, numbers that disagree. One dataset removes the seams.
+- **The organization should own its operating record.** Markdown pages and typed records in a database unfoldingWord controls can always be exported, read by any future maintainer, and audited.
+- **Agents need one shape to work against.** A small set of single-purpose verbs over one canonical dataset lets an agent draft a grant report, allocate an expense or triage intake with the same access rules a person has, and with no path past a human gate.
+- **It fits the mission.** unfoldingWord already runs open infrastructure. The platform is an open-source repository that another organization can adopt module by module (section 3).
 
-**Expanded vision**
+### 1.3 Who it is for
 
-unfoldingWord is building one operating platform on one database with one login. The harness is its first module: the mechanism that moves an item of work through stages, lets agents claim and work it, and parks it for a person wherever leaving a stage would merge, deploy, publish or send something. It exists so that one developer plus agents is a credible way to build the rest of the platform, and so that a staff member can lend their own Claude Code to the queue without the organization losing control of what ships.
+| Who | What they need from it |
+|---|---|
+| Every staff member | Find and read how the organization works; keep their tasks; see the programs, projects and people they work with |
+| People who decide | See what is waiting on them and the facts behind it, and decide from a phone: a gate on a workflow, a work order, an expense, a publish request, a reveal of a credential |
+| Area admins | Run their area: grants, pages, collections, credentials, workflows and the agents that work them |
+| Finance (areas `20-29`) | A fund-accounting ledger, budgets, contracts and work orders, expenses, month-end and the audit binder |
+| Fund development (areas `40-49`) | Contacts, gifts with soft credits, acknowledgments, the grants pipeline and grant reports |
+| Field programs (areas `60-79`) | Engagements, training events, translation outputs, impact models and stories, usable where connectivity is poor |
+| People who lend agent time | Point their own Claude Code or Codex at a workflow and work an item on their own subscription |
+| Agents | Identities that reach the platform only through the MCP surface, each running a persona with a toolset chosen from one verb registry |
+| Auditors and the board | Generated, reproducible artifacts whose every figure traces to its source records |
+| Adopting organizations | A set of modules they can take in part, with the two axes of section 3 explained well enough to set up their own |
 
-**The feature test**
+**Not designed for:** donors, partners or the public as people who sign in. They are reached only through what a person publishes or sends: the public site, a shared report, an acknowledgment.
 
-Every proposed feature must pass both questions:
+### 1.4 Product principles
+
+- **Pages and records.** Everything a person reads is a page. Everything with financial or referential integrity is a typed record that points at a page for its narrative. A money fact is never stored only in a page's properties.
+- **Markdown is the record.** A page's body is whole-document markdown, saved as numbered versions. Editors, sync and rendering are layers over it; if any of them were removed, the corpus would be complete without it.
+- **The gate is the absence of a route.** Safety comes from verbs that do not exist and constraints the database refuses, never from instructions in a prompt. No agent identity can approve, merge, deploy, publish, post a journal entry, send donor email or advance work past a human gate.
+- **Grants, not names.** Every "who may" resolves through role grants and one `can(actor, verb, resource)`. No module has an authorization model of its own.
+- **Closed until granted.** A new area, table or property is unreadable until someone grants access. Openness is a visible, audited grant, never a side effect.
+- **Invariants live in the database.** A ledger that balances, a log that cannot be rewritten, a gate that needs a person: these are constraints and triggers, so they hold whatever code or agent talks to the database.
+- **Evidence over confidence.** A claim carries how it was verified. A figure in a report clicks through to its source. An agent's proposal marks each value as observed, confirmed, inferred, assumed or unknown.
+- **Render the absence.** When a sync failed or data is stale, the screen, chart or report says so in place. It never shows a short series or an old number as if it were whole.
+- **Config is data, capability is code.** A persona, a workflow template, a collection and a saved view are rows and pages. A verb, a validator, a connector, an engine and a data adapter are reviewed code in a registry. Config selects from registries and can never add to one.
+- **Every control returns an outcome.** `accepted` or `error` with a closed-set reason. A control that is not wired says so. A refusal is shown in place, on the control that refused.
+- **Read first, edit on purpose.** Nothing is editable until a person asks. Editing happens in place, and nothing on the page moves when it starts or stops (ADR 0029).
+- **Everything is exportable.** Every module has a documented export path. Nothing imports from a custom schema, so the platform never holds data hostage.
+- **Reuse before writing.** Validated open-source packages carry the feature sets others have already built; the platform writes only the integration and the domain logic that is its own. The rule and the current choices are in `docs/architecture.md`.
+
+### 1.5 The feature test
+
+Every proposed feature is placed on the spine before it is designed:
+
+> source systems → the canonical dataset (pages and records) → the MCP surface (small, single-purpose verbs) → screens, apps and agents, with institutional memory woven across
+
+A feature that does not sit on the spine is a side system, and the answer is no. A feature that sits on it must then pass two questions:
+
+1. Does it move work, money or knowledge through the platform, or let a person see and decide on it?
+2. Can it be done without giving any agent identity a way past a human gate?
+
+If the second answer is no, the feature does not belong at all.
+
+---
+
+## 2. Conventions that bind every module
+
+Small rules, chosen once and enforced mechanically. In a system this wide the cost of inconsistency is paid forever, and agents reading and writing the corpus need one shape to match.
+
+### 2.1 Dates
+
+**Dates are always ISO 8601, `YYYY-MM-DD`, everywhere.**
+
+- **Display and entry:** `YYYY-MM-DD` in every screen, table, chart axis, filename, export, PDF footer, log line and agent-facing answer. A time is `YYYY-MM-DD HH:MM` with an explicit time zone label when the time matters. No `MM/DD/YYYY`, no `March 3, 2026`, no locale-dependent rendering: a finance lead in the United States and a field partner in Chad read the same string the same way.
+- **Stored** as a calendar date or a UTC instant, never as a formatted string in a data column.
+- **Derived forms:** periods `YYYY-MM`, quarters `YYYY-Q1`, ranges `YYYY-MM-DD..YYYY-MM-DD`. Date-stamped slugs and filenames lead with the date so they sort correctly.
+- **One pair of functions** formats and parses dates for the whole platform; anything else fails the build. Imports from other systems normalize on the way in, and a date that cannot be parsed lands in a quarantine report instead of being guessed.
+
+ISO dates sort as text, are unambiguous across the countries unfoldingWord works in, are stable in diffs and CSV round trips, and are what agents parse most reliably.
+
+### 2.2 Money
+
+Money is an integer count of minor units with an explicit currency. Never a float. Amounts in another currency keep the original amount, the exchange rate and the functional-currency amount. One shared helper formats money for display.
+
+### 2.3 Identifiers and text
+
+- Identifiers are UUIDs, with human-facing slugs in lowercase kebab-case.
+- Johnny.Decimal: an **area** is one decade (`20-29`), a **category** is two digits (`21`), an **ID** is `NN.NN` (`21.10`).
+- Languages use IETF tags. Countries use ISO 3166-1 alpha-2.
+- All text is UTF-8 markdown.
+- Every boundary validates with a schema: a request, an event, a page's properties, an import row.
+
+### 2.4 Classification
+
+Every table and page type declares two things before it can exist:
+
+- a **classification**: `public`, `internal`, `restricted` or `sensitive`;
+- an **offline eligibility**: `sync` (may be replicated to a device), `cache_readonly` (a short-lived read cache that expires offline) or `never` (does not leave the server).
+
+A table or type without both fails the build, so the default is "you must decide", not "it quietly syncs". Section 4.1 says what each classification means for who can read.
+
+### 2.5 Provenance
+
+Every synced or imported fact carries where it came from: source system, source id, when it synced and whether the sync succeeded. Screens show it, and show the absence when a sync failed. Each entity keeps every source system's name for it, so a CRM contact id, a payment-processor customer and an accounting vendor resolve to one record.
+
+### 2.6 Copy
+
+Sentence case, second person, no exclamation marks, no emoji. Navigation items and page names are Title Case. `unfoldingWord` is camelCase every time. Kindle orange marks a human action and nothing else.
+
+---
+
+## 3. Modules
+
+### What a module is
+
+A platform this wide cannot be understood or rolled out as one mass. A **module** is a named, documented slice that can be turned on by itself. It owns its tables, page types, routes, verbs, workflows, scheduled jobs, policies and permissions. The registry is `packages/core/modules.ts`, and each module is rendered from it as a page in the platform.
+
+Rules that keep modules real:
+
+- A module depends only on modules it declares. It reaches another module through a published interface, a typed function or a verb, and **never by joining into another module's tables**. The build checks this.
+- A module can be enabled for the whole organization or for one area, and as a pilot. Disabling it removes its routes, verbs, navigation and scheduled jobs, and its API answers "module not enabled" by reason, not an error.
+- A module is complete only when it has four things: a runbook page, a data-export path, its verification steps, and its classification and offline declaration.
+- A module without a home in the sidebar yet sits under "More", not dimmed in place (ADR 0029).
+
+Modules are the unit of adoption. Another organization can take Core, Strategy and Story Bank and never stand up a ledger; one that wants only fund accounting can take Core, Ledger and Compliance.
+
+| Module | Depends on | Owns |
+|---|---|---|
+| Core | | Pages and versions, the knowledge base, collections and saved views, tasks, files, search, the Johnny.Decimal registry, access, credentials, the policy engine, suggested changes |
+| Strategy | Core | The cascade (portfolios, programs, projects), OKRs, charters, the JD Crosswalk |
+| Directory | Core | People, organizations, Areas of Responsibility, profiles |
+| Agents | Core | The MCP surface, personas, institutional memory, skills |
+| Workflow | Core, Agents | Workflows, stages, items, gates, runs, delegations |
+| Ledger | Core, Directory | General ledger, funds, functions, budgets, periods, assessments |
+| Contracts | Ledger | Agreements, work orders, commitments, partner invoices, signed copies |
+| Expenses | Ledger | Reimbursements, corporate cards, receipt intake |
+| CRM & Giving | Core, Directory | Contacts, gifts, soft credits, online giving, acknowledgments |
+| Grants | CRM & Giving, Strategy | Pipeline, funder templates, grant reporting |
+| Field Data | Strategy | Engagements, training events, translation outputs, field organizations, reference imports |
+| Impact | Field Data, Strategy | Impact models, metric definitions, snapshots |
+| Story Bank | Core | Impact stories, consent, sensitivity, usage tracking |
+| Publishing | Core | The publish flow and the public site |
+| Documents | Core | PDF and DOCX output, letterhead, binders |
+| Charts | Core | Chart specs, the standard chart library, dashboards |
+| Dev | Core | The GitHub read model, sprints, epics |
+| Comms | Core | Zulip, Zoom, Calendar, the correlation engine |
+| Desktop & Offline | Core | The sync protocol, the local replica, the markdown vault |
+| Observability | Core | Health, logs, service levels, alerts |
+| Infrastructure | Core | Declared infrastructure, backups, restore drills, stewardship |
+| Compliance | Ledger, Core | The obligation registry and generated reports |
+
+Issue: #195 (module registry and enablement), under epic #205.
+
+### Core
+
+Core is what every other module stands on.
+
+#### Pages
+
+A **page** has a type, an area, a slug, a title, an optional parent, typed properties and a markdown body. Every save is a new numbered **version** with who saved it, a person or an agent. A save is refused when it is based on a stale version, would make a parent cycle, or would duplicate a slug.
+
+- **Page types are a controlled vocabulary.** Each type has a property schema, a classification, an offline eligibility, a default template and default views. The registry is `packages/contracts/page-types.ts`. Types cover wiki knowledge, the entities of the cascade, institutional memory (decisions, learnings, skills), governance (policies, charters, runbooks, templates), meetings and transcripts, impact stories, intake, and the pages that describe the platform itself (a page per module, a health page per module).
+- **Reserved IDs** carry a convention in every area: `xx.96` impact stories, `xx.97` templates, `xx.98` meetings, `xx.99` archive.
+- **Statuses** are `draft`, `suggested`, `active` and `retired`. Retire is the trash; a retired page can be restored.
+- **Links** between pages are stored by page id, so renaming or moving a page breaks nothing. The link table is rebuilt on every save and distinguishes a link, an embed and an unresolved link. Backlinks are a read over it.
+- **Properties are not merged character by character.** They are typed values written through commands. Two people changing different properties both win; the same property takes the later write, and both are in the history.
+
+#### The knowledge base
+
+The knowledge base is the organization's wiki: how we work, policies, handbooks, guides.
+
+**Read first, edit on purpose.** A page's address is always its **read view**: rendered markdown, breadcrumb, contents, properties, backlinks, the pages under it and its history. The read view never holds a field that can change the page. A pencil or Edit button, shown only to someone who may write, opens edit mode at its own address, and the `e` key does the same. Edit mode draws the same frame and layout as the read view, so moving between them changes what can be typed and not where anything is (ADR 0026, ADR 0029). There is no "always editable" preference, because that would bring stray edits back for anyone who chose it.
+
+**Filing.** Every knowledge page is filed in one category. Its area is that category's decade, set by the server so the two cannot disagree; a page's ID, when it has one, begins with its category. `60-79 Field Programs` is a **cluster**: a label over two areas in navigation. A cluster holds no pages and takes no grant. A category's name is data an area admin sets. Moving a page to another area needs the editor role in both, keeps the page's id so links hold, and clears its ID because the old number names the old category (ADR 0031).
+
+**Finding a page.**
+
+- The **page tree** lives in the sidebar under "Pages & Wiki": each area the reader may read, its categories, and the pages in the category they are in, with the current page marked.
+- Each area may name one page as its **area home**, a hand-kept landing page shown beside the generated tree.
+- The **Quick Switcher** opens on Cmd/Ctrl+O and Cmd/Ctrl+K from every screen. With nothing typed it lists recently viewed pages. Typing matches titles, IDs and aliases loosely, so `0147`, `sec guide` and `security` all find `01.47 Security Guidelines`. Its last rows offer full-text search and, for someone who may write, creating a page with that title.
+- **Full-text search** covers title and body, with title, ID, tags and overview weighted above the body. It stems English, accepts anything a person types including quoted phrases and `-word`, shows a snippet per result, and suggests a near title when nothing matches. Filters: area, type, owner, updated since. The search screen, the JSON route and the agent verb call the same function, and every one of them returns only pages in areas the reader may read. Two people can see different results for the same words.
+- Agent and workflow page types are not listed in the wiki by default, so mirrored issues and agent pages do not bury it. They are reachable by search with a type filter.
+
+**Writing.**
+
+- The stored format is GitHub-flavoured markdown plus three additions a plain markdown reader still shows sensibly: alert blockquotes for callouts (`> [!NOTE]`), `<details>` for collapsible sections, and `==text==` for highlight. Rendering happens on the server and is sanitised, so the web screen, a phone app and a PDF get the same HTML.
+- **Wiki links** work wherever text enters the platform: the editor, plain markdown, an agent's write and an import. `[[Page title]]`, `[[01.47]]` and `[[Page title|shown text]]` are resolved on save, by exact ID first, then exact title or alias, preferring a page in the same area. A title that matches several pages is left as written for the author to choose. A link to a page that does not exist yet stays as written, offers to create the page, and resolves by itself once the page exists.
+- **Transclusion** shows one text on several pages, edited in one place: `![[Page title]]` embeds a page and `![[Page title#Heading]]` one section. The embedded text is framed, names its source, and is read-only in place. Access is checked for the reader, not the author: a reader who may not read the source sees "You do not have access to this section" and nothing else about it. A page cannot embed itself directly or through a chain, and embeds nest two levels at most. Search finds embedded text once, on its source; exports write it out in full.
+- **The editor** is a formatted editor whose own source is markdown, so the stored body never becomes an editor's private format. A page the editor would change in meaning by opening it opens as plain text instead, with a line saying why. No page is rewritten by being opened (ADR 0030).
+- **Working drafts.** Everyone in edit mode on the same version of a page shares one **working draft** through a **sync hub** and sees each other's cursors. Only someone who may write the page can join, and that is checked again at Save and at least every five minutes. **Nothing reaches readers until Save.** Save publishes the draft as one new version; Discard asks first and says how many others it affects; leaving keeps the draft. Readers, search, agents and exports only ever see the last saved version.
+- **A save from elsewhere is announced, not merged.** If an agent, the API or a restore saves a newer version while a draft is open, the people in the draft are told, the draft's Save is refused as stale, and each person keeps what they typed to edit alone. An agent's write is never merged into an open draft (ADR 0030).
+- **Files and images** are stored privately and served only through a route that checks the reader may read the page's area. Paste or drop an image in edit mode to upload it.
+
+**Looking after pages.** Create, rename, move, duplicate, retire and restore. History compares any two versions as a line diff and can restore one. Favourites and recently viewed. Templates. Comments on a page and on a passage. Export to markdown and PDF. An owner and a verification date on each knowledge page, a list of pages whose verification has lapsed, and a reminder to the owner when it does.
+
+**Deliberately absent:** block storage, inline databases with a private schema inside a page, multi-column layouts and cover images, and per-page sharing. A page's area is its scope.
+
+**Built for a second client.** Every screen is drawn from a read function that also has a JSON route, and every change goes through a command in the contracts package. An answer about a page carries what the caller may do with it, so no client re-implements the access rules. The web screens have no private path.
+
+**Moving from Notion.** The import is one job that can be run again, with a dry run first. A leading `NN.NN` in a title gives the ID, category and area; a page with neither is listed for a person to file. Owner, tags, overview and verification become properties. Synced blocks become small pages that every place embeds. Links are rewritten in a second pass once every page exists, and a link to something not imported stays a Notion link and is listed. Each page keeps its Notion id so an old bookmark can redirect. Databases, cover images and comment threads are left behind on purpose, and counted in the report. The import is complete when a sample of pages across areas matches Notion by eye, every internal link resolves, and a person has set the Notion knowledge base read-only with a banner pointing here.
+
+Issue: #175 (knowledge base), #176 (Notion content migration). Rules: ADR 0026, ADR 0029, ADR 0030, ADR 0031.
+
+#### Collections and saved views
+
+A **collection** is a set of rows with typed **properties**, listed and queried through **saved views**. It is how the platform holds what the organization kept in Notion databases: the program portfolio, the project list, the colleague directory, task lists, and every database-shaped thing after them. The parts are general, so a new collection is configuration, not a pull request (ADR 0023).
+
+- **A collection's schema is data.** An area admin defines properties, their types, options and status groups. Every change is validated against the rows that exist and against every other collection it relates to, and each change is a new version of the definition. A change that would break a saved view is refused with the views named. A property's type change converts every row or none. A **locked** collection refuses every definition change except unlocking. Changing a definition is a person's command; no verb does it.
+- **A collection lists pages or typed records.** Its rows are pages, tasks or people. Each property declares its source: a page property, a column of the record's own table, a relation, a computed value, a read-through feed, or a system field such as created and last-edited time and the time the row entered its status's complete group. A write to a record always goes through the module that owns the record.
+- **The property catalogue** is `packages/contracts/collections.ts`. It covers text, numbers, selects with an option order, status with to-do, in-progress and complete groups, people, dates and date ranges, links, contact fields, checkboxes, files, relations (one-way or two-way, to another collection or to itself), rollups and computed values.
+- **Computed values are a closed set**, not a formula language: sum, difference, count and days-until, plus rollups over a relation. A general formula language is a later decision.
+- **A collection owns no money.** The catalogue has no money type. Budget, actuals, committed, remaining need, balance and income by source are **read-through** properties served by the budget and ledger modules, shown on the row and edited only in the process that owns them. A feed with no source says so; a project with no budget lines shows "no budget lines yet", never a number. Read rules follow the money, not the collection.
+- **A property can be classified narrower than its row** (ADR 0024). A directory row is `internal`; its phone, mailing address and compliance fields are `restricted`, read by the person themself and by the area that stewards them. The query drops a property the reader may not see before rows leave the database, refuses a filter, sort or group on it so values cannot be learned by narrowing, and leaves out any rollup or computed value that depends on it. A property a person cannot read, they cannot write.
+
+**Saved views.** A saved view records its layout, filter, sorts, grouping, shown properties and order. Shared views belong to the collection; personal views belong to a person.
+
+| Layout | Use |
+|---|---|
+| Table | Column choice and widths, several sort keys, editing in place for properties the person may write |
+| Board | Grouped by status, select, person or relation. Moving a row between groups writes the property through a command and returns an outcome. Each group can carry a WIP limit, and the order of rows is kept per view |
+| List | One line per row |
+| Gallery | A card per row with chosen properties |
+| Calendar | Rows placed by a date or date range |
+| Chart | A count or sum by group, drawn as a chart, with the figures also on the page as text |
+| Timeline | Rows across a date range, for program and project durations |
+
+Filters accept relative values such as "me", "today" and "this week", resolved on the server. The same query serves the screen, the agent verbs and exports, and is always intersected with what the reader may read. History charts, cycle time and cumulative flow, are read from status changes in version history.
+
+**The row page.** A row opens as a page: property sections that can hide when empty, a relations panel listing what points here, then the body and comments. A collection can have several templates, and each view names its default.
+
+**View embeds.** A saved view can be shown inside any page, so an area home can hold views beside prose. An embed never widens access: the reader sees what the view would show them and no more.
+
+**Agent reach.** An agent can read a collection's definition and a saved view, create a row and set a property, each behind `can()` on the area. Changing a definition and moving anything past a gate stay with people.
+
+**Moving from Notion.** The colleague directory, the task lists, the program portfolio and the project list import with their options, status groups, people, relations and views. A dry-run report lists the cleanups a person confirms: duplicate options, names kept as a select, hand-kept dates that become system fields, and filter rows that do nothing. Organizations kept as select options become organization pages and relations. **Money figures are never imported as values**: they are reported beside the budget's figures for a person to reconcile.
+
+Issue: #206 (collections and saved views), #207 (Notion database migration). Rules: ADR 0023, ADR 0024.
+
+#### Tasks
+
+Tasks are universal. One list serves every team and every person: a task has a title, status, assignees, due date, priority, tags, a description, files, related tasks, an optional parent page of any kind, and a source (written by a person, extracted from a meeting, or suggested by an agent). A team's task list is a saved view filtered by area; "My Tasks" is a list view filtered by assignee "me". A task extracted or suggested by an agent stays `suggested` until its owner confirms it with one click, so an extracted to-do never silently becomes a commitment.
+
+Issue: #206.
+
+#### Suggested changes
+
+Three things are kept distinct, because collapsing them is how document systems become untrustworthy:
+
+- a **version**: an immutable snapshot, one per save;
+- a **suggestion**: a proposed change waiting for a decision, not yet part of the document;
+- **revision marks**: the rendering, for a reader, of what changed between two versions.
+
+A suggestion is anchored so it survives edits to the rest of the document, with a quoted-text fallback so the same anchor resolves against exported markdown. A **review set** bundles suggestions into a named unit, such as "Board review 2026-09-01" or "Counsel redline of the Chad MOU", that is accepted or rejected as a whole and produces exactly one new version and one audit record.
+
+**Agents suggest; they do not overwrite.** On policy, charter, contract and work order pages an agent's write becomes a suggestion set. The in-place write does not exist for those types.
+
+Revision state survives every export:
+
+- **Markdown** carries revision marks as CriticMarkup, plain text that is diffable and readable in any editor. Three modes: marked, accepted (clean current text) and original.
+- **PDF** has three modes: clean, redline (insertions underlined, deletions struck, change bars, numbered margin notes), and clean with a revision appendix listing every change with its date, actor, versions and rationale. Contracts, work orders and policies default to clean with appendix, so a document sent for signature states on its face what changed since the last executed version.
+- **DOCX** maps the marks to Word tracked changes for counterparties who redline in Word. Importing their file lands their edits as a suggestion set, never as an overwrite.
+- **Data exports** carry the version, the as-of time and the source hash.
+
+Issue: #197.
+
+#### The policy engine
+
+A **policy** is a page with a level (organization, portfolio, program, project or product), an enforcement (`required`, `default` or `template`), what it applies to, what it supersedes and when it takes effect. Resolution walks from the most specific level upward. A `required` policy at a higher level cannot be overridden below; a `default` yields to a descendant that supersedes it. A template is **copied** into the thing made from it, with its source and version recorded, so obligations never change silently; a drift report makes adopting a template update a deliberate act.
+
+Charters use the organization's NISO format (Need, Idea, Strategy, Outcomes, with Risks and Roadmap) as a validated template, so they stay machine-readable at every level.
+
+An agent loads the resolved policies, decisions and learnings for an entity through `resolve_context` before it acts (section 4.2).
+
+Issue: to be opened.
+
+#### Credentials store
+
+Area credentials are the secrets that belong to an area's work: partner APIs, portals, funder systems, bank exports. The store guarantees:
+
+- A credential is filed in an area and can be pinned narrower, to a category or an ID. Only a grant on that exact area reaches it.
+- **Using a credential and seeing its value are different capabilities.** A credential answers four, and never `read` (ADR 0018):
+
+| Capability | What it lets you do | Who |
+|---|---|---|
+| `see` | Know it exists: name, owner, expiry, last use. Never the value | `viewer` or higher on the credential's own area, and an org admin; a person at the keyboard |
+| `use` | Have platform code use it on your behalf, without seeing it | `editor` or higher on that area, and only from a workflow and connector the credential is bound to. Never through an org grant |
+| `reveal` | See the value | Nobody by default. Needs `see` plus a live reveal grant for that person on that credential; a person at the keyboard |
+| `manage` | Create, rotate, revoke, bind, give a reveal grant | `admin` on that area, and an org admin; a person at the keyboard |
+
+- An org admin can see and manage every credential, so someone can rotate or revoke when an area admin is unavailable, and can never use or reveal through the org grant. Org editors and org viewers get nothing.
+- **Agents never receive a value.** A person names a credential by reference in configuration; platform code opens it for the length of one outside call and discards it. No verb returns a value and none takes a reference (ADR 0020). The check is made against the run's person and their grants as they are at that moment, and made a second time after the key service answers, so a revocation during the call wins (ADR 0019).
+- A **binding** names the workflow and connector that may use a credential. A grant alone is not enough.
+- **A copy of the database reveals nothing.** Each version of a value is sealed under its own data key, and that key is wrapped by a key held outside the database (ADR 0019). Rotating adds a version.
+- **A reveal** is one uncached answer, shown on an explicit action and forgotten by the browser after a minute. It notifies the other admins of the credential's area by push, without naming the credential. A reveal grant lasts between 5 minutes and 24 hours. A reveal grant given by an org admin who is not an admin of the area counts for nothing until a second person who may manage the credential confirms it, and the two cannot be the same person (ADR 0021).
+- A person who cannot `see` a credential is told it does not exist, so an id cannot be probed.
+- Every use, reveal, rotation, binding and refusal is recorded in an append-only access log kept for seven years.
+- **Lifecycle.** A rotate-by date notifies the owner and the area's admins. Credentials belong to the area, not the person, so they survive a departure; a person's use and reveal end when their role grants do.
+
+**Platform secrets** are different: the keys the platform itself runs on. They are held in the hosting provider's secret store, each Worker binding only what it reads, listed with an owner and a rotation date under `30-39` Infrastructure (ADR 0022).
+
+Issue: #156, #157, #158, #159 (credentials store), #160 (platform secrets). Rules: ADR 0018 to ADR 0022.
+
+### Strategy
+
+Strategy holds why work exists: the Strategic Cascade, OKRs and charters, and the map between the cascade and the filing scheme.
+
+#### The two axes
+
+The organization is organized twice, on purpose, and the two schemes answer different questions.
+
+![The Strategic Cascade, from purpose down to task](figures/strategic-cascade.png)
+
+- **The filing axis: Johnny.Decimal.** Every page, task, workflow and credential is filed in one area. It answers *where do I put this, and where do I look for it?* It changes rarely; renumbering is a restructure. **Access rides this axis**, because permission follows job function.
+- **The purpose axis: the Strategic Cascade.** Purpose (enduring) → Objective (stable) → Principles and Values (stable) → Portfolio, carrying its Strategic Intent (one to three years or more) → Program (a quarter to a year) → Project (weeks to months) → Task (daily). It answers *what outcome does this serve?* It is meant to change every planning cycle. **Money and outcomes roll up along this axis.**
+
+Neither is derived from the other, and neither is the parent of the other. A project can be filed in Finance and serve a field program; those are two facts, recorded separately. When only one axis is modeled, the other is smuggled in as select fields copied onto several lists, which is exactly how the two drift apart.
+
+How each fact is recorded (ADR 0027):
+
+| Fact | Where it lives | Who sets it |
+|---|---|---|
+| An entity's area | On the entity | Whoever files it, with write on that area |
+| A cascade node | A page of type portfolio, program or project, in its collection | An editor of the collection's area |
+| An entity's place in the cascade | One **placement**, naming one node | A writer of the entity's area who can read the node |
+| How an area relates to a node | One row of the **JD map**, with a relation | An org admin; every change is kept in full |
+
+The four relations: an area **owns** a node when it does the work; **supports** it when it serves the node without owning it, as Finance supports every portfolio; **funds** it when it raises or holds the money; and **reports on** it when it reports to someone outside, such as a board or a funder. An area can hold several relations to one node, and a node can relate to many areas.
+
+A portfolio and its strategic intent are one entity, because each portfolio has exactly one. A program's portfolio is a relation to the portfolio page, and a project's portfolio is a rollup through its program. No collection stores a cascade coordinate as a plain select, and a test keeps it that way. Purpose, Objective, and Principles and Values are the tiers above the portfolios: organization-level pages every portfolio sits under, with Principles and Values made executable by the policy engine. Each tier carries its time horizon.
+
+**Products are on a different plane.** A product has one owning program or portfolio, but it can serve several, and projects can be pieces of a product's life. Relations record "delivers for" and "also serves", many to many. Rollups follow the tree by default and can pivot to the product plane.
+
+#### The JD Crosswalk
+
+The crosswalk is a real screen: areas down, cascade tiers across. Each cell counts the pages, tasks and items filed in that area and placed at that tier, and lists the area's relations to that tier's nodes. A cell opens the list of what it counts; a node opens every area it touches. The last column counts what is filed but not yet placed, which is the list still to do. It counts only areas the reader can read: someone with no grant on Finance sees no Finance row and no Finance relations, even on a node they can read. Over time the cells also carry committed and actual spend, stories and impact metrics.
+
+**For an adopting organization.** Declare the map once at setup, and revisit it each planning cycle:
+
+1. List your areas. With no filing scheme, run with one area; the crosswalk then has one row.
+2. List your cascade. With no strategy yet, run with no nodes; everything counts as not placed.
+3. Declare each relation that matters, starting with *owns*: every program should be owned by at least one area.
+4. Place the work under the node it serves.
+5. Read the crosswalk. An empty row is an area that serves nothing you have declared. An empty column is a tier with no work under it. Both are questions for the next planning conversation, not errors.
+
+#### Strategy collections
+
+Portfolios, programs, projects and OKRs are seeded collections. A program is keyed to its accounting program id through the budget's dimension map, so there is one program, not a second record beside it. Every money figure on these rows is read-through. OKRs form a two-level tree that programs and projects relate to.
+
+Issue: #206 (strategy collections), #202 (JD Crosswalk), #178 to #181 under epic #182 (the budget figures these rows read). Rules: ADR 0027.
+
+### Directory
+
+The directory is the people and organizations the platform knows.
+
+- **People** are the sign-in record plus a directory entry: role, team, employment, joined date, contact fields. Personal fields are classified narrower than the row (ADR 0024).
+- **A person's profile is their directory row** (ADR 0025). There is one page per person, and it is what opens wherever a person appears: an assignee, a page owner, a comment author, an approver at a gate, a mention. It shows the directory properties the reader may see, a narrative body, and read-through lists of their open tasks, the programs and projects they lead or work on, and the pages they own. A person edits their own contact fields and body; role, team, employment and compliance fields are written by the people who administer the directory. Only an active person has a profile.
+- **Organizations** are pages, so a stakeholder on a program is a relation to an organization and never a select option. Field organizations and CRM organizations are linked where they are the same real-world body.
+- **Areas of Responsibility** record person × area × share. They are the prior for allocating an expense when nothing else says where it belongs.
+
+Issue: #206 (directory collection), #208 (profiles), #207 (migration). Rules: ADR 0024, ADR 0025.
+
+### Agents
+
+The Agents module is how AI takes part in the platform's work: the MCP surface and its verb registry, agent identities and personas, institutional memory and skills. Section 4.2 describes it in full, because every module uses it.
+
+Issue: #123 (assistant bots); the rest to be opened.
+
+### Workflow
+
+Issue: #99 (agent queues), #98 and #144 (agents running hosted), #148 (GitHub data scope).
+
+> Agents do the work. A person decides what reaches the world.
+
+A **workflow** is a set of stages that items of work move through, with the people and agents who work them. In the code, and in `CONTEXT.md`, a workflow is a **harness**; the two words name the same thing, and this section uses "workflow" for what a person sees and `harness` where it names code or data.
+
+The workflow module exists for two reasons. It makes one developer plus agents a credible way to build the rest of the platform, and it lets a staff member lend their own Claude Code or Codex to the queue without the organization losing control of what ships. It runs every piece of work through one loop, Build, Measure, Learn, with agents as governed coworkers and a person at every gate that has an effect on the world.
+
+Every feature proposed for this module must pass two questions:
 
 1. Does it move work through the loop, or let a person see and decide on work in the loop?
 2. Can it be done without giving any agent identity a way to approve, merge, deploy, publish or advance past a human gate?
 
-If the first is no, it does not belong in v1. If the second is no, it does not belong at all.
+If the first answer is no, the feature belongs to another module. If the second is no, it does not belong at all.
 
----
+#### Who it is for
 
-## 2. Who it is for
+- **The people who approve.** Holders of `admin` on a workflow's Johnny.Decimal area. They see what is waiting on them, see the facts behind a ship decision, and decide from a phone.
+- **The people who lend agent time.** Staff, volunteers and contractors holding `editor` on a workflow's area, who point their own agent at the queue and work an item on their own subscription.
+- **Agents.** Personas, each an agent identity with a toolset chosen from one verb registry. They use the MCP surface and nothing else.
+- **Everyone else who can read the area.** They can watch a workflow, its queue and its items. A grant on an area reads that area and no other (ADR 0015).
 
-**Primary: the people who approve.** Holders of `admin` on a harness's Johnny.Decimal area. Today that is the sponsor and the owner. They need to see what is waiting on them, see the facts behind a ship decision, and decide from a phone.
+Nothing in this module is public.
 
-**Primary: the people who lend agent time.** Staff, volunteers and contractors holding `editor` on a harness's area, who point their own Claude Code or Codex at the queue and work an item on their own subscription.
-
-**Secondary: agents.** Three personas in v1, Builder, Reviewer and Iterate, each an agent identity with a toolset chosen from one verb registry. They are users of the MCP surface and of nothing else.
-
-**Secondary: everyone else on staff.** Holders of `viewer` or org-wide read, who can watch a harness, its board and its items.
-
-**Not designed for:** donors, partners, or anyone outside the organization. Nothing in v1 is public.
-
----
-
-## 3. Goals
-
-1. **One loop, two templates.** A single stage machine runs both the software-delivery template and the BML product-flywheel template: eight stages, same geometry, different names, workers and connectors.
-2. **The gate cannot be talked around.** An item leaves a stage with an external effect only on a recorded human decision. This is enforced by a Postgres constraint, by the absence of any agent verb or route, and by a test that walks every path through every template.
-3. **Agents as governed coworkers.** An agent reaches the platform only through the MCP surface, under an identity whose grants never exceed its owner's, and every write records that identity.
-4. **Two hosts, one surface.** A platform-hosted run and a run on a staff member's own machine see identical verbs, gates and events. Billing follows the host.
-5. **Unattended work is delegated.** Anything that runs with no person at the keyboard runs on an expiring, revocable delegation, checked at every beat, on either host.
-6. **The ship decision rests on facts.** The ship rule is a pure function over facts read from GitHub, the item's risk tier and domains, and the approver's principal. The item's own narrative is never an input.
-7. **Everything is an event.** An append-only log is the source of truth; item state, the play-by-play, the board, the dashboard and the audit trail are all reads over it.
-8. **A person is reachable.** A gate waiting on someone reaches them by web push and a Zulip thread, opens straight to the gate at phone width, and never carries content.
-9. **The loop produces memory.** An item cannot close without a learning, a skill, or a signed statement that nothing was learned.
-10. **Spend stays inside the brief.** One cap across all model vendors, held by a breaker, with heavy Builder work on staff subscriptions by default.
-
----
-
-## 4. Non-goals for v1
-
-- **Not the rest of the platform.** No ledger, CRM, grants, field data, publishing, page editor, charts, desktop app or offline sync. The plan describes them; v1 builds only what the harness needs from them (pages, grants, people).
-- **Not a native phone app.** Web push from the installable web app and the Zulip bot serve "waiting on you" (spec D2).
-- **Not a public website.** `uw-www` is not built. The BML template's deploy and publish connectors are declared and return "not wired" (spec D9, open).
-- **Not a fourth persona.** Scout is the first step inside Builder's run. Intake and interview-driven persona creation are v1.1.
-- **Not a quorum.** One approver holds every grant an item needs. Multi-approver decisions are not in v1.
-- **Not the role-gated finance verbs.** `list_gifts` and `create_draft_journal_entry` are in the verb registry and are not served.
-- **Not BML measurements from donor data.** Validate reads public-side measurements only; nothing from areas 40 to 49.
-- **Not the managed-agent engine.** `claude-managed-agent` is reserved in the registry and refuses cleanly.
-- **Not a GitHub replacement.** GitHub stays the source of truth for issue content. The platform never edits an issue title or body.
-
----
-
-## 5. Product principles
+#### Principles
 
 - **The gate is the absence of a route.** Safety comes from verbs that do not exist and constraints the database refuses, never from instructions in a prompt.
 - **Config is data, capability is code.** A persona, a template and a stage are rows and pages. A verb, a run shape, a validator, a connector and an engine are reviewed code in a registry. Config selects from registries and can never add to one.
-- **Grants, not names.** Every "who" resolves through `role_grants` and one `can(actor, verb, resource)`. The harness has no authorization model of its own.
+- **Grants, not names.** Every "who" resolves through the platform's grants and its one `can(actor, verb, resource)`. A workflow has no authorization model of its own.
 - **Facts over reports.** A reviewer's verdict is read back from GitHub. A run saying "approved" is not a fact.
-- **Every control returns an outcome.** `accepted` or `error` with a closed-set reason. A control that is not wired says so. A refusal is shown in place, on the control that refused.
-- **A wake carries no content.** Notifications and the live hub say "this harness may have news" and why. The client reads from its own cursor. A dropped wake loses time and nothing else.
-- **One kernel, one log.** Every harness behaviour is a call on a pure kernel, and everything that happened is a row in `harness_events`. The same kernel runs in a Worker and in the sim, so the harness is proven without a deployed Worker.
+- **Every control returns an outcome.** `accepted`, or `error` with a closed-set reason. A control that is not wired says so. A refusal is shown in place, on the control that refused.
+- **A wake carries no content.** A notification says "this workflow may have news" and why. The client reads from its own cursor, so a dropped wake loses time and nothing else.
+- **Everything is an event.** An append-only log is the source of truth; item state, the play-by-play, the queue, health and the audit trail are all reads over it (ADR 0004).
 - **Kindle orange marks a human action and nothing else.**
 
----
+#### Templates and stages
 
-## 6. Product overview
-
-### 6.1 The loop
+A workflow is made from a **template**: an ordered list of stages. The loop has eight.
 
 ```
 Package -> Scope -> Plan -> Build -> Check -> Ship -> Validate -> Close
-   ^         ^                                 |         |          |
-   |         +--------- regular tweak ---------+---------+----------+
-   +------------------- occasional tweak (needs a person) -+
+   ^         ^                                           |          |
+   |         +------------- regular tweak ---------------+----------+
+   +----------- occasional tweak (needs a person) -------+
 ```
 
-| # | Stage | Software template | BML template | Worked by | Exit | Connector |
-|---|---|---|---|---|---|---|
-| 1 | Package | backlog issue | goal, strategy, data | a person | `none` | `none` |
-| 2 | Scope | premise verified | niche identification | Builder (scout pass) | `checks` | `none` |
-| 3 | Plan | plan approved | product tuning | Builder | `checks` | `none` |
-| 4 | Build | commits to PR | asset package | Builder | `checks` | `none` |
-| 5 | Check | CI and review verdict | brand and policy checks | CI and Reviewer | `checks` | `none` |
-| 6 | Ship | merge, tag, deploy | deploy to channels | a person | `human_approval` | `merge` (software), `publish` (BML) |
-| 7 | Validate | deploy watched | collect feedback | the platform, Iterate | `checks` | `none` |
-| 8 | Close | issue closed and learning | analyze, compare | Iterate, a person | `checks` with `learning_attached` | `none` |
-
-Loop edges are `feeds` on the stage rows: Close to Scope (the regular tweak) and Validate to Package (the occasional tweak, which always needs a person). The four BML brackets, Product Package (1), Build Package (2 to 5), Deploy Package (6) and Iterate (7 to 8), are template data used by the Flow view.
-
-### 6.2 The surfaces
-
-```
-People ──> Web app (uw-platform) ──┬── Home "waiting on me"
-                              ├── Flow view      one harness as the BML diagram, live
-                              ├── Queue          stages as columns, items as cards
-                              ├── Waiting On You each workflow's gates to decide, at phone width
-                              ├── Item           play-by-play from the event log
-                              ├── Persona page   form, instructions, dashboard
-                              └── /health        the agent plane
-        ──> Web push, Zulip thread   a wake, then the Gates view
-
-Agents ──> MCP surface (uw-platform) ──> thirteen verbs, no gate verb
-           from a platform Workflow, or from a person's own Claude Code
-
-GitHub ──> uw-ingest (webhooks) ──> queue ──> gh_* read model ──> the ship rule
-```
-
----
-
-## 7. Requirements
-
-Requirement identifiers are stable. **Must** is a v1 requirement. **Later** is declared, reserved or stubbed in v1 and built afterwards. The Source column names the issue the requirement came from and the spec decision or section behind it. Requirements marked **Built** are already on `main`; they are listed so the document is complete and so nothing rebuilds them.
-
-### 7.1 Foundation
-
-| ID | Requirement | Priority | Source |
-|---|---|---|---|
-| FD-1 | pnpm monorepo, TypeScript strict in every package from one base tsconfig, with `apps/uw-platform`, `apps/uw-ingest`, `packages/{core,db,contracts,harness}`, `tools/`, `infra/`. One `formatDate`/`parseDate` pair and a shared Zod ISO date schema in `packages/core/dates.ts`; a lint rule and a grep refuse any other date formatting. The module registry in `packages/core/modules.ts` declares `core` and `agents`. | Built | #4 |
-| FD-2 | Toolchain: ESLint flat config with six fitness functions (function 50 lines, 25 statements, complexity 10, depth 4, 3 nested callbacks, 5 parameters), Prettier, Vitest with the Workers pool, dependency-cruiser, knip, Husky, audits. `pnpm verify` is the whole chain and the one command CI calls. A no-comments rule and a vendor-SDK text gate run in it. | Built | #67 |
-| FD-3 | `uw-platform` is a Hono Worker with one server-rendered route and a health route that reports the deployed commit. Wrangler config in `infra/` declares staging and production; no secret in any wrangler file. | Built | #5 |
-| FD-4 | CI with six separately named jobs (`security-audit`, `lint`, `typecheck`, `architecture`, `test`, `build`); a Worker per PR (`uw-platform-pr-<number>`), deleted when the PR closes; staging deploys only after CI is green on that commit; production deploys only on a tag or manual dispatch by a listed deployer with all six jobs green; a red `main` opens one alarm issue. The job names are a contract the ship rule reads. | Built | #68, #12 |
-| FD-5 | `packages/db` holds `schema.ts` as the only schema, a drizzle-kit config, and `migrations/` with generated SQL plus hand-written SQL for constraints and triggers, applied in order. A client factory takes a Hyperdrive connection string; a separate direct connection is used only by the migration runner. Every table declares `classification` (`public`, `internal`, `restricted`, `sensitive`) and `offline_eligibility` (`sync`, `cache_readonly`, `never`) as typed data; `pnpm verify` fails on a table without both, and on a schema change without a matching migration. Migrations apply from empty and re-applying is a no-op. | Built | #7 |
-| FD-6 | CI's `test` job starts a Postgres service container, sets `TEST_DATABASE_URL` to it, applies every migration from empty, re-applies them, and runs the schema, constraint and concurrency tests against it. It needs no secret and no account. | Must | #79 |
-| FD-12 | **Go-live wiring, written during the build and switched on after it.** A CI job that creates a Neon branch per PR and drops it; a migrate-staging job on merge to `main` after CI is green; a migrate-production job on a tagged release; the Hyperdrive binding for staging and production. Each job skips cleanly, and stays green, while its secret is absent. A binding is added to a wrangler file only when the resource it names exists, so a deploy never fails on a missing one; until then `uw-platform` starts without a database and `/health` reports the database indicator as not configured. A test asserts each job skips when its secret is absent. | Must | #79 |
-| FD-7 | Cloudflare Access with Google as the identity provider sits in front of `uw-platform`, declared in `infra/`. Hono middleware verifies the Access JWT on every request (signature, audience, expiry), maps the email to a `people` row, auto-provisions `@unfoldingword.org` addresses and marks anyone else pending with an explicit "pending approval" response. A typed `Principal` (person or agent id, resolved grants, an `interactive` flag) is exported from `packages/core`, available to every handler, and serialisable into a queue message. A service-token JWT yields a non-interactive principal. A tampered, expired or wrong-audience JWT gets 401. | Must | #6 |
-| FD-8 | `role_grants(person_id, role, scope_kind, scope_area, granted_by, granted_at, expires_at, revoked_at)` with roles `admin`, `editor`, `viewer` at scope `org` or `jd_area`, declared `restricted` and `never`. `can(actor, verb, resource)` in `packages/core/acl.ts` is pure over the grants already resolved on the principal and takes no database handle. Org-scope admin is allowed everything an area admin is; `editor` on one area reads every area and writes only its own; `viewer` reads only its own. Grants resolve from the table on every request with no cross-request cache. Grant and revoke are commands that require `admin` in the target scope and write an audit record with the actor, the time and the before and after row. A bootstrap migration grants org admin to the owner and the sponsor. | Must | #8 |
-| FD-9 | `pages(id, type, jd_area, slug, title, parent_id, frontmatter jsonb, body_md, version, status)` and `page_versions` (a full snapshot per save with `edit_source` of `human:<id>` or `agent:<id>`), declared `internal` and `sync`. A page-type registry in code gives each type a Zod frontmatter schema, a classification and an offline eligibility. Registered types: `skill`, `learning`, `persona`, `product`, `system_goal`, `product_strategy`, `data_sources`, `issue` (GH-3: an imported issue's page). Create, read and update handlers validate frontmatter, refuse unknown types, write one version per save, and check `can()` with the page's `jd_area`. No editor UI. Stage rows are not pages. | Must | #9 |
-| FD-10 | `uw-ingest` is a second Hono Worker, not behind Access, with its own wrangler config and deploy job. It verifies each source's signature over the raw body, rejects unsigned, badly signed and replayed deliveries with a logged refusal and no queue message, mints a trace id, and enqueues a Zod-validated envelope to one Cloudflare Queue. `uw-platform` consumes it, sends a malformed message to a declared dead-letter queue, and tolerates duplicates. | Must | #10 |
-| FD-11 | One trace id follows a request, webhook, queue message and run step from the edge to the database write. A structured JSON logger in `packages/core` writes `trace_id`, `principal`, `route`, `latency_ms`, `outcome` and the deployed commit on every line, in both Workers. Log shipping and 30-day retention are declared in `infra/`. `/health` returns JSON with a named list of indicators and an overall status, and renders a screen: deployed commit, database reachability, queue depth. An unreachable database turns its indicator amber or red and never errors the route. | Must | #11 |
-
-### 7.2 Contracts
-
-| ID | Requirement | Priority | Source |
-|---|---|---|---|
-| CT-1 | `packages/contracts` publishes Zod schemas and inferred types for the command envelope (every command carries `requestId`), the outcome envelope (`accepted` or `error` with a closed-set reason), the event envelope with a closed event-name enum, the identity string forms, and every closed set in section 8.3. One exported `CONTRACT_VERSION`. Golden fixtures, valid and invalid, per schema, round-tripped in CI. A conformance test in each consumer fails on a stale version. The only runtime dependency is `zod`; no Node-only or Workers-only import. | Built | #13, D4 |
-| CT-2 | The verb registry is plain, JSON-serialisable contract data: thirteen entries, each with name, group, the grant that gates it if any, a served-in-v1 flag, and input and output schemas. A test asserts exactly those thirteen names. `FORBIDDEN_VERBS` (`approve`, `merge`, `deploy`, `publish`, `advance`) is exported and a test asserts none is registered. `resolve_policies` is not a registered name. | Must | #14, D14 |
-| CT-3 | Adding an event name, a refusal reason, a verb, a capability word or a command is a contract change: the enum, its fixtures and `CONTRACT_VERSION` change together. | Must | #13, #16 |
-
-### 7.3 Kernel and data
-
-| ID | Requirement | Priority | Source |
-|---|---|---|---|
-| KN-1 | Harness tables in the Drizzle schema with a migration: `harnesses`, `harness_stages`, `harness_items`, `harness_events`, `harness_runs`, `gate_decisions`, `delegations`, `measurements`, and a `personas` projection of persona pages (columns in section 8.1). Every harness has a `jd_area`. | Must | #15 |
-| KN-2 | **The Ship invariant.** `harness_stages.connector` is `NOT NULL DEFAULT 'none'`, `exit_gate` is `NOT NULL`, and `CHECK (connector = 'none' OR exit_gate = 'human_approval')` holds on insert and update. A migration test against real Postgres asserts both columns non-null, the constraint present, an insert of `('merge','checks')` refused, an update to `('merge','checks')` refused, and an insert of `('merge', NULL)` refused. | Must | #15, D8 |
-| KN-3 | `harness_events` is append-only: the application role has no UPDATE or DELETE grant and a trigger refuses both. Each row carries harness, item, name from the closed vocabulary, actor identity string, evidence payload, trace id, and a position that is strictly increasing per harness and safe to resume a cursor from. Writing an unknown name is refused. | Must | #16, D7 |
-| KN-4 | `replay(events)` is a pure reducer that yields item state (stage, holder, lease, gate status, branch state). The `harness_items` row is a projection that must equal the replay; a property test asserts it over random valid sequences, and that replay is deterministic. One read function returns events for an item or a harness in cursor order with paging; it is the only event read path. | Must | #16, D7 |
-| KN-5 | Claim is one conditional UPDATE that succeeds for exactly one caller. Before it, the claim checks `can(actor, claim, harness.jd_area)` (`editor` on the area), the stage's `agent_pickup` (an agent may not claim in a `none` stage), and the stage's `wip_limit`, for people and agents alike, with the count and the update in one transaction. An agent claim takes a 15-minute lease; a person's claim has no lease. `record_run_step` renews the lease. Expiry releases the item and writes `lease_expired` exactly once. The claim records the claimant and any delegation id on the item and the event. | Must | #17 |
-| KN-6 | Exit gates are enforced server-side on submit: `none` advances; `checks` runs every validator in the stage's `validators[]` and advances only if all pass, otherwise returns the failures and writes them as an event; `human_approval` parks the item and never advances from the submit path. Validators are a registry keyed by name; a stage row cannot define one inline, and an unknown key fails closed with the key in the failure. | Must | #18 |
-| KN-7 | `learning_attached`, the Close validator: passes when the item carries a `suggested` learning or skill page, or a `nothing_learned` marker with a one-line reason set by a person (who, when and why are recorded and written as an event). An item with neither is refused. Every claim in a learning an agent drafts, and every revision Iterate proposes, carries one of `observed`, `confirmed`, `inferred`, `assumed`; one without labels fails the same validator. | Must | #18, D20 |
-| KN-8 | `feeds[]` on a stage row names target stages in the same harness that an item leaving the stage may enter in place of the next position. A transition to a stage that is neither next nor in `feeds[]` is refused; a dangling target is refused at write time. The occasional tweak to Package requires a recorded human gate decision. An unattended traversal of a loop edge is refused without a delegation id. | Must | #19, D6 |
-| KN-9 | `walk(stages)` takes stage rows as data, performs no I/O, enumerates every path from Package along position order and every `feeds` edge, terminates on cycles, and returns each path as an ordered list of stage keys with each stage's `exit_gate` and `connector`. | Must | #19 |
-| KN-10 | **The template property test.** For every template, on every walked path, every stage with a connector other than `none` is reached only after a `human_approval` exit. It runs in CI over the fixtures and is exported as a function that template activation calls. A failure names the offending path and the effect stage. A negative fixture with a `feeds` edge that bypasses Ship is kept in the repo and fails. | Must | #22, D8 |
-| KN-11 | **The ship rule** is `shipRule(input)` returning `advance` or `refuse(reason)`, pure, with no database, network or clock access, and with input and output types published from the contracts. Inputs: PR open, not draft, head equals the item's expected commit, the six CI jobs green on that head, the reviewer approvals on that head each with the reviewer identity and the resolved model provider recorded on it, `risk_tier`, `risk_domains`, and the approver's principal with resolved grants. The item's narrative is not an input and the input type has no field for it. | Must | #20, D8, D19 |
-| KN-12 | What each tier needs at Ship. `low` and `standard`: one reviewer identity approved the head. `high`: two reviewer identities approved the head and their resolved model providers are distinct; the approver holds `admin` on the area plus the grant each touched domain names (`ledger` needs `admin(20-29)`; `acl`, `infra`, `migration` need org-scope `admin`); one approver holds every required grant. Refusal reasons are the closed set in section 8.5. A determinism property test covers random inputs. | Must | #20, #25, D19 |
-| KN-13 | **The gate decision command** handles approve, reject, take over and override. It accepts only a human principal; an agent identity's call writes `gate_refused_to_agent` and changes nothing. It requires `admin` on the harness's area. Approve at a stage with a connector evaluates the ship rule; then, in one transaction, it runs `SELECT ... FOR SHARE` on the approver's `role_grants` rows, refuses if they no longer cover every required grant, and otherwise inserts the `gate_decisions` row and writes `gate_approved`. Reject returns the item with findings. Take over reassigns it to a person. Override advances despite open review findings, requires a non-empty reason, and records it. | Must | #21, D8 |
-| KN-14 | The grant re-read race is tested in both orders on two real database connections: revoke then decide refuses; decide then revoke records the decision. | Must | #21 |
-| KN-15 | Two templates ship as fixtures that the schema accepts and activation can load: software delivery and the BML product flywheel, eight stages each as in section 6.1, with Close carrying `learning_attached` and the `feeds` edge to Scope, and Validate carrying the `feeds` edge to Package. Both pass KN-10. A test asserts every validator key they reference exists. | Must | #23, D1 |
-| KN-16 | **Delegations.** A grant command, requiring `admin` on the harness's area, writes a `delegations` row with one capability word from a closed set and a required `expires_at` (default 90 days). A revoke command sets `revoked_at`. `assertDelegationLive` runs at every beat and checks the delegation is unexpired, unrevoked, and that its person still holds `admin` on the area; any failure stops the loop and writes `delegation_lapsed`. The beat's principal is derived from the delegation, bounded by the person's grants at that moment and by the capability word, and has no gate verb. Live delegations are queryable by person, by persona and for the access review. | Must | #24, D18 |
-| KN-17 | **Risk tier and domains.** A protected-directory map, kept as reviewed data, maps each protected directory to exactly one domain. `floorFromPaths(paths)` floors the tier at `high` when any domain is present. `applyDeclaration(floor, declaration)` may add domains or raise the tier and never remove or lower; no declaration yields `risk_tier_undeclared`. The domain-to-grant map is data in one place that the ship rule imports. Both functions are pure. The result is written to the item and recorded as an event with the paths and declaration that produced it. | Must | #25, D19 |
-| KN-18 | **The stage command** creates, updates and reorders `harness_stages` rows and activates a template onto a harness. It requires `admin` on the area and is the only writer of the table; a check fails on any other write. When Postgres refuses a write, the command writes `stage_edit_refused` with the database's reason and returns the refusal. Activation runs KN-10 and refuses, naming the path, when it fails. An unknown validator key, and a connector with no registered handler, are refused at write time. | Must | #26 |
-
-### 7.4 Agent boundary
-
-| ID | Requirement | Priority | Source |
-|---|---|---|---|
-| AB-1 | A Streamable HTTP MCP endpoint inside `uw-platform`, behind Access. Its tool list is enumerated from the verb registry and nothing else. `approve`, `merge`, `deploy`, `publish` and `advance` are absent under any name; calling one returns an unknown-tool error. | Must | #27, D5 |
-| AB-2 | Agent identities `agent:<persona>` and `agent:<person>/<device>` are minted from Access credentials with grants at or below the owner's. An owner losing a grant loses it for the agent on the next request. Anyone holding `editor` on the harness's area may mint `agent:<person>/<device>` under themselves; there is no separate allow-list. Role-gated verbs are offered only to a principal whose owner holds the area grant. | Must | #27, D13 |
-| AB-3 | Every MCP handler calls `can(actor, verb, resource)` with the harness's area; a static check fails the build for a handler that skips it. Every write through the surface records the agent identity in the event log and in page version history. The principal minted at the edge is the one the handler receives. | Must | #27 |
-| AB-4 | `poll_queue` returns items in stages whose `agent_pickup` is `allowed` or `auto`, on harnesses the persona subscribes to, filtered by `can()`. `claim_item` takes a lease through KN-5 and accepts a `delegation_id`. `submit_to_gate` runs KN-6 and has no argument or path that advances past a human gate. `record_run_step` renews the lease, reports tokens with the cost basis by host, and writes the play-by-play event; a step on an expired lease is refused. Claim and step responses carry the lease expiry and a warning flag. `get_health` returns the agent-plane facts for the caller's harness, scoped by `can()`. Every refusal reason is in the closed set. | Must | #28 |
-| AB-5 | `search_pages` and `read_page` return only pages the principal may read. `write_page` runs the same validation as the page API, records the agent identity, and on gated types (`learning`, `skill`, `persona`, `policy`) lands as `suggested`, never as an edit; it cannot reach a `harness_stages` row. `query_entities` executes only whitelisted, parameterized queries and returns no row the principal could not read directly. `resolve_context` for an item returns the stage's instructions page, the package pages and the applicable confirmed learnings, most specific first, each learning with `confidence` and `as_of`. `create_task` creates a `suggested` task attributed to the agent. | Must | #29 |
-| AB-6 | A non-interactive principal can claim only with a live delegation for that persona and that harness; otherwise the surface refuses with `delegation_required`. An interactive principal needs none. With a live delegation, every event carries `agent:<person>/<device> as <persona> via delegation:<id>`, or `agent:<persona>` on behalf of the delegation for a hosted beat. The three liveness checks re-run on every `record_run_step` and `submit_to_gate`; a delegation that stops being live writes `delegation_lapsed` and the run stops. | Must | #30, D22 |
-| AB-7 | Three checks run on every PR. Static: no route or tool handler reachable by an agent principal touches `gate_decisions`, proven by a fixture handler that makes the check fail. Runtime: for every role and scope combination and for a delegated principal, an agent identity's attempt to write a gate decision is refused and writes `gate_refused_to_agent`. Conformance: the tool list served to a Workflow-host principal equals the list served to an external-runner principal with the same owner grants, equals the registry, and each verb is callable from both. | Must | #31 |
-| AB-8 | A persona page declares `requires_tools`, derived from its toolset. Activation with a missing verb fails with "persona X requires verb Y, which does not exist", enqueues one item on the software harness linked to the persona page, and leaves the persona `suggested`; a second attempt opens no second item. A forbidden verb is refused with a distinct message and opens no item. A verb the creator's grants do not reach is refused. The failure is an event on the harness. | Must | #32, D14 |
-
-### 7.5 GitHub facts
-
-| ID | Requirement | Priority | Source |
-|---|---|---|---|
-| GH-1 | A GitHub App with least-privilege permissions (issues, pull requests, checks, reviews, contents, merge) and subscribed events (issues, pull_request, pull_request_review, check_run, push), both recorded in `infra/`. Its webhook points at `uw-ingest`. The private key, installation id and webhook secret live only in Worker secrets. Installation tokens are minted in the host step once per unit of work (a webhook delivery, a sweep run, a connector run), each scoped to that unit's one repository and to its client kind's permissions (read, comment, or the merge and tag), and never reach a model process or an MCP response. Write-back is limited to link labels, cross-reference comments and the merge. | Must | #33, D1, D12 |
-| GH-2 | Read-model tables `gh_repos`, `gh_issues`, `gh_prs`, `gh_milestones`, `gh_check_runs`, `gh_reviews`, keyed on the GitHub id so a redelivery is an idempotent upsert, each with a classification and a freshness timestamp. One upsert path is used by the queue consumer and by a nightly sweep that repairs missed webhooks from a watermark and records what it repaired. For a PR the model answers from its own tables: is it open, what is the head, what are the check conclusions on that head, who approved that head. | Must | #34 |
-| GH-3 | An issue carrying the harness label becomes one `harness_items` row in Package of the software harness, wrapping a page that links to the issue, idempotent on the issue id whether a webhook or the sweep finds it first. Removing the label records an event and does not delete the item. Exactly one cross-reference comment lands on the issue. Manual enqueue and import share one code path and one event shape. | Must | #35 |
-| GH-4 | Builder work lands on branch `harness/<item>`. The item records the expected head commit at `submit_to_gate`; a later submit replaces it. On `lease_expired` the kernel records `branch_abandoned`; the next claim starts from the expected head unless the claim explicitly adopts the abandoned branch, and that choice is an event. | Must | #36, D12 |
-| GH-5 | An assembler builds the ship rule's inputs from `gh_*` at evaluation time and is the rule's only caller outside its tests. Reviewer approval is a GitHub review by a Reviewer identity on the head commit; a review on an older commit, by another identity, or a value planted on the item, does not count. | Must | #36 |
-| GH-6 | **The merge connector** runs only from the kernel's stage-exit path after a `gate_decisions` row exists for the item at Ship; a static check asserts that path is its only caller. It re-checks the head and refuses if it no longer equals the expected head. It squash-merges the PR, tags the merge with the item, and writes the outcome as an event. An override's reason travels into the merge commit message. A GitHub refusal is an event on the item, not an exception. | Must | #37 |
-| GH-7 | The `deploy`, `publish`, `send` and `post` connectors are registered with handlers that return "not wired" and write an event. | Later | #37, D9 |
-
-### 7.6 Web page and live hub
-
-| ID | Requirement | Priority | Source |
-|---|---|---|---|
-| WB-1 | **The command API** is one Hono route group exposing every row of the Controls table as a command: kickstart, enqueue, import, reorder, claim, release, submit, approve, reject, take over, override, prompt run, stop run, pause, resume, tweak package, schedule regular tweak. Each body is a contract schema with a `requestId`; the response is `accepted` or `error` and nothing else. Each resolves the harness's area and calls `can()` before touching state; a check fails on a route that skips it. A repeated `requestId` replays the first outcome. A control that is not wired returns `not_wired`. Every accepted command appends its event with the actor, `requestId` and trace id. | Must | #38 |
-| WB-2 | Reorder takes the id of the item to place before, never an index; the order shown afterwards is the server's. | Must | #38, #41 |
-| WB-3 | **The live hub** is one Durable Object per active harness, woken on every appended event. Its only message is "this harness may have news"; the contract schema for it has no field that can carry an event, item or page body. Each session holds its own cursor and reads events after it from the one read route, filtered by `can()`. Polling the same route is the fallback. Killing the object mid-session loses nothing. Connection count and last wake time are health indicators. | Must | #39, D3 |
-| WB-4 | **Flow view.** One harness drawn from its stage rows in position order under the template's four brackets, with no template-specific code. Each stage shows item count, WIP against limit, age of the oldest item, and cost: metered cost and reported subscription tokens shown separately and never summed. The two `feeds` edges are drawn. Ship is marked in Kindle and nothing else is. A paused lane shows as paused. Each stage links to the board filtered to it. It updates on a wake without a reload. | Must | #40 |
-| WB-5 | **Board.** One column per stage with WIP against limit, `agent_pickup` and `exit_gate` in the header. Cards show title, issue ref, holder in the spec's full identity form, host, lease expiry for an agent and none for a person, risk tier and domains, and cost basis. Reorder, claim, release and enqueue issue commands and show the outcome; a WIP, grant or lease-held refusal shows its reason. | Must | #41 |
-| WB-6 | **Gates view.** Lists items parked at a human gate that the current person can decide. For each, a table of every ship-rule input with its current value from GitHub facts, the tier and domains, and the reviewer findings. The button is enabled only when the ship rule returns `advance` for the current facts and the current principal; otherwise the closed reason is shown beside the disabled button. Approve, reject, take over and override each issue the gate command and show the outcome, including the refusal when a grant was revoked after page load. Each gate has a stable deep link. Kindle marks the four human buttons and nothing else. | Must | #42 |
-| WB-7 | The Gates view works at phone width and the app is installable (manifest and service worker), so a push opens straight to the waiting gate and the client catches up from its cursor. | Must | #42, D2 |
-| WB-8 | **Item play-by-play.** Every event on the item in order through the one read route, with the actor's full identity. Run steps show model, tokens and cost basis; subscription rows never show a dollar figure. Gate events show decision, reason, evidence and actor. Lease, branch and delegation events render. Evidence labels render. Links go to the PR, its checks and its reviews, with a slot for the Zulip topic. New events appear on a wake. | Must | #43 |
-| WB-9 | **Home "waiting on me".** In rank order: gates the person can decide and lapsed delegations, then failed runs on items they hold. Only gates the person can decide appear, including the domain grant for `high` items. Each row deep-links. Any count shown is derived from the same query as the list. The empty state says so. | Must | #44 |
-| WB-10 | **`/health` agent plane.** Indicators, each clicking through to its query: spend against budget with metered cost and reported tokens side by side; breaker state and the cap; runs today by host and by engine; live delegations with expiry; gate refusals in the last 7 days by closed reason; agent writes in the window; stale learnings. An indicator whose source is not built says "not wired". The queries are exported so `get_health` returns the same numbers. Aggregates are visible to everyone; drill-through lists respect `can()`. | Must | #45 |
-| WB-11 | **Design system.** Tailwind 4 with a CSS-first theme whose values are the token CSS variables in `packages/ui/tokens/*.css` and nothing else. Dark mode follows the system setting with a persisted `data-theme` override. A tokens-agree check fails `pnpm verify` on a mismatch or on a hex literal outside the token files. Shell pieces (sidebar, top bar, page head, card, badge, table, KPI, gate callout, note, evidence label, lane, kanban card, segmented control, chip) exist once. The shell is fluid. Formatting helpers for `YYYY-MM-DD` dates and money from integer minor units exist once. | Must | #46 |
-| WB-12 | Every screen renders in light and dark at phone width with visible focus and an accessible name on every control. Copy is sentence case, second person, with no exclamation marks and no emoji. | Must | #46 |
-
-### 7.7 Hosts and engines
-
-| ID | Requirement | Priority | Source |
-|---|---|---|---|
-| HE-1 | **Run shape `workflow-run`.** One Cloudflare Workflow instance per claim on the platform host, with read, scout, work and submit as named checkpointed steps, each recorded through `record_run_step` with its cost. A failed step retries from that step against the previous checkpoint. A deploy mid-run does not lose the run. At a `human_approval` stage it submits, hibernates, and resumes only on the gate event from a person's decision. Pause and resume hibernate and resume affected runs; stop aborts and writes an event. The run record carries trace id, model, tokens, cost, duration, tools called, writes made, gates encountered and outcome. | Must | #47 |
-| HE-2 | **The engine seam.** One interface and a registry keyed by the six engine keys. A persona selects an engine by key; the run shape resolves it and imports no vendor SDK. A new engine is a directory under `apps/uw-platform/engines/<key>/` and a registry row; no shared code branches on an engine or vendor name. The text gate refuses a vendor SDK import anywhere else. The engine inside a step reaches the platform only through the MCP surface. | Must | #48, D16 |
-| HE-3 | **`claude-messages`.** A tool-use loop inside the Workflow step. The tools offered to the model are exactly the persona's toolset. Calls go through AI Gateway on the organization's key. No subscription credential exists in any hosted engine's configuration. | Must | #48 |
-| HE-4 | **`openrouter-messages`**, the always-on tier and the default for the scout step, Iterate, Reviewer and model-calling validators. The same loop, with the model chosen per persona from its `model` field. Every run pins its provider, refuses fallbacks, and records the resolved provider and model on the run step and on any review it posts; if the resolved provider differs from the pinned one, the run fails closed and posts no review. A diff larger than the review's input allowance is refused with `diff_exceeds_review_budget`, which parks the item for a person. | Must | #49, D21 |
-| HE-5 | **The spend breaker** reads AI Gateway's cost data and keeps no ledger of its own. One cap across Anthropic, OpenAI and OpenRouter, set by configuration to the brief's figure. At 75 percent new hosted claims are refused with a closed reason and stay queued; at 90 percent running hosted runs hibernate; below 75 percent both resume. Each transition is an event and a health indicator. Subscription tokens from external runs are never counted against the cap. A test simulates a cost spike and shows both thresholds trip. | Must | #50, D17 |
-| HE-6 | **Run shape `external-run` and engine `external`.** A person's own Claude Code or Codex connects to the MCP surface with their interactive Access login, is minted `agent:<person>/<device>`, polls, claims on a lease, works in a git worktree on `harness/<item>`, self-reports tokens on every step (labelled `subscription`), and submits. The same runner under a non-interactive service token must present a live delegation (AB-6). No subscription credential is stored on the platform. A dead runner releases its lease on expiry; the platform holds no checkpoint of external work. | Must | #51, D5, D11 |
-| HE-7 | **The synced harness skill**, in agentskills.io format, checked into the repo and synced from its `skill` page. It tells a local session the flow: sign in, poll, claim, worktree, `resolve_context`, record steps with tokens, open a PR with the declaration, submit. At the lease warning it commits the worktree as `wip:` and pushes to `harness/<item>` with the person's own credentials. A script in a skill's folder that holds a credential or calls outside the MCP surface is refused by a check. | Must | #52 |
-| HE-8 | **`claude-code-sandbox`.** Claude Code headless in a Cloudflare Sandbox inside a `workflow-run` work step, connected to the MCP surface as the run's principal, with the organization's key injected at the egress proxy and never present in the sandbox. The sandbox holds no durable state. Hosted Builder is off per harness by default; only an `admin` on the area turns it on, through a command, and a Builder on this engine cannot claim where it is off. Sandbox compute cost is recorded beside model cost. | Must | #53 |
-| HE-9 | **`codex-sandbox`**, the second Reviewer identity that `high` items need. Codex in a Cloudflare Container inside a Check step, connected as its own Reviewer identity on a provider distinct from the first reviewer's. Its verdict is a GitHub review on the head commit, read back from `gh_reviews`. The container holds no state. | Must | #54, D19 |
-| HE-10 | **`claude-managed-agent`** is reserved in the engine registry with its own directory and refuses activation with the closed reason `engine_not_available`. | Later | #55 |
-
-### 7.8 Reaching a person
-
-| ID | Requirement | Priority | Source |
-|---|---|---|---|
-| NT-1 | **Web push.** `push_subscriptions` per person and device and `push_cooldowns` per person. Subscribe and unsubscribe from the installed app; expired subscriptions are pruned. On the events that wake the hub, a notifier computes candidate wakes per person, ranks them (gate waiting on you, then run failed, then stage advanced), applies one cooldown window per person so a weaker wake never spends the window a stronger one needs, suppresses the wake when the person has a live session on that screen, and sends to every subscribed device. | Must | #56, D2 |
-| NT-2 | The payload names the harness, the reason and a deep link, and nothing else; a contract test rejects any payload with a content field. A gate wake reaches only people who can decide it. Every send, coalesce and suppress decision is logged with the trace id. | Must | #56 |
-| NT-3 | **Zulip.** One topic per item, created on first wake in the channel mapped to the harness's area, stored on the item and linked from the play-by-play. A wake posts the harness, item ref, reason and link, never the body, diff or findings. Replies are recorded on the item as comments, with the author mapped to a `people` row by email, and appear on the play-by-play. Inbound webhooks are verified in `uw-ingest`. The bot accepts no commands: a reply saying "approve" is a comment and no `gate_decisions` row exists. A Zulip outage drops the wake and logs it; nothing else fails. | Must | #57 |
-| NT-4 | `delegation_lapsed` wakes the delegation's person at the top rank, or every other `admin` on the area if that person no longer holds the grant. A run that fails finally, after the Workflow's retries, wakes the item's holder at the run-failed rank; a step that retries sends nothing. Both appear on Home and on the play-by-play. | Must | #58 |
-
-### 7.9 Personas
-
-| ID | Requirement | Priority | Source |
-|---|---|---|---|
-| PE-1 | **Persona as a page type.** Frontmatter: `identity`, `owner`, `harness`, `toolset`, `run_shape`, `engine`, `model`, `provider` (the pinned provider slug, or null for the engine's default), `budget`, `capability`, `requires_tools`, `status`. The schema rejects a value outside the run-shape registry or the six engine keys; a toolset name outside the verb registry is accepted, and activation turns it into AB-8's missing-verb item. "New page, type: persona" creates one; there is no special screen. The markdown body is the persona's instructions in agentskills.io format and is what a run's read step loads. | Must | #59, D15 |
-| PE-2 | The toolset form offers only registry verbs the creator holds and never a forbidden verb. `requires_tools` is derived and cannot be edited by hand. A persona drafted by an agent lands `suggested`. | Must | #59 |
-| PE-3 | Activation is shown only to a person holding `admin` on the harness's area. It runs the tool check (AB-8) and a dry run, then flips `status` to `active`. An agent identity's attempt through `write_page` is refused and logged. | Must | #59 |
-| PE-4 | The persona page's default view is its dashboard: runs today, spend, escalation rate, gate refusals, writes, hosts, the last play-by-plays, and the delegations it runs under. | Must | #59 |
-| PE-5 | **Builder** is a persona page in the software fixture, not code. Toolset: the eleven served verbs. Default run shape `external-run`; `workflow-run` on `claude-code-sandbox` where an admin has turned hosted Builder on. Its run is read, scout, work, submit. The scout step verifies the item's premise against current code and data; a failed premise holds the item with a reason event, the item does not advance, and held premises are counted per persona. Work lands on `harness/<item>` with a PR that declares what it closes, risks and touches plus `risk_tier` and `risk_domains`. On the hosted path the scout step runs on `openrouter-messages`. | Must | #60 |
-| PE-6 | **Reviewer** is a persona page with its own identity, distinct from Builder's on the platform and on GitHub, working Check. Toolset has no gate verb and no `write_page`. Default engine `openrouter-messages`, reading the diff and checks through GitHub facts with no container. Findings reach the PR as a GitHub review on the head commit. Each round is a run step; after three rounds the item is handed to a person. A second Reviewer page on `codex-sandbox` supplies the second approval for `high` items. | Must | #61 |
-| PE-7 | **Iterate** is a persona page in the BML fixture on `openrouter-messages` and `workflow-run`. It reads measurements only through `query_entities`, proposes a revision as a page draft in which every claim carries an evidence label, and routes it along a `feeds` edge. It runs unattended only under a delegation. | Must | #62 |
-| PE-8 | **Learning and skill page types wired to Close.** `learning` frontmatter: `confidence`, `as_of`, `supersedes`, a contradiction flag, a review date. `skill` pages are in agentskills.io format. Both land `suggested` when an agent writes them and a person confirms. A newer learning that names an older unretired one in `supersedes` sets the contradiction flag. A stale-confidence report lists `assumed` and `inferred` learnings past their review date and feeds the health indicator. The harness skill and each stage's instructions page validate as `skill` pages. | Must | #63 |
-
-### 7.10 Proof
-
-| ID | Requirement | Priority | Source |
-|---|---|---|---|
-| DX-1 | **The kernel.** Every harness behaviour is a call on `createKernel(ports)` in `packages/harness`, pure TypeScript that imports nothing from Workers, Drizzle, a vendor SDK or the network. `apps/uw-platform` constructs it with platform adapters; the sim constructs it with test adapters. | Must | #82, ADR 0001 |
-| DX-2 | **The Store test adapter is real Postgres.** In the sim, the Store port is the same Drizzle adapter over an embedded Postgres (PGlite) running the real migrations from `packages/db`. No hand-written in-memory tables. The one Drizzle implementation of the Store and Grants ports lives in `packages/db/store`, and the platform adapter and the sim's test adapter both bind it. `sim/` may import `packages/harness`, `packages/contracts`, `packages/db` and the Node built-ins `fs`, `fs/promises`, `path`, `url`, `process`, `assert` and `assert/strict` (`os` and `child_process` only in its tests, CLI and runner), and its tests Vitest, and nothing else. | Must | #82 |
-| DX-3 | **A contract test per port.** One shared test suite per port, run against every adapter of that port. A check fails on a port without one. | Must | #82 |
-| DX-4 | **The sim.** `pnpm sim -- <scenario>` runs one scenario and prints the event log and the folded state; `pnpm sim -- all` runs every scenario. Scenarios live in `sim/scenarios/`, are named for the requirement ID they prove, and assert on the event log and folded state. | Must | architecture.md |
-| DX-5 | **Superseded 2026-11-12: the trace was removed; `pnpm walk` and the sim remain.** **Every Must requirement in this document that is not marked Built has a scenario or a test that fails without it.** `pnpm trace` fails on a requirement ID with neither. `pnpm walk -- <template>` prints every path from Package to an external effect and the gate each crosses. Both join `pnpm verify`; during the build verify runs `pnpm trace:built`, which equals `pnpm trace` once the last build step is Built. | Must | architecture.md |
-| DX-6 | **What only separate connections can prove** runs on the Postgres service container in CI (FD-6), and locally whenever `TEST_DATABASE_URL` points at a Postgres server: the grant re-read race (KN-14), N concurrent claims on one item, and two claims racing one WIP slot (KN-5). The constraint and trigger tests (KN-2, KN-3) run on both the embedded Postgres and the service container. | Must | #82, #17, #21 |
-| DX-8 | **The build needs no live account.** Every Must requirement is proven against test adapters, fixture keys and recorded fixtures: Access JWTs signed by a fixture key pair, GitHub webhooks and API responses from fixtures, model turns scripted, AI Gateway cost data from fixtures, push and Zulip sends recorded. Each platform adapter is written, passes its port's contract test where the contract can run without the live service, and is listed in `docs/progress_tracker.md` as awaiting live verification. Nothing a requirement needs may be reachable only with a secret. | Must | section 15 |
-| DX-7 | **Figure 2 end to end in the sim.** One scenario takes a fixture item from kickstart to Close on the software template with scripted personas and fixture GitHub facts, covering the claim, a held premise, the lease warning and expiry, the PR declaration, the ship rule's refusals, an agent's refused gate attempt, the approve, the merge connector, a refused Close, a Close with a learning, and an Iterate beat under a delegation that then lapses. It is the machine-checkable half of the release criteria. | Must | #64 |
-
-### 7.11 v0.2.0 (the design is `docs/specs/2026-10-15-harness-v0-2-0-design.md`)
-
-This section is the list of work for v0.2.0 and the design document is why. Where they disagree on design, the design wins and this section is corrected, as section 1 says of the v1 architecture spec.
-
-Every row follows this document's conventions: a stable ID, Must or Should, a scenario or test named for the ID, no live account or secret needed to prove it. Each row ends with its cost by the toggle test: *toggle* means a value on a harness or stage row, a preset or a persona-page line; *additive* means new files and registry rows with no rule changed; *shared root* means a change to a shared root, named in the pull request description; *fixed decision* means an ADR as well.
-
-#### 7.11.1 Go-live and joining (GL)
-
-| ID | Requirement | Priority | Source |
-|---|---|---|---|
-| GL-1 | **Go-live wiring switched on.** Every FD-12 job and binding runs when its secret exists; the tracker's "Waiting on a person" rows for FD-6, FD-7, FD-10 and FD-12 are closed by a live run or restated with what is still missing. Nothing new is written; this is the switch. The release gate for this ID is the staging health probe answering through Hyperdrive Cost: additive. | Must | PRD section 14 items 7 to 9 |
-| GL-2 | **A check-only template.** A third template fixture, `check-only`, with Check and Ship as its only stages, Ship exiting through `human_approval`, and no Package. It passes the template property test (KN-10). A harness built from it has no Package page and `kickstart` refuses it with `template_has_no_package` Cost: additive; shared root `packages/contracts` for the template fixture. | Must | The bench owner, Q1 and scale check; artifact "opt-in by requesting uwreview" |
-| GL-3 | **Joining by review request.** When the GitHub facts show the Reviewer identity requested as a reviewer on a pull request in a check-only harness's repository, the sweep enqueues an item at Check for that pull request, once, with the head as its expected head and no `harness/<item>` branch. A pull request on a repository with no harness enqueues nothing and logs `no_harness_for_repo` Cost: additive. | Must | The bench owner Q1; artifact table |
-| GL-4 | **Shadow mode.** A harness column `shadow` (default `false`). While true: the Reviewer's verdict is recorded as a `review_verdict_recorded` event and no GitHub review is posted; the ship rule is evaluated on every head change and recorded as `shadow_verdict`; no connector runs; the Gates view shows the verdict with the label "shadow". Turning it on or off on a live harness is an admin command (`set_shadow`), recorded as `shadow_turned_on` or `shadow_lifted` (#108). A test proves that in shadow mode no GitHub write port method is called Cost: toggle; shared root `packages/db/schema.ts` for the column. | Must | The bench owner Q1 |
-| GL-5 | **Template change on a live harness.** An admin may replace a check-only harness's template with the software template; items in Check and Ship keep their stage, and the new stages start empty. Any other template change is refused `template_change_not_allowed` Cost: additive. | Should | Section 4 step 6 |
-| GL-6 | **Ownership gate on dispatch.** A harness names its repository (exists) and a `dispatch_allowed` list of repositories lives on the platform page for the area. A claim or a sweep on a repository not on the list is refused `repository_not_dispatchable`; if the list cannot be read, every claim is refused `dispatch_list_unavailable`. Fail closed, as the bench owner's incident Cost: additive. | Must | The bench owner, "things the comparison doesn't cover" |
-
-#### 7.11.2 Merge delegation (MD)
-
-| ID | Requirement | Priority | Source |
-|---|---|---|---|
-| MD-1 | **ADR 0010, merge under delegation.** Records what changes from ADR 0002 and 0003 and what was rejected (an agent `merge` verb; a per-repo flag without a grantor). Changes the spec's Decisions table (D8, D18) and PRD section 18 in the same commit Cost: fixed decision. | Must | V2-1 |
-| MD-2 | **The `merge` capability word.** Added to the closed set. A delegation with it carries `max_tier` (`low` or `standard`; `high` is refused `tier_not_delegable`) and the existing harness, persona, expiry and revocation. Granting it needs `admin` on the area; the grant is an event naming the grantor Cost: shared root `packages/contracts`, `packages/db/schema.ts`. | Must | The bench owner non-negotiable 4; the sponsor comment |
-| MD-3 | **Ship under delegation.** When `submit_to_gate` at Ship carries a live merge delegation, the kernel evaluates the ship rule with the delegation as an input. If it advances, the kernel writes one `gate_decisions` row whose approver is the granting person, whose actor is the agent identity, and whose `delegation_id` names the delegation, inside the transaction that locks and re-reads the delegation; then the merge connector runs. The Postgres check "approver is a human principal" is unchanged; a new check requires `delegation_id` whenever the actor is an agent identity Cost: shared root `packages/db/schema.ts`; fixed decision (MD-1). | Must | V2-1, V2-7 |
-| MD-4 | **What a delegation never covers.** The ship rule refuses `protected_path_needs_person` when any changed file is under a protected directory, `tier_above_delegation` when the item's tier exceeds `max_tier`, and `delegation_required` when an agent submits at Ship without one. Deploy and publish connectors never run from a delegated exit: a template property test fails if any path reaches them without a human decision row that has no `delegation_id` Cost: shared root `packages/contracts` for the refusal reasons. | Must | The bench owner non-negotiable 4 |
-| MD-5 | **The agent-boundary checks learn the one path.** AB-7's static check that no agent-reachable code writes `gate_decisions` is amended to allow exactly the kernel's delegated Ship exit, by name, and to fail on any second path. The planted fixtures gain a second delegated writer, which must fail Cost: shared root `tools/architecture` rules. | Must | ADR 0003 |
-| MD-6 | **Delegated merges are visible.** The Gates view and the play-by-play show "merged under a delegation granted by *person* until *expiry*"; `/health` lists live merge delegations beside the others; the notifier sends `delegated_merge` at rank 2 to the grantor Cost: additive. | Must | The bench owner non-negotiable 4 |
-
-#### 7.11.3 The fix claim (FL)
-
-| ID | Requirement | Priority | Source |
-|---|---|---|---|
-| FL-1 | **The `fix` capability word** and a harness column `fix_claim` (default `false`). While false the Builder is never offered a fix claim and the behaviour equals v0.1.0 Cost: toggle; shared root `packages/contracts`, `packages/db/schema.ts`. | Must | V2-2 |
-| FL-2 | **When the Builder may claim.** After a review round records findings of weight `real` or `plausible` and the item's claim is free (released or expired), `poll_queue` offers the item to the Builder persona on a harness with `fix_claim` true, and `claim_item` with a live `fix` delegation takes it. One identity holds the branch at a time, as KN-5 already enforces Cost: additive. | Must | The bench owner Q4 |
-| FL-3 | **Two validators on a fix.** `fix_size_cap`: the fix changes at most 25% of the pull request's changed lines and touches only files the pull request already touches, plus tests and docs; `fix_keeps_purpose`: the PR declaration is unchanged. Both in the validator registry, both run at `submit_to_gate` from a fix claim, both refuse with their own reason and release the claim Cost: additive. | Must | The bench owner, "cap the fix size, and never change what the PR is for" |
-| FL-4 | **Run what you fix.** The Builder's fix work spec installs and runs the repository's declared checks before pushing; if the repository declares none or they fail, the run ends `run_failed` with `checks_not_run_locally` and pushes nothing Cost: additive. | Must | The bench owner, "run what you fix" |
-
-#### 7.11.4 Untrusted content and clearance (UC)
-
-| ID | Requirement | Priority | Source |
-|---|---|---|---|
-| UC-1 | **One wrapper.** `packages/harness/untrusted.ts` exports the only constructor of `UntrustedContent`: a branded type carrying the text, its source (`pr_diff`, `issue_body`, `review_comment`, `page_from_agent`, and a closed set to extend) and the item. A prompt builder accepts platform text or `UntrustedContent` and renders the latter inside a fence that names the source and says it is data Cost: additive; shared root `CONTEXT.md` for the word. | Must | The sponsor's review item 3; the bench owner's leak lesson |
-| UC-2 | **The two sites that exist.** The Reviewer's `reviewPrompt` wraps the diff; the Builder's work prompt wraps the issue body and the review comments it reads. A test renders each prompt and asserts every outside string sits inside a fence Cost: additive. | Must | UC-1 |
-| UC-3 | **Reads carry the run's principal.** Every read a hosted run makes to build a prompt goes through the kernel's read functions with the run's agent principal, so `can()` filters it as it filters an MCP read. A test gives a run an agent identity lacking `read` on a page and asserts the page is absent from the prompt Cost: additive. | Must | The bench owner, "redact before the prompt" |
-| UC-4 | **The build check.** An ESLint rule or architecture test fails when a prompt builder is called with a string sourced from a GitHub facts column, an issue or review table, or a page written by an agent identity, unless wrapped by UC-1. A planted fixture fails it Cost: shared root `tools/architecture` rules. | Must | V2-3 |
-| UC-5 | **Caches keyed by clearance.** Any cache of model output (none exists in v0.1.0; this binds future ones) includes the reading principal's grant set in its key. Recorded as a rule in `docs/architecture.md` and checked by the same rule as UC-4 when a cache module appears Cost: additive. | Should | The bench owner, "key any cache by clearance" |
-
-#### 7.11.5 Epic intake (EI)
-
-| ID | Requirement | Priority | Source |
-|---|---|---|---|
-| EI-1 | **Sub-issues in the GitHub facts.** `gh_issues` gains `parent_issue_id` and the sweep and import read GitHub's sub-issue list. An issue with sub-issues is an epic Cost: shared root `packages/db/schema.ts`. | Must | A teammate |
-| EI-2 | **Done-when is required.** Intake (import, `kickstart`, and EI-3) refuses an issue whose body has no `Done when` heading with at least one line under it, with `done_when_missing`, and records the refusal as an event on the harness so the Board shows which issues are not ready. An epic's done-when is the union of its sub-issues' Cost: additive. | Must | The bench owner, "most issues lacked a clear done-when"; V2-4 |
-| EI-3 | **Enqueue an epic.** `enqueue_epic` (a person command, not an agent verb) reads the epic, creates one item per sub-issue in sub-issue order, and records blockers from `Blocked by: #N` lines in each body, the convention the cross-repo dependency map already uses. A blocked item is not offered by `poll_queue` until every blocker's item has passed Ship. The epic itself becomes no item Cost: additive. | Must | A teammate; the lasker `xrepo-deps` convention |
-| EI-4 | **Parallel claims respect the WIP limit.** Independent sub-issue items may be claimed concurrently up to the stage's WIP limit (exists). A scenario enqueues an epic of four with one blocker chain and shows two claims live and two waiting Cost: additive. | Must | A teammate |
-| EI-5 | **The Board shows the epic.** Items from one epic group under its title, with the blocker edges drawn Cost: additive. | Should | A teammate |
-
-#### 7.11.6 Ship rule and gate decisions (SR, GD)
-
-| ID | Requirement | Priority | Source |
-|---|---|---|---|
-| SR-1 | **Five more inputs, five more refusals.** `behind_by` from the pull request's comparison with its base (`base_behind`); a quoted or unquoted closing keyword that would auto-close an issue the item does not wrap (`auto_close_keyword`); a `[skip ci]` marker in any commit on the head (`skip_ci_marker`); a required check that has never run on this head (`required_check_never_ran`); the harness frozen (`harness_frozen`, GD-2). Each is a GitHub fact or a harness column, never a value planted on the item Cost: shared root `packages/contracts`. | Must | The bench owner Q5 |
-| SR-2 | **Approval across base-only updates.** `gh_prs` gains `patch_id` per head (the stable hash of the diff against the merge base). An approval counts when its commit equals the head, or when the patch id at its commit equals the patch id at the head and the only change between them is a merge from base. The ship rule's record names both heads. A scenario pushes a base merge after approval and advances; another pushes a code change and refuses `head_mismatch` Cost: shared root `packages/contracts`, `packages/db/schema.ts`. | Must | V2-6; the bench owner follow-up section 3 |
-| SR-3 | **The script's exit code is the gate.** The merge connector runs the ship rule in-process and merges only on `advance`; the `--match-head-commit` equivalent is the head the rule evaluated. A test plants a stale verdict from another item and shows it is never read Cost: additive. | Must | The bench owner Q5 and follow-up section 4 |
-| GD-1 | **Batch gate decisions.** One person command, `decide_gates`, takes a list of (item, head, decision) and writes one `gate_decisions` row per item in one transaction, each still pinned to its own head and checked by the same rule; any refusal fails the whole batch with the refusing item named. The Gates view offers "approve all shown" over its filtered list Cost: additive. | Must | The bench owner follow-up, the ruling ledger; V2-8 |
-| GD-2 | **Freeze.** Harness columns `frozen` (default `false`) and `freeze_allow` (item ids). An admin command sets or lifts it, recorded as `freeze_changed`. Ship refuses `harness_frozen` for any item not in the list Cost: toggle; shared root `packages/db/schema.ts`. | Must | The bench owner follow-up section 4 |
-| GD-3 | **Refusals are never routed around.** A `run_failed` whose reason is an engine's own refusal (`engine_refused`) is never re-dispatched to another engine or persona by the kernel; the item is handed to a person. A test plants a refusing engine and asserts no second run starts Cost: additive. | Must | The bench owner follow-up section 5 |
-
-#### 7.11.7 Review verdicts (RV)
-
-| ID | Requirement | Priority | Source |
-|---|---|---|---|
-| RV-1 | **Finding weight.** Each finding in a Reviewer verdict carries `weight` from the closed set `real`, `plausible`, `theoretical`. A verdict with only `theoretical` findings is recorded and does not count as a review round; "no findings" is recorded as a success. The Reviewer persona page's instructions ask for the weight; a verdict without it is refused `finding_weight_missing` Cost: shared root `packages/contracts` for the field. | Must | The bench owner follow-up section 8 |
-| RV-2 | **Refute rate per reviewer.** A finding a person marks `refuted` on the Gates view (a new, person-only action recorded as an event) feeds a measurement per Reviewer identity: findings, refuted, rate, over 30 days; shown on the persona view and `/health` Cost: additive. | Must | The bench owner Q3 |
-| RV-3 | **Reviewer strictness preset.** A persona-page line, `approve_at`: `zero_findings` or `no_real_or_plausible` (default). Dimension Z's rule is the first; the bench's and the platform's is the second Cost: toggle. | Should | Comparison, "what a finding looks like" |
-
-#### 7.11.8 Observability (OB)
-
-| ID | Requirement | Priority | Source |
-|---|---|---|---|
-| OB-1 | **Silence alarm.** A `/health` indicator: red when any item has waited in Check for 90 minutes with no review run step recorded on the harness in that time; amber at 45. It sends `silence_alarm` at rank 3 to the harness's admins once per cooldown. Its query is the indicator's drill-through Cost: additive. | Must | The bench owner non-negotiable 5 |
-| OB-2 | **Who holds the ball.** The item card and the Board show the holder (claimant, Reviewer, or the person a gate waits on) and how long they have held it; `/health` shows "with a person over 24 hours" and "with an agent over 2 hours" as counts with drill-through Cost: additive. | Must | The bench owner follow-up, "measure who holds the ball" |
-| OB-3 | **Shadow comparison.** The Gates view, on a harness in shadow mode, lists each head's shadow verdict beside the GitHub review state the bench or any other reviewer posted on the same head, and marks disagreements. An export of the list is one read route Cost: additive. | Must | The bench owner Q1 |
-| OB-4 | **Honest counts.** Every count of items or pull requests on Home, the Board and `/health` excludes pull requests whose author is a bot account the harness lists (`bot_authors`, default `dependabot[bot]`) and says so in the label Cost: toggle. | Should | The bench owner follow-up, "numbers lie until you clean them" |
-
-#### 7.11.9 Plug-in hooks for the bench (PI)
-
-| ID | Requirement | Priority | Source |
-|---|---|---|---|
-| PI-1 | **A second reviewer's approval counts by configuration.** A harness lists `external_reviewer_identities` (GitHub logins, default empty). An approval on the head by one of them counts toward the tier's reviewer count with its provider recorded as `external`; distinctness still applies. This is how the bench's `uwreview` approvals reach the ship rule Cost: toggle; shared root `packages/db/schema.ts`. | Must | V2-5; the bench owner Q1 |
-| PI-2 | **Rulings land as suggested learnings.** The page API accepts a `learning` page from an external runner on a delegation with capability `review`, landing `suggested` as AB-5 already requires, with `source: external` and the pull request it came from. The bench's weekly patterns can be posted this way; nothing reads the bench's own store Cost: additive. | Must | V2-5; the bench owner Q6 |
-
-#### 7.11.10 Proof (DX)
-
-| ID | Requirement | Priority | Source |
-|---|---|---|---|
-| DX-9 | **Superseded 2026-11-12: the trace was removed.** **The trace knows v0.2.0.** `pnpm trace` reads the v0.2.0 IDs (GL, MD, FL, UC, EI, SR, GD, RV, OB, PI, DX-9, DX-10) from PRD section 7.11 and reports them as it reports v1's; an unproven Must fails `pnpm test` Cost: additive. | Must | DX-5 |
-| DX-10 | **The joining journey.** One scenario drives section 4 end to end in the sim: a check-only harness in shadow mode, a review request, a Reviewer verdict recorded and not posted, a shadow verdict, shadow lifted, a posted review, Ship waiting on a person, then a merge under a delegation on a second item, refused on a third for a protected path Cost: additive. | Must | Section 4 |
-
-
-### 7.12 v0.3.0, the look (the design is `docs/specs/2026-11-04-harness-v0-3-0-design.md`)
-
-From #97 (2026-11-12) the screens these rows name take the prototype's look (section 10, ADR 0014); the rows still say what each screen holds, and the design document's pictures no longer say how it looks.
-
-This section is the list of work for v0.3.0 and the design document is why; where they disagree on design, the design wins and this section is corrected. The rows extend WB-11 and WB-12 and replace none of v0.2.0's. Costs use section 7.11's words.
-
-#### 7.12.1 Tokens and locks (UI)
-
-| ID | Requirement | Priority | Source |
-|---|---|---|---|
-| UI-1 | **The token system.** The colour scales, roles, type, spacing, size, radius, shadow and layout tokens of design section 5 in `packages/ui/tokens/`, light and dark, with a test that every text role on `--canvas`, `--surface` and `--raised`, and each text-on-soft pair, is at least 4.5:1 in both themes Cost: fixed decision (ADR 0011). | Must | Design section 5; V3-2, V3-5 |
-| UI-2 | **The lock.** The Tailwind theme is the token set and nothing else, spacing included; `pnpm verify` fails on an arbitrary value in a class (`p-[18px]`) and on a raw colour, size or shadow outside the token files, each proven against a planted fixture Cost: fixed decision (ADR 0011). | Must | V3-3 |
-| UI-3 | **Bundled fonts.** Nunito Sans (400, 600, 800) and JetBrains Mono (400) served from the Worker's own assets under `font-src 'self'`; no request leaves for a font Cost: additive. | Must | V3-6 |
-| UI-4 | **One icon component.** Icons by name; Font Awesome Pro Regular when its packages are installed, Duotone for large tiles; Font Awesome Free, or a same-size placeholder, when they are not. `pnpm verify` passes with no Font Awesome token present Cost: fixed decision (ADR 0013). | Must | V3-7; DX-8 |
-
-#### 7.12.2 The frame and the screens (UI)
-
-| ID | Requirement | Priority | Source |
-|---|---|---|---|
-| UI-5 | **The frame.** Sidebar, top bar, status bar and phone header as design section 4.1, on every screen; the status bar's values come from the `/health` indicators and the deployed commit Cost: additive. | Must | Design section 4.1 |
-| UI-6 | **The Board.** The pipeline (display name, summary, brackets, stage nodes with counts, the gate node, the loops), its three figures, the filter chips, and the columns and cards of design section 4.4, for every template Cost: additive. | Must | Design section 4.4 |
-| UI-7 | **Gates.** The list and the decision of design section 4.5: the ship rule's checks as a ring and a list, unmet first and met folded, the callout, the risk, the activity, and the pinned decisions; one at a time on a phone Cost: additive. | Must | Design section 4.5 |
-| UI-8 | **Health.** The sentence, the four figures, the 30-day runs chart and the indicator rows of design section 4.8, each row opening its detail Cost: additive. | Must | Design section 4.8 |
-| UI-9 | **Home.** The four kinds of thing waiting on the person with their actions, a card per harness, and the push setting, as design section 4.2 Cost: additive. | Must | Design section 4.2 |
-| UI-10 | **Flow.** The stages by bracket with their figures, the gate, and the loops, as design section 4.3 Cost: additive. | Must | Design section 4.3 |
-| UI-11 | **Play-by-play.** The links, the filters by kind of event and the timeline of design section 4.6 Cost: additive. | Must | Design section 4.6 |
-| UI-12 | **Persona.** The figures, last runs and delegations of design section 4.7 Cost: additive. | Must | Design section 4.7 |
-| UI-13 | **Health detail.** One indicator's figures and listing, as design section 4.9 Cost: additive. | Must | Design section 4.9 |
-| UI-14 | **Charts.** Health's runs chart and the sparklines on Home and Persona drawn with Apache ECharts as SVG in the token colours; the value each shows is also in the page as text Cost: fixed decision (ADR 0012). | Must | V3-8 |
-| UI-15 | **Three reads.** Runs and gate waits per day over 30 days, for the platform and per harness; each item's latest event; the items the viewer holds. No new table Cost: additive. | Must | Design section 7; V3-11 |
-| UI-16 | **The screenshot check.** Removed on 2026-11-23 at the owners' request. It was: every screen rendered from the seeded fixtures in light and dark, at desktop and phone width, in CI, and compared with committed pictures taken with the free icon fallback; a planted change to a token value fails it Cost: additive. | Must | Design section 1 |
-| UI-17 | **Navigation copy.** Navigation items and page names are Title Case, every word capitalized; all other copy stays sentence case, with a test over the sidebar and page titles Cost: shared root `AGENTS.md`. | Must | V3-9 |
-| UI-18 | **Harness display names.** `harnesses.title`, not null and without a default (Postgres cannot default one column to another): the migration backfills `title = key` and then sets not null; the stages module, its one writer, sets it on insert from the creating command or else the key; an admin command `set_title` changes it and records `title_set` (section 8.6, evidence `{ from, to }`); the key never changes, so they cannot drift. The title is shown wherever a person reads a harness's name, the key stays in identifiers and URLs. Tests cover the backfill, the insert with and without a title, and `set_title` refused to an agent and to a non-admin Cost: shared root `packages/db/schema.ts`, `packages/contracts`. | Must | V3-10; design section 7 |
-
----
-
-## 8. Data and contracts
-
-### 8.1 Tables and who writes them
-
-Every table declares its classification and offline eligibility. Every table has one writer.
-
-| Table | Columns that matter | Written by |
-|---|---|---|
-| `people` | id, email, display name, status (`active`, `pending`) | the Access middleware |
-| `role_grants` | person, role, scope kind, scope area, granted by, granted at, expires at, revoked at | the grants command |
-| `grant_audit` | actor, time, before, after | the grants command |
-| `pages`, `page_versions` | see FD-9; a `learning` page's frontmatter names its `source` (`platform` or `external`) and, for an external one, the `pull_request` it came from (PI-2) | the page API and `write_page` |
-| `webhook_deliveries` | source, delivery id, received at; primary key on source and delivery id | the `uw-ingest` delivery ledger |
-| `queue_watermarks` | queue, last enqueued at, last consumed at | the queue consumer in `uw-platform` |
-| `harnesses` | id, key, template, jd_area, repository (`owner/name` or null, unique case-insensitively; GH-6), hosted_builder_enabled, paused, shadow, external_reviewer_identities, frozen, freeze_allow, required_checks, protected_paths, the bot authors whose pull requests no count includes (`bot_authors`, default `dependabot[bot]`; OB-4), created at | the stage command |
-| `harness_stages` | harness, key, title, position, bracket (P31), agent_pickup, exit_gate, connector, wip_limit, instructions_page_id, validators[], feeds[], paused | the stage command |
-| `harness_items` | harness, stage, title, page, claimed_by, claimant_kind, delegation, lease_expires, priority, due, gate status, gate target, risk_tier, risk_domains[], expected_head, branch_state, pull request repository and `pr_number`, the wrapped issue (`issue_repo`, `issue_number`, `issue_github_id`, all or none, unique on the GitHub id; GH-3), zulip_topic, the epic place (`epic`: the epic issue, its title and the item's place in its sub-issue list) and the blocker items (`blocked_by`; EI-3), when the holder took the ball (`held_since`; OB-2), created at | the kernel |
-| `harness_events` | see KN-3 | the kernel, append-only |
-| `harness_runs` | item, persona, persona page, delegation, run shape (the run shape names the host), engine, model, pinned and resolved provider, steps with tokens, cost, compute cost and cost basis, gates met, pending prompts, trace id, outcome and why it hibernated or failed | the run shape |
-| `gate_decisions` | harness, item, stage, actor (the approver, always a person), agent actor and delegation (both or neither; a delegated row is a merge approval), decision, reason, evidence (with the evaluated head and the counted approvals at Ship, and the delegation on a delegated row), trace id | the gate command, human principals only, and the delegated Ship exit (ADR 0010) |
-| `delegations` | id, person, persona, harness, capability, max tier (merge only), granted at, expires at, revoked at, lapsed at, supersedes (P14), trace id | the delegation command |
-| `measurements` | item, source, name, value, as of | the measurements module, through `record_measurement` |
-| `personas` | identity, harness, page | a projection of persona pages |
-| `gh_repos`, `gh_issues`, `gh_prs`, `gh_milestones`, `gh_check_runs`, `gh_reviews` | the GitHub id (primary key) on every table; the facts (repository full name, default branch; issue and milestone number, title, state, labels; pull request head SHA, head ref, head repository, base ref and base SHA, the parsed declaration or its problem, the changed files with the head and base they were compared at; on `gh_prs` the closing references in the body (`closes`), and at the head the comparison with the base (`behind_by`, `patch_id`, `head_commits`) and the patch id of every head seen (`patch_ids`); check run head SHA, name, app, status, conclusion; review login, commit, state, provider); freshness (`fresh_at` on every row, GitHub's `updated_at` on issues, milestones and pull requests, the sweep watermark `swept_through` and `last_sweep` on `gh_repos`); on `gh_issues` the cross-reference claim (`xref_claimed_at`, `xref_comment_id`), GitHub's sub-issue count (`sub_issues`), the parent and place in the parent's sub-issue list (`parent_issue_id`, `parent_position`), and what intake parses from the body: the done-when lines (`done_when`) and the same-repository blocker numbers (`blocked_by`); the body itself is not stored (EI-1, EI-2, EI-3); on `gh_prs` the author's login (`author_login`; OB-4) | the read-model module `apps/uw-platform/github/facts/`, called by the queue consumer and the nightly sweep |
-| `push_subscriptions` | endpoint (primary key, `https:` on a known push service), person, p256dh key, auth secret, expires at, created at; at most 20 per person, the oldest removed first | the notifier (`apps/uw-platform/notify/push/`) |
-| `push_cooldowns` | person (primary key), window started at, rank (1 to 3) | the notifier (`apps/uw-platform/notify/push/`) |
-| `tasks` | id, jd_area, title, page, due, status (task status), created_by, trace id, created at | the tasks module, through `create_task` |
-| `service_tokens` | client id, person, device, bound by, bound at, revoked at, trace id | the service-token command, org admin only |
-| `command_requests` | actor, request id, command, harness, outcome, trace id, claimed at, settled at; primary key on actor and request id | the command API's request ledger (`apps/uw-platform/commands/requests.ts`) |
-
-### 8.2 The verb registry
-
-| Group | Verbs | Served in v1 |
-|---|---|---|
-| Pages and context | `search_pages`, `read_page`, `write_page`, `resolve_context` | yes |
-| Records | `query_entities`, `create_task` | yes |
-| Role-gated | `list_gifts` (areas 40 to 49), `create_draft_journal_entry` (areas 20 to 29) | no |
-| Harness | `poll_queue`, `claim_item`, `submit_to_gate`, `record_run_step`, `get_health` | yes |
-| Do not exist | `approve`, `merge`, `deploy`, `publish`, `advance` | never |
-
-### 8.3 Closed sets
-
-| Set | Values |
-|---|---|
-| connector | `none`, `merge`, `deploy`, `publish`, `send`, `post` |
-| exit gate | `none`, `checks`, `human_approval` |
-| agent pickup | `none`, `allowed`, `auto` |
-| risk tier | `low`, `standard`, `high` |
-| risk domain | `ledger`, `acl`, `infra`, `migration` |
-| evidence label | `observed`, `confirmed`, `inferred`, `assumed` |
-| role | `admin`, `editor`, `viewer` |
-| scope | `org`, `jd_area` |
-| classification | `public`, `internal`, `restricted`, `sensitive` |
-| offline eligibility | `sync`, `cache_readonly`, `never` |
-| run shape | `workflow-run`, `external-run` |
-| engine | `claude-messages`, `claude-code-sandbox`, `claude-managed-agent`, `codex-sandbox`, `external`, `openrouter-messages` |
-| cost basis | `metered`, `subscription` |
-| gate decision | `approve`, `reject`, `take_over`, `override` |
-| capability word | `none`, `iterate`, `build`, `review` |
-| stage bracket | `product_package`, `build_package`, `deploy_package`, `iterate` |
-| task status | `suggested`, `open`, `done`, `dismissed` |
-| persona activation refusal | `unknown_verb`, `forbidden_verb`, `not_permitted`, `engine_not_available`, `dry_run_failed` |
-| gate status | `working`, `parked`, `checks_failed`, `done` |
-| branch state | `none`, `active`, `abandoned` |
-| run outcome | `running`, `hibernated`, `stopped`, `completed`, `failed` |
-| delegation lapse | `expired`, `revoked`, `grant_lost` |
-| run hibernation | `gate`, `paused`, `breaker` |
-| run stop | `stopped_by_person`, `released`, `lease_expired`, `delegation_lapsed`, `gate_wait_expired` |
-| run failure | `retries_exhausted`, `provider_mismatch`, `start_failed`, `turn_limit` |
-| approve at (v0.2.0) | `zero_findings`, `no_real_or_plausible` |
-| run failure (v0.2.0) | adds `engine_refused`, `finding_weight_missing`, `checks_not_run_locally` |
-| run result | `submitted`, `premise_held`, `decided`, `review_posted`, `review_withheld`, `review_refused` |
-| breaker level | `open`, `holding`, `pausing` |
-| review verdict | `approve`, `request_changes` |
-| CI job | `security-audit`, `lint`, `typecheck`, `architecture`, `test`, `build` |
-| check conclusion | `success`, `failure`, `neutral`, `cancelled`, `skipped`, `timed_out`, `action_required`, `stale` |
-| wake reason | `gate_waiting`, `delegation_lapsed`, `run_failed`, `stage_advanced`, `handed_to_person` |
-| live screen | `home`, `flow`, `board`, `gates`, `item` |
-| capability word (v0.2.0) | adds `merge`, `fix` |
-| finding weight (v0.2.0) | `real`, `plausible`, `theoretical` |
-| untrusted source (v0.2.0) | `pr_diff`, `issue_body`, `review_comment`, `page_from_agent`, `pr_title` (a joined pull request's title) |
-| delegated hold (v0.2.0) | `shadow`, `gate_target`, `delegation_lapsed`, `delegation_required` (why a delegated Ship exit waits for a person, on `gate_refused_to_agent`) |
-| learning source (v0.2.0) | `platform`, `external` |
-| submit result (v0.2.0) | `advanced`, `parked`, `checks_failed`, `awaiting_review` (a fix that passes its validators and waits at its stage for the next review round) |
-
-### 8.4 Identity strings
-
-```
-human:<id>
-agent:<persona>
-agent:<person>/<device>
-agent:<person>/<device> as <persona> via delegation:<id>
-```
-
-### 8.5 Refusal reasons
-
-Ship rule: `pr_not_open`, `pr_is_draft`, `head_mismatch`, `checks_not_green`, `no_reviewer_approval`, `risk_tier_undeclared`, `reviewer_count_below_tier`, `reviewer_providers_not_distinct`, `approver_lacks_domain_grant`.
-
-Elsewhere: `not_permitted`, `not_wired`, `wip_limit_reached`, `lease_held`, `lease_expired`, `pickup_not_allowed`, `validator_failed`, `unknown_validator`, `delegation_required`, `gate_refused_to_agent`, `reason_required`, `spend_held`, `hosted_builder_off`, `engine_not_available`, `diff_exceeds_review_budget`, `unknown_verb`, `forbidden_verb`.
-
-Added in step 1: `malformed_command`, `unauthenticated`, `access_not_configured`, `database_not_configured`, `internal_error`, `pending_approval`, `person_not_found`, `grant_not_found`, `grant_exists`, `last_org_admin`, `expiry_in_past`, `unknown_page_type`, `invalid_frontmatter`, `page_not_found`, `page_exists`, `slug_taken`, `stale_version`, `parent_not_found`, `parent_cycle`.
-
-Added in step 3: `harness_not_found`, `harness_exists`, `stage_not_found`, `item_not_found`, `delegation_not_found`, `delegation_lapsed`, `not_holder`, `transition_not_allowed`, `unknown_feed_target`, `connector_not_registered`, `template_bypasses_gate`, `stage_edit_refused`, `item_not_at_gate`, `reason_not_one_line`, `decision_in_flight` (an approve or override at a connector stage while an earlier approval of the same parking still awaits its connector outcome).
-
-Added in step 6: `request_in_flight` (a command whose `requestId` is still running), `issue_not_found` (an import the read model does not hold), `stage_not_empty` (P17).
-
-Added in step 7: `run_not_found` (a run id the kernel does not hold, or one the caller may not see).
-
-Added in step 10: `activation_required` (a write that would make a gated page active, which only activation or confirmation does), `dry_run_failed` (a persona whose dry run found a problem).
-
-Added in v0.2.0: ship rule `base_behind`, `auto_close_keyword`, `skip_ci_marker`, `required_check_never_ran`, `harness_frozen`, `protected_path_needs_person`, `tier_above_delegation`; elsewhere `template_has_no_package`, `no_harness_for_repo`, `template_change_not_allowed`, `repository_not_dispatchable`, `dispatch_list_unavailable`, `tier_not_delegable`, `fix_size_cap`, `fix_keeps_purpose`, `done_when_missing`, `finding_weight_missing`.
-
-`protected_path_needs_person` and `tier_above_delegation` are refused only on a delegated Ship exit; the item stays parked for a person. `tier_not_delegable` refuses a merge grant naming `high`. `delegation_required` is also recorded when an agent claims or submits at a merge Ship stage without a merge delegation (S16-R2).
-
-`finding_weight_missing` is also a run-failure value. `engine_refused` is not an error reason: it is a run-failure value and a hand-off reason only, never returned as a command refusal (S15-R12).
-
-### 8.6 Event vocabulary
-
-```
-item_created  item_claimed  item_released  item_reordered  lease_renewed  lease_expired
-branch_abandoned  branch_adopted  stage_advanced  loop_edge_taken  premise_held  risk_derived
-label_removed  run_started  run_step_recorded  run_failed  run_hibernated  run_resumed  run_stopped
-run_completed  run_prompted
-submitted_to_gate  checks_passed  checks_failed  gate_approved  gate_rejected
-gate_taken_over  gate_overridden  gate_refused_to_agent  ship_refused
-connector_succeeded  connector_refused
-delegation_granted  delegation_revoked  delegation_lapsed  delegation_required
-stage_edit_refused  stage_edited  stage_removed  template_activated  harness_paused
-workflow_draft_opened  workflow_draft_saved  workflow_draft_taken_over
-workflow_draft_discarded  workflow_published
-harness_resumed  hosted_builder_set  learning_attached  nothing_learned  comment_recorded
-zulip_topic_linked
-breaker_holding  breaker_pausing  breaker_open
-persona_activation_failed  persona_activated
-measurement_recorded  handed_to_person
-```
-
-Added in v0.2.0: `review_verdict_recorded`, `shadow_verdict`, `shadow_lifted`, `freeze_changed`, `epic_enqueued`, `done_when_missing` (a harness event recording an intake refusal; EI-2), `finding_refuted`, `silence_alarm`, `delegated_merge`, `delegated_exit_claimed`, `template_changed`, `fix_claimed` (an item event: the delegation, the head the fix starts from and the pull request's declaration, FL-2), `fix_claim_set` (a harness event: `{ enabled }`, FL-1). The person command `set_fix_claim` switches a harness's fix claim (admin). Wake reasons gain `silence_alarm` (rank 3) and `delegated_merge` (rank 2).
-
-Added in v0.3.0 (UI-18, step 22, the next minor contract version): `title_set`, a harness event with no item, recorded by the admin command `set_title` as the person who ran it, with strict evidence `{ from, to }`: the previous title and the new one, each a trimmed string of 1 to 80 characters. Like `hosted_builder_set` it records a change to a harness setting whose current value is the column (`harnesses.title`). The migration's backfill of `title = key` records no event, because no person changed anything. `set_title` is not in the verb registry, so no agent can record it. Its fixtures go beside the other harness events', and the Health and play-by-play folds ignore it.
-
-Added in contract 14.0.0 (#103): the four live stage commands `create_stage`, `update_stage`, `reorder_stages` and `remove_stage` are removed, and a harness's stages change only through a draft. The admin commands are `open_workflow_draft`, `save_workflow_draft` (the whole ordered stage list and the revision it was based on), `take_over_workflow_draft` (a reason), `discard_workflow_draft` and `publish_workflow_draft` (the revision). The harness events, none with an item: `workflow_draft_opened` `{}`, `workflow_draft_saved` `{ revision }`, `workflow_draft_taken_over` `{ fromPersonId, reason }` (reason null when the lock had lapsed), `workflow_draft_discarded` `{}`, and `workflow_published` `{ added, removed, changed, reordered }` (stage keys), recorded beside the `stage_edited` and `stage_removed` rows of the same publish. The refusals `draft_locked`, `draft_not_found`, `draft_stale`, `draft_revision_mismatch` and `draft_has_problems` are new. `GET /api/harness/:harness/draft` answers an admin `{ revision, problems }`, each problem `{ stage, code, message }`.
-
-Added in contract 14.1.0 (#108): the admin command `set_stage_rules` `{ stages: [{ id, agentPickup, exitGate, wipLimit, instructionsPageId, validators }] }` changes those five rules on the named stages at once, refused with `draft_locked` while a draft is open and with the new refusal `stage_rules_have_problems` when the whole-workflow check finds a problem; each changed stage records `stage_edited`. `set_shadow` takes `shadow: true` as well as `false`, and turning it on records the new harness event `shadow_turned_on` `{}`.
-
-`silence_alarm` (step 19) is a harness event recorded by the minute cron as the system: `{ level: 'red', waiting, oldestEnteredAt, lastReviewStepAt }`, at most one per harness per notifier cooldown; it wakes the area's admins at rank 3 with a link to `/health/silence_alarm`. `template_changed` (step 19, GL-5) records `{ from, to, kept, added }` (stage keys) beside the `stage_edited` rows of the same change.
-
-`delegated_merge` is recorded with `connector_succeeded` when a delegated exit merged, and carries the decision, the delegation, the grantor's id and email, the persona, the expiry and the tier (S16-R9). `delegation_granted` gains `maxTier` (null before contract 13.1.0). `delegated_exit_claimed` (`decisionId`) is the minute job's claim on a delegated decision, recorded under the item lock before the merge connector runs, so two overlapping runs never both take one decision to the connector; a claim with no outcome is left to a person's recovery after 15 minutes.
-
-`handed_to_person` gains the reason `engine_refused`, whose `rounds` is null (contract 13.0.0). `run_completed`'s review record carries its weighted findings.
-
-Since contract 12.0.0 (step 9), `comment_recorded` carries strict evidence `{ source: 'zulip', messageId, topic, personId, email, text, truncated }` (the text cut at 10,000 characters), and `zulip_topic_linked` `{ topic }` sets the item's Zulip topic in the fold.
-
-Since contract 12.1.0 (step 10), `persona_activated` carries `{ pageId, persona, version }` (the version the flip wrote); `measurement_recorded` carries `{ measurementId, source, name, value, asOf }`; `handed_to_person` carries `{ personId, why: 'review_rounds_exhausted', rounds }`; and `learning_attached` gains `kind` (`learning`, the default, or `revision`).
-
-`packages/contracts` on `main` carries four placeholder names (`gate_approved`, `lease_expired`, `delegation_lapsed`, `abandoned`). The list above replaces them; `abandoned` becomes `branch_abandoned`.
-
-`stage_edited` (contract 3.2.0) records every accepted stage create, update and reorder (since contract 14.0.0, each one a part of a published draft): the stage id, its key, and before/after limited to the columns the edit changed (before is null for a creation; a reorder writes one per stage whose position changed). It is a harness-level event and changes no item.
-
-`item_reordered` (contract 10.0.0) records an item's new priority and, for the moved item, the item it was placed before. `stage_removed` records a removed stage's id, key and columns. `harness_paused` and `harness_resumed` name the lane, or null for the whole harness. Every event carries the `requestId` of the command that appended it, or null.
-
-`run_started`, `run_hibernated`, `run_resumed`, `run_stopped`, `run_failed`, `run_completed` and `run_prompted` (contract 11.0.0) record a run's life with closed-set reasons; `breaker_*` carry the spend reading; `hosted_builder_set` records the switch. `run_step_recorded` gains the step's cost, compute cost, model, resolved provider, the tools it called and its write count; a step recorded before 11.0.0 reads them as null, null, null, null, none and 0. A lost lease has one reason everywhere: the run stops `lease_expired`.
-
----
-
-## 9. Platform and technical constraints
-
-| Area | Decision |
-|---|---|
-| Language | TypeScript, `strict: true`, no `any`, no `@ts-ignore`. Node 22, pnpm workspaces. |
-| Platform | Cloudflare Workers. `uw-platform` holds server-rendered pages and islands, the command API, the MCP surface, the live hub (Durable Object), Workflows, the queue consumer and crons. `uw-ingest` holds webhooks and nothing else. |
-| Database | Neon Postgres through Hyperdrive. Drizzle in `packages/db/schema.ts` is the only schema. Migrations are plain SQL, generated and hand-written. No manual production data edits. |
-| Shape | Ports and adapters. One pure kernel in `packages/harness`, reached only through ports; the database is behind the Store port like everything else. Each port has a platform adapter in `apps/uw-platform` and a test adapter in `sim/`, and may have more than one platform adapter. |
-| Ports | Clock, Ids, Store, Grants, GitHubFacts, Connectors, ModelEngine, Hub, Notifier, Runs. Validators are a registry inside the kernel, not a port. |
-| Naming | "Kernel" is the pure core. "Engine" means only the code behind the model-vendor seam. |
-| Layering, enforced by the build | `packages/contracts` imports nothing. `packages/core` imports contracts. `packages/db` imports contracts and core. `packages/harness` imports contracts and core types and nothing with side effects. `apps/*` and `sim/` are the composition roots. Islands call the command API, never the kernel. A vendor SDK is imported only under `apps/uw-platform/engines/<key>/`. |
-| Truth | `harness_events` is append-only and is the source of truth. State is a fold. Replay equals record. |
-| Agent boundary | Agents reach the platform only through the MCP surface serving the verb registry. |
-| Authorization | One `can(actor, verb, resource)` over `role_grants`. A principal is minted at the edge on every request and travels with every call, queue message and MCP invocation. |
-| Conventions | Dates `YYYY-MM-DD` through one pair of functions; instants `timestamptz` in UTC; money in integer minor units with a currency; UUID ids with kebab-case slugs; Zod at every boundary; JD ids `NN.NN`. |
-| Infrastructure | Everything is declared in `infra/` and `.github/workflows/`. Nothing exists only in a dashboard. No secret in a wrangler or workflow file. |
-| Code style | No code comments. Files under 500 lines, functions under 50. Conventional Commits. `pnpm verify` green before any push. |
-| Observability | One trace id end to end. Structured JSON logs, 30 days. Audit trails 7 years. |
-| Billing | Hosted runs use organization API keys through AI Gateway under one cap. External runs use the person's own subscription and are tracked as contributed time. Hosted Builder is off by default. |
-| Dependencies | Prefer a maintained, typed, permissively licensed package that runs on Workers over custom code. |
-
----
-
-## 10. Design
-
-From #97 (2026-11-12) the source of truth for how screens look is the Claude Design prototype (removed from the repository on 2026-10-20 and later from its history), with every value snapped to the token scales in `packages/ui/tokens/`, which stay locked in Tailwind (ADR 0011, ADR 0014). From v0.3.0 until #97 the source was section 5 of the v0.3.0 design document and its screens were the pictures in section 4 of that document. Before v0.3.0 it was the tokens extracted from the Claude Design prototype (removed from the repository on 2026-10-20 and later from its history) and the token block in the Key Visuals page. When the sponsor's `design-system/` handoff lands, its `tokens/*.css` replaces the token files and nothing in the islands changes but the import.
-
-| Prototype screen | Harness view |
-|---|---|
-| The frame (sidebar by area, top bar) | Frame (UI-5); unbuilt modules are dimmed and open nothing |
-| Today | Today, was Home (UI-9) |
-| Agent Queues landing (the epic #99 proposal) | Agent Queues, one card per workflow the viewer may see (#104); an area admin presses New workflow to create one, giving a name, one of their areas, a starting template whose stages are copied in, and an optional GitHub repository, and lands in its Flow tab with a draft open (#111) |
-| Agent Queues lanes and cards, with Development's chips and view switch | Queue tab, formerly the Board (WB-5, UI-6): lanes grouped by phase, each lane's rules in plain words, refusals on cards (#105) |
-| Agent Queues "Stage configuration" | Flow (WB-4, UI-10): the live map of the workflow, open for everyone, each phase a column with its stages' progress against limit, items and oldest age, and cost, the forward arrows and the dashed loop arrows, with the stage details table below and a note that the phases and option lists are set in the platform (#109); an area admin presses Edit workflow for a private draft of the stages, checked 2 seconds after each change and published as one change, while others see who is editing (#103); in the draft the admin drags a stage to move it or to another phase, drags from a stage's dot to another stage to draw a loop, and selects a loop and presses Delete to remove it, with the row buttons and lists doing the same from the keyboard (#109) |
-| Today's "Waiting on me" rows | Waiting On You tab for each workflow (WB-6, UI-7): each gate the viewer may decide, with Approve (Approve merge at a merge stage) and Send back with a reason; the old `/gates` address moves to Agent Queues (#106) |
-| Agent Queues "Stages & controls" | Stages & Controls tab for each workflow (#108): an area admin changes each stage's pickup, exit rule, limit, instructions page and checks with one Save, applied at once after the same whole-workflow check as a publish and refused while a draft is open; pauses and resumes a stage; and turns hosted Builder, shadow mode and freeze on or off. Everyone else sees the same values read-only, with the area whose admins can change them |
-| Health's "Open alert" card | Gate decision (UI-7) |
-| Agent Queues "What the run did" | Item play-by-play (WB-8, UI-11) |
-| Agent Queues, agents | Agents tab for each workflow (#110): every agent with what it does, where it runs, its model, budget and status; an area admin adds one from a template persona under its own name, grants and revokes standing permissions (delegations), and a grid shows the stages each agent can pick up in. An agent's page (Persona, UI-12) shows its job card: its actions in plain words, with unbuilt ones marked not available yet and the forbidden ones locked, where it runs, engine, model, budget and instructions, editable only by an area admin, and the five activation checks, which run again on every save. Reach stays capability plus phase: a stage does not name which agents may pick up there (Ian, 2026-11-17). Routines, people's own agents on a schedule, are #134 |
-| Health | `/health` agent plane and its detail (WB-10, UI-8, UI-13) |
-
-**What is fixed**
-
-- **Palette.** The five brand colours with their soft tints: Inspire, Ocean, Tech, Cultivate, Kindle. Light values from the prototype, dark values from Key Visuals. There is no red for status.
-- **Kindle** marks a human action and nothing else. Every prototype use of Kindle that is not a person acting is retoned.
-- **Type.** Nunito Sans with Avenir fallback; monospace for identifiers.
-- **Layout.** Fluid, not the prototype's fixed 1440 by 1000. Phone width is first-class for the Gates view.
-- **Figure key.** Ocean outline for what the plan had, Inspire fill for what the harness adds, dashed grey for later.
-- **Copy.** Sentence case, second person, no exclamation marks, no emoji; navigation items and page names are Title Case (UI-17). unfoldingWord is always camelCase.
-
----
-
-## 11. Security and authorization
-
-| Act | Requires |
-|---|---|
-| See a harness, its board and its items | `viewer` on the area, or org-wide read |
-| Claim an item, on either host | `editor` on the area; an agent claims through its owner's grant |
-| Mint `agent:<person>/<device>` and run externally | the same `editor` grant |
-| Approve, reject, take over or override at a gate | `admin` on the area |
-| Approve a `high` item touching `ledger` | `admin` on the area and `admin(20-29)` |
-| Approve a `high` item touching `acl`, `infra` or `migration` | `admin` on the area and org-scope `admin` |
-| Schedule an unattended loop | `admin` on the area, recorded as a delegation |
-| Create or activate a persona; edit stages; turn on hosted Builder | `admin` on the area |
-
-- No agent identity can approve, merge, deploy, publish or advance an item past a human gate, on any host, by any route.
-- No route, tool or Workflow step exists without a `can()` call scoped to the harness's area.
-- Write tokens for GitHub live in the host step and never in a model process. On a laptop the person's own git credentials are used, guarded by the `harness/<item>` convention and the ship rule's head check.
-- No subscription credential is stored on the platform.
-- The software harness lives in area 80 to 89. A harness item carries its area's classification. Nothing in an item may hold a value the principal could not read directly.
-- **Known gap.** The repository is private on GitHub's Free plan, so there is no branch protection, and any writer can push a workflow that reads the Cloudflare token. This is recorded in `docs/exceptions.md` and closes with a paid plan, a public repository, or a separate Cloudflare account for production.
-
----
-
-## 12. What already exists
-
-On `main` at commit `af6dc6c`:
-
-- The workspace, the date module and its gates, the module registry (FD-1).
-- The toolchain and `pnpm verify` (FD-2). `walk`, `trace` and `sim` are not in the chain yet.
-- `apps/uw-platform` with one route and a health route; `apps/uw-ingest` as a package with tests and no Worker code; `infra/uw-platform/wrangler.toml` with staging and production (FD-3).
-- The seven GitHub Actions workflows (FD-4).
-- `packages/contracts` with the envelopes, closed sets, identity forms and fixtures (CT-1). The verb registry is not there yet.
-- `packages/db` with an empty `schema.ts`, the `declareTable` declarations and their test, the client factory, the migration runner (`pnpm db:migrate`, `pnpm db:generate`), and the schema drift check (FD-5). No table is declared yet.
-- `packages/harness` holds a wiring test.
-- Eight ADRs, `docs/architecture.md`, `CONTEXT.md`, `AGENTS.md`.
-
-Not on `main`: `sim/`, `packages/ui/`, any table, any port, any adapter, any MCP code.
-
----
-
-## 13. Build order
-
-Each step needs the ones above it. Within a step, order is free.
-
-1. **Finish the foundation.** FD-6, FD-12 (written, not switched on), FD-7, FD-8, FD-9, FD-10, FD-11, CT-2.
-2. **Stand up the kernel's frame.** DX-1 to DX-6 and DX-8: the ports, the embedded-Postgres Store adapter, the contract tests, the sim, `walk` and `trace`.
-3. **Kernel and data.** KN-1 to KN-3 first (tables, the Ship invariant, the event log), then KN-4 to KN-18.
-4. **Agent boundary.** AB-1 to AB-8.
-5. **GitHub facts.** GH-1 to GH-7.
-6. **Command API and live hub.** WB-1 to WB-3, with the design system WB-11 alongside.
-7. **Hosts and engines.** HE-1, HE-2, HE-3, HE-4, HE-5, then HE-6, HE-7, then HE-8, HE-9, HE-10.
-8. **Views.** WB-4 to WB-10, WB-12.
-9. **Reaching a person.** NT-1 to NT-4.
-10. **Personas.** PE-1 to PE-8.
-11. **The end-to-end scenario.** DX-7.
-
-**v0.2.0.** Each step needs the ones above it and all of v1. One plan per step under `docs/plans/`.
-
-12. **Words and contracts.** Section 2 into `CONTEXT.md`; closed sets, finding weight and the check-only fixture into `packages/contracts` at 13.0.0; DX-9.
-13. **Untrusted content.** UC-1 to UC-5. First because every later prompt site inherits it.
-14. **Joining.** GL-2, GL-3, GL-4, GL-6, OB-3, PI-1. The pilot's path.
-15. **Ship rule and gates.** SR-1, SR-2, SR-3, GD-1, GD-2, GD-3, RV-1, RV-2, RV-3.
-16. **Merge delegation.** MD-1 to MD-6. After step 4 so the rule it extends is final.
-17. **The fix claim.** FL-1 to FL-4.
-18. **Epic intake.** EI-1 to EI-5.
-19. **Observability and hooks.** OB-1, OB-2, OB-4, PI-2, GL-5.
-20. **The joining journey and the switch.** DX-10; GL-1 last, because it is the only step that touches a live service and it is a person's to run.
-
-`packages/db/schema.ts`, `packages/contracts/` and the event vocabulary are the files most likely to conflict; change them in small commits.
-
-**v0.3.0.** Each step needs the ones above it and all of v0.2.0. One plan per step under `docs/plans/`, on a normal branch named for the work, `feat/ui-redesign`, with no worktree.
-
-21. **Tokens and locks.** UI-1, UI-2, UI-3, UI-4, with the chart rendering spike of ADR 0012 first.
-22. **The frame and names.** UI-5, UI-17, UI-18.
-23. **Reads.** UI-15.
-24. **Screens.** UI-6 to UI-14, one screen per task.
-25. **The screenshot check.** UI-16, its pictures taken last.
-
----
-
-## 14. Release criteria
-
-v1 is ready when all of these are true. There is no date. v0.2.0's release list is section 9 of its design document and v0.3.0's is section 10 of its; items 1 to 6 below hold for both unchanged.
-
-**Provable by the build, with no person, no account and no secret**
-
-1. `pnpm verify` is green, including `walk`, `trace` and `sim -- all`.
-2. Every Must requirement not marked Built has a scenario or test named for its ID (DX-5).
-3. DX-7 passes: one item travels Package to Close in the sim with every gate exercised.
-4. Both templates pass the property test; the negative fixture fails it.
-5. The three agent-boundary checks (AB-7) pass, and fail when their planted fixtures are added.
-6. The CI `test` job passes the race and concurrency tests on its Postgres service container (DX-6).
-
-The build is finished when items 1 to 6 hold. Nothing below is needed to reach that point.
-
-**After the build: go-live, by people**
-
-These start once the build is finished and the accounts in section 15 exist. Each platform adapter gets its first run against the real service here, so expect this stage to find defects the test adapters could not.
-
-7. The go-live wiring (FD-12) is switched on: staging has its database through Hyperdrive, and each platform adapter listed in the tracker as awaiting live verification has run against its service. Unauthenticated requests to staging are rejected at the edge; a signed-in person reaches the app.
-8. The acceptance scenario of issue #64 runs on staging, driven by one person with `admin(80-89)` and one with `editor` only: kickstart; a hosted claim with the scout step on the always-on engine; a laptop claim by the `editor` whose tool list equals the hosted one; a held premise on a deliberately wrong item; work on `harness/<item>` with subscription tokens on the board; the `wip:` push at the lease warning, then expiry and a fresh claim from the expected head; a PR refused without its declaration and accepted with it; CI and a Reviewer verdict read back from GitHub; a web push and a Zulip thread that carry no content and open the Gates view at phone width; the ship button disabled with its closed reason when the head changes and when a `high` item has one reviewer; an agent's approve attempt refused and logged on each host; an approve that produces exactly one `gate_decisions` row, a merge and a deploy; a measurement at Validate; Close refused without a learning and accepted with one; an Iterate beat under a delegation, refused without one, stopped when it is revoked; and `/health` showing all of it.
-9. The event log for that item is exported with screenshots of the Flow, Board, Gates, play-by-play and `/health` views, in light and dark.
-10. One real item, the council's canonical taxonomy registry, has travelled the production harness end to end and closed with a confirmed learning (issue #65).
-
----
-
-## 15. Dependencies and prerequisites
-
-These need a person, an account or a secret, and the build cannot create them. **None of them is needed until the build is finished** (DX-8): the build proves every requirement against test adapters and fixtures, writes the platform adapters, and records each one in `docs/progress_tracker.md` as awaiting live verification. They are needed for go-live, section 14 items 7 to 10. The one exception is already in place: the Cloudflare token that lets CI deploy the per-PR Worker.
-
-| Dependency | Needed by | Owner | Status |
-|---|---|---|---|
-| Cloudflare account, API token, account id (GitHub secrets) | FD-3, FD-4 | The owner | In place |
-| Neon project, API key, connection strings; Hyperdrive configs for staging and production | FD-12 | The owner | To set up, after the build |
-| Cloudflare Access application with Google as identity provider; team domain and audience tag | FD-7 | The owner, the sponsor | To set up |
-| Access service tokens for agent identities | AB-2, AB-6 | The owner | To set up |
-| Cloudflare Queue and dead-letter queue | FD-10 | The owner | To set up (declared in wrangler) |
-| GitHub App registered on the unfoldingWord org; private key, installation id, webhook secret | GH-1 | an org owner | To set up: `uw-harness-staging` and `uw-harness`, registered with `pnpm github-apps:page` and set with `pnpm github-apps:convert` (#98) |
-| A GitHub identity for each Reviewer persona, and the Builder's | PE-5, PE-6, HE-9 | an org owner | To set up: `uw-builder`, `uw-reviewer` and `uw-reviewer-codex`, in the same sitting (#98) |
-| A test repository for the merge connector's integration test | GH-6 | The owner | To create |
-| AI Gateway; Anthropic, OpenAI and OpenRouter API keys | HE-3, HE-4, HE-5, HE-9 | The owner, the sponsor | To set up: gateways `uw-platform-staging` and `uw-platform-production`; the keys are Worker secrets (#98) |
-| Cloudflare Sandbox and Containers enabled on the account | HE-8, HE-9 | The owner | To check |
-| Zulip bot, its credentials, and an outgoing webhook | NT-3 | The sponsor | To set up |
-| Web push VAPID key pair | NT-1 | The owner | To generate |
-| The brand guide link and the `design-system/` handoff | WB-11 | The sponsor | Requested |
-| Two people for the staging acceptance run | section 14 | The owner, the sponsor | When the build is done |
-
----
-
-## 16. Roadmap after v1
-
-1. Scout as its own persona with its own stage exit, when premise-refusal rates show it earns one.
-2. The intake persona and interview-driven persona creation (v1.1).
-3. The BML Deploy Package channel: the web host, the mailing list or a social connector (D9).
-4. `claude-managed-agent` implemented.
-5. A native phone app, revisited after a quarter of harness operation.
-6. A quorum of approvals for items touching more than one domain.
-7. BML measurements from areas 40 to 49, behind the finance and CRM read exclusions.
-8. The role-gated verbs, with the ledger and CRM modules.
-9. Cloudflare OS as a third host.
-
----
-
-## 17. Open questions
-
-Each has a working assumption so the build does not wait. The assumption stands until a DRI changes it here.
-
-| # | Question | Working assumption |
-|---|---|---|
-| Q2, D9 | Which Deploy Package channel is wired first, and does `uw-www` join v1? | None in v1. The BML template's Ship stage carries `publish`, and the handler returns "not wired". |
-| Q4, D2 | Is the phone-app cut confirmed? | Yes. Needs the sponsor's explicit word, because it reverses an earlier brief. |
-| Q10, D21 | Which flash-class model does the always-on tier start on? | GLM 5.3 Flash through OpenRouter (`ALWAYS_ON_PROVIDER = "z-ai"`, `ALWAYS_ON_MODEL = "z-ai/glm-5.3-flash"`), confirmed by the owner on 2026-11-17 (#98). Each persona page can still name its own model. |
-| | What is the AI Gateway cap in dollars? | $500 a month on staging and on production (`AI_SPEND_CAP_MINOR = "50000"`), set by the owner on 2026-11-17 (#98). The code's fallback stays $1,250. |
-| | Nonprofit Team seat price | Not used anywhere in v1. To be re-verified before it enters the brief. |
-| | Does the repository move to a plan with branch protection? | No. The deploy gate stands in for it. |
-| | Licence for this repository | To be confirmed by unfoldingWord. |
-
----
-
-## 18. Decision log
-
-### 18.1 Decisions from the spec
-
-Each row is ratified in the spec's Decisions table; the spec holds the full text.
-
-| # | Decision |
-|---|---|
-| D1 | Software delivery first, BML second, both shipped as templates on one stage machine. The GitHub App is in v1. |
-| D2 | No phone app in v1. Web push and the Zulip bot serve "waiting on you". |
-| D3 | One Durable Object per active harness as a wakeup hub with per-session cursors; polling is the fallback. |
-| D4 | A published contract package: one live version, golden fixtures, CI conformance. |
-| D5 | Two first-class hosts in v1, a platform Workflow and a person's own Claude Code over remote MCP, with one verb registry and one test that both see identical verbs. |
-| D6 | `feeds` on each stage for loop edges; unattended traversal only under a delegation. |
-| D7 | `harness_events` is the source of truth; replay equals record. |
-| D8 | The ship rule is a pure function with a closed refusal set. Ship exits only on human approval, enforced by a null-safe Postgres check and a property test over every path. Since v0.2.0 a merge delegation may take the Ship exit for a merge up to standard, with the grantor as approver (ADR 0010). |
-| D10 | The Product Package is three typed pages under a product page. |
-| D11 | External runs self-report tokens, labelled subscription; the breaker never counts them. No token ledger of our own. |
-| D12 | On a laptop the person's own git credentials are present. Accepted, guarded by the branch convention and the head check. |
-| D13 | Anyone with `editor` on the area may run externally. No separate allow-list. |
-| D14 | Personas select verbs; a new verb is reviewed code; `requires_tools` makes a missing verb a visible card. |
-| D15 | A persona is a page type, activated by a person after a tool check and a dry run. |
-| D16 | Six engines behind one seam; a vendor SDK is named in one directory. |
-| D17 | Billing follows the host. One cap across vendors. Hosted Builder off by default. |
-| D18 | A `delegations` table: one capability word, required expiry, revocable, checked at every beat. The `merge` word carries a maximum tier (ADR 0010). |
-| D19 | Risk tier and domains on every item; `high` needs two reviewers on distinct providers and an approver holding each domain's grant. |
-| D20 | Close is a validator: a learning, a skill, or a signed "nothing learned". Evidence labels from day one. |
-| D21 | `openrouter-messages` is the always-on tier and the platform's baseline model service. |
-| D22 | A scheduled routine on a person's machine is an external runner on a delegation. |
-
-### 18.2 Decisions made in this document
-
-The issues left these as "decide in the PR". They are decided here so the build is not a series of silent choices. Anything unspecified that is not in this table is decided by the builder and recorded in `docs/progress_tracker.md` with what it costs if wrong.
-
-| # | Decision |
-|---|---|
-| P1 | **Kernel naming, the Store test adapter, and port contract tests** follow issue #82 (DX-1 to DX-3). The pure core keeps the Store port. |
-| P2 | **Reviewer diversity is judged by resolved model provider**, as spec v1.1 says, not by vendor or engine as some issue text says. The fourth refusal reason, `reviewer_providers_not_distinct`, is in the set. |
-| P3 | **Reviewer's default engine is `openrouter-messages`**; `codex-sandbox` is the second identity. Issue #61's older line placing Reviewer on `codex-sandbox` is superseded. |
-| P4 | Closed sets are CHECK-constrained text columns, not Postgres enums, so a contract change is a migration of a constraint. |
-| P5 | `scope_area`, `pages.jd_area` and `harnesses.jd_area` share one text form, `NN-NN` (for example `80-89`). |
-| P6 | The Postgres driver is `postgres` with `drizzle-orm/postgres-js`. Table declarations attach through a `declareTable` wrapper that records each one in a registry a test walks. |
-| P7 | The event position is a per-harness sequence. Events are never archived in v1. A repair routine that rebuilds the `harness_items` projection from the log ships with KN-4. |
-| P8 | The lease default is a constant 15 minutes. An expired lease is detected lazily by the claim predicate and by a one-minute cron; `lease_expired` is written once. The warning fires 3 minutes before expiry as a flag on the `record_run_step` response. A failed `wip:` push is logged by the skill and the lease still expires. |
-| P9 | An item traversing a loop edge is the same item re-entering the earlier stage, with `loop_edge_taken` recorded. |
-| P10 | The walker cuts a cycle at the first revisited stage on a path. An effect stage's own `human_approval` exit satisfies the property; an edge that lands on an effect stage and bypasses its exit cannot exist, because exits belong to the stage. |
-| P11 | The ship rule reports every failing reason, in the order of section 8.5. |
-| P12 | Override may bypass `no_reviewer_approval` and open review findings only. It never bypasses a head mismatch, red checks, an undeclared tier, the `high` reviewer rules, or the grant check. |
-| P13 | The locked re-read refusal uses `approver_lacks_domain_grant`. Take over releases any lease and sets the person as holder. Reject findings are a list of text entries on the event. |
-| P14 | Capability words are `none`, `iterate`, `build`, `review`. `none` opens nothing. Renewal writes a new delegation row that names the one it supersedes. The beat check does not take a row lock. |
-| P15 | Protected directories: `packages/db/migrations/` is `migration`; `packages/core/acl.ts` and the grants command are `acl`, and so are the code that decides what Ship sees and what merges (the risk map, the ship rule and its contract, the gate path, the GitHub identity and merge code, the platform adapters and the kernel composition root); `infra/`, all of `.github/`, the dependency rules and the architecture checks are `infra`; a future `packages/ledger/` is `ledger`. The map is a file in `packages/harness`. Derivation runs at every `submit_to_gate`. |
-| P16 | The PR declaration is a fenced block in the PR body headed `harness`, with `closes`, `risks`, `touches`, `risk_tier` and `risk_domains` lines. Its parsed shape is a contract schema. |
-| P17 | Default `agent_pickup` per stage: Package `none`, Scope to Check `allowed`, Ship `none`, Validate and Close `allowed`. Default WIP limit is 3 per stage. Stage positions are gapped by 10. A stage holding an item cannot be removed. |
-| P18 | Trace ids are UUIDs, carried in an `x-trace-id` header and on every event row. Request and response bodies are never logged. Queue depth on `/health` is consumer lag. |
-| P19 | Webhook replay detection stores only the delivery id. The ingest system identity is `agent:ingest`. |
-| P20 | `pages.status` is `draft`, `suggested`, `active`, `retired`. Slugs are unique per area. Page API writes use a version check and refuse a stale version. `create_task` writes to a minimal `tasks` table. Search is Postgres full-text. |
-| P21 | Local development uses a dev-only principal enabled by a variable that the staging and production wrangler environments cannot set. A pending person is approved by an org admin through the grants command. |
-| P22 | The merge method is squash. The tag is `harness/<item>`. A redelivered `requestId` replays the first outcome. Command routes are `POST /api/harness/:harness/commands/:name`. |
-| P23 | The live hub uses WebSockets with exponential backoff to 30 seconds; the polling fallback is every 15 seconds. The wake carries no position. Wakes in one tick coalesce to one. |
-| P24 | The push cooldown is 10 minutes per person. Stage-advanced wakes go to the item's holder only. Presence comes from the live hub. A failed send is not retried. The payload carries no delegation id. |
-| P25 | Zulip topics are named `<harness>/<item ref>`. Only waiting-on-you and run-failed reasons post. A post does not use the cooldown and @-mentions no one. Replies are `comment_recorded` events. A reply from an unmapped author is recorded with the email and no person. A harness-level `delegation_lapsed` posts to a topic named for the harness. |
-| P26 | A failed run is a Workflow that has exhausted its retries or been aborted. Workflow steps retry 3 times. A failed hosted run under a delegation wakes the delegating person. |
-| P27 | The breaker stops; it does not fail over to a cheaper model. |
-| P28 | The persona dry run is one `claude-messages`-shaped turn against a fixture item on test adapters that writes nothing durable. A persona whose missing verb later ships needs the person to press Activate again. |
-| P29 | Builder's default model on the hosted path is the persona page's `model` field, with Sonnet-class as the fixture value. Reviewer's lens split for `high` items is correctness on the first reviewer and security on the second. |
-| P30 | The default review date for `assumed` and `inferred` learnings is 90 days after `as_of`. A contradiction is detected by `supersedes` alone. |
-| P31 | The bracket each stage belongs to is a column on `harness_stages`. The Flow diagram is inline SVG. Board reorder is a menu action, with drag-and-drop optional. The Flow draft editor has drag-and-drop on its map, with the row buttons and lists as the keyboard way (#109). The play-by-play pages 100 events at a time. Home lives at the app root. A gate the person cannot decide for lack of a domain grant is not shown. |
-| P32 | The interim tokens live in `packages/ui/tokens/`. The tested phone width is 390 pixels. The service worker caches the shell only and holds no harness data. |
-| P33 | Once FD-12 is on, per-PR Workers bind to shared staging's database through its Hyperdrive config; only CI's Neon job uses the per-PR Neon branch. Until then a per-PR Worker runs with no database. |
-| P34 | The engine seam's loop caps at 40 turns. A tool error is returned to the model as the tool result. |
-| P35 | **Superseded 2026-11-12: the `pnpm trace:built` sentence no longer holds; the trace was removed.** **The shared Store implementation lives in `packages/db/store`.** `sim/` may not import `apps/` and `apps/` may not import `sim/`, so the one Drizzle implementation of the Store and Grants ports that DX-2 requires sits in `packages/db`, and both adapters bind it. `sim/` may also import the Node built-ins DX-2 names, and its tests Vitest. `pnpm verify` runs `pnpm trace:built` during the build, which equals `pnpm trace` once the last step is Built (DX-5). |
-
-### 18.3 Decisions for v0.2.0
-
-Made on 2026-10-15 between the owner and Claude; the design is `docs/specs/2026-10-15-harness-v0-2-0-design.md`.
-
-| # | Decision | Cost if wrong |
-|---|---|---|
-| V2-1 | **Merge delegation is in, default off on every harness.** A person grants it; it is scoped to one harness and a maximum tier of `standard`; it never covers deploy, publish, protected paths or `high`; every merge under it is a gate decision whose approver is the granting person and whose actor is the agent, with the delegation id on the row. The Postgres rule "the approver is a human principal" stays. Recorded in ADR 0010. | A repo that opts in merges a change nobody read, bounded by the tier and the expiry. The record names who granted it |
-| V2-2 | **The fix claim is in, off by default on every harness.** The bench-style second writer, pushing while the author holds the claim, is not built | A Builder fix lands that the author did not want; bounded by the 25% cap and `git revert` |
-| V2-3 | **Untrusted content is a rule plus a check, not a defence system.** The two prompt sites that exist are wrapped; prompt reads use the run's own principal; a static check fails the build on an unwrapped outside read. No new content sources are built | A connector in v0.3.0 inherits a rule that turns out to be the wrong shape and is reworked once |
-| V2-4 | **Epic intake is in; lessons with statuses wait for v0.3.0.** Intake refuses an issue without a done-when. The v0.3.0 design for lessons is recorded in section 17 | The pilot's queue runs dry anyway, because the epics lack done-whens; or the pilot produces lessons we cannot file for six weeks |
-| V2-5 | **The platform is the record's home.** The bench is offered the platform as its record's home, framed as a plug-in. v0.2.0 carries the two hooks the bench needs: its approvals read as Reviewer verdicts, its rulings land as `suggested` learnings | The bench declines and two stores grow; the hooks still serve any later reconciliation |
-| V2-6 | **An approval survives a base-only update.** The ship rule accepts a Reviewer approval on an earlier head when the pull request's patch identity (the diff against its merge base) is unchanged between that head and the current one; the record names both heads. This reconciles the bench owner's "approvals on the exact head" with their "carry an approval across base-only updates" | An approval is honoured on a head the reviewer never saw whose diff is byte-identical; the exposure is a changed merge base, which CI re-runs on and the rule still requires green |
-| V2-7 | **No agent verb is added.** A merge under delegation and a fix claim both ride on `submit_to_gate` and `claim_item`; the delegation on the call changes what the kernel does with it. `approve`, `merge`, `deploy`, `publish` and `advance` remain forbidden verbs | None; this is the shape that keeps ADR 0002 |
-| V2-8 | **Built for uW's volume.** The bench owner's ruling ledger as a GitHub comment protocol, re-approval churn machinery and anything sized for a hundred pull requests a day are not built. The shapes that are toggles are taken | The pilot shows a click bottleneck at five pull requests a day, which is unlikely, and batch gate decisions (GD-1) already answer it |
-
-
-### 18.4 Decisions for v0.3.0
-
-Made between 2026-10-21 and 2026-11-04 by the owner and Claude over ten rounds of a mockup; the design is `docs/specs/2026-11-04-harness-v0-3-0-design.md`.
-
-| # | Decision | Cost if wrong |
-|---|---|---|
-| V3-1 | **v0.3.0 is the look only.** Lessons with statuses, promised to v0.3.0 by V2-4, move to v0.4.0 | The pilot's lessons wait one more version to be filed |
-| V3-2 | **One token system, generated in OKLCH from the brand colours,** each brand hex exact on its step; fixed type, spacing, radius and shadow scales (ADR 0011) | A shade reads wrong in use; it is one token change |
-| V3-3 | **Tailwind holds the lock:** spacing cleared to the token steps and arbitrary values fail the build (ADR 0011) | A real need for a value between steps; it becomes a new token, deliberately |
-| V3-4 | **Dark first, both themes complete** | Light gets less attention |
-| V3-5 | **Every text colour pair passes WCAG AA, as a test** | None for the people using it; a design that needs a lower-contrast text fails the build until it is rethought |
-| V3-6 | **Fonts are bundled with the Worker** | A few hundred kilobytes of fonts in the assets |
-| V3-7 | **Font Awesome Pro by token, Free as the fallback, Pro artwork never committed** (ADR 0013) | The licence does not cover the token install; every environment then draws the fallback until it is settled |
-| V3-8 | **Charts are Apache ECharts 6 as SVG,** server-rendered where the security policy allows (ADR 0012) | The spike finds neither path clean; the chart becomes an island with its value also as text |
-| V3-9 | **Navigation and page names are Title Case** | Mixed case in the copy reads inconsistent; it is one rule to reverse |
-| V3-10 | **A harness has a display name,** `harnesses.title`, backfilled from the key and changed only by the admin command `set_title` (design section 7) | One column, one migration, one admin command and one event |
-| V3-11 | **Nothing on a screen is invented:** live readouts, per-indicator history and a lease progress bar are not drawn because nothing records them | The screens feel less alive until the data exists |
-| V3-12 | **The mockup is not committed;** the design document's screenshots are the record | Rebuilding a detail means reading a picture, not copying code |
-| V3-13 | **Normal branches, no worktrees,** for builds (`AGENTS.md` section 8) | Work in progress shares one checkout; a second task waits or stashes |
-| V3-14 | **GL-1 runs on its own track** | None; neither needs the other (DX-8) |
-
----
-
-## Appendix A. Where the issues disagreed with the spec
-
-- Issues #20, #36, #54 and #61 speak of reviewer "vendors"; spec v1.1 changed this to resolved model providers and added `reviewer_providers_not_distinct`. This document follows the spec (P2).
-- Issue #61 carries two engine lines for Reviewer. The later one, `openrouter-messages` by default, is the spec's (P3).
-- Issue #12 asked for branch protection. It was closed because the plan the repository is on does not offer it; FD-4's deploy gate stands in.
-- The spec's Figure 2 drawing shows Close with exit `none`; the v1.1 text makes it `checks` with `learning_attached`. The text wins.
-- `docs/architecture.md` and ADR 0001 used to say "engine" for the pure core and describe in-memory tables for the Store test adapter. Issue #82 corrected both on 2026-10-01; this document, `AGENTS.md`, `CONTEXT.md` and the dependency rules use the corrected terms.
-
-## Appendix B. Issue to requirement map
-
-| Issue | Requirements | | Issue | Requirements |
+| Stage | Software delivery | Build, Measure, Learn | Worked by | Leaves on |
 |---|---|---|---|---|
-| #4 | FD-1 | | #40 | WB-4 |
-| #5 | FD-3 | | #41 | WB-2, WB-5 |
-| #6 | FD-7 | | #42 | WB-6, WB-7 |
-| #7 | FD-5 | | #43 | WB-8 |
-| #8 | FD-8 | | #44 | WB-9 |
-| #9 | FD-9 | | #45 | WB-10 |
-| #10 | FD-10 | | #46 | WB-11, WB-12 |
-| #11 | FD-11 | | #47 | HE-1 |
-| #12 | FD-4 (closed, not available) | | #48 | HE-2, HE-3 |
-| #13 | CT-1, CT-3 | | #49 | HE-4 |
-| #14 | CT-2 | | #50 | HE-5 |
-| #15 | KN-1, KN-2 | | #51 | HE-6 |
-| #16 | KN-3, KN-4 | | #52 | HE-7, GH-4 |
-| #17 | KN-5 | | #53 | HE-8 |
-| #18 | KN-6, KN-7 | | #54 | HE-9 |
-| #19 | KN-8, KN-9 | | #55 | HE-10 |
-| #20 | KN-11, KN-12 | | #56 | NT-1, NT-2 |
-| #21 | KN-13, KN-14 | | #57 | NT-3 |
-| #22 | KN-10 | | #58 | NT-4 |
-| #23 | KN-15 | | #59 | PE-1 to PE-4 |
-| #24 | KN-16 | | #60 | PE-5 |
-| #25 | KN-17 | | #61 | PE-6 |
-| #26 | KN-18 | | #62 | PE-7 |
-| #27 | AB-1, AB-2, AB-3 | | #63 | PE-8 |
-| #28 | AB-4 | | #64 | DX-7, section 14 item 8 |
-| #29 | AB-5 | | #65 | section 14 item 10 |
-| #30 | AB-6 | | #66 | section 17 |
-| #31 | AB-7 | | #67 | FD-2 |
-| #32 | AB-8 | | #68 | FD-4 |
-| #33 | GH-1 | | #79 | FD-6, FD-12 |
-| #34 | GH-2 | | #82 | DX-1, DX-2, DX-3, DX-6, P1 |
-| #35 | GH-3 | | | |
-| #36 | GH-4, GH-5 | | | |
-| #37 | GH-6, GH-7 | | | |
-| #38 | WB-1, WB-2 | | | |
-| #39 | WB-3 | | | |
+| Package | backlog issue | goal, strategy, data | a person | nothing |
+| Scope | premise verified | niche identification | Builder (scout step) | checks |
+| Plan | plan approved | product tuning | Builder | checks |
+| Build | commits to a pull request | asset package | Builder | checks |
+| Check | CI and review verdict | brand and policy checks | CI and Reviewer | checks |
+| Ship | merge, tag, deploy | deploy to channels | a person | human approval |
+| Validate | deploy watched | collect feedback | the platform, Iterate | checks |
+| Close | issue closed, learning | analyze, compare | Iterate, a person | checks, with a learning |
+
+- **Three templates.** Software delivery and the Build, Measure, Learn product flywheel share the eight stages with different names, workers and connectors. A third, check-only, has Check and Ship alone, for a repository that wants review and a gated merge without the rest.
+- **A stage is a row, not code.** Each stage declares who may pick up there (nobody, agents allowed, agents automatic), its work-in-progress limit, its instructions page, its exit gate (`none`, `checks`, `human_approval`), the validators its checks run, the **connector** that fires when an item leaves it, and the stages it feeds besides the next one.
+- **Loop edges are data.** Close feeds Scope (the regular tweak). Validate feeds Package (the occasional tweak), which always needs a person.
+- **Phases.** The four Build, Measure, Learn brackets (Product Package, Build Package, Deploy Package, Iterate) group the stages on the Flow view.
+- **Editing a workflow.** An area admin creates a workflow from a template, giving it a name, one of their areas and an optional GitHub repository. Stages change only through a private draft that is checked as a whole and published as one change; others see who is editing. Stage rules (pickup, exit, limit, instructions, checks) can also be changed in place when no draft is open. A workflow has a title a person reads and a key that never changes.
+- **Changing template.** A check-only workflow can take the software template; items in Check and Ship keep their stage. No other template change is allowed.
+
+#### Items, claims and leases
+
+- An **item** is one piece of work in one stage. Its state is the fold of its events; nothing is stored that the events cannot rebuild.
+- A person or an agent **claims** an item to work it. Exactly one claimant wins. A claim needs `editor` on the area, a stage that allows the claimant's kind, and room under the stage's limit, which counts people and agents alike.
+- An agent's claim is a **lease**. Recording a run step renews it. When it expires the item is released once, its branch is marked abandoned, and the next claim starts from the item's expected head unless the claimant chooses to adopt the abandoned branch.
+- **Submitting** an item runs its stage's exit. `none` advances. `checks` runs every validator and advances only if all pass; a failure holds the item and is recorded. `human_approval` parks the item for a person and never advances from the submit path.
+- **Close produces memory.** An item cannot close without a suggested learning or skill page, or a "nothing learned" marker with a one-line reason signed by a person. Every claim in a learning an agent drafts carries an evidence label: observed, confirmed, inferred or assumed.
+- People can enqueue, reorder (always "place before this item", never an index), release, pause and resume a stage or a whole workflow, and prompt or stop a run.
+
+#### Gates, the ship rule and risk tiers
+
+- **The Ship invariant.** A stage whose connector does anything in the world must exit on human approval. The database refuses any stage row that says otherwise, and every template is walked along every path and loop edge before it can go live, so no route reaches an external effect without crossing a human gate first (ADR 0003).
+- **The gate decision** is a person's: approve, reject (send back with findings), take over, or override (advance despite open findings, with a required reason that travels into the merge). It needs `admin` on the area. An agent's attempt changes nothing and is recorded. The approver's grants are re-read at the moment the decision is written, so a grant revoked after the page loaded refuses the decision.
+- **The ship rule** decides whether Ship may advance. It is a function of facts read from GitHub, the item's risk tier and domains, and the approver's principal. The item's own narrative is never an input. It answers advance, or refuse with one closed reason; the reasons are in `packages/contracts/closed-sets.ts`. Among the things it refuses: a pull request that is closed, draft or behind its base; a head that is not the one approved; checks that are not green or never ran; a `[skip ci]` marker; a closing keyword that would close an issue the item does not wrap; a frozen workflow.
+- **An approval carries across a base merge and not across a code change.** An approval on an earlier commit still counts when the only change since is a merge from base.
+- **Risk tier.** Every item is `low`, `standard` or `high`, with zero or more risk domains (ledger, access control, infrastructure, migration). Protected directories floor the tier at `high`. The pull request's declaration may add domains or raise the tier and can never lower it; no declaration refuses Ship.
+- **What each tier needs.** Low and standard need one Reviewer identity's approval of the head. High needs two Reviewer identities on distinct model providers, and an approver who holds `admin` on the area plus the grant each touched domain names. One approver holds every grant an item needs; there is no quorum.
+- **Batch decisions.** A person can decide several gates at once; each is still pinned to its own head and checked by the same rule, and any refusal fails the whole batch and names the item.
+- **Freeze.** An admin can freeze a workflow; Ship then refuses every item not on the freeze's allow list.
+- **The merge runs the rule again.** The merge connector evaluates the ship rule itself at the moment of merging and never trusts an earlier verdict.
+
+#### Delegations and the delegated Ship exit
+
+- **Unattended work runs only on a delegation** (ADR 0005). A delegation is a person's standing permission for one persona on one workflow, with one capability word, a required expiry and a way to revoke it. Granting one needs `admin` on the area.
+- **Checked at every beat.** Each step of an unattended run re-checks that the delegation is unexpired, unrevoked, and that its person still holds `admin` on the area. A failure stops the run, records the lapse and wakes the person, or the area's other admins if that person no longer holds the grant.
+- **A scheduled routine is the same thing.** A person's own agent on a timer signs in non-interactively, so it must present a live delegation to claim. Every event it writes names the device, the persona and the delegation.
+- **The delegated Ship exit** (ADR 0010). A delegation with the `merge` capability lets an agent's submit at Ship merge without a person present, for low or standard items only, up to the tier the delegation names, and never for a change under a protected directory. The decision row records the granting person as approver, the agent as actor and the delegation. It covers a merge and nothing else: deploy and publish never run from a delegated exit. This is the one agent-reachable path that writes a gate decision; a second is wrong whatever else it does.
+- **Delegated merges are visible.** Waiting On You, the play-by-play and Health show "merged under a delegation granted by *person* until *expiry*", and the grantor is told.
+
+#### The agent boundary
+
+- **One door.** Agents reach the platform only through the MCP surface, which serves the verb registry and nothing else (ADR 0002). The verbs are listed in `packages/contracts/verb-names.ts`. Approve, merge, deploy, publish and advance do not exist as verbs under any name.
+- **Agent identities.** A persona has its own identity; a person's own agent has an identity under that person and device. An agent's grants never exceed its owner's, and an owner losing a grant loses it for the agent on the next request. Anyone holding `editor` on the area may run their own agent; there is no separate allow-list.
+- **What an agent can do.** Poll for items it may claim, claim one on a lease, record run steps with tokens and cost basis, submit to the stage's exit, read health, search and read pages it may read, write pages (gated page types land as suggested, never as an edit), read the context for an item (instructions, package pages, applicable confirmed learnings), and create a suggested task. Every write records the agent identity.
+- **Two hosts, one surface** (ADR 0006). A run hosted by the platform and a run on a person's own machine see the same verbs, gates and events. A hosted run is checkpointed step by step, survives a deploy, and hibernates at a human gate until a person decides. An external run holds no checkpoint on the platform: a dead laptop means a released lease.
+- **Engines.** The model behind a hosted run is chosen per persona from a registry of engines, each in its own directory and each the only place its vendor's SDK is imported. The registry is `apps/uw-platform/engines/registry.ts`. A routed engine pins its provider and refuses fallbacks; if the provider that answered is not the pinned one, the run fails and posts nothing. An engine's own refusal is never routed around: the item goes to a person.
+- **Billing by host.** Hosted runs use the organization's keys through one gateway and are metered. External runs use the person's own subscription; their tokens are self-reported, labelled subscription, shown beside metered cost and never summed with it. No subscription credential is stored on the platform. Hosted Builder is off for each workflow until an area admin turns it on.
+- **The spend breaker.** One cap covers every model vendor. At the first threshold new hosted claims are refused and stay queued; at the second, running hosted runs hibernate; both resume when spend falls back. The breaker stops; it does not fail over to a cheaper model. Subscription tokens never count against the cap.
+- **The synced skill.** A skill, kept in the repository and synced from its page, tells a person's own agent the flow: sign in, poll, claim, work on the item's branch, record steps, open a pull request with its declaration, submit, and push work in progress when the lease warning arrives.
+
+#### Personas, learnings and skills
+
+- **A persona is a page.** Its frontmatter names its identity, owner, workflow, toolset, run shape, engine, model, pinned provider, budget and capability; its body is its instructions. A persona drafted by an agent lands suggested.
+- **Activation is a person's.** Only an area admin activates a persona. Activation checks that every verb in the toolset exists and is within the creator's grants, runs a dry run, then makes the page active. A missing verb opens one item on the software workflow to build it; a forbidden verb is refused outright.
+- **Builder** works Scope to Build. Its run is read, scout, work, submit. The scout step verifies the item's premise against current code and data; a premise that does not hold stops the item with a reason, and held premises are counted. Work lands on the item's own branch in a pull request that declares what it closes, risks and touches, and its risk tier and domains.
+- **Reviewer** works Check under its own identity, distinct from Builder's on the platform and on GitHub. Its default engine is the always-on routed tier. Its findings reach the pull request as a GitHub review on the head, each finding weighted real, plausible or theoretical. A verdict of only theoretical findings is recorded and is not a review round. After three rounds the item goes to a person. A second Reviewer on a different provider supplies the second approval high items need. A persona line sets how strict approval is.
+- **Iterate** works Validate and Close on the product flywheel. It reads measurements, proposes a revision in which every claim carries an evidence label, and routes it along a loop edge. It runs unattended only under a delegation.
+- **Scout** is a step inside Builder's run, not a persona.
+- **Learnings and skills** are page types. A learning carries a confidence, an as-of date, what it supersedes and a review date; a newer learning that supersedes a live one flags the contradiction. Stale inferred and assumed learnings are listed on Health.
+- **A person can refute a finding.** Refutations feed a refute rate for each Reviewer, shown on its page and on Health.
+- **The agent's page** shows its job card (its actions in plain words, where it runs, engine, model, budget, instructions) and its dashboard: runs, spend, escalations, refusals, writes, last play-by-plays and the delegations it runs under.
+
+#### GitHub facts and intake
+
+- **GitHub stays the source of truth for issue content.** The platform never edits an issue's title or body. It writes back only link labels, one cross-reference comment for each issue, reviews, and the merge.
+- **A read model.** Webhooks arrive at the ingest Worker, are verified, and feed a read model of repositories, issues, pull requests, milestones, checks and reviews. A nightly sweep repairs anything a webhook missed. The ship rule reads only this model.
+- **Scope of GitHub data.** A workflow names its repository, and a dispatch list on the area's platform page names the repositories agents may work. A claim or sweep on a repository not on the list is refused; if the list cannot be read, every claim is refused.
+- **An issue becomes an item.** An issue carrying the workflow's label becomes one item in Package, once, however it is found. Removing the label records an event and deletes nothing. Manual enqueue and import share one path.
+- **Done-when is required.** Intake refuses an issue with no "Done when" heading and at least one line under it, and the refusal is shown so people see which issues are not ready.
+- **Epics.** A person can enqueue an epic: one item for each sub-issue, in order, with blockers read from "Blocked by" lines. A blocked item is not offered until every blocker has passed Ship. The queue groups an epic's items under its title and draws the blocker edges.
+- **The fix claim.** Off for each workflow until an admin turns it on. When on, after a review round records real or plausible findings and the item is free, the Builder may claim it under a `fix` delegation. A fix is capped in size, may touch only files the pull request already touches (plus tests and docs), may not change what the pull request is for, and must run the repository's declared checks before pushing.
+- **Joining by review request.** A repository joins through a check-only workflow: requesting the Reviewer identity on a pull request enqueues an item at Check for that pull request.
+- **Shadow mode.** While a workflow is in shadow, the Reviewer's verdict is recorded and not posted, the ship rule is evaluated on every head change and recorded, and no connector runs. An admin turns shadow on or off. Waiting On You lists each shadow verdict beside the reviews others posted on the same head and marks disagreements, and the list can be exported.
+- **External reviewers.** A workflow can list GitHub logins whose approvals count toward the tier's reviewer count as an external provider. A learning can be posted from outside under a `review` delegation; it lands suggested.
+- **Honest counts.** Counts of items and pull requests exclude authors the workflow lists as bots, and say so.
+
+#### Untrusted content and clearance
+
+- **Outside text is data, not instructions.** Anything a prompt takes from a pull request diff or title, an issue body, a review comment or a page an agent wrote is wrapped once, by one constructor, and rendered inside a fence that names its source and says it is data. The sources are a closed set in `packages/contracts/closed-sets.ts`. The build fails on a prompt built from such text without the wrapper.
+- **A run reads as itself.** Every read a hosted run makes to build a prompt is filtered by the run's own principal, exactly as its MCP reads are. A page the agent may not read is absent from its prompt.
+- **Caches are keyed by clearance.** Any cache of model output includes the reading principal's grants in its key.
+
+#### Reaching a person
+
+- **Screens.** Today ranks what waits on the person. Agent Queues lists every workflow the viewer may see. Each workflow has tabs: Queue (stages as lanes, items as cards with holder, host, lease, risk and cost), Flow (the live map of stages by phase, with counts, ages, cost and the loops), Waiting On You (each gate the viewer may decide, with every ship-rule input and its current value), Runs, Agents, and Stages & Controls. An item's page is its play-by-play: every event in order with its actor. Health shows the agent plane: spend against the cap, breaker state, runs by host and engine, live delegations, refusals, agent writes and stale learnings.
+- **Only what you can decide.** A gate appears for a person only if they hold every grant it needs. A count shown anywhere comes from the same query as its list.
+- **The decision works on a phone.** Waiting On You works at phone width and the app is installable, so a push opens straight to the waiting gate.
+- **Live.** Screens update when the workflow has news, without a reload. Polling is the fallback.
+- **Web push.** Wakes are ranked (a gate waiting on you first), share one cooldown for each person so a weaker wake never spends the window a stronger one needs, and are suppressed when the person is already looking. The payload names the workflow, the reason and a link, and nothing else. A gate wake reaches only people who can decide it.
+- **Zulip.** One topic for each item in the channel mapped to the workflow's area. A wake posts the workflow, item, reason and link, never content. Replies are recorded on the item as comments. The bot accepts no commands: a reply saying "approve" is a comment.
+
+#### Observability and alarms
+
+- **Silence alarm.** Health goes amber, then red, when an item has waited in Check with no review step recorded, and wakes the area's admins once in each cooldown.
+- **Who holds the ball.** Every card shows its holder and how long they have held it. Health counts items held by a person too long and by an agent too long.
+- **Every indicator opens its query.** Aggregates are visible to everyone who can see Health; the lists behind them respect grants. An agent reading health gets the same numbers.
+- **One trace id** follows a request, webhook, queue message and run step from the edge to the database write.
+
+#### Connectors
+
+A connector is what leaving a stage does in the world: merge, deploy, publish, send or post. Each has one registered handler, runs only after a human decision exists for that item (or, for merge alone, the delegated Ship exit), and records its outcome as an event; a refusal from the outside service is an event, not an error. The merge connector re-checks the head, squash-merges, and tags the merge with the item. A connector whose channel is not wired answers "not wired" and records it. A connector that needs a secret uses a credential by reference as the run's person (ADR 0020); see Credentials.
+
+#### Requirement index
+
+Each id is stable and names its proof: scenarios in `sim/scenarios/` and tests are named for the id they prove. Must is required; Should is wanted; Later is declared and reserved.
+
+**Foundation (FD)**
+
+| ID | Requirement | Priority |
+|---|---|---|
+| FD-1 | One strict TypeScript workspace; one date pair and one date schema, with a lint rule refusing any other date formatting; a module registry. | Must |
+| FD-2 | One toolchain and one `pnpm verify` chain, with fitness limits, a no-comments rule and a vendor-SDK gate. | Must |
+| FD-3 | `uw-platform` is a Hono Worker with a health route reporting the deployed commit; environments declared in `infra/` with no secret in any file. | Must |
+| FD-4 | CI runs separately named jobs whose names the ship rule reads; a preview Worker for each pull request; staging deploys only after green CI; production deploys only by a listed deployer; red CI opens one alarm issue. | Must |
+| FD-5 | One Drizzle schema with ordered migrations; every table declares its classification and offline eligibility, and the build fails on a table without both or a schema change without a migration. | Must |
+| FD-6 | CI proves schema, constraint and concurrency behaviour on a Postgres service container, with no secret and no account. | Must |
+| FD-7 | Cloudflare Access with Google sign-in fronts the app; every request's token is verified and mapped to a person; unknown addresses are pending approval; a typed principal reaches every handler. | Must |
+| FD-8 | Grants of `admin`, `editor` or `viewer` at org or area scope; one pure `can()`; a grant on an area reads only that area (ADR 0015); grants resolve on every request; grant and revoke are audited commands. | Must |
+| FD-9 | Pages with a full version for each save naming a human or agent source; a page-type registry with a schema, classification and offline eligibility for each type (`packages/contracts/page-types.ts`). | Must |
+| FD-10 | `uw-ingest` verifies each webhook's signature over the raw body, refuses unsigned, badly signed and replayed deliveries, and enqueues a validated envelope; the consumer tolerates duplicates and dead-letters malformed messages. | Must |
+| FD-11 | One trace id end to end; structured logs with principal, route, latency and outcome; a health route with named indicators that never errors when the database is unreachable. | Must |
+
+**Contracts (CT)**
+
+| ID | Requirement | Priority |
+|---|---|---|
+| CT-1 | Commands, outcomes, events, identity forms and every closed set are published as Zod with one contract version, golden fixtures and a conformance test in each consumer. | Must |
+| CT-2 | The verb registry is plain contract data (`packages/contracts/verb-names.ts`); a test asserts its exact names and that no forbidden verb is registered. | Must |
+| CT-3 | Adding an event, refusal reason, verb, capability word or command changes the enum, its fixtures and the contract version together. | Must |
+
+**Kernel and data (KN)**
+
+| ID | Requirement | Priority |
+|---|---|---|
+| KN-1 | Every workflow has an area; its stages, items, events, runs, gate decisions, delegations, measurements and personas are stored as declared tables. | Must |
+| KN-2 | The Ship invariant: the database refuses a stage with a connector and any exit but human approval, on insert and update, nulls included. | Must |
+| KN-3 | The event log is append-only in the database; each event carries its workflow, item, closed-set name (`packages/contracts/events.ts`), actor, evidence, trace id and a position safe to resume from. | Must |
+| KN-4 | An item is the fold of its events; the stored row must equal the replay; one read function is the only event read path. | Must |
+| KN-5 | Exactly one caller wins a claim, after the grant, pickup and work-in-progress checks; an agent's claim is a lease that run steps renew and that expires once. | Must |
+| KN-6 | Exit gates are enforced on submit: `none` advances, `checks` runs every registered validator, `human_approval` parks; an unknown validator fails closed. | Must |
+| KN-7 | Close needs a suggested learning or skill, or a signed "nothing learned"; agent-drafted claims carry evidence labels. | Must |
+| KN-8 | An item may enter only the next stage or one its stage feeds; the occasional tweak needs a person; an unattended loop edge needs a delegation. | Must |
+| KN-9 | `walk` enumerates every path through a template, loop edges included, with each stage's exit and connector. | Must |
+| KN-10 | The template property: on every path, a stage with a connector is reached only after a human-approval exit; activation runs it and refuses a bypass. | Must |
+| KN-11 | The ship rule is pure over GitHub facts, tier, domains and the approver's principal; the item's narrative is not an input. | Must |
+| KN-12 | Low and standard need one reviewer approval of the head; high needs two reviewers on distinct providers and an approver holding each touched domain's grant. | Must |
+| KN-13 | The gate decision command accepts only a person holding `admin` on the area, re-reads their grants in the deciding transaction, names the head the person saw, and requires a reason for an override. | Must |
+| KN-14 | The grant re-read race is proven in both orders on two real connections. | Must |
+| KN-15 | The templates ship as fixtures that activate and pass the template property. | Must |
+| KN-16 | Delegations: granted by an area admin with a capability word and a required expiry, revocable, and checked live at every beat. | Must |
+| KN-17 | Risk is floored by protected paths and may only be raised by the declaration; no declaration refuses Ship. | Must |
+| KN-18 | Stages change only through the stage commands, by an area admin; a database refusal is recorded and returned; a stage holding an item, or a connector under a waiting approval, cannot be changed away. | Must |
+
+**Agent boundary (AB)**
+
+| ID | Requirement | Priority |
+|---|---|---|
+| AB-1 | The MCP endpoint's tool list is the verb registry and nothing else; a forbidden verb is an unknown tool. | Must |
+| AB-2 | Agent identities are minted with grants at or below the owner's, and lose a grant when the owner does. | Must |
+| AB-3 | Every MCP handler calls `can()` on the workflow's area, and every write records the agent identity. | Must |
+| AB-4 | Poll returns only what the caller may claim; claim, submit, record-step and health verbs enforce leases, gates and closed-set refusals. | Must |
+| AB-5 | Page, query, context and task verbs return nothing the principal could not read, and gated page types land as suggested. | Must |
+| AB-6 | A non-interactive principal claims only with a live delegation, names itself on every event, and stops on lapse. | Must |
+| AB-7 | No agent identity writes a gate decision: proven statically, at run time for every role, and by tool-list conformance across both hosts. | Must |
+| AB-8 | Activating a persona that needs a missing verb opens exactly one item to build it; a forbidden verb is refused. | Must |
+
+**GitHub facts (GH)**
+
+| ID | Requirement | Priority |
+|---|---|---|
+| GH-1 | A least-privilege GitHub App; tokens minted for one unit of work and one repository, never reaching a model or an MCP response. | Must |
+| GH-2 | A read model keyed on GitHub ids with idempotent upserts and a nightly sweep that repairs missed webhooks. | Must |
+| GH-3 | A labelled issue becomes one item, once, with one cross-reference comment. | Must |
+| GH-4 | Work lands on the item's branch; an abandoned branch is adopted only by choice, and the choice is an event. | Must |
+| GH-5 | Only a Reviewer identity's review on the head counts toward the ship rule. | Must |
+| GH-6 | The merge connector runs only after a gate decision, re-checks the head, and a lost result is recovered. | Must |
+| GH-7 | Deploy, publish, send and post connectors are registered and answer "not wired" until their channel exists. | Later |
+
+**Web app and live hub (WB)**
+
+| ID | Requirement | Priority |
+|---|---|---|
+| WB-1 | Every control is a command with a request id, a `can()` check and an outcome; a repeated request id replays the first outcome; pause and resume cover a stage and a workflow. | Must |
+| WB-2 | Reorder places an item before another, never at an index. | Must |
+| WB-3 | Every appended event wakes the live hub after commit; the wake carries no content and a lost hub loses nothing. | Must |
+| WB-4 | Flow counts, ages and costs each stage, with metered cost and subscription tokens never summed. | Must |
+| WB-5 | The Queue shows each card with its holder, host, lease, risk and cost basis, and shows refusals with their reason. | Must |
+| WB-6 | Waiting On You lists only gates the person can decide, with every ship-rule input and the closed reason beside a disabled action. | Must |
+| WB-7 | The decision works at phone width and the app is installable. | Must |
+| WB-8 | The play-by-play reads every event with its actor; subscription rows never show money. | Must |
+| WB-9 | Today ranks gates, then lapsed delegations, then failed runs. | Must |
+| WB-10 | Health's agent plane counts spend, runs, delegations, refusals, agent writes and stale learnings, each with its query. | Must |
+| WB-11 | One token system and one set of shell parts; nothing is drawn twice. | Must |
+| WB-12 | Every screen works in light and dark at phone width, with visible focus and accessible names. | Must |
+
+**Hosts and engines (HE)**
+
+| ID | Requirement | Priority |
+|---|---|---|
+| HE-1 | A hosted run is checkpointed step by step, hibernates at a human gate and resumes on the decision. | Must |
+| HE-2 | One engine seam and registry; a vendor SDK is imported only in its engine's directory. | Must |
+| HE-3 | The direct-messages engine offers exactly the persona's toolset, through the gateway on the organization's key. | Must |
+| HE-4 | The routed engine pins its provider; a provider mismatch fails the run and posts no review; an oversized diff parks the item for a person. | Must |
+| HE-5 | One spend cap with two thresholds: hold new hosted claims, then hibernate hosted runs; no fail-over. | Must |
+| HE-6 | An external run reports subscription tokens, holds no checkpoint, and ends when its lease expires. | Must |
+| HE-7 | The harness skill is synced from its page and may hold no credential and call nothing but the MCP surface. | Must |
+| HE-8 | A hosted sandbox Builder needs hosted Builder turned on for the workflow by an area admin; the sandbox holds no key and no state. | Must |
+| HE-9 | A second Reviewer in a container, on a distinct provider, supplies the second approval for high items. | Must |
+| HE-10 | The managed-agent engine is reserved and refuses with a closed reason. | Later |
+
+**Reaching a person (NT)**
+
+| ID | Requirement | Priority |
+|---|---|---|
+| NT-1 | A gate wake is ranked, cooled for each person and suppressed when they are already looking. | Must |
+| NT-2 | A wake carries no content and reaches only those who can decide. | Must |
+| NT-3 | One Zulip topic for each item; a reply saying "approve" is a comment. | Must |
+| NT-4 | A lapsed delegation and a final run failure wake their people. | Must |
+
+**Personas (PE)**
+
+| ID | Requirement | Priority |
+|---|---|---|
+| PE-1 | A persona is a page type whose body is its instructions. | Must |
+| PE-2 | The toolset offers only verbs the creator holds; an agent-drafted persona lands suggested. | Must |
+| PE-3 | Activation, by an area admin only, runs the tool check and a dry run, then makes the page active. | Must |
+| PE-4 | The persona's page shows its dashboard. | Must |
+| PE-5 | Builder is a page; a premise that does not hold stops the item and is counted. | Must |
+| PE-6 | Reviewer has its own identity; three review rounds hand the item to a person. | Must |
+| PE-7 | Iterate reads measurements and routes a labelled revision along a loop edge. | Must |
+| PE-8 | Learning and skill pages land suggested from an agent, track supersession, and feed the stale-learning indicator. | Must |
+
+**Proof (DX)**
+
+| ID | Requirement | Priority |
+|---|---|---|
+| DX-1 | Every workflow behaviour is a call on one pure kernel that runs identically in a Worker and in the sim (ADR 0001). | Must |
+| DX-2 | The sim's store is real Postgres running the real migrations. | Must |
+| DX-3 | Every port has one contract suite run against every adapter. | Must |
+| DX-4 | A scenario is named for the requirement it proves and asserts on the event log and folded state. | Must |
+| DX-6 | What only separate connections can prove runs on a real Postgres server. | Must |
+| DX-7 | One scenario takes an item from kickstart to Close on the software template with every gate exercised. | Must |
+| DX-8 | No requirement needs a live account or a secret to prove. | Must |
+| DX-10 | One scenario drives the joining journey from shadow mode to a delegated merge. | Must |
+
+**Joining (GL)**
+
+| ID | Requirement | Priority |
+|---|---|---|
+| GL-2 | A check-only template with Check and Ship alone. | Must |
+| GL-3 | A review request on a check-only workflow's repository enqueues one item at Check. | Must |
+| GL-4 | A shadow workflow records verdicts and writes nothing to GitHub; an admin turns shadow on or off. | Must |
+| GL-5 | A check-only workflow can take the software template and keep its items. | Should |
+| GL-6 | Dispatch fails closed on a repository not on the area's list. | Must |
+
+**Merge delegation (MD)**
+
+| ID | Requirement | Priority |
+|---|---|---|
+| MD-2 | The `merge` capability carries a maximum tier of low or standard; high is not delegable. | Must |
+| MD-3 | An agent merges under a delegation and the grantor is the approver on the decision row. | Must |
+| MD-4 | A delegation never covers a protected path, a tier above its maximum, or deploy and publish. | Must |
+| MD-5 | The agent-boundary checks allow exactly the one delegated path and fail on a second. | Must |
+| MD-6 | Delegated merges are shown on Waiting On You, the play-by-play and Health, and the grantor is told. | Must |
+
+**Fix claim (FL)**
+
+| ID | Requirement | Priority |
+|---|---|---|
+| FL-1 | The fix claim is off until an admin turns it on. | Must |
+| FL-2 | A review round with real or plausible findings offers the item once to the Builder under a `fix` delegation. | Must |
+| FL-3 | A fix over the size cap or off purpose is refused and releases the claim. | Must |
+| FL-4 | A fix runs the repository's declared checks before pushing, or pushes nothing. | Must |
+
+**Untrusted content (UC)**
+
+| ID | Requirement | Priority |
+|---|---|---|
+| UC-1 | One constructor wraps outside text with its source. | Must |
+| UC-2 | Every prompt site renders outside text inside a fence. | Must |
+| UC-3 | A run's prompt reads carry the run's principal. | Must |
+| UC-4 | The build fails on unwrapped outside text in a prompt. | Must |
+| UC-5 | Any cache of model output is keyed by clearance. | Should |
+
+**Epic intake (EI)**
+
+| ID | Requirement | Priority |
+|---|---|---|
+| EI-1 | Sub-issues are part of the GitHub facts; an issue with sub-issues is an epic. | Must |
+| EI-2 | Intake refuses an issue without a done-when and shows the refusal. | Must |
+| EI-3 | An epic becomes items in order, and a blocked item is not offered. | Must |
+| EI-4 | Independent items are claimed in parallel up to the work-in-progress limit. | Must |
+| EI-5 | The Queue groups an epic and draws its blockers. | Should |
+
+**Ship rule and gate decisions (SR, GD)**
+
+| ID | Requirement | Priority |
+|---|---|---|
+| SR-1 | Ship refuses a change behind its base, auto-closing an unrelated issue, skipping CI, missing a required check, or on a frozen workflow. | Must |
+| SR-2 | An approval carries across a base merge and not across a code change. | Must |
+| SR-3 | The merge runs the ship rule again and never reads another verdict. | Must |
+| GD-1 | A batch of gate decisions is approved together or refused whole. | Must |
+| GD-2 | A freeze refuses Ship except for named items. | Must |
+| GD-3 | An engine's refusal hands the item to a person and starts no second run. | Must |
+
+**Review verdicts (RV)**
+
+| ID | Requirement | Priority |
+|---|---|---|
+| RV-1 | Findings carry a weight; theoretical findings are recorded and never make a review round. | Must |
+| RV-2 | A refuted finding feeds the Reviewer's refute rate. | Must |
+| RV-3 | A persona line sets whether approval needs zero findings or no real or plausible ones. | Should |
+
+**Observability (OB)**
+
+| ID | Requirement | Priority |
+|---|---|---|
+| OB-1 | A silent Check goes amber then red and wakes the admins once in each cooldown. | Must |
+| OB-2 | Health counts who has held the ball too long. | Must |
+| OB-3 | Waiting On You compares shadow verdicts with other reviews, and the list can be exported. | Must |
+| OB-4 | Counts exclude listed bot authors and say so. | Should |
+
+**Outside reviewers (PI)**
+
+| ID | Requirement | Priority |
+|---|---|---|
+| PI-1 | A listed external reviewer's approval counts, with its provider recorded as external. | Must |
+| PI-2 | A learning posted from outside under a `review` delegation lands suggested. | Must |
+
+**Look and screens (UI)**
+
+| ID | Requirement | Priority |
+|---|---|---|
+| UI-1 | One token system, light and dark, with text contrast proven in both (ADR 0011). | Must |
+| UI-2 | The Tailwind theme is the token set and nothing else; an arbitrary value fails the build. | Must |
+| UI-3 | Fonts are served from the platform's own assets. | Must |
+| UI-4 | One icon component, by name, that works with or without the licensed icon set (ADR 0013). | Must |
+| UI-5 | One frame on every screen (ADR 0014, ADR 0029). | Must |
+| UI-6 | The Queue: lanes by phase, each lane's rules in plain words, cards with refusals. | Must |
+| UI-7 | The gate decision: the ship rule's checks, unmet first, with the risk and the activity. | Must |
+| UI-8 | Health: a summary, its figures, a runs chart and indicator rows. | Must |
+| UI-9 | Today: what waits on the person, a card for each workflow, and the push setting. | Must |
+| UI-10 | Flow: stages by phase with figures, the gate and the loops. | Must |
+| UI-11 | Play-by-play: links, filters by kind of event, and the timeline. | Must |
+| UI-12 | The agent's page: figures, last runs and delegations. | Must |
+| UI-13 | Health detail: one indicator's figures and listing. | Must |
+| UI-14 | Charts are ECharts drawn as SVG in token colours, with each value also on the page as text (ADR 0012). | Must |
+| UI-15 | Runs and gate waits by day, each item's latest event, and the items the viewer holds are reads over existing data. | Must |
+| UI-17 | Navigation items and page names are Title Case; all other copy is sentence case. | Must |
+| UI-18 | An admin names a workflow, and its key stays. | Must |
+
+#### Open questions
+
+A person still has to decide each of these.
+
+| Question | Working assumption |
+|---|---|
+| May the platform's own repository be granted a merge delegation? | No, until a person says so. |
+| What does Ship's deploy step do on the software template, and which channel does the product flywheel publish to first? | Nothing yet: only merge is wired, and deploy and publish answer "not wired". |
+| Does Scout become its own persona with its own stage exit? | No, until premise-refusal rates show it earns one. |
+| Is a quorum of approvers needed for items touching more than one domain? | No. One approver holds every grant. |
+| Do measurements from the donor and finance areas ever feed Validate? | No. Validate reads public-side measurements only, until the finance and CRM modules define their read exclusions. |
+| Are the managed-agent engine and a third host added? | Reserved, not designed. |
+| Should lessons carry statuses (rejected, recurring, enforced by a check) and a cross-item view? | Not designed. |
+| Is a native phone app needed? | No. The installable web app with push, and Zulip, serve "waiting on you". |
+
+### Ledger
+
+A full double-entry, fund-accounting general ledger, replacing the accounting system the organization rents.
+
+**Three dimensions on every line: account × fund × function.** The functional-expense matrix that nonprofit accounting standards and the annual information return require falls out of a grouping, with no second set of books. A fund carries its net asset class (with or without donor restrictions), its kind of restriction, the portfolio it is bound to, and its assessment rate, which is zero for an unrestricted portfolio.
+
+**Invariants, enforced in the database and nowhere else:**
+
+1. An entry balances to zero at commit, in the functional currency and in each original currency.
+2. Posted entries are append-only. The only transitions are draft → posted → reversed, and a correction is a reversing entry.
+3. Posting refuses a date in a closed period. A soft close allows finance-admin adjustments only.
+4. Entry numbers are gapless.
+5. Every entry is audited, and a nightly export carries a hash chain over the entries, so history is tamper-evident for auditors.
+
+Balances are always computed from the journal; there is no mutable balance column. No revaluation engine is included at first, on the assumption that the organization holds no material balances in other currencies, which is to be confirmed.
+
+**Who may do what.** `admin` on `20-29` is the finance admin: the only role that posts entries, closes periods and sees ledger detail. An agent can draft a journal entry and can never post one.
+
+**Workflows on the ledger.**
+
+- **Restriction releases** are drafted with a picker of qualifying expenses; finance posts.
+- **The monthly assessment** drafts one entry per assessed fund, safe to run twice for the same fund and period. Whether it is treated as expense or contra-revenue is decided with the audit firm.
+- **Budget versus actual** is one join on identical dimension keys. It replaces the hand-kept reconciliation tables and the rolling budget spreadsheet. Every view shows budget, committed and actual on one row.
+- **Online gifts** post automatically from a posting-rules table finance has approved. This is the one class of entry that posts without a person, and a nightly payout reconciliation cross-checks it.
+
+**Moving from the current accounting system.** The chart of accounts, funds and functions are mapped from an export; opening balances are imported as entries that tie to the trial balance to the cent; then the two systems **run in parallel until sign-off**, with an automated mirror of the old system's entries and a monthly trial-balance comparison that must show zero difference. Cutover happens only with the audit firm's written comfort.
+
+**Proven when:** generated postings either balance or are refused; an attempt to change a posted line fails at the database; the monthly difference against the old system is 0.00; a restore drill reproduces the trial balance.
+
+Issue: #178 to #181 under epic #182 (rolling budget, the first slice); the general ledger itself to be opened.
+
+### Contracts
+
+Memoranda of understanding, contracts and work orders move out of shared drives and become records with page bodies. The agreement text is the markdown, versioned like everything else, and a PDF is an output.
+
+- **Agreements** have a kind (MOU, field contract, internal contract, vendor agreement), a counterparty, a total value, start and end dates, the fund and program their money belongs to, and a status from draft to executed, active, expired or terminated. An MOU can have contracts under it.
+- **Work orders** sit under a contract with a number, a value, a scope and a list of deliverables with due dates and amounts.
+- **Managing against full contract value.** Issuing a work order is refused when the issued work orders plus the new one would exceed the contract's total. Issuing records a **commitment** on the same account × fund × function dimensions as the ledger. A commitment is not a ledger entry; it is the "Committed" column in every budget view, and it releases to actual as invoices post.
+- **Approval rides a workflow.** A work order passes a program-manager review and then a CFO review, each a stage whose exit needs a person. The program-manager approval needs `editor` or higher on the owning program's area; the CFO approval needs `admin` on `20-29`. Before either person looks, a validator runs the work-order compliance checklist, and the reviewer sees its result.
+- **Three-way match.** A partner invoice arrives by email or upload, is matched to its work order and deliverables, the program manager confirms delivery, and finance approval drafts the payable entry with the work order's dimensions. Payment releases the commitment. An invoice over the work order's remaining value, and delivery recorded before a work order was issued, are both refused by the database.
+- **Signed copies** are the one kind of PDF that is a record, because they came from outside: stored with a hash, the signer and how it was signed. A nightly report lists executed contracts with no signed copy and work orders active past their contract's end. E-signature is an add-on decision.
+
+**Moving from shared drives:** files are imported and their details extracted with an agent's help, each verified by the owning admin before the old folder is frozen.
+
+**Proven when:** a work order over its contract's remaining value is refused; a compliant one flows through both approvals with each recorded; the checklist appears on the review; a matched invoice drafts the payable entry and releases the commitment.
+
+Issue: to be opened.
+
+### Expenses
+
+Forward the receipt; an agent does the rest; a person decides.
+
+- **Intake is an email forward.** A receipt sent to the expenses address is tied to the sender's person record, and its attachment is stored with a hash. A message to the platform's bot in chat, or a file dropped into the desktop app, enters the same pipeline. There is no form to fill in.
+- **Extraction** reads vendor, date, amount, currency, tax, line items and payment method from the receipt. Every field is recorded in an **evidence ledger** as observed, inferred or assumed, so the reviewer sees which values were read and which were guessed. Duplicates are caught on vendor, date, amount and hash.
+- **Allocation uses what the platform already knows**, which is why this belongs here and not in another subscription:
+  - the submitter's calendar for that date and place, to the meeting, event or trip, to its project and program, to its fund, function and account;
+  - Areas of Responsibility as the prior when the calendar is silent;
+  - contracts, work orders and grants: a hotel during a grant-funded trip proposes that grant's fund;
+  - the same person's earlier approved allocations for the same vendor and category, kept as a learning so guesses improve;
+  - the resolved travel and expense policy: per-diem caps, receipt thresholds, disallowed categories, approval limits and mileage rates with effective dates, all policy-page data. A violation is flagged at submission, not found at month-end.
+- The output is a proposed allocation, split where needed, with a confidence and a stated reason per line.
+- **People review, in a workflow.** The submitter confirms or corrects, one click when the guess is right. The approver, their responsibility lead or finance for finance's own expenses, approves at a human gate. A policy-violating item cannot be approved without an override that is recorded.
+- **Ledger.** Approval drafts one journal entry. Finance posts it under the normal rules. The agent drafts and can never post or approve.
+- **Corporate cards** run the same pipeline from the other end: the card feed creates items that are already paid, receipts are matched to charges, and unmatched charges age on a report. Reimbursements to field partners route to partner invoices, because those carry contract and deliverable obligations.
+
+Issue: to be opened.
+
+### CRM & Giving
+
+Contacts, gifts and acknowledgments, replacing the CRM the organization rents, with online giving connected directly.
+
+- **Contacts** are people and organizations who give or might, with relationships between them: household, employee of, advises, trustee of, congregant of, spouse, assistant.
+- **Online giving.** A verified payment event creates or updates the contact, creates the gift and posts its journal entry from the approved posting rules, within a minute. Payment details never touch the platform; it stores only the processor's tokens.
+- **Acknowledgments** follow the tax authority's substantiation rules: a contemporaneous written acknowledgment for gifts at or above the threshold, a quid pro quo disclosure where goods or services were given, intangible-religious-benefits language, and a January batch of annual statements. Every gift carries its acknowledgment status.
+
+**Soft credits are part of the gift, from the start.** The legal donor and the relationship donor are often different people: a donor-advised fund pays but the relationship is with the advisor; a foundation pays but a trustee championed it; an employer matches an employee's gift; a church remits a member's designated giving. Fund development runs on those numbers, and flattening them would destroy the organization's picture of its own donors.
+
+Invariants, in the database:
+
+1. **Exactly one hard credit per gift**: the legal donor, the only party who receives tax substantiation.
+2. The hard credit equals the gift amount. A gift's revenue is recognized once.
+3. Soft credits may overlap and may each equal the full gift. They are not a split. A 10,000 gift from a donor-advised fund can soft-credit the advisor and the solicitor for 10,000 each; both statements are true and neither is revenue.
+4. **Soft credits have no ledger effect.** The journal entry comes from the hard credit alone. Allocation across funds is a split on the entry, a different concept.
+
+**Every donor-facing report declares its credit basis** on its face: `hard` (financial truth, tying to the ledger to the cent) or `soft-inclusive` (relationship truth). Giving histories, lapsed-donor lists, major-donor tiers, campaign progress, and every chart or PDF from them carry the label. Soft-inclusive totals across donors deliberately exceed contributed revenue, and the view says so.
+
+The hard credit receives the receipt with substantiation language. Soft-credited contacts receive a thank-you with no tax language. Known relationships **suggest** soft credits when a gift arrives; a suggestion stays one until a person confirms it.
+
+**Access.** Gift amounts, giving history and donor notes are `restricted` to `40-49` and never leave the server.
+
+**Moving from the current CRM:** contacts, gifts and soft credits import with their source ids kept. Cutover needs a reconciliation: hard-credit totals equal contributed revenue in the ledger to the cent, and no soft credit appears in any ledger total. After cutover, a nightly export keeps an archive in the old system's shape until fund development signs off.
+
+Issue: to be opened.
+
+### Grants
+
+The grants pipeline, funder templates and grant reporting.
+
+- **Pipeline.** A grant moves from prospect through application, award, reporting and close, related to the program or portfolio it funds through the cascade, never through a parallel program list.
+- **Grant responses are a workflow.** A request for proposals arrives at intake; an agent drafts against the funder's template and the organization's writing style; a person reviews and submits. A draft whose claims are all marked confirmed, with sources, is reviewable in minutes.
+- **Grant reporting** keeps the structure funders use: a set of questions per funder and a response per reporting period. The report is assembled from the same portfolio's impact model, its budget versus actual, and the consented stories that illustrate its programs in the period, so promised versus delivered is read, not rewritten.
+- **Compliance** per grant: restricted spend within period, the submission calendar, and a flag when spend or milestones drift from the award's terms.
+
+Issue: to be opened.
+
+### Field Data
+
+Field reporting and engagement data: where the work happens, with whom, and what came of it. It replaces the standalone field database and its separate lists of programs and portfolios.
+
+- **Language engagements**: country, language, translation organization, sensitivity, population and cluster, the organizations involved and their roles, and a log of notes and communication.
+- **Training events**: date, category, country, organization, participant counts and hours, related to a platform project and to its calendar event directly.
+- **Translation outputs**: the per-language products of the work. The word "product" is kept for the product catalogue; these are translation outputs.
+- **Field organizations**: partner organizations with their sensitivity and type.
+- **Reference data** from outside sources is read-only and refreshed on a schedule.
+
+Field programs and portfolios are the platform's program and portfolio pages. That one decision makes the impact rollup a join: event or engagement → program → portfolio → fund → grants and gifts → donors.
+
+**Sensitivity is a matter of safety.** Engagements and organizations carry a sensitivity and a protected-country flag. A sensitive field record is read only by people with a grant on the field areas `60-79`, field-program admins and org admins. Sensitive details never appear in published pages or organization-wide views; only aggregates do. Sensitive records are excluded from device replicas by default (section 3, Desktop & Offline).
+
+**Moving from the current field database:** a mapped import, verified by row counts and spot checks, after which the old database is frozen and its address redirects here. Existing agent lookups against it keep working through the platform's verbs.
+
+**Proven when:** counts match the source; an impact rollup returns the same numbers as the current reports; a sensitive engagement is invisible to an account with no field grant.
+
+Issue: to be opened.
+
+### Impact
+
+One impact model per portfolio.
+
+- An **impact model** is a page, the narrative theory of change, plus structured metric definitions.
+- An **impact metric** has a name, a unit, a direction, a target and a definition that is an approved, versioned query over platform data: training events, engagements, translation outputs, published products, stories.
+- A **snapshot** is the value of a metric at a date. Metrics are evaluated nightly and appended as a time series, with a failure recorded per metric and never as a zero.
+
+Because events, engagements and outputs relate to programs, portfolios and funds, each portfolio's impact sits beside its budget versus actual and its grants: impact, money and work on one page. That page is the grant-report assembler's data source. OKRs and impact metrics are the measures portfolio views roll up to; output counts such as issues closed stay on development views.
+
+Issue: to be opened.
+
+### Story Bank
+
+One searchable body of field narrative, where every story carries its own permission to be told, and the system decides where it may appear.
+
+**Sensitivity is an ordered ladder, and it is a permission, not a label.** Each level includes those below it:
+
+| Level | May appear in |
+|---|---|
+| `internal` | Staff views inside the platform only |
+| `private_circulation` | Named partners and donors: private pages behind sign-in, board packets, one-to-one funder communication |
+| `newsletter` | Supporter mailings, printed reports and closed-list publications: published, not indexable |
+| `public` | The open internet, indexed and quotable |
+
+The publish flow, the newsletter and report generators and the grant-report assembler all read a story's level and **refuse** to render it into a channel above it. The check is a filter on the server, not an editorial habit. The failure it prevents is a well-meaning draft putting a named field worker in a protected country on the public web.
+
+- **Created internal.** A story is `internal` when created and cannot be published until a person has recorded consent and set a level. No default makes anything public.
+- **Lowering is always allowed** and sweeps the story out of every channel it reached. **Raising** needs the area admin and a recorded consent reference.
+- **Consent and safety are fields:** who consented, when and in what form, with the signed release; when consent expires; whether the subject is anonymized; how names are used (real, pseudonym or none); how precise the location is (country, region or none); a photo release tracked apart from the text release; and a review date.
+- **A ceiling from the field record.** A story about work in a sensitive engagement can never be more public than that engagement. Media carries its own level, so a story can be `public` while one photograph in it stays `internal`.
+- **Tags are relations.** A story is related to its country, region and language, and to the programs, portfolios, projects, products, grants and training events it illustrates. That is what lets a grant report pull every consented, suitably levelled story for a portfolio's programs in the reporting period. Free-form themes are available on top and are never the join key.
+- **Usage is recorded.** Every newsletter, grant report, web page and board packet a story appeared in is kept, so the same story is not sent to the same funder twice, overuse is visible, and **a withdrawal of consent can be traced to everywhere the story landed**.
+- **Arrival.** Stories come through intake: email from the field, a message to the platform's bot, trip reports, extraction from meeting transcripts. An agent drafts the structure and proposes tags and links as suggestions; a person confirms consent and sets the level.
+
+Stories keep their reserved home at `xx.96` in each area.
+
+**Proven when:** a `newsletter` story cannot be rendered to a public address by any path, the agent verbs included; a story cannot be raised above its engagement's level; withdrawing consent lists every prior use.
+
+Issue: #201.
+
+### Publishing
+
+The public site is published from the platform as static pages. Content is not pushed into a separate content system.
+
+- **Flow.** A page is marked for publishing; the area admin receives an approval task; on approval the page is rendered in the brand template and served; a publish log records exactly which version of which page is public. A preview is available behind sign-in before approval.
+- **A person approves every publish.** No verb publishes, and no agent identity can approve one.
+- **The public site has no dependency on the database**, so it stays up if the database is down.
+- The existing site is frozen for its legacy paths, new paths are routed to the platform's site, and the old site is retired within a year.
+- Publishing reads Story Bank levels and field sensitivity and refuses content above its channel.
+
+**Proven when:** approving a page serves its rendered HTML at a public address, and the publish log matches the version served.
+
+Issue: to be opened.
+
+### Documents
+
+One rendering service turns any page or view into a PDF, and later a DOCX, with its provenance on every sheet. Section 4.3 describes it.
+
+Issue: #198 (PDF export), #197 (redline and appendix modes).
+
+### Charts
+
+Charts are a platform primitive: a declared chart spec that any page, dashboard, report or PDF embeds and that an agent can produce. Section 4.4 describes charts. This module also owns dashboards.
+
+#### Dashboards
+
+A **dashboard** is a page type that can be filed anywhere and shown inside another page. A reusable definition supplies the presentation; each dashboard page supplies its context. Infrastructure sees every permitted website through a site-health definition, and a program overview shows only that program's websites through the same definition. Opening a dashboard needs no model call.
+
+| Term | Meaning |
+|---|---|
+| Dashboard definition | A reusable, versioned description of a dashboard's presentation, declared data needs, parameters and supported displays |
+| Dashboard page | A page that binds one definition version to a context and saved settings |
+| Dashboard embed | A reference showing a dashboard page inside another page, keeping the dashboard's own context and permissions |
+| Dashboard context | The explicit set of resources a dashboard describes, selected directly or resolved from a page and its relations |
+| Resource | A measured thing with a stable identity, such as a website or a mobile app |
+| Dataset | A versioned, documented set of observations supplied by an approved adapter |
+| Metric | A named calculation with a unit, an observation grain, a time meaning and an aggregation rule |
+
+**Context.** Three selectors: the organization (every permitted resource of the supported kinds), a page (resources associated with a named page, optionally with its descendants), or an explicit set of resources. The selector is saved configuration. A read never guesses context from a title, an address or where the dashboard is filed. Moving a dashboard keeps its context; changing context is a versioned edit. A resource linked to two programs appears in each program's view and once in the organization's view; program totals are never added to rebuild an organization total.
+
+**Data and metric contracts.** A definition asks for registered datasets and metrics by versioned key. It cannot supply SQL, a repository path, an address or a credential. A dataset declares its fields, resource identity, grain, time rules, units, filters, freshness and read policy. A metric declares how it treats missing observations, errors, duplicates, time ranges and aggregation: daily counts may be summed, cumulative snapshots are never summed across dates, scores are never summed, and a change in a scoring rubric is shown as a break. **A missing or failed observation is never turned into zero.** Every result states its context, coverage, source time, versions and one of the states loading, ready, empty, stale, partial failure or unavailable. A coverage label never reveals the identity or count of resources the reader cannot access.
+
+**Two renderers, one contract.** Native widgets (metric values, line and bar charts, tables, filters) use the platform's parts and tokens. A custom HTML renderer is for presentations the native widgets cannot make: a portable bundle served from an isolated origin in a sandbox, receiving only validated data, context, parameters and theme. It has no platform session, no command interface, no database access, no secret and no undeclared network access.
+
+**Access.** Context selects resources; it never grants access. Every read checks the dashboard page, the definition and the source data for the current reader, and intersects before aggregating. The browser never receives rows to filter later. An embed checks both the containing page and the dashboard, and cannot widen either. Revoking a grant takes effect on the next read, including a refresh, a download or a drill-through.
+
+**Agent authoring.** An agent discovers datasets, metrics and definitions it is permitted to see; writes or revises a definition against the published schemas; validates and previews it against organization, program and project fixtures, including empty, stale and failed cases; saves a draft; and presents it for the decisions a person must make. Approving a definition, activating executable content, publishing outside the organization and changing privileges stay with people and are not verbs. A new data adapter is reviewed code.
+
+**Versions, live views and frozen reports.** A dashboard page is pinned to a definition revision; adopting another is a validated, versioned change. A live view advances only its approved data feed and is labelled live with its source time. A frozen report pins the definition, binding, parameters, resource set and data snapshot. A download holds the definition or bundle, its assets, the approved snapshot and their hashes, and runs without the platform. Public publication follows the Publishing flow: a person approves the exact definition, page version, context and data.
+
+**Proven when:** one definition serves organization, program and project contexts with no copied code; a reader with access to one program cannot obtain another's rows, names or counts through filters, aggregates, embeds, exports or caches; a custom bundle cannot read credentials or call out, even when its address is opened directly; a frozen report keeps its exact data after later changes.
+
+Issue: #199 (chart spec and `render_chart`), #200 (team charts), #189 (dashboards).
+
+### Dev
+
+Software work, read from GitHub and planned on the platform. GitHub stays the source of truth for issue content; the platform never edits an issue's title or body.
+
+- A GitHub App delivers repository, issue, pull request and milestone changes into a read model, and a nightly sweep repairs anything a webhook missed.
+- The platform adds what GitHub lacks: sprints, epics, and links from an issue to a sprint, epic, project or product, through a label convention. Sprint views, burndown and epic rollups are reads over the read model. The only writes back are link labels and cross-reference comments.
+- **How the platform's own software is developed** is part of the product, since agents write most of it:
+  - a staged path, followed by people and agents alike, with a **risk tier** deciding how much review a change earns;
+  - independent reviewers, different models with different lenses, whose findings are fixed or refuted with evidence and never ignored, and whose word is never last: only a person approves and merges;
+  - mechanical gates: a change declares what it closes, what it risks and what it touched, and a gate that cannot be checked mechanically is not a gate;
+  - each lane verifies its issue's premise against current code before building, because a wrong thing built correctly is still wrong;
+  - ledger, access and infrastructure changes always take the full review.
+
+The Workflow module is the mechanism that runs this path.
+
+Issue: to be opened.
+
+### Comms
+
+Chat, meetings and calendars stay where they are. The platform integrates them and automates the correlation people do by hand.
+
+- **Zulip: integrate, do not rebuild.** Each area already maps to a Zulip folder. A page links to its topic and back. Platform events post to the right channel through a bot, with no content beyond the link and one fixed sentence. Anyone can file a task, an intake item or an idea from chat by addressing the platform's bot, and it is linked to the topic's entity. Only messages flagged as a decision or an action item are captured to the linked page; Zulip remains the record of conversation. A channel's members must be exactly the people who can read its area.
+- **Zoom.** A finished meeting's recording is stored, and its transcript becomes a transcript page with an immutable, speaker-labelled body, both linked to the meeting.
+- **Google Calendar.** Relevant calendars are mirrored into a read model keyed by event id. Creating a meeting page can create the calendar event; for scheduling, the calendar wins.
+- **The correlation engine** runs over every ingested artifact:
+  1. **Certain joins first:** meeting id ↔ calendar event ↔ meeting page ↔ agenda, attendees and the entity the meeting belongs to. Recurring meetings inherit their series' link. The common case needs no model.
+  2. **Assisted linking second:** for what is left, an extraction reads the transcript against the entity index and proposes links with a confidence. High confidence links and records why; low confidence becomes an item for a person to review.
+  3. **Action items** are extracted as suggested tasks with their owner, their source line and a due date if one was stated. They stay suggested until the owner or the organizer confirms.
+  4. **The meeting page is assembled:** agenda, calendar details, attendees, recording, transcript, decisions, confirmed and suggested tasks.
+- **A conversation with an agent is keyed to its entity or item, not to the channel**, so a thread started in chat can continue in the web app or through the MCP surface.
+
+Issue: to be opened.
+
+### Desktop & Offline
+
+An installable desktop app for people who want a local, offline-capable workspace. Field staff in low-connectivity countries are the driving case.
+
+- **A local replica, scoped to what offline makes sense for.** Pages and tasks sync to the device. Directory, project and calendar read models are cached read-only. **Ledger, gift and CRM data never sync**: money data does not belong on laptops in sensitive countries, and those screens need a connection.
+- **Selective sync** by area. Access applies at sync time: a device replicates only what its person can read, and a revoked grant purges that area on the next connect.
+- **The sync protocol sends only what the schema allows** (section 2.4). A `never` row is not filtered by a client that could be altered; it is never sent.
+- **Devices are registered.** A replica that has not reconnected within its limit, 30 days by default, seals itself, so a lost laptop stops holding current data even if nobody reports it. Disk encryption is a precondition for registering.
+- **Sensitive field records are excluded by default**, with an area admin's opt-in per device that is audited and expires. The quarterly access review lists every device holding one.
+- **Honest offline screens.** A screen backed by `never` data shows "requires connectivity" when offline. It never shows an empty table or a stale number: a stale trial balance is worse than none.
+- **A real markdown folder, optionally.** The app can keep a synced vault of plain markdown files, one per page, so Obsidian, Claude Code or any local tool can read and edit the corpus, with edits fed back. Agents can then work fully offline against local files.
+- **Offline capture.** Tasks can be created and edited offline. A draft of anything can be written offline as a page; submitting stays online-only.
+- A reconnect after offline work produces a reviewable diff, not a mystery merge.
+- The web app is installable and receives push notifications; it gains the same offline client later, sharing the code.
+
+Offline eligibility by kind of data:
+
+| Data | Classification | Offline |
+|---|---|---|
+| Wiki, runbooks, templates, charters, decisions, learnings, skills, tasks, drafts | internal | `sync` |
+| Directory, project and program read models | internal | `cache_readonly` |
+| Ledger, budgets, funds, contracts, work orders, expenses | restricted (`20-29`) | `never` |
+| Contacts, gifts, soft credits, giving history, donor notes | restricted (`40-49`) | `never` |
+| Sensitive engagements and field organizations in protected countries | sensitive (`60-79`) | `never` by default; per-device opt-in with an expiry |
+| Story Bank entries above their consented level | per story | `never` above `internal` |
+| Credentials, security incidents, access grants, audit logs | restricted or sensitive | `never` |
+
+Issue: #196 (sync manifest and offline).
+
+### Observability
+
+"Is the system healthy?" is a page anyone can open, and the platform notices its own breakage before a person does. Section 4.5 describes it.
+
+Issue: #194.
+
+### Infrastructure
+
+The layer that looks after the platform itself: everything declared and nothing clicked, backups that are proven by restoring them, and a steward that proposes improvements and can apply none of them. Section 4.6 describes it.
+
+Issue: #193 (drift, rotation and stewardship), #204 (backups and restore drills).
+
+### Compliance
+
+Obligations become scheduled, versioned report definitions with owners and due dates, in place of a calendar reminder and an annual scramble. Section 4.7 describes it.
+
+Issue: #203.
+
+---
+## 4. Capabilities every module shares
+
+### 4.1 Access and classification
+
+**Signing in and being allowed are separate.** Google is the identity provider only. A person signs in through Cloudflare Access with their Google account, and the platform maps the verified email to a person. Someone from the organization's domain is created on first sign-in; anyone else lands as **pending** until an org admin decides, and is not refused at the door. The platform, not a set of Google groups, owns who may do what.
+
+**Three roles at two scopes.** A **grant** gives a person `admin`, `editor` or `viewer` on the whole organization or on one area. A grant can expire, which covers contractors and temporary elevation. Every grant change is audited, and the last org admin cannot be revoked.
+
+- `admin` on a scope has full control within it: pages, collections, credentials, workflows, publish approvals. An org-scope admin is the super admin.
+- `editor` creates and edits within its scope.
+- `viewer` reads within its scope.
+
+There is no separate finance or fund-development role, because the areas already encode those domains: `admin` on `20-29` is the finance admin, `editor` on `40-49` is the fund-development team.
+
+**A grant on an area reads only that area** (ADR 0015). Only an org-scope grant reads every area. To keep an open culture for someone, an org admin gives them `viewer` at org scope: openness is a visible, audited grant. One exception is by design: **every approved person reads `00-09`**, the organization's home for policies, handbooks and how we work, through a default grant made at approval (ADR 0031).
+
+**One check.** `can(actor, verb, resource)` is the only authorization function. A **principal**, a person or an agent with its resolved grants, is minted at the edge on every request and travels with every internal call, queued message and verb, so a query cannot return a row its principal may not see. Screens never hide what a query returned.
+
+**Classification decides more than a label.**
+
+- A row of a `restricted` or `sensitive` table is read only by the **read rule** its table declares: which role on the row's own area reads it, whether the person it belongs to reads it, and whether an org admin does. An org viewer or org editor reads none of them through the org grant (ADR 0017). A new restricted table cannot land without a rule.
+- A **property** can be narrower than its row (ADR 0024).
+- A **credential** answers its four capabilities and never `read` (ADR 0018).
+- Field sensitivity and a story's level are filters applied on the server (Field Data, Story Bank).
+- Read access is logged for finance, CRM and sensitive field data. It is not logged for the general wiki, where it would be surveillance without a purpose.
+
+**Agents carry no authority of their own.** An agent's session runs with its bound person's grants, read fresh each time, and never more. An agent therefore reads only the areas its person can.
+
+**Reviews.** A quarterly access review lists every grant with its scope, who gave it, its age, expiry and last use, with a sign-off page; expired and never-used grants are listed for revocation. A grant change touching the finance areas notifies the org admins.
+
+Issue: #153, #154, #155; the quarterly access review under #203. Rules: ADR 0015, ADR 0017, ADR 0018, ADR 0024, ADR 0031.
+
+### 4.2 Agents on the platform
+
+**One boundary.** Agents reach the platform only through the MCP surface, which serves one **verb** registry (`packages/contracts/verb-names.ts`). Verbs are small and single-purpose: search and read pages, write a page through the same validation a person's save takes, run an approved query, read a collection or a view, create a row or a task, resolve context, draft a journal entry, produce a PDF, and the verbs for working an item in a workflow. Queries are approved and parameterized; an agent never sends SQL.
+
+**The verbs that do not exist.** Approve, merge, deploy, publish and advance are not verbs, and neither are posting a journal entry, sending donor email, filing with an authority, changing a collection's definition, or anything that would let an agent pass a human gate (ADR 0002). An agent can produce a deliverable and cannot send it.
+
+**Identity.** An agent has its own identity, bound to a person, with grants never above that person's. Every write records the agent in version history and audit. Work that runs with no person at the keyboard runs only on an expiring, revocable **delegation** (ADR 0005).
+
+**Workflows are where agents do real work.** Drafting a proposal, building a product page, answering a grant, triaging intake and reviewing an expense are **items** moving through the **stages** of a workflow, where each stage says who may pick work up, what must be true to leave it, and whether leaving needs a person. WIP limits apply to agents as they do to people. The Workflow module (section 3) is the mechanism. New workflows are configuration. The ones the organization starts with:
+
+| Workflow | Shape |
+|---|---|
+| Software delivery | Scope, plan, build, check, ship, validate, close, with the risk tier deciding review |
+| Grant responses | A request arrives → an agent drafts against the funder's template → a person reviews and submits |
+| Product content | Define or update a product page → an agent drafts from template and policies → review → publish request |
+| Intake triage | Contact, voicemail or parking-lot idea → an agent classifies, links and suggests an owner → a person confirms |
+| Correlation review | Low-confidence links from the correlation engine → a person decides |
+| Work-order approval | Compliance checklist → program-manager review → CFO review |
+| Expense review | Extraction and allocation → submitter confirms → approver decides |
+
+**Personas are configuration.** A **persona** is an agent identity, a toolset chosen from the verb registry, an instructions page and the workflows it works. A new persona is data, not code. Two shapes recur:
+
+- **Guided discovery.** An intake persona interviews the requester in plain questions and writes an evidence ledger as it goes, each entry marked observed, confirmed, inferred, assumed or unknown. A planning pass turns the ledger into a scoped item, and integrity checks reconcile what the persona says against what the records hold.
+- **Scout before build.** On anything non-trivial an agent first verifies the item's premise against current data and code, gathers context and estimates scope. The work that follows starts from a premise that holds.
+
+**Durable runs.** Each claim of an item runs as checkpointed steps that retry from the step that failed and resume across a deploy. A long wait at a human gate costs nothing. Every run records its model, tokens, cost and duration against the item, so each workflow shows what its automation costs.
+
+**Institutional memory.** The organization that compounds, not the one that re-learns.
+
+- A **decision** page records context, decision and consequences. It is the first thing an agent searches.
+- A **learning** is a working rule or a measured fact, with a confidence (observed, confirmed, inferred or assumed), an as-of date, what it supersedes, and a flag raised when a newer learning contradicts an older one that has not been retired.
+- A **skill** is a reusable procedure in the open agent-skills format, so the same file works in Claude Code and other compliant runners, online or against a local vault. A stage's instructions are a skill.
+- **`resolve_context`** returns the policies, decisions and learnings that apply to an entity, ordered and labelled. Every agent session reads it before acting and is expected to write durable learnings back.
+- An agent's learning or skill is `suggested` until a person confirms it. Learnings are facts; skills are procedures.
+- **Confidence decays.** Assumed and inferred learnings past their review date surface for confirmation or retirement.
+- A lesson paid for once is filed once: post-mortems, audit findings and pivots land as learnings linked to the decision they modify.
+
+**Spend.** Model calls go through one gateway with budgets per persona and per workflow and a circuit breaker that stops. It does not fail over to a cheaper model.
+
+**Untrusted content.** Text an agent reads from outside, an issue body, a pull request title, a web page, an email, is data and never instruction, and it is marked as such before it reaches a prompt.
+
+**Assistant bots.** A person can talk to the platform in chat and pick the same conversation up in the web app, because a conversation is keyed to its entity or item.
+
+Issue: #123 (assistant bots); #98 and #99 for agents working the software workflow; the rest to be opened. Rules: ADR 0002, ADR 0005, ADR 0006.
+
+### 4.3 PDF and documents
+
+**Every page and every view exports to PDF.** One rendering service and one convention: add `?format=pdf` to any screen the reader can already open. The export runs the same reads under the same access check as the screen, so no parallel reporting path can drift from it. A screen the reader may not see answers the same "not found" with or without the query (ADR 0028).
+
+- **Printed from the platform's own HTML**, through print styles drawn from the design tokens: letterhead, page numbers, rows and cards kept whole, table headers repeated, dark mode forced light. Paper is Letter.
+- **Links are footnoted.** Each link gets a number, and a numbered list of full addresses closes the document.
+- **Charts print as vector**, never as a picture of a screen.
+- **Every PDF carries its provenance.** A running footer holds a short reference, the date and the start of a source hash. A closing Provenance block holds the source address, the reference, the filters, who exported it, the date, and the full hash of what was printed from. For a page, that is a hash anyone can recompute from that version's content. A PDF in a board packet or an audit binder is therefore traceable to the state that produced it.
+- **The hash covers only what the exporter may see.** When a property was withheld from the exporter, the block says so, and a hash can never be used to confirm a guess at a withheld value.
+- **A binder** is an ordered set of pages printed as one PDF with a cover, a contents list and continuous numbering: the board packet, a grant report with appendices, the audit binder, a quarterly portfolio review. It is named by a list of pages or by a root page and its readable descendants. A page the requester cannot read is left out silently. A binder is produced in the background and kept as an export.
+- **An export expires after seven days.** A download is behind sign-in, goes only to the person the export was made for, and checks their grants again as they are at that moment. There is no signed public link.
+- **Agents can make a PDF and cannot send one.** The `render_pdf` verb answers with an export's id and hashes, never the bytes, and takes no recipient.
+- **Revision modes** come with suggested changes (section 3, Core): clean, redline, and clean with a revision appendix.
+- **Scheduled output:** month-end statements, the quarterly board packet, annual donor statements and compliance artifacts are produced on a schedule, archived under retention and logged like a publish.
+- **A PDF is an output, never a record.** Markdown and typed records are the record. The only PDFs that are records are counterparty-signed documents, kept with a hash and signer because they came from outside.
+
+Issue: #198, #197. Rules: ADR 0028.
+
+### 4.4 Charts
+
+A chart is declared, not hand-built per screen, which is how a system ends up with nine slightly different definitions of "actual spend". A **chart spec** names its type, an approved query, its encodings and its formatting.
+
+- **Drawn as vector on the server** (ADR 0012), the same on screen, in a PDF and on the published site.
+- **Every chart states its lineage:** source query, as-of time, filters, and a data-quality note whenever rows were excluded or unresolved. Ambiguous entries are left out and reported, never guessed. A chart whose source failed to sync shows the absence.
+- **Checkable.** Every chart offers its picture as PNG and SVG and **its underlying data as CSV**, and shows a table view of its own data. A chart nobody can check is a claim without evidence.
+- **Honest.** Axes start at zero for comparisons of size or say why not. Dual axes are off by default. Two lenses that must not be added, such as pipeline and trend, are never summed.
+- **One palette and one set of formats:** Inspire `#31ADE3`, Ocean `#014263`, Tech `#231F20`, Cultivate `#70C9CC`, and Kindle `#E59D33` sparingly, in a colour-blind-safe order; `YYYY-MM-DD` on axes; money formatted by the shared helper.
+- **An agent can produce a chart.** `render_chart` returns the picture and the data table, so a draft grant report or board memo holds a real, checkable chart.
+
+**The standard chart library**, because each of these deserves exactly one definition: budget versus committed versus actual by period; cumulative revenue from actual into projection against the prior year; the functional-expense matrix; fund balances over time; the grant pipeline by confidence tier; donor retention and lapsed-donor cohorts, labelled with their credit basis; sprint burndown, cumulative flow and cycle time from status history; impact metrics over time; engagement and training coverage by country and language; and organization and relationship graphs.
+
+The organization's existing budget, revenue-projection and team-chart dashboards are re-hosted as platform views with their patterns kept: a print style for hand-offs, cached data shown at once and refreshed behind, confidence-tiered callouts, and a data-quality report beside every chart.
+
+Issue: #199, #200. Dashboards: #189 (section 3, Charts). Rules: ADR 0012.
+
+### 4.5 Observability
+
+Four planes, tied by a trace id that travels from the edge through queued messages and run steps, so one id follows an online gift all the way to a posted journal entry.
+
+1. **Technical.** Structured logs for every request, queued message, run step and scheduled job; database statistics; sync hub health; errors tagged by release; the depth and age of failed messages.
+2. **Data.** Freshness and completeness of every synced source: last success, lag, failures, row changes. These feed the provenance shown where the data is used, not only a dashboard nobody opens. Domain checks live here too: the trial balance equals zero, draft entries are not aging, payouts are reconciled, commitments do not exceed contract value, expenses are allocated.
+3. **Agent.** Every run records model, tokens, cost, duration, verbs called, rows read, writes made, gates met and outcome, per run, persona, workflow and month.
+4. **People and process.** Active people per module, stale pages, aging blocked tasks, items waiting on a person, WIP breaches, open review sets, unconfirmed action items. This plane is what shows that a module was rolled out and then quietly abandoned, the most likely failure of the whole project.
+
+**Service levels, with alerts on symptoms only:** the giving flow from payment to acknowledgment, page save and sync, the publish flow, nightly backup completion, correlation latency. An alert goes to the right chat channel and **names the runbook page that resolves it**; an alert without a runbook is a defect in the alert.
+
+**Health is a screen.** Each module is green, amber or red, and each indicator opens the query behind it. The same answer is a verb, so an agent working an item can tell "the data is stale" from "the number is low". A public probe counts and never names.
+
+**Audit logging is separate from operational logging** and kept far longer: who read which donor record, who changed a grant, who exported what.
+
+Retention: full logs for 30 days, aggregated metrics for 13 months so year-over-year comparisons work, audit trails for seven years.
+
+**Proven when:** a deliberately broken sync makes the affected screens say so within their stated window; an hourly synthetic gift in test mode alerts with a runbook link when any step fails; an agent cost spike trips its breaker.
+
+Issue: #194.
+
+### 4.6 Infrastructure stewardship
+
+**Everything is declared; nothing is clicked.** Workers, databases and roles, storage and its retention, sign-in policies, DNS, queues, scheduled jobs and the model gateway are all in the repository. A **drift detector** compares the live settings to the repository every night and opens an item when they differ. A fix applied in a dashboard late at night and forgotten is the most common failure of a one-person platform.
+
+**Backup and restore are verified, not intended.**
+
+- Continuous point-in-time recovery, nightly dumps, a nightly export of the whole corpus as markdown and CSV, and the hash-chained ledger export, all kept under object lock for seven years.
+- A weekly encrypted copy with a second provider, so an account-level failure is survivable.
+- **Restore drills are run and scored.** Each quarter a drill restores into a fresh database, runs the trial balance, compares row counts and verifies hashes, and writes the result as a page with a pass or a fail. **A drill that has not run in 100 days turns the infrastructure indicator red.** Once a year the drill is carried out by someone other than the platform's main builder, from the written runbook alone, and its report goes to the board.
+
+**Lifecycle, scheduled and surfaced:** dependency and vulnerability scanning with a remediation window per severity; provider deprecation notices; an inventory of secrets with rotation dates and expiry alarms; certificate and domain expiry; cost against a stated envelope, since unexplained cost is usually a bug. Capacity too: table growth, slow queries, unused indexes, schema against migration history, draft storage and orphaned files.
+
+**An infrastructure steward persona** reads drift, dependency, cost, capacity and health signals and **proposes work as items with evidence**: a dependency update, a missing index, a runbook change after an incident, an overdue drill. It can open a pull request and draft a runbook. It cannot apply a migration to production, rotate a secret, change a sign-in policy, delete a backup or change retention. Those verbs do not exist in its toolset. A platform whose agents can rewrite their own guardrails has no guardrails.
+
+**Change.** Every production change is a merged pull request with a plan, a rollback and a risk tier. **No manual edit of production data, ever:** a correction is a migration or a reversing entry, and both leave a record. An incident produces a decision or a learning; a repeated incident produces a runbook.
+
+Issue: #193, #204.
+
+### 4.7 Audit and compliance reporting
+
+A registry of **obligations**: what is owed, to which authority, how often, by when, who owns it, and the report definition and evidence queries that satisfy it. Each obligation produces an artifact on schedule, a PDF plus its data, archived under retention with its provenance. A screen shows what is due, what ran and what failed.
+
+**Financial and regulatory.**
+
+- **Annual information return exports:** the functional-expense matrix, net asset classes, and program accomplishments drawn from impact models and consented stories.
+- **The four financial statements**, produced monthly, so the first time anyone sees them is not during the audit.
+- **The audit binder, generated:** trial balance, ledger detail, the entry listing with actor and evidence, hash-chain verification, bank and payout reconciliations, restricted-fund release schedules, assessment calculations, the contract and work-order register with signed-copy status, and grant schedules. Reproducible for any period at any time.
+- **The state solicitation registration tracker:** thresholds by state, revenue by state from gift addresses, filing and renewal dates with alarms, and a flag the moment a threshold is crossed. The same monitor watches federal awards against the single-audit threshold.
+- **The gift substantiation report:** every gift at or above the threshold with its acknowledgment status, date and wording; **exceptions listed, never a clean bill assumed**. Soft credits are excluded from substantiation by construction.
+- **Grant compliance:** promised versus delivered, restricted spend within period, the reporting calendar and variance flags.
+
+**Governance and internal control**, which an auditor will press hardest because the ledger is the organization's own:
+
+- the quarterly access review (section 4.1), with devices holding sensitive replicas;
+- **segregation of duties**, surfaced continuously: who can both request and approve, work orders approved by their requester, entries posted by their drafter, self-approved expenses;
+- **policy attestation:** which required policies each person has acknowledged, at which version, and where copied templates have drifted;
+- retention and destruction: what is due, what is on legal hold, what is locked;
+- **data-subject requests:** export and erasure as scripted, logged runbooks. Erasure anonymizes the contact and keeps the financial entry;
+- change and incident evidence: production changes with approvals, restore-drill results and incident learnings.
+
+**How reports are made.** Each is a versioned definition over the same approved queries the screens use, so there is no shadow reporting path. An agent may assemble a report, narrate it and flag anomalies. A person signs it. **Nothing is filed with any authority automatically, ever.** Every figure opens the query and source records behind it.
+
+**Proven when:** the binder for a closed month is generated unattended and every figure opens its sources; the segregation report catches a planted self-approved work order; the threshold monitor fires on seeded revenue.
+
+Issue: #203.
+
+### 4.8 Lean program and product management
+
+Lean is enforced through policies, templates and views, not exhortation.
+
+- **Visualize flow and limit WIP.** Every board layout and every workflow has WIP limits per group or stage, set per area. Cumulative flow and cycle time come from status history.
+- **Small batches and pull.** The parking lot → intake → project path makes demand visible before commitment.
+- **Validated learning.** The product template carries hypothesis and experiment sections with the evidence expected; decision pages record pivots with their evidence.
+- **Outcome over output.** OKRs and impact metrics are what portfolio views roll up to.
+- **Waste made visible.** Stale pages, aging blocked tasks, template drift and items waiting on a person are standard saved views.
+- **Defaults are policies.** WIP limits, definition of complete and canvas-before-commitment are organization-level `default` policies: areas inherit them and can supersede them on purpose.
+
+Issue: to be opened.
+
+### 4.9 Design
+
+Every screen follows one design system (ADR 0029): a calm page, five page shapes (List, Document, Form, Board, Overview), controls revealed on intent, and editing in place. A gate, a refusal reason, the count of what waits on a person and a view's one primary action are never hidden. Every screen works in light and dark, at phone width, from the keyboard, with an accessible name on every control. The reference is `design-system/`; the rules for building a screen are in `AGENTS.md`.
+
+---
+
+## 5. Sequence
+
+The order of work, not a schedule. Each step replaces a system only after its replacement is verified, and status is in the GitHub epic.
+
+**Retirement is a gradient, not a weekend.** While a legacy system is still the record, the platform mirrors it. Once the platform becomes the record for a domain, the old system receives a faithful copy for as long as anyone still looks at it, and retirement is measured by who still needs the copy.
+
+| Order | Scope | What it retires, and when |
+|---|---|---|
+| 1. Foundation | Sign-in and grants; pages, versions and search; the area registry; the editor and working drafts; conventions enforced from the first commit; suggested changes; the module registry and classification declarations; print styles and PDF; the observability, declared-infrastructure and backup baselines; the workflow mechanism and agent boundary the rest is made with | Nothing yet |
+| 2. Knowledge and plans | The knowledge base; collections and saved views; the cascade with portfolios and intents unified; directory and Areas of Responsibility; universal tasks; the JD Crosswalk; the policy engine with lean defaults; charter templates; workflows for intake triage and grant responses; the chart library; Story Bank | Notion, set read-only after each import is verified |
+| 3. Field data | Engagements, training events, translation outputs, field organizations, reference imports; the sensitivity filter; one program list | The field database, read-only after verification, its address redirected |
+| 4. Contacts and giving | Contacts, relationships and soft credits; online giving; gifts; acknowledgments; the import with ids and soft credits kept | The CRM, kept read-only for some months with a nightly archive |
+| 5. Desktop and offline | The desktop app, selective sync, reconciliation, the markdown vault | Piloted with field staff in one low-connectivity program first |
+| 6. General ledger | The ledger, budgets and the mirror of the current system; assessment and release; contracts and work orders; expenses; the obligation registry and generated statements | **Parallel run until sign-off.** The current system stays the record until the CFO and the audit firm sign off, a full audited fiscal year if the firm asks |
+| 7. Publishing and software planning | The publish flow and public site; sprints and epics over the GitHub read model | The old site frozen; the current planning add-on off after the first sprint here |
+| 8. Communications and correlation | The chat bot and topic links; meeting recordings and transcripts; calendar sync; the correlation engine; impact snapshots | Nothing: chat, meetings and calendar stay the record |
+| 9. Ledger cutover | Audit-firm review, opening balances, decommissioning, restore-drill sign-off | The current accounting system |
+
+Steps 5, 7 and 8 overlap the ledger's parallel run, which dominates the calendar far more than building does.
+
+**Observability, infrastructure stewardship and compliance are not steps.** They grow with every step and are part of what makes each module complete: its health indicators, runbook, backup coverage and export path. The obligation registry starts empty at the foundation and fills as each domain lands, so the audit review at cutover reads artifacts that have been running for months.
+
+---
+
+## 6. Risk, legal and gotcha register
+
+### Legal
+
+**Building your own accounting system is legal.** No law mandates particular software; obligations attach to records and outputs.
+
+| Obligation | What it asks | How the platform meets it |
+|---|---|---|
+| Machine-readable records (IRS Rev. Proc. 98-25) | Records kept for the limitations period, a full trail from source document to return figure | The append-only ledger and its locked exports |
+| Nonprofit accounting standards (ASC 958) | Two net asset classes, functional expense reporting, liquidity disclosure, four statements | The three-dimension line |
+| The annual information return (Form 990) | Functional breakdowns, net asset classes, a written retention policy | Saved report definitions |
+| State audit thresholds and solicitation registration | Apply wherever the organization solicits; a national donate button generally counts. Most states require registration | The tracker in section 4.7. Thresholds are confirmed with the organization's accountants, not assumed |
+| Gift substantiation (IRS Pub. 1771) | Written acknowledgment at or above the threshold; quid pro quo disclosure, with penalties on the organization | Acknowledgment status on every gift and the exceptions report |
+| Card data (PCI) | Hosted payment pages keep the organization in the lightest scope; script integrity on payment pages is still required | Only processor tokens are stored |
+| Privacy | One state privacy law does not exempt nonprofits; **GDPR has no nonprofit exception**, and a global organization soliciting internationally should assume it applies | Data-subject export and erasure; erasure anonymizes the contact and keeps the financial entry |
+| Retention | Seven years for financial records, permanent for governing documents | Object-locked exports |
+
+### Risks
+
+1. **A homegrown ledger and audit acceptance (highest).** Engage the audit firm when the ledger is designed. Hash-chained exports, and a monthly zero-difference parallel run for as long as the firm requires. No cutover without the firm's written comfort. The first audit on the new ledger will cost more.
+2. **One builder.** Everything is exportable by design and mirrored where others can reach it. Decisions and runbooks live as pages in the system. The stack is ordinary enough for any TypeScript contractor with an agent to maintain. Someone else runs the annual restore drill. The board acknowledges the risk.
+3. **Lock-in to ourselves.** Commercial systems have importers; nothing imports from a custom schema. Every entity has a documented export path from the start.
+4. **Access drift.** Permissions rot as people change roles. Grants are native and audited, time-boxed for contractors, reviewed quarterly, and a change touching finance notifies the org admins.
+5. **Parallel-run fatigue.** The mirror of the current accounting system is an automated import, not re-keying. The manual part is the monthly reconciliation review.
+6. **Backup theater.** A scored restore drill each quarter, written up as a page.
+7. **The shared-draft layer.** Live co-editing is the most intricate subsystem outside the ledger. It is contained by design: markdown is the complete record, properties are not merged through it, the libraries are widely used, and a draft never reaches readers until Save.
+8. **Replicas on devices.** Laptops in sensitive countries hold synced content. Ledger, CRM and donor data never sync; sensitive field records are excluded by default; sync is by area with access enforced at sync time; revocation purges; an idle replica seals itself; disk encryption is required.
+9. **A story published above its consent.** That is a safety incident, not an editorial slip. The level is a filter on the server, a story inherits its engagement's sensitivity as a ceiling, the default is `internal`, and usage records make a withdrawal traceable.
+10. **Module sprawl.** Modules that quietly join into each other's tables stop being modules within months. The build checks dependencies, and a module is complete only with its runbook, export path, verification and classification.
+11. **Automation that hides its own failure.** A generated report or an agent's allocation is more dangerous wrong than absent. Evidence ledgers on every proposal, provenance on every figure, absence rendered in place, and the standing rule that agents assemble and people sign.
+12. **Ledger pitfalls never to commit:** floats for money; changing or deleting a posted entry; balance enforced anywhere but the database; a stored balance column; dimensions bolted on later.
+13. **Closed by default has a cost.** People who could once read everything now read their own areas and `00-09`. An org admin must deliberately grant org-wide viewing to those who should have it, and deliberately leave out anyone who should not see finance.
+14. **Losing the key that wraps credentials loses every credential.** That key needs deletion protection and a reviewed policy, declared as infrastructure.
+15. **A PDF cannot be handed to an outsider by link.** Downloads need sign-in. An outside recipient who must download without signing in needs a separate decision (section 7).
+
+---
+
+## 7. Open questions
+
+Each needs a person's decision. None blocks work that does not touch it.
+
+| # | Question | Where it bites |
+|---|---|---|
+| 1 | Is the monthly assessment an expense or contra-revenue? Decided with the audit firm | Ledger |
+| 2 | Does the organization hold material balances in other currencies? If so, a revaluation engine is needed | Ledger |
+| 3 | Is the accounting "program id" the department or a separate dimension? Confirmed with finance | Strategy collections, the budget's dimension map |
+| 4 | How long must the ledger's parallel run be: months, or a full audited fiscal year? | Sequence, step 6 |
+| 5 | E-signature: adopt an open-source service or a commercial one, or keep uploading signed copies? | Contracts |
+| 6 | May the platform's own repository ever be granted a merge delegation? | Workflow |
+| 7 | The BML template's deploy and publish connectors: what do they deliver to, and who approves? | Workflow, Publishing |
+| 8 | Does a native phone app follow the installable web app, and how does it sign a person in, given that the browser's sign-in cookie is not available to it? | Knowledge base, Desktop & Offline |
+| 9 | Private personal pages: are there any, given that a page's area is its scope? | Core |
+| 10 | A general formula language for collections: wanted, or does the closed set suffice? | Collections |
+| 11 | A structured location property, in place of grouping on a free-text address? | Directory |
+| 12 | How does offline editing reconcile with working drafts that are per page version and do not merge an outside save? | Desktop & Offline, the editor |
+| 13 | Who approves a reusable dashboard definition and its reuse across areas, and what is the public delivery origin and revocation policy? | Dashboards |
+| 14 | Where are resource associations (a website or app to the pages it serves) stored? | Dashboards, Strategy |
+| 15 | May an outside recipient download an export without signing in? That needs a signed link and its secret | Documents |
+| 16 | Old credential versions: what grace period before they are destroyed? | Credentials store |
+| 17 | Named-person restrictions on a pinned credential: are they needed beyond the area grant and the binding? | Credentials store |
+| 18 | Is the agent-execution layer the platform's own, or a hosted agent workspace that reaches the platform only through the MCP surface? Evaluated once communications and correlation are in place | Agents |
+| 19 | The licence the repository is released under | The whole platform |
+| 20 | Font Awesome Pro: is the licence confirmed, or do the free icons stay? | Design |
