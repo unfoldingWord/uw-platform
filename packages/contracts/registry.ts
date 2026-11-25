@@ -28,8 +28,11 @@ import {
 } from './credential-commands.ts';
 import { draftCheckSchema, draftStageSchema } from './drafts.ts';
 import {
+  adoptTemplateUpdateCommandSchema,
   charterFrontmatterSchema,
   charterSectionSchema,
+  copyTemplatePolicyCommandSchema,
+  templateSourceSchema,
   decisionFrontmatterSchema,
   decisionSectionSchema,
   policyEnforcementSchema,
@@ -334,6 +337,9 @@ export const schemaRegistry: Record<string, ZodType> = {
   'policy-frontmatter': policyFrontmatterSchema,
   'charter-frontmatter': charterFrontmatterSchema,
   'charter-section': charterSectionSchema,
+  'template-source': templateSourceSchema,
+  'copy-template-policy-command': copyTemplatePolicyCommandSchema,
+  'adopt-template-update-command': adoptTemplateUpdateCommandSchema,
   'decision-frontmatter': decisionFrontmatterSchema,
   'decision-section': decisionSectionSchema,
   'data-source-kind': dataSourceKindSchema,

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { jdAreaSchema } from './areas.ts';
 import { sectionsIn, type Sections } from './sections.ts';
 
 export const policyLevelSchema = z.enum([
@@ -17,6 +18,38 @@ export type PolicyEnforcement = z.infer<typeof policyEnforcementSchema>;
 
 const distinct = <T>(values: readonly T[]) => new Set(values).size === values.length;
 
+export const templateSourceSchema = z.strictObject({
+  page_id: z.uuid(),
+  version: z.number().int().min(1),
+});
+
+export type TemplateSource = z.infer<typeof templateSourceSchema>;
+
+const boundEnforcementSchema = z.enum(['required', 'default']);
+
+export const copyTemplatePolicyCommandSchema = z.object({
+  command: z.literal('copy_template_policy'),
+  requestId: z.uuid(),
+  pageId: z.uuid(),
+  templateId: z.uuid(),
+  jdArea: jdAreaSchema,
+  title: z.string().min(1).max(200),
+  enforcement: boundEnforcementSchema,
+  appliesTo: z.uuid().nullable(),
+  effectiveFrom: z.iso.date(),
+});
+
+export type CopyTemplatePolicyCommand = z.infer<typeof copyTemplatePolicyCommandSchema>;
+
+export const adoptTemplateUpdateCommandSchema = z.object({
+  command: z.literal('adopt_template_update'),
+  requestId: z.uuid(),
+  pageId: z.uuid(),
+  expectedVersion: z.number().int().min(1),
+});
+
+export type AdoptTemplateUpdateCommand = z.infer<typeof adoptTemplateUpdateCommandSchema>;
+
 export const policyFrontmatterSchema = z
   .strictObject({
     enforcement: policyEnforcementSchema,
@@ -28,6 +61,7 @@ export const policyFrontmatterSchema = z
       .default([]),
     effective_from: z.iso.date(),
     effective_until: z.iso.date().nullable().default(null),
+    copied_from: templateSourceSchema.nullable().default(null),
   })
   .refine(
     (value) => value.effective_until === null || value.effective_until > value.effective_from,

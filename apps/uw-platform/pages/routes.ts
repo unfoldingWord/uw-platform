@@ -1,6 +1,8 @@
 import { Hono, type Context } from 'hono';
 import {
+  adoptTemplateUpdateCommandSchema,
   confirmPageCommandSchema,
+  copyTemplatePolicyCommandSchema,
   movePageCommandSchema,
   createPageCommandSchema,
   nameCategoryCommandSchema,
@@ -31,6 +33,7 @@ import { confirmPage } from './confirm.ts';
 import { connectDraft } from './draft-handlers.ts';
 import { downloadFile, listPageFiles, uploadFile } from './file-handlers.ts';
 import { movePage } from './move.ts';
+import { adoptTemplateUpdate, copyTemplatePolicy } from './policy-templates.ts';
 import {
   dropFavourite,
   handleComment,
@@ -50,6 +53,24 @@ type Run = (
 ) => Promise<{ readonly requestId: string; readonly result: PageResult | PageRefusal } | null>;
 
 const handlers = new Map<string, Run>([
+  [
+    'copy_template_policy',
+    async (db, actor, body, traceId, at) => {
+      const parsed = copyTemplatePolicyCommandSchema.safeParse(body);
+      if (!parsed.success) return null;
+      const result = await copyTemplatePolicy(db, actor, parsed.data, traceId, at);
+      return { requestId: parsed.data.requestId, result };
+    },
+  ],
+  [
+    'adopt_template_update',
+    async (db, actor, body, traceId, at) => {
+      const parsed = adoptTemplateUpdateCommandSchema.safeParse(body);
+      if (!parsed.success) return null;
+      const result = await adoptTemplateUpdate(db, actor, parsed.data, traceId, at);
+      return { requestId: parsed.data.requestId, result };
+    },
+  ],
   [
     'create_page',
     async (db, actor, body, traceId, at) => {

@@ -1,0 +1,11 @@
+{
+  "command": "copy_template_policy",
+  "requestId": "00000000-0000-4000-8000-0000000000aa",
+  "pageId": "00000000-0000-4000-8000-0000000000bb",
+  "templateId": "00000000-0000-4000-8000-0000000000cc",
+  "jdArea": "00-09",
+  "title": "Work in progress limit",
+  "enforcement": "default",
+  "appliesTo": "00000000-0000-4000-8000-0000000000dd",
+  "effectiveFrom": "2026-12-01"
+}

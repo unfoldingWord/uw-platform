@@ -67,6 +67,7 @@ describe('PO-1 a policy names how it binds and when it holds', () => {
       supersedes: [],
       effective_from: '2026-12-01',
       effective_until: null,
+      copied_from: null,
     });
   });
 
