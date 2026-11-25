@@ -1,6 +1,6 @@
 # infra
 
-Everything Cloudflare, Neon and Access that the platform runs on is declared here. A setting that exists only in a dashboard is a defect (plan §19).
+Everything Cloudflare, AWS and Access that the platform runs on is declared here. A setting that exists only in a dashboard is a defect.
 
 ## uw-platform
 
@@ -31,7 +31,7 @@ A binding is added by a diff to `uw-platform/wrangler.toml`, once in `[env.stagi
 | Queue consumer | `[[env.<name>.queues.consumers]]` with `queue` | #10 |
 | Queue producer | `[[env.<name>.queues.producers]]` with `binding`, `queue` | #10 |
 | Durable Objects | `[[env.<name>.durable_objects.bindings]]` with `name`, `class_name`, plus `[[env.<name>.migrations]]` | live hub |
-| Workflows | `[[env.<name>.workflows]]` with `name`, `binding`, `class_name` | runs |
+| Cloudflare Workflows | `[[env.<name>.workflows]]` with `name`, `binding`, `class_name` | runs |
 | Browser Run | `[env.<name>.browser]` with `binding`, in `preview` too, because environments do not inherit it | #198 |
 | Containers | `[[env.<name>.containers]]` with `class_name`, `image`, `max_instances`, plus a Durable Object binding per class and a migration | sandbox engines |
 | Crons | `[env.<name>.triggers]` with `crons` | later |
@@ -92,7 +92,7 @@ The production Hyperdrive config `uw-platform-production` reaches Aurora through
 | Environment | Worker name | Reachable at | Deployed by |
 |---|---|---|---|
 | staging | `uw-ingest-staging` | `https://uw-ingest-staging.<account subdomain>.workers.dev` | `deploy-ingest-staging` after green CI on a push to `develop` |
-| production | `uw-ingest` | nowhere yet: no route, `workers_dev = false` | `deploy-ingest-production` with the same dispatch, after the production gate |
+| production | `uw-ingest` | `uw-ingest.unfoldingword.workers.dev` | `deploy-ingest-production` with the same dispatch, after the production gate |
 
 `GITHUB_WEBHOOK_SECRET` is a Worker secret, set with `wrangler secret put GITHUB_WEBHOOK_SECRET --env <name>`, until the environment is moved to the Secrets Store (the Platform secrets section). It appears in no file.
 
@@ -281,7 +281,7 @@ wrangler secret put ZULIP_WEBHOOK_TOKEN --env <name>
 
 The Zulip bot is an outgoing-webhook bot. Its endpoint URL is `https://<uw-ingest host>/webhooks/zulip`, its payload format is Zulip's own, and its token is `ZULIP_WEBHOOK_TOKEN`. `uw-ingest` answers an accepted delivery with no `content` and `"response_not_required": true`, so the bot posts nothing back.
 
-A post reaches everyone in its channel, and the platform does not check who that is. Every channel in `ZULIP_CHANNELS` must therefore be a private channel (never public or web-public) whose members are exactly the people who can read that area: anyone with a live grant on the area, an org grant, or an editor or admin grant on any area. Whoever configures the realm keeps membership in step with grants: a person granted read on an area joins its channel, and a person whose grant is revoked or expires leaves it. Otherwise a person who cannot read the area sees its harness key, its repository names and issue numbers, and that a gate, a lapse or a failed run is waiting. The post carries only the harness key, the item ref, one fixed sentence and the link, never an item's title or body.
+A post reaches everyone in its channel, and the platform does not check who that is. Every channel in `ZULIP_CHANNELS` must therefore be a private channel (never public or web-public) whose members are exactly the people who can read that area: anyone with a live grant on the area or a live org grant, and no one else (ADR 0015: a grant on another area reads nothing here). Whoever configures the realm keeps membership in step with grants: a person granted read on an area joins its channel, and a person whose grant is revoked or expires leaves it. Otherwise a person who cannot read the area sees its harness key, its repository names and issue numbers, and that a gate, a lapse or a failed run is waiting. The post carries only the harness key, the item ref, one fixed sentence and the link, never an item's title or body.
 
 ## Platform secrets in Cloudflare Secrets Store (#160)
 
@@ -445,7 +445,7 @@ Pictures and files attached to pages are stored in R2 through the `FILES` bindin
 
 Nothing here is a secret. A file is read only through `GET /api/files/:fileId`, which checks the reader's grant on the area of the page that holds it; the bucket is never exposed. A Worker without the binding answers `not_wired` to an upload, a download or the agent verb `attach_file`, and the edit screen says file storage is not set up.
 
-## PDF export: Browser Run and the `PdfExportRun` Workflow (#198)
+## PDF export: Browser Run and the `PdfExportRun` Cloudflare Workflow (#198)
 
 `uw-platform` prints PDFs through Cloudflare Browser Run (formerly Browser Rendering). The `BROWSER` binding is declared as `[env.<name>.browser] binding = "BROWSER"` under `staging`, `production` and `preview`, identically in `uw-platform/wrangler.toml` and `uw-platform/wrangler.go-live.toml`. Wrangler does not let an environment inherit `browser`, so a binding at the top level would reach no deployed Worker. The Worker calls the binding's `quickAction('pdf', ...)` with one self-contained HTML document: CSS, fonts and images inlined, JavaScript off, every request but `data:` blocked, and the quick-action cache off (`cacheTTL: 0`). The headless browser never fetches the app, so Access needs no change for it. A Worker without the binding answers `not_wired` to a PDF request.
 
@@ -488,7 +488,7 @@ Until that PR, the per-PR and staging Workers run with no database and no queue,
 
 ### The GL-1 switch, in order
 
-GL-1 switches the wiring above on. It writes no code: each step creates a resource, sets a secret or a value, or checks one. Every row of `docs/progress_tracker.md` that waits on FD-6, FD-7, FD-10 or FD-12 names the step that closes it. Steps 1 to 5 can run in any order; step 6 needs them all; step 7 is GL-1's release gate.
+GL-1 switches the wiring above on. It writes no code: each step creates a resource, sets a secret or a value, or checks one. Steps 1 to 5 can run in any order; step 6 needs them all; step 7 is GL-1's release gate.
 
 1. **The database (FD-12).** A Postgres 16 or later database for staging and one for production (AWS RDS, or any Postgres the Hyperdrive config and the GitHub runner can reach). In the repository settings set `DATABASE_URL_STAGING` and `DATABASE_URL_PRODUCTION` as secrets (the table above); the deploy migrates through them, so the database must accept connections from GitHub's runners while it does. When the database is reachable only through a Cloudflare Tunnel (AWS Aurora, set up with the infrastructure team), set `DATABASE_TUNNEL_HOST_STAGING` and `DATABASE_TUNNEL_HOST_PRODUCTION` as variables and `DATABASE_TUNNEL_CLIENT_ID` and `DATABASE_TUNNEL_CLIENT_SECRET` as secrets: the tunnel needs a TCP route to the database behind a Cloudflare Access application that admits that service token, and each migrate job opens it with `.github/scripts/db-tunnel.sh` before migrating, with the `DATABASE_URL_*` secret pointing at `127.0.0.1:15432`.
 2. **Hyperdrive (FD-12, FD-6).** `wrangler hyperdrive create uw-staging --connection-string=<pooled staging string>`, and the same for `uw-production`. Put each Hyperdrive id in place of `set-at-go-live` in `[[env.staging.hyperdrive]]` and `[[env.production.hyperdrive]]` of both go-live files, and staging's Hyperdrive id in uw-platform's `[[env.preview.hyperdrive]]` (P33).
@@ -503,5 +503,5 @@ GL-1 switches the wiring above on. It writes no code: each step creates a resour
      | jq -e '.indicators[] | select(.name == "database") | .status == "ok"'
    ```
 
-   It prints `true` and exits 0 when the database answers through Hyperdrive, and the indicator's detail reads `reachable in <n> ms`. `not_configured` means the deployed Worker has no `HYPERDRIVE` binding (step 6 did not deploy); `red` means Hyperdrive cannot reach Neon (step 2's connection string). Then run each tracker row's own check: sign in through Access, send one GitHub delivery through uw-ingest, watch a failing message reach the dead-letter queue, and load `https://uw-ingest-staging.unfoldingword.workers.dev/health`.
-8. **Close the rows.** For each tracker row that cites a step and whose check passed, change its go-live hand-off action to "None: closed by the live run on <date>" and say so in its own section. A row whose check failed stays open, restated with what failed.
+   It prints `true` and exits 0 when the database answers through Hyperdrive, and the indicator's detail reads `reachable in <n> ms`. `not_configured` means the deployed Worker has no `HYPERDRIVE` binding (step 6 did not deploy); `red` means Hyperdrive cannot reach the database (step 2's connection string). Then check the rest by hand: sign in through Access, send one GitHub delivery through uw-ingest, watch a failing message reach the dead-letter queue, and load `https://uw-ingest-staging.unfoldingword.workers.dev/health`.
+8. **Record the result.** Say on the go-live issue which checks passed and on what date. A check that failed stays open there, restated with what failed.

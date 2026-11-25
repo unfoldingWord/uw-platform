@@ -53,7 +53,7 @@ Open a pull request from `harness/<item>` into the default branch. Its body open
 closes: #<issue>
 risks: <what could break, in one line>
 touches: <the areas you changed, comma-separated>
-risk_tier: <low, medium or high>
+risk_tier: <low, standard or high>
 risk_domains: <the risk domains, comma-separated, or none>
 ```
 

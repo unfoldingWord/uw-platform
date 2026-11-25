@@ -5,12 +5,12 @@ The vocabulary of the harness, the module of the unfoldingWord platform that run
 ## The pipeline
 
 **Harness**:
-One instance of the pipeline, built from a template, scoped to a JD area. The software harness lives in area 80 to 89; a BML harness lives in the area of the program whose product it serves.
+One instance of the pipeline, built from a template, scoped to a JD area. The UI and conversation call it a **workflow**; the code says harness. The software harness lives in area 80 to 89; a BML harness lives in the area of the program whose product it serves.
 _Avoid_: pipeline (that is the drawing), queue (that is a screen, the Queue), board (the Queue's old name), work queue (the plan's older name)
 
 **Template**:
 The stage graph a harness is built from. Two in v1: software delivery and the BML product flywheel. Same eight stages, different names, workers and connectors.
-_Avoid_: workflow (that is a Cloudflare Workflow), process
+_Avoid_: workflow (that is a harness), process
 
 **Stage**:
 One row of `harness_stages`: a position, who may pick up work there, how an item leaves, what leaving does in the world, and which validators run. Eight per template: Package, Scope, Plan, Build, Check, Ship, Validate, Close.
@@ -63,7 +63,7 @@ _Avoid_: severity, priority (that is ordering), impact
 ## Who acts
 
 **Person**:
-A human principal with a Google login through Cloudflare Access and rows in the grants table. The only kind of identity that can write a gate decision.
+A human principal with a Google login through Cloudflare Access and rows in the grants table. The only kind of identity that can be the approver of a gate decision.
 _Avoid_: user, human (as a noun in code), approver (that is a role a person plays at one gate)
 
 **Person status**:
@@ -91,11 +91,11 @@ Where grants are seen, given and revoked, under 30-39 Infrastructure. An org adm
 _Avoid_: permissions page, user management, directory (that is the 10-19 module)
 
 **Principal**:
-The structured identity minted at the edge for every request: a person or agent id plus their resolved grants. It travels with every call, queue message and MCP invocation (plan §4).
+The structured identity minted at the edge for every request: a person or agent id plus their resolved grants. It travels with every call, queue message and MCP invocation.
 _Avoid_: session, token, actor (actor is the field name on an event, and holds a principal's id)
 
 **Grant**:
-One row of `role_grants`: a role (`admin`, `editor`, `viewer`) at a scope (the org, or one JD area), optionally expiring. `can(actor, verb, resource)` is the one function that reads them (plan §4).
+One row of `role_grants`: a role (`admin`, `editor`, `viewer`) at a scope (the org, or one JD area), optionally expiring. `can(actor, verb, resource)` is the one function that reads them.
 _Avoid_: permission, role (a role is one field of a grant), ACL entry
 
 **Read rule**:
@@ -112,7 +112,7 @@ _Avoid_: credential permission, secret access, credential role, read (a credenti
 
 **Reveal grant**:
 A person's time-limited leave to `reveal` one credential, given by a person who may `manage` it. It always expires, names one credential and one person, and adds to a grant on the credential's area without replacing it.
-_Avoid_: reveal permission, break-glass (that is a reveal outside the grants, by two org admins), share
+_Avoid_: reveal permission, break-glass (that is a reveal outside the grants, given by an org admin and confirmed by a second person), share
 
 **Break-glass reveal**:
 A reveal grant given by an org admin who is not an admin of the credential's area. It is not live until a second person who may `manage` the credential, never the one who gave it, confirms it; both are recorded on the grant and in the credential access log, and its time starts when it is confirmed (ADR 0021).
@@ -191,7 +191,7 @@ The first step of a Builder run: verify the item's premise against current code 
 _Avoid_: Scout (as a persona name in v1), explorer, triage
 
 **Scout verdict**:
-The fenced `harness-scout` block that ends a scout step: the premise holds or is held, with a one-line reason. Anything else is a held premise.
+The fenced `harness-scout` block that opens the answer of a scout step: the premise holds or is held, with a one-line reason. Anything else is a held premise.
 _Avoid_: scout result, triage outcome
 
 **Delegation**:
@@ -203,7 +203,7 @@ The time-boxed hold an agent takes on an item at claim, renewed by every run ste
 _Avoid_: lock, assignment (a person is assigned; an agent holds a lease), checkout
 
 **WIP limit**:
-The maximum number of items a stage may hold at once, applied to people and agents alike, and the maximum number of rows one Board group may hold (plan §13).
+The maximum number of items a stage may hold at once, applied to people and agents alike, and the maximum number of rows one Board group may hold.
 _Avoid_: capacity, quota, throttle
 
 ## How work runs
@@ -285,7 +285,7 @@ The platform hook a sandbox's outbound traffic passes through: it injects the mo
 _Avoid_: firewall, gateway (that is a Store gateway or AI Gateway)
 
 **Review verdict**:
-The fenced `harness-verdict` block that ends a review run's work: approve or request changes, then the findings.
+The fenced `harness-verdict` block that opens a review run's answer: approve or request changes, then the findings.
 _Avoid_: review result, approval (only a person approves a gate)
 
 **Review round**:
@@ -337,11 +337,11 @@ The rendering of an item's events in order, with actor, host, cost basis and lin
 _Avoid_: timeline, activity, log, history
 
 **Gate decision**:
-One row of `gate_decisions`: a person's approve, reject, take over or override at a gate, with reason and evidence, kept seven years. Written only by a human principal, inside a transaction that locks and re-reads the approver's grants.
+One row of `gate_decisions`: a person's approve, reject, take over or override at a gate, with reason and evidence, kept seven years. Written only by a human principal, inside a transaction that locks and re-reads the approver's grants, or by the delegated Ship exit with the granting person as approver (ADR 0010).
 _Avoid_: approval (that is one kind of decision), sign-off, review
 
 **Learning**:
-A page of type `learning`: a measured fact or working rule with a confidence label (`observed`, `confirmed`, `inferred`, `assumed`), an as-of date and what it supersedes (plan §6). Close refuses an item that attaches neither a learning nor a signed `nothing_learned`.
+A page of type `learning`: a measured fact or working rule with a confidence label (`observed`, `confirmed`, `inferred`, `assumed`), an as-of date and what it supersedes Close refuses an item that attaches neither a learning nor a signed `nothing_learned`.
 _Avoid_: note, insight, lesson, memory (the plan's phrase is institutional memory; a learning is one unit of it)
 
 **Confirmation**:
@@ -377,7 +377,7 @@ The Zod-validated message `uw-ingest` puts on the queue for one verified webhook
 _Avoid_: event (that is a row of `harness_events`), message (the message queue's word for the transport), job
 
 **Page type**:
-One entry of the page-type registry in `packages/contracts`: a frontmatter schema, a classification and an offline eligibility. Fifteen: `skill`, `learning`, `persona`, `product`, `system_goal`, `product_strategy`, `data_sources`, `issue`, `platform`, `knowledge`, and the collection row types `entry`, `portfolio`, `program`, `project` and `okr`, whose frontmatter is checked by their collection's definition.
+One entry of the page-type registry in `packages/contracts`: a frontmatter schema, a classification and an offline eligibility. The types are listed in `packages/contracts/page-types.ts`; the frontmatter of a collection row type is checked by its collection's definition.
 _Avoid_: template (that is a stage graph), kind, category (that is where a knowledge page is filed)
 
 ## The knowledge base
@@ -705,27 +705,27 @@ _Avoid_: hot reload, polling (that is the hub's fallback)
 ## The repo and the build
 
 **PRD**:
-`docs/PRD.md`, the list of what v1 is: every requirement with a stable ID, the build order, the release criteria and the decision log. The list of work; there is no other.
-_Avoid_: backlog, issues (they are history), roadmap
+`docs/PRD.md`: what the platform does, module by module, for the whole platform and not only what exists so far. Kept current with the code. It carries no status.
+_Avoid_: backlog, roadmap, spec, plan
 
 **Requirement**:
-One row of the PRD with a stable ID such as `KN-13`. Scenarios, tests, commits and the progress tracker name requirements by ID.
+One row of the PRD with a stable ID such as `KN-13`. Scenarios, tests and commits name requirements by ID.
 _Avoid_: issue, ticket, story, task
 
-**Spec**:
-`prd/Harness v1 - Architecture.md`, the ratified design. The source of truth for how the harness is designed and why. Its Decisions table is where a design change is recorded.
-_Avoid_: PRD (that is `docs/PRD.md`), design doc, RFC
+**Architecture document**:
+`docs/architecture.md`: how the platform is built as it runs today, and the planned shape of what is not there yet.
+_Avoid_: spec, design doc, RFC
 
-**Plan**:
-`prd/An App For Everything - Platform Architecture Plan.md`, the sponsor's design for the whole platform. The harness sits one level below it and consumes its ACL, pages and topology.
-_Avoid_: roadmap, vision (that is the Executive Brief, which is not in this repository)
+**Decision**:
+One entry of `docs/decisions.md`: a settled ruling, its reason and what was rejected, cited as "ADR NNNN". A later entry that changes an earlier one says so on both.
+_Avoid_: RFC, proposal
 
-**Build-order step**:
-One of the eleven steps in PRD section 13. Each needs the ones before it; the progress tracker reports by step.
-_Avoid_: milestone (the GitHub milestones M0 to M9 are history), phase (that is the plan's word for platform rollout), sprint, epic
+**Platform epic**:
+The GitHub issue whose sub-issues are the PRD's features. The only place that says what is built and what is outstanding.
+_Avoid_: tracker, roadmap, milestone, build step, phase (that is the PRD's word for the order of rollout)
 
 **Verify**:
-`pnpm verify`, the whole check chain, the same one CI runs.
+`pnpm verify`, the whole check chain. CI runs the same checks as separate jobs, and the dependency audit besides.
 _Avoid_: build, test (one part of it), lint (one part of it)
 
 **Go-live wiring**:
