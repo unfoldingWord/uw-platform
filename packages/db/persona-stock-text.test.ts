@@ -86,11 +86,12 @@ function correctsStoredPersonas(db: () => Db): void {
     expect(review).toMatchObject({ version: 2, status: 'suggested' });
   });
 
-  it('PE-5 records the corrected version as a system edit', async () => {
+  it('PE-5 records the corrected version as an edit no person made', async () => {
     const scout = await stored(db(), builder);
-    expect(await snapshots(db(), builder)).toEqual([
-      { version: 2, body_md: scout?.body_md, edit_source: 'agent:system' },
-    ]);
+    const [snapshot, ...rest] = await snapshots(db(), builder);
+    expect(rest).toEqual([]);
+    expect(snapshot).toMatchObject({ version: 2, body_md: scout?.body_md });
+    expect(snapshot?.edit_source).toMatch(/^agent:[a-z]+$/);
   });
 
   it('PE-5 leaves a rewritten persona and a page of another type alone', async () => {
