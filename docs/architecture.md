@@ -238,7 +238,11 @@ A **collection** is a stored definition over pages or typed records (ADR 0023). 
 - **Saved views** are rows; the layouts are the closed set in `packages/contracts/collection-views.ts`.
 - **A collection owns no money.** Money appears only as a read-through property served by another module's feed. No feed is wired, so each answers `not_wired`.
 
-**The crosswalk** (`apps/uw-platform/crosswalk/`, `packages/db/schema-crosswalk.ts`) stores each cascade entity's place as a placement row and the map between Johnny.Decimal areas and the Strategic Cascade, with an audit of changes (ADR 0027). **People.** A person's profile is their directory row (ADR 0025); `apps/uw-platform/people/` owns the people and directory tables.
+**The crosswalk** (`apps/uw-platform/crosswalk/`, `packages/db/schema-crosswalk.ts`) stores each cascade entity's place as a placement row and the map between Johnny.Decimal areas and the Strategic Cascade, with an audit of changes (ADR 0027). `crosswalk/chain.ts` walks from a placement up the program and portfolio relations.
+
+**Policies and charters** (ADR 0034) are page types, so the pages module writes them and both are gated. Two checks run on every save, in `apps/uw-platform/pages/content-checks.ts`: a page type may declare body problems in the page-type registry (a charter's missing NISO headings), and a page type that declares `appliesToNode` (policy, charter) must name in `applies_to` a live node or product the writer can read. Resolution is split three ways: `pages/policies.ts` builds the policy chain and reads the active policy pages; the pure `resolvePolicies` in `packages/harness/policies/` decides what is in force; `pages/policies.ts` then keeps what the reader may read, for `resolve_context`.
+
+**People.** A person's profile is their directory row (ADR 0025); `apps/uw-platform/people/` owns the people and directory tables.
 
 ## 13. Credentials
 

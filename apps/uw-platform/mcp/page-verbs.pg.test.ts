@@ -369,9 +369,9 @@ describe.skipIf(!testServer)(
     it('refuses policy, which is not a registered page type, and a save that changes type or area', async () => {
       const r = rig();
       const editor = await runner(r, EDITOR.email);
-      expect(
-        (await write(editor, newPage('agent-policy', { type: 'policy' }))).body['reason'],
-      ).toBe('malformed_command');
+      expect((await write(editor, newPage('agent-memo', { type: 'memo' }))).body['reason']).toBe(
+        'malformed_command',
+      );
       const moved = {
         ...newPage('seeded-1410'),
         pageId: SEEDED.workshop80,

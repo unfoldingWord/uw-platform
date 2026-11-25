@@ -14,6 +14,7 @@ import { pullRequestRefSchema, repositorySchema } from './harness.ts';
 import { identitySchema, isPersonaIdentity } from './identity.ts';
 import { providerIdSchema } from './runs.ts';
 import { pageStatusSchema, slugSchema, type PageType } from './pages.ts';
+import { charterFrontmatterSchema, charterSections, policyFrontmatterSchema } from './policies.ts';
 
 const text = z.string().min(1).max(2000);
 const distinct = <T>(values: readonly T[]) => new Set(values).size === values.length;
@@ -93,6 +94,8 @@ export type PageTypeDefinition = {
   readonly frontmatter: z.ZodType;
   readonly classification: Classification;
   readonly offlineEligibility: OfflineEligibility;
+  readonly bodyProblems?: (bodyMd: string) => readonly string[];
+  readonly appliesToNode?: true;
 };
 
 export const platformPageSlug = 'platform';
@@ -149,10 +152,17 @@ export const pageTypeRegistry = {
   knowledge: { frontmatter: knowledgeFrontmatterSchema, ...internalSync },
   entry: { frontmatter: collectionFrontmatterSchema, ...internalSync },
   profile: { frontmatter: z.strictObject({}), ...internalSync },
+  policy: { frontmatter: policyFrontmatterSchema, ...internalSync, appliesToNode: true },
   portfolio: { frontmatter: collectionFrontmatterSchema, ...internalSync },
   program: { frontmatter: collectionFrontmatterSchema, ...internalSync },
   project: { frontmatter: collectionFrontmatterSchema, ...internalSync },
   okr: { frontmatter: collectionFrontmatterSchema, ...internalSync },
+  charter: {
+    frontmatter: charterFrontmatterSchema,
+    ...internalSync,
+    appliesToNode: true,
+    bodyProblems: (bodyMd: string) => charterSections(bodyMd).missing,
+  },
 } as const satisfies Record<PageType, PageTypeDefinition>;
 
 const byType = new Map<string, PageTypeDefinition>(Object.entries(pageTypeRegistry));

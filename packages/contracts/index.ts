@@ -31,6 +31,7 @@ export * from './page-types.ts';
 export * from './pages.ts';
 export * from './pdf-exports.ts';
 export * from './platform-commands.ts';
+export * from './policies.ts';
 export * from './principal.ts';
 export * from './runs.ts';
 export * from './shadow.ts';

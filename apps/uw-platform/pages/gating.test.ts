@@ -17,14 +17,17 @@ describe('AB-5 every page type is classified as gated or open', () => {
       ['knowledge', 'open'],
       ['entry', 'open'],
       ['profile', 'open'],
+      ['policy', 'gated'],
       ['portfolio', 'open'],
       ['program', 'open'],
       ['project', 'open'],
       ['okr', 'open'],
+      ['charter', 'gated'],
     ]);
   });
 
-  it('has no policy type to gate in v1', () => {
-    expect(pageTypes).not.toContain('policy');
+  it('PO-1 gates policies and charters, so an agent only suggests one', () => {
+    expect(gatingOf('policy')).toBe('gated');
+    expect(gatingOf('charter')).toBe('gated');
   });
 });

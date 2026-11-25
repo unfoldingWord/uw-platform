@@ -12,3 +12,11 @@ export function checkFrontmatter(type: string, frontmatter: unknown): Frontmatte
   if (!parsed.success) return { ok: false, reason: 'invalid_frontmatter' };
   return { ok: true, type: known.data, frontmatter: parsed.data as Record<string, unknown> };
 }
+
+export function appliesToNode(type: string): boolean {
+  return pageTypeDefinition(type)?.appliesToNode === true;
+}
+
+export function missingSections(type: string, bodyMd: string): readonly string[] {
+  return pageTypeDefinition(type)?.bodyProblems?.(bodyMd) ?? [];
+}

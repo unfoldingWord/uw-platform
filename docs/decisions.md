@@ -645,6 +645,36 @@ This number was used and withdrawn. It is not reused.
 
 **Consequences.** The per-file exceptions for Rule 2 and Postgres are removed from `docs/exceptions.md`. If the offline app is built on a store other than Postgres, the modules that work offline need a port then, and this decision is reopened for those modules.
 
+---
+
+## 0034 Policies and charters are gated page types, resolved by a pure function over a policy chain
+
+*2026-11-25. Builds on 0027.*
+
+**Decision.** A policy is a page of type `policy` (Core) and a charter a page of type `charter` (Strategy). Both are gated: an agent's write lands `suggested` and only a person confirms it. A policy's frontmatter holds its enforcement (`required`, `default` or `template`), `applies_to` (a cascade node or product page, or none for the whole organization), `supersedes` (policy ids) and `effective_from` and `effective_until`. Its level is the type of the page it applies to, or `organization` when it applies to none; it is never stored on its own. A save is refused with `applies_to_not_found` when that page is not a live node or product the writer can read.
+
+The policies for an item are worked out by `resolvePolicies` in `packages/harness/policies/`, a pure function over a **policy chain**: the item's product (its page or the nearest product above it), the item's own placement or else the product's, that node's parents through the program and portfolio relations, then the organization. Most specific first; a `default` drops when a policy further down supersedes it; a `required` one stays and the attempt is recorded as a conflict; a supersession from the same level or above has no effect and is recorded too. Resolution runs over every active policy, then the answer keeps only the policies the reader may read. `resolve_context` returns them beside the learnings.
+
+A charter's NISO sections are level-two headings in its body, Need, Idea, Strategy, Outcomes, Risks and Roadmap, in that order. A save without them is refused with `charter_sections_missing`, naming the missing ones.
+
+**Why.**
+- **One fact, one place.** Storing a level beside `applies_to` would let the two disagree; reading it from the page's type cannot.
+- **Supersession is judged when it is read.** Whether one policy is below another, and whether the replaced one is `required`, can change after a save: a node is moved, a policy is confirmed or retired. Refusing on save would let a later change make a saved page wrong without anyone touching it.
+- **The kernel can prove precedence.** A pure function runs in the sim and in unit tests without a database, the way the ship rule does (0001, 0003).
+- **The organization needs no node.** 0027 keeps the tiers above a portfolio off the cascade; an empty `applies_to` says "everywhere" without reopening it.
+- **People edit bodies, not frontmatter.** The page editor shows the body; NISO as headings keeps a charter editable in place and still readable by a machine.
+- **Agents suggest; people decide.** 0002 keeps agents short of decisions. Until suggestion sets exist, whole-page suggestion is the way an agent proposes a rule.
+
+**Rejected.**
+- A `level` field beside `applies_to`. Two facts that can disagree.
+- Refusing on save a policy that supersedes a `required` one. It can become true later without a save; recording the conflict at resolution is always current.
+- A `policies` table. A policy is a document with versions, links, search and suggestions, which pages already are.
+- NISO sections as frontmatter fields. The editor does not edit frontmatter, so charters would be writable only through the API.
+- A separate `resolve_policies` verb. `resolve_context` is what every agent session reads first, and the verb registry stays small (0002).
+- Leaving out policies the reader cannot read before resolving. A readable default would then look in force when an unreadable descendant has replaced it.
+
+**Consequences.** An agent reads policies through `resolve_context`; a person sees a policy or charter as an ordinary page. A policy in an area the reader cannot read still takes part in resolution, so a readable default may be absent from the answer without the reader seeing why; the conflicts are not yet shown anywhere. Not built here, and each its own piece of work: copying a template policy with its source and version, and the drift report (PRD "The policy engine"); attestation (#203); the lean default policies (#255); anchored suggestion sets that would let an agent propose a change to an active policy or charter (#197); a decision page type for `resolve_context`.
+
 # Part 2. Workflow design decisions
 
 The shorter decisions of the workflow module (the "harness" in code), under their original ids. An id that a Part 1 entry now states in full points there. Entries that only narrated the order of the first builds were dropped.

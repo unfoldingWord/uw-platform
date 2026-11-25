@@ -14,6 +14,7 @@ import { advisoryLock, advisoryLocks } from '@uw/db/advisory-locks';
 import type { Database, Executor, Transaction } from '@uw/db/client';
 import { pages, pageVersions } from '@uw/db/schema';
 import { pgConstraint, pgErrorCode } from '@uw/db/errors';
+import { contentRefusal } from './content-checks.ts';
 import { derivedFrontmatter, personaLanding } from './derive.ts';
 import { filedOutsideItsArea } from './filing.ts';
 import { isGatedType } from './gating.ts';
@@ -207,6 +208,33 @@ function keptFrontmatter(stored: Page, command: CheckedSave['command']): Checked
     : command;
 }
 
+type Checked = Pick<CreatePageCommand, 'parentId' | 'bodyMd' | 'type'> & {
+  readonly frontmatter: Readonly<Record<string, unknown>>;
+};
+
+async function creationRefusal(
+  db: Database,
+  actor: Principal,
+  checked: Checked,
+  at: Date,
+): Promise<PageResult | PageRefusal | null> {
+  if (checked.parentId !== null && (await readPage(db, actor, checked.parentId, at)) === null) {
+    return refused('parent_not_found');
+  }
+  return contentRefusal(db, actor, checked, at);
+}
+
+async function saveRefusal(
+  tx: Transaction,
+  actor: Principal,
+  full: UpdatePageCommand & { readonly type: string },
+  at: Date,
+): Promise<PageResult | PageRefusal | null> {
+  const blocked = await parentRefusal(tx, actor, full, at);
+  if (blocked !== null) return refused(blocked);
+  return contentRefusal(tx, actor, full, at);
+}
+
 export async function createPageAs(
   db: Database,
   actor: Principal,
@@ -227,9 +255,8 @@ export async function createPageAs(
   if (!can(actor, 'write', { kind: 'area', area: command.jdArea }, at)) {
     return refused('not_permitted');
   }
-  if (command.parentId !== null && (await readPage(db, actor, command.parentId, at)) === null) {
-    return refused('parent_not_found');
-  }
+  const unfit = await creationRefusal(db, actor, { ...command, ...check }, at);
+  if (unfit !== null) return unfit;
   try {
     return await db.transaction(async (tx) => {
       const landing = { status: command.status, stored: null, prior: null, writer: request.writer };
@@ -402,8 +429,8 @@ async function updateInTransaction(tx: Transaction, save: Save): Promise<PageRes
   if (typeof chosen !== 'string') return chosen;
   const full = await derivedSave(tx, stored, chosen, keptFrontmatter(stored, command));
   if ('ok' in full) return full;
-  const blocked = await parentRefusal(tx, actor, full, at);
-  if (blocked !== null) return refused(blocked);
+  const unfit = await saveRefusal(tx, actor, { ...full, type: stored.type }, at);
+  if (unfit !== null) return unfit;
   return writeLinked(tx, save, stored, full);
 }
 

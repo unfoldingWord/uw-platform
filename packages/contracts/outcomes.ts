@@ -135,6 +135,8 @@ export const errorReasonSchema = z.enum([
   'binder_empty',
   'binder_too_large',
   'export_limit_reached',
+  'charter_sections_missing',
+  'applies_to_not_found',
 ]);
 
 export const refusalSchema = z.object({

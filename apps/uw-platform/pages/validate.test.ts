@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { checkFrontmatter } from './validate.ts';
+import { appliesToNode, checkFrontmatter, missingSections } from './validate.ts';
 
 const persona = {
   identity: 'agent:builder',
@@ -16,7 +16,7 @@ const persona = {
 
 describe('FD-9 frontmatter is validated by page type', () => {
   it('refuses a type the registry does not hold', () => {
-    expect(checkFrontmatter('policy', {})).toEqual({ ok: false, reason: 'unknown_page_type' });
+    expect(checkFrontmatter('memo', {})).toEqual({ ok: false, reason: 'unknown_page_type' });
   });
 
   it('refuses a name that only exists on the object prototype', () => {
@@ -62,5 +62,28 @@ describe('FD-9 frontmatter is validated by page type', () => {
   it('refuses a skill with an extra key', () => {
     const skill = { name: 'write-notes', description: 'Draft notes.', extra: true };
     expect(checkFrontmatter('skill', skill)).toEqual({ ok: false, reason: 'invalid_frontmatter' });
+  });
+});
+
+describe('PO-4 a charter body is checked against the NISO template', () => {
+  it('names the sections a charter lacks and asks nothing of other types', () => {
+    expect(missingSections('charter', '## Need\nA need.')).toEqual([
+      'Idea',
+      'Strategy',
+      'Outcomes',
+      'Risks',
+      'Roadmap',
+    ]);
+    expect(missingSections('knowledge', '')).toEqual([]);
+    expect(missingSections('policy', '')).toEqual([]);
+  });
+});
+
+describe('PO-1 only policies and charters name the node they apply to', () => {
+  it('checks applies_to for those two types and no other', () => {
+    expect(appliesToNode('policy')).toBe(true);
+    expect(appliesToNode('charter')).toBe(true);
+    expect(appliesToNode('entry')).toBe(false);
+    expect(appliesToNode('portfolio')).toBe(false);
   });
 });

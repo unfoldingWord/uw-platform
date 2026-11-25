@@ -63,7 +63,7 @@ export const verbRegistry: readonly VerbDefinition[] = [
     'write_page',
     'pages_and_context',
     onResource('editor'),
-    'Create a page or save a new version of one; learning, skill and persona pages land as suggested for a person to confirm.',
+    'Create a page or save a new version of one; learning, skill, persona, policy and charter pages land as suggested for a person to confirm.',
   ),
   verb(
     'attach_file',
@@ -81,7 +81,7 @@ export const verbRegistry: readonly VerbDefinition[] = [
     'resolve_context',
     'pages_and_context',
     onResource('viewer'),
-    "For an item, get its stage's instructions page, its package pages and the confirmed learnings that apply, most specific first.",
+    "For an item, get its stage's instructions page, its package pages, the confirmed learnings and the policies in force from its product up to the organization, most specific first.",
   ),
   verb(
     'query_entities',

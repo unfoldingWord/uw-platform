@@ -27,6 +27,13 @@ import {
   unbindCredentialCommandSchema,
 } from './credential-commands.ts';
 import { draftCheckSchema, draftStageSchema } from './drafts.ts';
+import {
+  charterFrontmatterSchema,
+  charterSectionSchema,
+  policyEnforcementSchema,
+  policyFrontmatterSchema,
+  policyLevelSchema,
+} from './policies.ts';
 import * as closedSets from './closed-sets.ts';
 import { collectionSchemaRegistry } from './collection-registry.ts';
 import {
@@ -320,6 +327,11 @@ export const schemaRegistry: Record<string, ZodType> = {
   'data-sources-frontmatter': dataSourcesFrontmatterSchema,
   'issue-frontmatter': issueFrontmatterSchema,
   'knowledge-frontmatter': knowledgeFrontmatterSchema,
+  'policy-level': policyLevelSchema,
+  'policy-enforcement': policyEnforcementSchema,
+  'policy-frontmatter': policyFrontmatterSchema,
+  'charter-frontmatter': charterFrontmatterSchema,
+  'charter-section': charterSectionSchema,
   'data-source-kind': dataSourceKindSchema,
   'ingest-source': ingestSourceSchema,
   'ingest-refusal': ingestRefusalSchema,

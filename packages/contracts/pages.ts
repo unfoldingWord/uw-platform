@@ -14,10 +14,12 @@ export const pageTypes = [
   'knowledge',
   'entry',
   'profile',
+  'policy',
   'portfolio',
   'program',
   'project',
   'okr',
+  'charter',
 ] as const;
 
 export const collectionPageTypes = ['entry', 'portfolio', 'program', 'project', 'okr'] as const;

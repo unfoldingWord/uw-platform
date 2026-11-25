@@ -345,7 +345,7 @@ A page of type `learning`: a measured fact or working rule with a confidence lab
 _Avoid_: note, insight, lesson, memory (the plan's phrase is institutional memory; a learning is one unit of it)
 
 **Confirmation**:
-A person turning a `suggested` learning or skill page `active` at the version they read, with `write` on its area. Agents cannot confirm. A persona is not confirmed but activated.
+A person turning a `suggested` learning, skill, policy or charter page `active` at the version they read, with `write` on its area. Agents cannot confirm. A persona is not confirmed but activated.
 _Avoid_: approval (that is a gate decision), activation (that is for personas), sign-off
 
 **Contradiction**:
@@ -427,7 +427,7 @@ A person's statement, on a knowledge page, that they read it and it is still rig
 _Avoid_: approval (that is a gate decision), review (alone), sign-off
 
 **Template**:
-A knowledge page tagged `template`. A new page can start from its text; the template itself is an ordinary page.
+A knowledge page tagged `template`. A new page can start from its text; the template itself is an ordinary page. A policy whose enforcement is `template` is a **template policy**, not a template in this sense.
 _Avoid_: blueprint, boilerplate
 
 **Favourite**:
@@ -581,6 +581,26 @@ _Avoid_: mapping table, link, crosswalk (that is the screen)
 **Crosswalk**:
 The screen at `/crosswalk` that shows both axes at once: areas down, cascade tiers across. Each cell counts the pages, tasks and items in that area placed at that tier, and lists the JD map relations between the area and that tier's nodes. A cell opens the entities it counts; a node opens every area it touches. It counts only areas the reader can read.
 _Avoid_: matrix, pivot, JD/cascade report
+
+**Policy**:
+A page of type `policy`: a rule that binds work at one **policy level**, with an **enforcement**, what it supersedes, and the dates it holds from and until. It applies to the whole organization or to one cascade node or product page (`applies_to`); its level is that page's type, never typed separately. An agent's policy lands `suggested` and only a person confirms it.
+_Avoid_: rule (alone), guideline, setting
+
+**Policy level**:
+Where a policy binds: `organization`, `portfolio`, `program`, `project` or `product`. Not a cascade tier: the organization and products are policy levels but not cascade nodes.
+_Avoid_: tier (that is the cascade's), scope (that is a grant's)
+
+**Enforcement**:
+How a policy binds below its level. `required` holds whatever a descendant says; `default` holds until a descendant supersedes it; `template` is a starting text to copy, not an obligation in force.
+_Avoid_: severity, strength, mandatory/optional
+
+**Policy resolution**:
+Working out the policies in force for an entity on a date: walk its **policy chain**, product, then its placement's node and that node's parents, then the organization; keep each policy in force on that date; drop a `default` that a policy further down supersedes; keep a `required` one whatever supersedes it, and record the attempt as a conflict. The pure function is `resolvePolicies` in `packages/harness/policies/`.
+_Avoid_: inheritance, cascade (that is the axis), merge
+
+**Charter**:
+A page of type `charter` in the NISO format: level-two headings Need, Idea, Strategy, Outcomes, Risks and Roadmap, in that order, so any level's charter can be read by a machine. A save without them is refused with `charter_sections_missing`. It names the node or product it charters, or none for the organization.
+_Avoid_: brief, proposal, one-pager
 
 ## What GitHub says
 

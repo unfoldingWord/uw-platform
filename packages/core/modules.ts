@@ -109,7 +109,7 @@ export const modules = [
       '/exports/:exportId',
       '/webhooks/:source',
     ],
-    page_types: ['knowledge', 'entry', 'profile'],
+    page_types: ['knowledge', 'entry', 'profile', 'policy'],
     queues: ['uw-ingest-events'],
     name: 'Core',
     summary:
@@ -166,10 +166,10 @@ export const modules = [
     ...unclaimed,
     key: 'strategy',
     jd_areas: ['00-09'],
-    page_types: ['portfolio', 'program', 'project', 'okr'],
+    page_types: ['portfolio', 'program', 'project', 'okr', 'charter'],
     name: 'Strategy',
     summary:
-      'The cascade entities: portfolios carrying their strategic intent, programs, projects and OKRs, listed as collections.',
+      'The cascade entities: portfolios carrying their strategic intent, programs, projects and OKRs, listed as collections, and their charters.',
     depends_on: ['core'],
     data_classification: 'internal',
     offline_eligibility: 'cache_readonly',

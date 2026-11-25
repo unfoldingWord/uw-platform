@@ -235,7 +235,7 @@ describe.skipIf(!testServer)('FD-9 create_page refusals', () => {
   it('refuses an unknown type and an invalid frontmatter, writing nothing', () =>
     withAppDatabase(async (db) => {
       await seedPeople(db);
-      const unknown = await create(db, ED, { type: 'policy' });
+      const unknown = await create(db, ED, { type: 'memo' });
       const invalid = await create(db, ED, {
         type: 'persona',
         frontmatter: { ...personaFrontmatter, toolset: ['Approve'] },

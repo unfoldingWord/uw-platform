@@ -13,7 +13,13 @@ type Confirmation = {
   readonly at: Date;
 };
 
-const CONFIRMABLE: ReadonlySet<string> = new Set(['learning', 'skill', 'platform']);
+const CONFIRMABLE: ReadonlySet<string> = new Set([
+  'learning',
+  'skill',
+  'platform',
+  'policy',
+  'charter',
+]);
 
 function refused(reason: ErrorReason, detail: PageRefusal['detail'] = {}): PageRefusal {
   return { ok: false, reason, detail };

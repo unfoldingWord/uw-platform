@@ -134,6 +134,15 @@ export { approverCovers, domainGrants, requiredResources } from './risk/domain-g
 export { protectedDirectories } from './risk/protected-directories.ts';
 export type { ProtectedDirectory } from './risk/protected-directories.ts';
 export { countedApprovals, shipRule } from './ship-rule.ts';
+export { resolvePolicies } from './policies/resolve.ts';
+export type {
+  PolicyCandidate,
+  PolicyChain,
+  PolicyChainLink,
+  PolicyConflict,
+  PolicyResolution,
+  ResolvedPolicy,
+} from './policies/resolve.ts';
 export type { CountedApproval } from './ship-rule.ts';
 export { carriedCommits } from './gates/carry.ts';
 export { parseDeclaration, parseReviewProvider } from './github/declaration.ts';

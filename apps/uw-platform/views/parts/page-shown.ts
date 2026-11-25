@@ -26,6 +26,8 @@ export const typeWords: Readonly<Record<string, string>> = {
   learning: 'Learning',
   knowledge: 'Knowledge page',
   profile: 'Profile',
+  policy: 'Policy',
+  charter: 'Charter',
 };
 
 const BACK = /^\/harnesses\/[0-9a-f-]{36}\/controls$/;

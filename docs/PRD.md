@@ -288,13 +288,17 @@ Issue: #197.
 
 #### The policy engine
 
-A **policy** is a page with a level (organization, portfolio, program, project or product), an enforcement (`required`, `default` or `template`), what it applies to, what it supersedes and when it takes effect. Resolution walks from the most specific level upward. A `required` policy at a higher level cannot be overridden below; a `default` yields to a descendant that supersedes it. A template is **copied** into the thing made from it, with its source and version recorded, so obligations never change silently; a drift report makes adopting a template update a deliberate act.
+A **policy** is a page with a level (organization, portfolio, program, project or product), an enforcement (`required`, `default` or `template`), what it applies to, what it supersedes and when it takes effect. Its level is the type of the page it applies to: a portfolio, program, project or product page, or none for the whole organization, so the two can never disagree. A policy that names a page that is not a live node or product, or one the writer cannot read, is refused.
 
-Charters use the organization's NISO format (Need, Idea, Strategy, Outcomes, with Risks and Roadmap) as a validated template, so they stay machine-readable at every level.
+Resolution walks from the most specific level upward: the item's product, the node it or its product is placed under, that node's program and portfolio, then the organization. A policy counts only between the date it takes effect and the date it ends. A `required` policy at a higher level cannot be overridden below; a `default` yields to a descendant that supersedes it. A policy that tries to supersede a `required` one, or one at its own level or above, changes nothing, and the attempt is recorded as a conflict. A template is **copied** into the thing made from it, with its source and version recorded, so obligations never change silently; a drift report makes adopting a template update a deliberate act.
 
-An agent loads the resolved policies, decisions and learnings for an entity through `resolve_context` before it acts (section 4.2).
+Charters use the organization's NISO format (Need, Idea, Strategy, Outcomes, with Risks and Roadmap) as a validated template, so they stay machine-readable at every level. The six are level-two headings in the charter's body, in that order; a save without them is refused and names the missing ones.
 
-Issue: #243.
+Policies and charters are gated: an agent's write lands as suggested, and a person confirms it. Until suggestion sets exist, an agent cannot change an active policy or charter at all.
+
+An agent loads the resolved policies, decisions and learnings for an entity through `resolve_context` before it acts (section 4.2). It answers the policies in force for the item that the caller may read, most specific first, each with its level and enforcement. Decisions are not yet among them, because no decision page type exists.
+
+Issue: #243. Rules: ADR 0034.
 
 #### Credentials store
 
@@ -794,6 +798,17 @@ Each id is stable and names its proof: scenarios in `sim/scenarios/` and tests a
 | UI-15 | Runs and gate waits by day, each item's latest event, and the items the viewer holds are reads over existing data. | Must |
 | UI-17 | Navigation items and page names are Title Case; all other copy is sentence case. | Must |
 | UI-18 | An admin names a workflow, and its key stays. | Must |
+
+**Policy engine (PO)**
+
+| ID | Requirement | Priority |
+|---|---|---|
+| PO-1 | A policy is a gated page with an enforcement, the node or product it applies to (none for the organization), what it supersedes, and when it holds; its level is read from what it applies to (ADR 0034). | Must |
+| PO-2 | Resolution walks from the product up to the organization: a `required` policy holds against any descendant, a `default` yields to a descendant that supersedes it, a policy counts only between its dates, and a refused supersession is recorded as a conflict. | Must |
+| PO-3 | `resolve_context` answers the policies in force for the item that the caller may read, most specific first. | Must |
+| PO-4 | A charter's body carries the NISO sections in order, and a save without them is refused with the missing ones named. | Must |
+| PO-5 | A template policy is copied into what is made from it with its source and version, and a drift report shows copies behind their source. | Must |
+| PO-6 | The conflicts resolution records are shown to a person where the policy is read. | Should |
 
 #### Open questions
 

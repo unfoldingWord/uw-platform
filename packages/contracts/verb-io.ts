@@ -7,6 +7,7 @@ import { pdfExportReplySchema, pdfTargetSchema } from './pdf-exports.ts';
 import { pullRequestRefSchema, stageKeySchema } from './harness.ts';
 import { runStepCosts, runStepSchema } from './runs.ts';
 import { fullShaSchema } from './ship-rule.ts';
+import { policyEnforcementSchema, policyLevelSchema } from './policies.ts';
 import {
   frontmatterSchema,
   pageSchema,
@@ -92,6 +93,15 @@ export const verbIo = {
       package: z.array(pageSummary),
       learnings: z.array(
         z.object({ page: pageSummary, confidence: evidenceLabelSchema, asOf: z.iso.date() }),
+      ),
+      policies: z.array(
+        z.object({
+          page: pageSummary,
+          level: policyLevelSchema,
+          enforcement: policyEnforcementSchema,
+          effectiveFrom: z.iso.date(),
+          effectiveUntil: z.iso.date().nullable(),
+        }),
       ),
     }),
   },
