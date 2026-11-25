@@ -1,4 +1,4 @@
-import { TitleInput } from '@uw/ui/components/title-input.tsx';
+import { TitleInput } from '@uw/ui/components/page-head.tsx';
 import { fieldControl, fieldLabel } from '@uw/ui/components/field.tsx';
 
 const BODY_ROWS = 24;
