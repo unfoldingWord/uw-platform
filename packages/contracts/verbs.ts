@@ -81,7 +81,7 @@ export const verbRegistry: readonly VerbDefinition[] = [
     'resolve_context',
     'pages_and_context',
     onResource('viewer'),
-    "For an item, get its stage's instructions page, its package pages, the confirmed learnings and the policies in force from its product up to the organization, most specific first.",
+    "For an item, get its stage's instructions page, its package pages, its learnings, and the policies and decisions that apply from its product up to the organization, most specific first.",
   ),
   verb(
     'query_entities',

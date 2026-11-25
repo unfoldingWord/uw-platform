@@ -47,5 +47,19 @@
       "effectiveFrom": "2026-12-01",
       "effectiveUntil": null
     }
+  ],
+  "decisions": [
+    {
+      "page": {
+        "id": "00000000-0000-4000-8000-000000000003",
+        "type": "decision",
+        "jdArea": "00-09",
+        "slug": "one-queue-per-team",
+        "title": "One queue per team",
+        "status": "active"
+      },
+      "level": "organization",
+      "decidedOn": "2026-11-01"
+    }
   ]
 }

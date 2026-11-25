@@ -11,6 +11,7 @@ export const pageTypes = [
   'data_sources',
   'issue',
   'platform',
+  'decision',
   'knowledge',
   'entry',
   'profile',

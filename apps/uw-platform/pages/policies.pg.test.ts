@@ -88,7 +88,7 @@ async function seedCascade(db: Database): Promise<void> {
 }
 
 type Draft = {
-  readonly type: 'policy' | 'charter';
+  readonly type: 'policy' | 'charter' | 'decision';
   readonly frontmatter: Page['frontmatter'];
   readonly bodyMd?: string;
   readonly status?: PageStatus;
@@ -148,6 +148,22 @@ async function unreadableTargetIsMissing(db: Database): Promise<void> {
   });
 }
 
+async function decisionNeedsItsHeadings(db: Database): Promise<void> {
+  const person = await editor(db);
+  const decision = (bodyMd: string): Draft => ({
+    type: 'decision',
+    frontmatter: { decided_on: '2026-11-25' },
+    bodyMd,
+  });
+  expect(await create(db, person, decision('## Context\nC.'))).toMatchObject({
+    ok: false,
+    reason: 'sections_missing',
+    detail: { missing: ['Decision', 'Consequences'] },
+  });
+  const full = '## Context\nC.\n## Decision\nD.\n## Consequences\nQ.';
+  expect(await create(db, person, decision(full))).toMatchObject({ ok: true });
+}
+
 async function charterNeedsNiso(db: Database): Promise<void> {
   const person = await editor(db);
   await seedCascade(db);
@@ -158,7 +174,7 @@ async function charterNeedsNiso(db: Database): Promise<void> {
   });
   expect(await create(db, person, charter('## Need\nN.'))).toMatchObject({
     ok: false,
-    reason: 'charter_sections_missing',
+    reason: 'sections_missing',
     detail: { missing: ['Idea', 'Strategy', 'Outcomes', 'Risks', 'Roadmap'] },
   });
   const made = await create(db, person, charter(NISO));
@@ -178,7 +194,7 @@ async function charterNeedsNiso(db: Database): Promise<void> {
   };
   expect(await updatePage(db, person, save, crypto.randomUUID(), ON)).toMatchObject({
     ok: false,
-    reason: 'charter_sections_missing',
+    reason: 'sections_missing',
   });
 }
 
@@ -234,6 +250,9 @@ describe.skipIf(!testServer)('PO-1 policy and charter pages are checked on save'
 
   it('refuses a charter without the NISO sections, on create and on save', () =>
     withAppDatabase(charterNeedsNiso));
+
+  it('refuses a decision without Context, Decision and Consequences', () =>
+    withAppDatabase(decisionNeedsItsHeadings));
 
   it('lands an agent policy as suggested, refuses an agent edit once active, and a person confirms it', () =>
     withAppDatabase(agentSuggestsAndPersonConfirms));
@@ -301,7 +320,8 @@ async function inForceAndReadable(db: Database): Promise<void> {
   const seededPolicies = await seedPolicies(db);
   const dropped: string[] = [];
   const scope = { itemId: crypto.randomUUID(), itemPageId: NODE.product };
-  const policies = await contextPolicies(db, person, scope, ON, (id) => dropped.push(id));
+  const chain = await policyChainFor(db, scope);
+  const policies = await contextPolicies(db, person, chain, ON, (id) => dropped.push(id));
   const shown = policies.map((policy) => [policy.page.id, policy.level, policy.enforcement]);
   expect(shown).toEqual([
     [seededPolicies.programWip, 'program', 'default'],

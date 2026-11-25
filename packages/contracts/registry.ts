@@ -30,6 +30,8 @@ import { draftCheckSchema, draftStageSchema } from './drafts.ts';
 import {
   charterFrontmatterSchema,
   charterSectionSchema,
+  decisionFrontmatterSchema,
+  decisionSectionSchema,
   policyEnforcementSchema,
   policyFrontmatterSchema,
   policyLevelSchema,
@@ -332,6 +334,8 @@ export const schemaRegistry: Record<string, ZodType> = {
   'policy-frontmatter': policyFrontmatterSchema,
   'charter-frontmatter': charterFrontmatterSchema,
   'charter-section': charterSectionSchema,
+  'decision-frontmatter': decisionFrontmatterSchema,
+  'decision-section': decisionSectionSchema,
   'data-source-kind': dataSourceKindSchema,
   'ingest-source': ingestSourceSchema,
   'ingest-refusal': ingestRefusalSchema,

@@ -1,5 +1,6 @@
 import { contextPages } from '../../pages/context.ts';
-import { contextPolicies } from '../../pages/policies.ts';
+import { contextDecisions } from '../../pages/decisions.ts';
+import { contextPolicies, policyChainFor } from '../../pages/policies.ts';
 import { callerOf, type VerbContext } from '../context.ts';
 import { gatedHandler, refusal, type Found, type VerbInput, type VerbRefusal } from '../handler.ts';
 import { hiddenItem } from './item-scene.ts';
@@ -37,9 +38,11 @@ export const resolveContext = gatedHandler({
     const dropped = (pageId: string) =>
       logger.warn('learning frontmatter invalid', { outcome: 'learning_dropped', pageId });
     const pages = await contextPages(db, principal, scope, at, dropped);
-    const unreadable = (pageId: string) =>
-      logger.warn('policy frontmatter invalid', { outcome: 'policy_dropped', pageId });
-    const policies = await contextPolicies(db, principal, scope, at, unreadable);
+    const invalid = (kind: string) => (pageId: string) =>
+      logger.warn(`${kind} frontmatter invalid`, { outcome: `${kind}_dropped`, pageId });
+    const chain = await policyChainFor(db, scope);
+    const policies = await contextPolicies(db, principal, chain, at, invalid('policy'));
+    const decisions = await contextDecisions(db, principal, chain, at, invalid('decision'));
     return {
       status: 'accepted',
       output: {
@@ -47,6 +50,7 @@ export const resolveContext = gatedHandler({
         package: [...pages.package],
         learnings: [...pages.learnings],
         policies: [...policies],
+        decisions: [...decisions],
       },
     };
   },

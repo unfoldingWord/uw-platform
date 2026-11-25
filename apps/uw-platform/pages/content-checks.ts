@@ -53,7 +53,7 @@ export async function contentRefusal(
 ): Promise<ContentRefusal | null> {
   const missing = missingSections(content.type, content.bodyMd);
   if (missing.length > 0) {
-    return { ok: false, reason: 'charter_sections_missing', detail: { missing } };
+    return { ok: false, reason: 'sections_missing', detail: { missing } };
   }
   const target = appliesToOf(content);
   if (target === null || (await targetReadable(db, actor, target, at))) return null;

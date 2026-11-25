@@ -103,6 +103,9 @@ export const verbIo = {
           effectiveUntil: z.iso.date().nullable(),
         }),
       ),
+      decisions: z.array(
+        z.object({ page: pageSummary, level: policyLevelSchema, decidedOn: z.iso.date() }),
+      ),
     }),
   },
   query_entities: {

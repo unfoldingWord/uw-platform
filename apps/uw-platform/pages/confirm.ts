@@ -19,6 +19,7 @@ const CONFIRMABLE: ReadonlySet<string> = new Set([
   'platform',
   'policy',
   'charter',
+  'decision',
 ]);
 
 function refused(reason: ErrorReason, detail: PageRefusal['detail'] = {}): PageRefusal {

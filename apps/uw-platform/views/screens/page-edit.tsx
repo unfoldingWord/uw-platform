@@ -55,8 +55,8 @@ function refusalText(reason: string, title: string): string {
   if (reason === 'stale_version') {
     return 'Someone saved a newer version. Your text is kept below; copy what you need, then reload to edit the newest version.';
   }
-  if (reason === 'charter_sections_missing') {
-    return 'Not saved: a charter needs the headings Need, Idea, Strategy, Outcomes, Risks and Roadmap, in that order, each starting with ##.';
+  if (reason === 'sections_missing') {
+    return 'Not saved: this page needs its required headings, in order, each starting with ##. A charter needs Need, Idea, Strategy, Outcomes, Risks and Roadmap; a decision needs Context, Decision and Consequences.';
   }
   return `Not saved: ${reasonText(reason)}.`;
 }

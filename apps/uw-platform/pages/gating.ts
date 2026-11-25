@@ -7,6 +7,7 @@ const gatingByType = {
   learning: 'gated',
   persona: 'gated',
   platform: 'gated',
+  decision: 'gated',
   product: 'open',
   system_goal: 'open',
   product_strategy: 'open',

@@ -655,7 +655,7 @@ This number was used and withdrawn. It is not reused.
 
 The policies for an item are worked out by `resolvePolicies` in `packages/harness/policies/`, a pure function over a **policy chain**: the item's product (its page or the nearest product above it), the item's own placement or else the product's, that node's parents through the program and portfolio relations, then the organization. Most specific first; a `default` drops when a policy further down supersedes it; a `required` one stays and the attempt is recorded as a conflict; a supersession from the same level or above has no effect and is recorded too. Resolution runs over every active policy, then the answer keeps only the policies the reader may read. `resolve_context` returns them beside the learnings.
 
-A charter's NISO sections are level-two headings in its body, Need, Idea, Strategy, Outcomes, Risks and Roadmap, in that order. A save without them is refused with `charter_sections_missing`, naming the missing ones.
+A charter's NISO sections are level-two headings in its body, Need, Idea, Strategy, Outcomes, Risks and Roadmap, in that order. A save without them is refused with `sections_missing`, naming the missing ones.
 
 **Why.**
 - **One fact, one place.** Storing a level beside `applies_to` would let the two disagree; reading it from the page's type cannot.

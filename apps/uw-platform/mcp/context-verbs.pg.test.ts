@@ -53,6 +53,7 @@ describe.skipIf(!testServer)(
         package: [summary(PAGE.item), summary(PAGE.strategy, 'product_strategy')],
         learnings: [itemLearning, ...laterTiers],
         policies: [],
+        decisions: [],
       });
     });
 
@@ -111,6 +112,7 @@ describe.skipIf(!testServer)(
         package: [],
         learnings: areaOnly,
         policies: [],
+        decisions: [],
       });
     });
 
@@ -122,6 +124,7 @@ describe.skipIf(!testServer)(
         package: [summary(PAGE.item), summary(PAGE.strategy, 'product_strategy')],
         learnings: [itemLearning, laterTiers[1], laterTiers[0]],
         policies: [],
+        decisions: [],
       });
     });
 

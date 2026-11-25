@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { sectionsIn, type Sections } from './sections.ts';
 
 export const policyLevelSchema = z.enum([
   'organization',
@@ -50,76 +51,28 @@ export const charterSectionSchema = z.enum([
 
 export type CharterSection = z.infer<typeof charterSectionSchema>;
 
-export type CharterSections = {
-  readonly sections: Readonly<Partial<Record<CharterSection, string>>>;
-  readonly missing: readonly CharterSection[];
-};
-
-const FENCE = /^\s*(```|~~~)/;
-const SECTION_HEADING = /^##\s+(.+?)\s*#*\s*$/;
-
-type Heading = { readonly title: string; readonly line: number };
-
-function headingsOf(lines: readonly string[]): readonly Heading[] {
-  const found: Heading[] = [];
-  let fenced = false;
-  lines.forEach((line, index) => {
-    if (FENCE.test(line)) fenced = !fenced;
-    const match = fenced ? null : SECTION_HEADING.exec(line);
-    if (match?.[1] !== undefined) found.push({ title: match[1].toLowerCase(), line: index });
-  });
-  return found;
-}
-
-function textUnder(lines: readonly string[], headings: readonly Heading[], at: number): string {
-  const start = (headings.at(at)?.line ?? 0) + 1;
-  const end = headings.at(at + 1)?.line ?? lines.length;
-  return lines.slice(start, end).join('\n').trim();
-}
-
-function longestInOrder(
-  wanted: readonly string[],
-  found: readonly Heading[],
-): ReadonlyMap<number, number> {
-  const rows = wanted.length + 1;
-  const columns = found.length + 1;
-  const best = new Int32Array(rows * columns);
-  const cell = (row: number, column: number) => best.at(row * columns + column) ?? 0;
-  for (let row = wanted.length - 1; row >= 0; row -= 1) {
-    for (let column = found.length - 1; column >= 0; column -= 1) {
-      const same = found.at(column)?.title === wanted.at(row);
-      const value = same
-        ? cell(row + 1, column + 1) + 1
-        : Math.max(cell(row + 1, column), cell(row, column + 1));
-      best.set([value], row * columns + column);
-    }
-  }
-  const matched = new Map<number, number>();
-  let [row, column] = [0, 0];
-  while (row < wanted.length && column < found.length) {
-    if (found.at(column)?.title === wanted.at(row)) {
-      matched.set(row, column);
-      [row, column] = [row + 1, column + 1];
-    } else if (cell(row + 1, column) >= cell(row, column + 1)) row += 1;
-    else column += 1;
-  }
-  return matched;
-}
+export type CharterSections = Sections<CharterSection>;
 
 export function charterSections(bodyMd: string): CharterSections {
-  const lines = bodyMd.split(/\r?\n/);
-  const headings = headingsOf(lines);
-  const order = charterSectionSchema.options;
-  const matched = longestInOrder(
-    order.map((section) => section.toLowerCase()),
-    headings,
-  );
-  const sections = new Map<CharterSection, string>();
-  const missing: CharterSection[] = [];
-  order.forEach((section, index) => {
-    const at = matched.get(index);
-    if (at === undefined) missing.push(section);
-    else sections.set(section, textUnder(lines, headings, at));
-  });
-  return { sections: Object.fromEntries(sections), missing };
+  return sectionsIn(bodyMd, charterSectionSchema.options);
+}
+
+export const decisionFrontmatterSchema = z.strictObject({
+  applies_to: z.uuid().nullable().default(null),
+  decided_on: z.iso.date(),
+  supersedes: z
+    .array(z.uuid())
+    .max(20)
+    .refine(distinct, 'a decision names each superseded decision once')
+    .default([]),
+});
+
+export type DecisionFrontmatter = z.infer<typeof decisionFrontmatterSchema>;
+
+export const decisionSectionSchema = z.enum(['Context', 'Decision', 'Consequences']);
+
+export type DecisionSection = z.infer<typeof decisionSectionSchema>;
+
+export function decisionSections(bodyMd: string): Sections<DecisionSection> {
+  return sectionsIn(bodyMd, decisionSectionSchema.options);
 }

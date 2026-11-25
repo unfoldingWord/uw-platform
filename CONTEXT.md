@@ -599,7 +599,7 @@ Working out the policies in force for an entity on a date: walk its **policy cha
 _Avoid_: inheritance, cascade (that is the axis), merge
 
 **Charter**:
-A page of type `charter` in the NISO format: level-two headings Need, Idea, Strategy, Outcomes, Risks and Roadmap, in that order, so any level's charter can be read by a machine. A save without them is refused with `charter_sections_missing`. It names the node or product it charters, or none for the organization.
+A page of type `charter` in the NISO format: level-two headings Need, Idea, Strategy, Outcomes, Risks and Roadmap, in that order, so any level's charter can be read by a machine. A save without them is refused with `sections_missing`. It names the node or product it charters, or none for the organization.
 _Avoid_: brief, proposal, one-pager
 
 ## What GitHub says

@@ -132,6 +132,7 @@ export const modules = [
       'data_sources',
       'issue',
       'platform',
+      'decision',
     ],
     mcp_tools: [
       'search_pages',

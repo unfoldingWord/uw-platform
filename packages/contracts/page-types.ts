@@ -14,7 +14,13 @@ import { pullRequestRefSchema, repositorySchema } from './harness.ts';
 import { identitySchema, isPersonaIdentity } from './identity.ts';
 import { providerIdSchema } from './runs.ts';
 import { pageStatusSchema, slugSchema, type PageType } from './pages.ts';
-import { charterFrontmatterSchema, charterSections, policyFrontmatterSchema } from './policies.ts';
+import {
+  charterFrontmatterSchema,
+  charterSections,
+  decisionFrontmatterSchema,
+  decisionSections,
+  policyFrontmatterSchema,
+} from './policies.ts';
 
 const text = z.string().min(1).max(2000);
 const distinct = <T>(values: readonly T[]) => new Set(values).size === values.length;
@@ -149,6 +155,12 @@ export const pageTypeRegistry = {
   data_sources: { frontmatter: dataSourcesFrontmatterSchema, ...internalSync },
   issue: { frontmatter: issueFrontmatterSchema, ...internalSync },
   platform: { frontmatter: platformFrontmatterSchema, ...internalSync },
+  decision: {
+    frontmatter: decisionFrontmatterSchema,
+    ...internalSync,
+    bodyProblems: (bodyMd: string) => decisionSections(bodyMd).missing,
+    appliesToNode: true,
+  },
   knowledge: { frontmatter: knowledgeFrontmatterSchema, ...internalSync },
   entry: { frontmatter: collectionFrontmatterSchema, ...internalSync },
   profile: { frontmatter: z.strictObject({}), ...internalSync },

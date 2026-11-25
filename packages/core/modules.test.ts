@@ -38,7 +38,7 @@ describe('the module registry', () => {
     expect(new Set(tables).size).toBe(tables.length);
   });
 
-  it('declares every registered page type once: knowledge, entry, profile and policy under core, the cascade and charters under strategy, the rest under agents', () => {
+  it('declares every registered page type once: knowledge, entry, profile and policy under core, the cascade and charters under strategy, the rest, decisions among them, under agents', () => {
     const core = modules.find((declared) => declared.key === 'core');
     const agents = modules.find((declared) => declared.key === 'agents');
     const strategy = modules.find((declared) => declared.key === 'strategy');

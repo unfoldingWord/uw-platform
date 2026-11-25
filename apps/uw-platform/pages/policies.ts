@@ -101,11 +101,10 @@ async function storedPolicies(
 export async function contextPolicies(
   db: Executor,
   actor: Principal,
-  scope: PolicyScope,
+  chain: PolicyChain,
   at: Date,
   onInvalid: (pageId: string) => void,
 ): Promise<readonly ContextPolicy[]> {
-  const chain = await policyChainFor(db, scope);
   const stored = await storedPolicies(db, chain, onInvalid);
   const pageOf = new Map(stored.map((found) => [found.page.id, found.page]));
   const resolution = resolvePolicies(
