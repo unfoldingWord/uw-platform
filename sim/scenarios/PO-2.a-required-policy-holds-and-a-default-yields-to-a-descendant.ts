@@ -61,14 +61,13 @@ function candidateOf([id, frontmatter]: readonly [string, unknown]): PolicyCandi
 export const scenario = defineScenario({
   id: 'PO-2',
   title:
-    'policies resolve from the product up to the organization: a program default replaces the organization default it supersedes, an organization requirement holds against a product that tries to supersede it, and the attempt is recorded',
+    'policies resolve from the product up to the organization, leaving out an uncopied template: a program default replaces the organization default it supersedes, an organization requirement holds against a product that tries to supersede it, and the attempt is recorded',
   run: () => {
     const resolution = resolvePolicies(chain, pages.map(candidateOf), '2026-12-01');
     const inForce = resolution.inForce.map((policy) => [policy.level, policy.id]);
     assert.deepEqual(inForce, [
       ['product', PRODUCT_CONSENT],
       ['program', PROGRAM_WIP],
-      ['portfolio', CHARTER_TEMPLATE],
       ['organization', ORG_CONSENT],
     ]);
     assert.deepEqual(resolution.yielded, [{ id: ORG_WIP, supersededBy: PROGRAM_WIP }]);

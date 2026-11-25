@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray, isNull, or, sql } from 'drizzle-orm';
+import { and, asc, eq, gt, inArray, isNull, or, sql } from 'drizzle-orm';
 import { policyFrontmatterSchema, type PolicyEnforcement, type PolicyLevel } from '@uw/contracts';
 import { can } from '@uw/core/acl';
 import { formatDate } from '@uw/core/dates';
@@ -7,10 +7,9 @@ import type { Executor } from '@uw/db/client';
 import { pages } from '@uw/db/schema';
 import { resolvePolicies, type PolicyCandidate, type PolicyChain } from '@uw/harness';
 import { cascadeChainFrom, cascadeChainOf } from '../crosswalk/chain.ts';
+import { everyRow } from './batches.ts';
 import { summaryColumns, summarySchema, type PageSummary } from './reads.ts';
 
-const POLICY_LIMIT = 200;
-const DEEPEST = 20;
 const APPLIES_TO = sql<string | null>`${pages.frontmatter} ->> 'applies_to'`;
 
 export type ContextPolicy = {
@@ -31,11 +30,11 @@ export type Stored = { readonly page: PageSummary; readonly candidate: PolicyCan
 async function productOf(db: Executor, pageId: string | null): Promise<string | null> {
   if (pageId === null) return null;
   const rows = await db.execute<{ id: string }>(sql`
-    WITH RECURSIVE chain(id, type, status, parent_id, depth) AS (
-      SELECT id, type, status, parent_id, 1 FROM pages WHERE id = ${pageId}
+    WITH RECURSIVE chain(id, type, status, parent_id, depth, path) AS (
+      SELECT id, type, status, parent_id, 1, ARRAY[id] FROM pages WHERE id = ${pageId}
       UNION ALL
-      SELECT p.id, p.type, p.status, p.parent_id, c.depth + 1
-      FROM pages p JOIN chain c ON p.id = c.parent_id WHERE c.depth < ${DEEPEST}
+      SELECT p.id, p.type, p.status, p.parent_id, c.depth + 1, c.path || p.id
+      FROM pages p JOIN chain c ON p.id = c.parent_id WHERE NOT p.id = ANY(c.path)
     )
     SELECT id FROM chain WHERE type = 'product' AND status <> 'retired' ORDER BY depth LIMIT 1`);
   return rows[0]?.id ?? null;
@@ -85,12 +84,21 @@ export async function storedPolicies(
     isNull(APPLIES_TO),
     targets.length > 0 ? inArray(APPLIES_TO, targets) : undefined,
   );
-  const rows = await db
-    .select({ ...summaryColumns, frontmatter: pages.frontmatter })
-    .from(pages)
-    .where(and(eq(pages.type, 'policy'), eq(pages.status, 'active'), applies))
-    .orderBy(asc(pages.id))
-    .limit(POLICY_LIMIT);
+  const rows = await everyRow((after, size) =>
+    db
+      .select({ ...summaryColumns, frontmatter: pages.frontmatter })
+      .from(pages)
+      .where(
+        and(
+          eq(pages.type, 'policy'),
+          eq(pages.status, 'active'),
+          applies,
+          after === null ? undefined : gt(pages.id, after),
+        ),
+      )
+      .orderBy(asc(pages.id))
+      .limit(size),
+  );
   return rows.flatMap((row) => {
     const found = storedOf(row);
     if (found === null) onInvalid(row.id);

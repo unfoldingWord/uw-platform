@@ -1,14 +1,14 @@
-import { and, asc, eq, inArray, isNull, or, sql } from 'drizzle-orm';
+import { and, asc, eq, gt, inArray, isNull, or, sql } from 'drizzle-orm';
 import { decisionFrontmatterSchema, type PolicyLevel } from '@uw/contracts';
 import { can } from '@uw/core/acl';
 import type { Principal } from '@uw/core/principal';
 import type { Executor } from '@uw/db/client';
 import { pages } from '@uw/db/schema';
-import type { PolicyChain } from '@uw/harness';
+import { supersededDecisions, type PolicyChain } from '@uw/harness';
+import { everyRow } from './batches.ts';
 import { summaryColumns, summarySchema, type PageSummary } from './reads.ts';
 
 const DECISION_LIMIT = 20;
-const CANDIDATE_LIMIT = 200;
 const APPLIES_TO = sql<string | null>`${pages.frontmatter} ->> 'applies_to'`;
 
 export type ContextDecision = {
@@ -46,14 +46,19 @@ function byPrecedence(a: Found, b: Found): number {
 async function storedDecisions(db: Executor, chain: PolicyChain): Promise<readonly Row[]> {
   const targets = chain.flatMap((link) => (link.pageId === null ? [] : [link.pageId]));
   const onChain = targets.length > 0 ? inArray(APPLIES_TO, targets) : undefined;
-  return db
-    .select({ ...summaryColumns, frontmatter: pages.frontmatter })
-    .from(pages)
-    .where(
-      and(eq(pages.type, 'decision'), eq(pages.status, 'active'), or(isNull(APPLIES_TO), onChain)),
-    )
-    .orderBy(asc(pages.id))
-    .limit(CANDIDATE_LIMIT);
+  const decision = and(
+    eq(pages.type, 'decision'),
+    eq(pages.status, 'active'),
+    or(isNull(APPLIES_TO), onChain),
+  );
+  return everyRow((after, size) =>
+    db
+      .select({ ...summaryColumns, frontmatter: pages.frontmatter })
+      .from(pages)
+      .where(and(decision, after === null ? undefined : gt(pages.id, after)))
+      .orderBy(asc(pages.id))
+      .limit(size),
+  );
 }
 
 export async function contextDecisions(
@@ -69,7 +74,9 @@ export async function contextDecisions(
     if (decision === null) onInvalid(row.id);
     return decision === null ? [] : [decision];
   });
-  const replaced = new Set(found.flatMap((decision) => decision.supersedes));
+  const replaced = supersededDecisions(
+    found.map((decision) => ({ ...decision, id: decision.page.id })),
+  );
   return found
     .filter((decision) => !replaced.has(decision.page.id))
     .filter((decision) => can(actor, 'read', { kind: 'area', area: decision.page.jdArea }, at))

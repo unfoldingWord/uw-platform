@@ -42,6 +42,10 @@ function inEffect(candidate: PolicyCandidate, on: string): boolean {
   return candidate.effectiveUntil === null || on < candidate.effectiveUntil;
 }
 
+function binds(candidate: PolicyCandidate, on: string): boolean {
+  return candidate.enforcement !== 'template' && inEffect(candidate, on);
+}
+
 function placedOn(
   chain: PolicyChain,
   candidates: readonly PolicyCandidate[],
@@ -51,7 +55,7 @@ function placedOn(
   return candidates.flatMap((candidate) => {
     const depth = chain.findIndex((link) => link.pageId === candidate.appliesTo);
     const link = depth === -1 ? undefined : chain.at(depth);
-    if (link === undefined || seen.has(candidate.id) || !inEffect(candidate, on)) return [];
+    if (link === undefined || seen.has(candidate.id) || !binds(candidate, on)) return [];
     seen.add(candidate.id);
     return [{ ...candidate, level: link.level, depth }];
   });

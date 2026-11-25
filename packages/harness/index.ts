@@ -136,6 +136,8 @@ export type { ProtectedDirectory } from './risk/protected-directories.ts';
 export { countedApprovals, shipRule } from './ship-rule.ts';
 export { resolvePolicies } from './policies/resolve.ts';
 export { templateDrift } from './policies/drift.ts';
+export { supersededDecisions } from './policies/decisions.ts';
+export type { DecisionFacts } from './policies/decisions.ts';
 export type { TemplateCopy, TemplateDrift, TemplateNow } from './policies/drift.ts';
 export type {
   PolicyCandidate,

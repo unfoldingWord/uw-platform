@@ -61,17 +61,33 @@ describe('PO-2 resolution walks from the most specific level upward', () => {
     expect(ids(resolution)).toEqual(['org']);
   });
 
-  it('puts required before default before template at one level', () => {
+  it('puts required before default at one level', () => {
+    const resolution = resolvePolicies(
+      chain,
+      [policy('b-default'), policy('c-required', { enforcement: 'required' })],
+      ON,
+    );
+    expect(ids(resolution)).toEqual(['c-required', 'b-default']);
+  });
+});
+
+describe('PO-2 a template binds nothing until it is copied', () => {
+  it('never puts an uncopied template in force, nor lets it replace a policy', () => {
     const resolution = resolvePolicies(
       chain,
       [
-        policy('a-template', { enforcement: 'template' }),
-        policy('b-default'),
-        policy('c-required', { enforcement: 'required' }),
+        policy('org-default'),
+        policy('project-template', {
+          enforcement: 'template',
+          appliesTo: PROJECT,
+          supersedes: ['org-default'],
+        }),
       ],
       ON,
     );
-    expect(ids(resolution)).toEqual(['c-required', 'b-default', 'a-template']);
+    expect(ids(resolution)).toEqual(['org-default']);
+    expect(resolution.yielded).toEqual([]);
+    expect(resolution.conflicts).toEqual([]);
   });
 });
 
