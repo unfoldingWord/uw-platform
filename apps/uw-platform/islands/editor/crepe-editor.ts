@@ -55,7 +55,7 @@ export function pageEditor(options: PageEditorOptions): CrepeBuilder {
       },
     })
     .addFeature(toolbar)
-    .addFeature(placeholder)
+    .addFeature(placeholder, { text: 'Enter page body here...' })
     .addFeature(table)
     .addFeature(codeMirror, {
       languages: [...codeLanguages],

@@ -82,7 +82,9 @@ async function theAreaScreenShowsIt(db: Database): Promise<void> {
   const listed = [...document.querySelectorAll('[data-area-categories] a')];
   expect(listed.map((link) => link.getAttribute('href'))).toEqual(['/wiki/00', '/wiki/01']);
   const wiki = new JSDOM((await getHtml(db, made.editor, '/wiki')).text).window.document;
-  expect(wiki.querySelector('main a[href="/wiki/areas/00-09"]')?.textContent).toBe('Home of 00-09');
+  expect(wiki.querySelector('main a[href="/wiki/areas/00-09"]')?.textContent).toBe(
+    '00-09 unfoldingWord Home',
+  );
   expect((await getHtml(db, made.stranger, '/wiki/areas/00-09')).status).toBe(404);
 }
 

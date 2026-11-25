@@ -2,7 +2,6 @@ import type { Context } from 'hono';
 import type { Child } from 'hono/jsx';
 import type { Page } from '@uw/contracts';
 import { buttonClass } from '@uw/ui/components/button.tsx';
-import { fieldControl, fieldLabel } from '@uw/ui/components/field.tsx';
 import { Note } from '@uw/ui/components/note.tsx';
 import { Section } from '@uw/ui/components/section.tsx';
 import { DocumentShape } from '@uw/ui/shapes/document.tsx';
@@ -25,13 +24,14 @@ import {
   shownPage,
   type ShownPage,
 } from '../parts/page-shown.ts';
+import { BodyField, EditorStatus, TitleField } from '../parts/page-fields.tsx';
+import { JdSuggest, categoryOfPage, jdRefusalText, numberedAttrs } from '../parts/jd-suggest.tsx';
 import { Properties } from '../parts/page-read.tsx';
 import { pageFacts } from '../parts/page-status.tsx';
 import { idParam } from '../parts/params.ts';
 import { pageEditPath, pagePath, withBack } from '../parts/paths.ts';
 import { notFound } from './not-found.tsx';
 
-const BODY_ROWS = 24;
 const instructionsHint =
   'Agents at a stage using this page receive this text as their instructions.';
 const markdownHint = 'Write in markdown.';
@@ -49,7 +49,9 @@ export type EditOptions = {
   readonly typed: Typed | null;
 };
 
-function refusalText(reason: string): string {
+function refusalText(reason: string, title: string): string {
+  const numbering = jdRefusalText(reason, title);
+  if (numbering !== null) return `Not saved: ${numbering}`;
   if (reason === 'stale_version') {
     return 'Someone saved a newer version. Your text is kept below; copy what you need, then reload to edit the newest version.';
   }
@@ -92,46 +94,6 @@ type FormProps = {
   readonly children?: Child;
 };
 
-function TitleField(props: { readonly page: Page; readonly title: string }) {
-  const id = `title-${props.page.id}`;
-  return (
-    <div class="flex min-w-0 flex-col gap-1">
-      <label for={id} class={fieldLabel}>
-        Title
-      </label>
-      <input
-        id={id}
-        name="title"
-        type="text"
-        value={props.title}
-        maxLength={200}
-        required
-        class={`${fieldControl} w-full`}
-      />
-    </div>
-  );
-}
-
-function BodyField(props: { readonly page: Page; readonly bodyMd: string }) {
-  const id = `body-${props.page.id}`;
-  return (
-    <div data-editor-text="" class="flex min-w-0 flex-col gap-1">
-      <label for={id} class={fieldLabel}>
-        Text
-      </label>
-      <textarea
-        id={id}
-        name="bodyMd"
-        rows={BODY_ROWS}
-        maxLength={1_000_000}
-        class={`${fieldControl} w-full resize-y font-mono`}
-      >
-        {props.bodyMd}
-      </textarea>
-    </div>
-  );
-}
-
 function hintOf(page: Page, asText: boolean): string {
   if (page.type === 'skill') return instructionsHint;
   const saved = `Readers see version ${String(page.version)} until you save.`;
@@ -155,17 +117,11 @@ function EditBody(props: FormProps & { readonly typed: Typed }) {
     <>
       {props.children}
       <div class="flex min-w-0 flex-col gap-4">
-        <TitleField page={page} title={typed.title} />
         {options.asText ? null : (
           <EditorFrame pageId={page.id} draft={props.draft} styleNonce={props.styleNonce} />
         )}
-        <BodyField page={page} bodyMd={typed.bodyMd} />
-        <p
-          data-editor-status=""
-          role="status"
-          aria-live="polite"
-          class="m-0 text-sm text-text-3 empty:hidden"
-        ></p>
+        <BodyField pageId={page.id} bodyMd={typed.bodyMd} />
+        <EditorStatus />
       </div>
       <UploadControl pageId={page.id} />
     </>
@@ -186,13 +142,23 @@ function EditForm(props: FormProps) {
       data-page-edit=""
       data-unsaved={options.typed === null ? undefined : ''}
       class="group/edit"
+      {...numberedAttrs(categoryOfPage(page), page.id)}
     >
       <input type="hidden" name="expectedVersion" value={String(typed.expectedVersion)} />
       <input type="hidden" name="requestId" value={crypto.randomUUID()} />
       {options.back === null ? null : <input type="hidden" name="back" value={options.back} />}
       <DocumentShape
         band={<EditBar read={props.read} drafting={props.draft !== null} />}
-        head={{ eyebrow: markOf(page), title: page.title }}
+        head={{
+          eyebrow: markOf(page),
+          title: page.title,
+          titleField: (
+            <>
+              <TitleField pageId={page.id} title={typed.title} />
+              {categoryOfPage(page) === null ? null : <JdSuggest />}
+            </>
+          ),
+        }}
         rail={<EditRail page={page} asText={options.asText} />}
       >
         <EditBody {...props} typed={typed} />
@@ -222,11 +188,12 @@ type Editing = {
   readonly styleNonce: string;
 };
 
-function EditNotes(props: { readonly options: EditOptions }) {
-  const { options } = props;
+function EditNotes(props: { readonly options: EditOptions; readonly page: Page }) {
+  const { options, page } = props;
+  const title = options.typed?.title ?? page.title;
   return (
     <>
-      {options.refused === null ? null : <Note>{refusalText(options.refused)}</Note>}
+      {options.refused === null ? null : <Note>{refusalText(options.refused, title)}</Note>}
       {options.asText ? (
         <Note>Text you type here is kept only until you leave. Save before going back.</Note>
       ) : null}
@@ -249,7 +216,7 @@ function Editable(props: {
         styleNonce={props.editing.styleNonce}
         read={props.read}
       >
-        <EditNotes options={options} />
+        <EditNotes options={options} page={props.page} />
       </EditForm>
       {options.asText ? null : (
         <>
@@ -281,7 +248,7 @@ function readOnlyScreen(c: Context<AppEnv>, shown: ShownPage, options: EditOptio
     c,
     pageSpec(shown, pageNames.pageEdit),
     <DocumentShape head={{ eyebrow: markOf(page), title: page.title }}>
-      {options.refused === null ? null : <Note>{refusalText(options.refused)}</Note>}
+      {options.refused === null ? null : <Note>{refusalText(options.refused, page.title)}</Note>}
       <ReadOnly page={page} read={read} />
     </DocumentShape>,
   );

@@ -3,6 +3,7 @@ import type { PageEntry } from '@uw/contracts';
 import { IconButton } from '@uw/ui/components/button.tsx';
 import { fieldLabel } from '@uw/ui/components/field.tsx';
 import { Menu, MenuItem, MenuLink, MenuRule } from '@uw/ui/components/menu.tsx';
+import { RailList, railLink } from '@uw/ui/components/rail-list.tsx';
 import type { Heading } from '../../markdown/render.ts';
 import { pageLink } from './page-shown.ts';
 import {
@@ -16,8 +17,6 @@ import {
 const MIN_CONTENTS = 2;
 
 const focus = 'outline-offset-2 outline-accent-text focus-visible:outline-2';
-
-const railLink = `text-sm text-text-2 no-underline hover:text-accent-text ${focus}`;
 
 const pagerLink = `flex min-w-0 flex-1 flex-col gap-1 rounded-md px-3 py-2 no-underline transition-colors motion-reveal hover:bg-raised ${focus}`;
 
@@ -59,21 +58,6 @@ export function Properties(props: { readonly facts: readonly Fact[] }) {
         </li>
       ))}
     </ul>
-  );
-}
-
-function RailList(props: {
-  readonly label: string;
-  readonly attrs?: Readonly<Record<string, string>> | undefined;
-  readonly children: Child;
-}) {
-  return (
-    <div class="flex min-w-0 flex-col gap-2">
-      <p class={`m-0 ${fieldLabel}`}>{props.label}</p>
-      <ul class="m-0 flex list-none flex-col gap-1 p-0" {...(props.attrs ?? {})}>
-        {props.children}
-      </ul>
-    </div>
   );
 }
 

@@ -52,6 +52,33 @@ export async function categoryName(db: Executor, category: JdCategory): Promise<
   return row?.name ?? null;
 }
 
+async function everyListed(
+  db: Executor,
+  actor: Principal,
+  category: JdCategory | undefined,
+  at: Date,
+): Promise<readonly PageEntry[]> {
+  const found: PageEntry[] = [];
+  let cursor: string | undefined;
+  do {
+    const filed = category === undefined ? {} : { category };
+    const query = { ...filed, type: LISTED, limit: PAGE_SIZE, cursor } as const;
+    const page = await listPages(db, actor, query, at);
+    if (page === null) break;
+    found.push(...page.pages);
+    cursor = page.next ?? undefined;
+  } while (cursor !== undefined && found.length < MOST_PAGES);
+  return found;
+}
+
+export function knowledgePages(
+  db: Executor,
+  actor: Principal,
+  at: Date,
+): Promise<readonly PageEntry[]> {
+  return everyListed(db, actor, undefined, at);
+}
+
 export async function pagesInCategory(
   db: Executor,
   actor: Principal,
@@ -60,16 +87,7 @@ export async function pagesInCategory(
 ): Promise<readonly PageEntry[] | null> {
   const area = jdAreaSchema.parse(areaOfCategory(category));
   if (!can(actor, 'read', { kind: 'area', area }, at)) return null;
-  const found: PageEntry[] = [];
-  let cursor: string | undefined;
-  do {
-    const query = { category, type: LISTED, limit: PAGE_SIZE, cursor } as const;
-    const page = await listPages(db, actor, query, at);
-    if (page === null) break;
-    found.push(...page.pages);
-    cursor = page.next ?? undefined;
-  } while (cursor !== undefined && found.length < MOST_PAGES);
-  return found;
+  return everyListed(db, actor, category, at);
 }
 
 export async function nameCategory(

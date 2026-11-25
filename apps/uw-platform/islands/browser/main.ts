@@ -6,6 +6,7 @@ import { wireDraftEditor } from './draft-editor.ts';
 import { startLive } from './live.ts';
 import { morphMain } from './morph.ts';
 import { wireNavigating } from './navigating.ts';
+import { wireJdNumbers } from './jd-numbers.ts';
 import { wireNewWorkflow } from './new-workflow.ts';
 import { wirePageUpload } from './page-upload.ts';
 import { wireEditKey } from './edit-key.ts';
@@ -58,6 +59,7 @@ document.addEventListener('DOMContentLoaded', () => {
     go: (href) => window.location.assign(href),
   });
   wirePageUpload(document, { fetch: send, uuid: () => crypto.randomUUID() });
+  wireJdNumbers(document, { fetch: send });
   wirePrint(document, () => window.print());
   wireFavourite(document, send);
   wireKeys(document);

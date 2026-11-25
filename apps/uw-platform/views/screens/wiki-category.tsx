@@ -5,41 +5,20 @@ import { Button, ButtonLink } from '@uw/ui/components/button.tsx';
 import { PlatformCommandForm } from '@uw/ui/components/command-form.tsx';
 import { EmptyState } from '@uw/ui/components/empty-state.tsx';
 import { TextField } from '@uw/ui/components/field.tsx';
+import { LinkTree } from '@uw/ui/components/link-tree.tsx';
 import { Section } from '@uw/ui/components/section.tsx';
 import { ListShape } from '@uw/ui/shapes/list.tsx';
 import type { AppEnv } from '../../deps.ts';
 import { categoryName, pagesInCategory } from '../../pages/categories.ts';
-import { treeOf, type TreeNode } from '../../pages/tree.ts';
 import { renderScreen, screenKernel, screenRefusal } from '../parts/frame.tsx';
+import { pageLinks } from '../parts/page-links.ts';
 import { wikiBranch } from '../parts/wiki-tree.ts';
 import { areaLabel, moduleCodes, pageNames } from '../parts/names.ts';
-import { pagePath, wikiNewPath, wikiPath } from '../parts/paths.ts';
+import { wikiNewPath, wikiPath } from '../parts/paths.ts';
 import { notFound } from './not-found.tsx';
 import { countWords } from './wiki.tsx';
 
 const PAGES_ENDPOINT = '/api/pages/commands';
-
-const treeLink =
-  'text-base font-semibold text-text no-underline outline-offset-2 outline-accent-text hover:text-accent-text focus-visible:outline-2';
-
-function Branch(props: { readonly nodes: readonly TreeNode[]; readonly top: boolean }) {
-  const tree = props.top ? { 'data-tree': '' } : {};
-  return (
-    <ul
-      class={`m-0 flex list-none flex-col gap-2 p-0 ${props.top ? '' : 'mt-2 border-l border-line-soft pl-4'}`}
-      {...tree}
-    >
-      {props.nodes.map((node) => (
-        <li>
-          <a href={pagePath(node.page.id)} class={treeLink}>
-            {node.page.title}
-          </a>
-          {node.children.length === 0 ? null : <Branch nodes={node.children} top={false} />}
-        </li>
-      ))}
-    </ul>
-  );
-}
 
 function NameForm(props: { readonly category: JdCategory; readonly name: string | null }) {
   return (
@@ -110,7 +89,7 @@ export async function wikiCategoryScreen(c: Context<AppEnv>): Promise<Response> 
         {entries.length === 0 ? (
           <EmptyState title="No pages yet" text="No page is filed here yet." />
         ) : (
-          <Branch nodes={treeOf(entries)} top />
+          <LinkTree label={`Pages in ${category}`} nodes={pageLinks(entries)} />
         )}
       </Section>
       {can(actor, 'admin', { kind: 'area', area }, screen.at) ? (

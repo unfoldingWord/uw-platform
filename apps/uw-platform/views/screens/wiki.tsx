@@ -1,17 +1,22 @@
 import type { Context } from 'hono';
-import type { PageCategory } from '@uw/contracts';
+import type { PageCategory, PageEntry } from '@uw/contracts';
+import { can } from '@uw/core/acl';
+import type { Principal } from '@uw/core/principal';
 import { ButtonLink } from '@uw/ui/components/button.tsx';
+import { Disclosure } from '@uw/ui/components/disclosure.tsx';
 import { EmptyState } from '@uw/ui/components/empty-state.tsx';
 import { HumanActionLink } from '@uw/ui/components/human-action.tsx';
-import { ListRow, RowList } from '@uw/ui/components/list-row.tsx';
+import { LinkTree } from '@uw/ui/components/link-tree.tsx';
+import { RailList, railLink } from '@uw/ui/components/rail-list.tsx';
 import { Section } from '@uw/ui/components/section.tsx';
-import { ListShape } from '@uw/ui/shapes/list.tsx';
+import { DocumentShape } from '@uw/ui/shapes/document.tsx';
 import type { AppEnv } from '../../deps.ts';
-import { categoryCounts } from '../../pages/categories.ts';
+import { categoryCounts, knowledgePages } from '../../pages/categories.ts';
 import { favouritesOf } from '../../pages/favourites.ts';
 import { lapsedCount } from '../../pages/verification.ts';
 import { renderScreen, screenKernel, screenRefusal } from '../parts/frame.tsx';
-import { moduleCodes, pageNames } from '../parts/names.ts';
+import { areaLabel, moduleCodes, pageNames } from '../parts/names.ts';
+import { byCategory, pageLinks } from '../parts/page-links.ts';
 import { branchOf, groupsOf, type Group } from '../parts/wiki-tree.ts';
 import { pagePath, wikiAreaPath, wikiNewPath, wikiPath, wikiReviewPath } from '../parts/paths.ts';
 
@@ -33,57 +38,158 @@ export function CategoryTitle(props: {
   );
 }
 
-function AreaSection(props: { readonly group: Group }) {
-  const { group } = props;
-  const areas = [...new Set(group.categories.map((category) => category.area))];
+type Filed = ReadonlyMap<string, readonly PageEntry[]>;
+
+type Reader = { readonly actor: Principal; readonly at: Date };
+
+function CategorySummary(props: { readonly category: PageCategory }) {
+  const { category } = props;
+  const meta = countWords(category.pages);
   return (
-    <Section
-      title={`${group.code} ${group.name}`}
-      attrs={{ 'data-area': group.code }}
-      actions={areas.map((area) => (
-        <ButtonLink href={wikiAreaPath(area)} variant="ghost" size="sm">
-          {`Home of ${area}`}
-        </ButtonLink>
-      ))}
+    <>
+      <span class="font-heavy">{category.name ?? category.code}</span>
+      <span class="text-sm text-text-3">
+        {category.name === null ? meta : `${category.code} · ${meta}`}
+      </span>
+    </>
+  );
+}
+
+function NewHere(props: { readonly category: PageCategory; readonly reader: Reader }) {
+  const { category, reader } = props;
+  const area = { kind: 'area', area: category.area } as const;
+  if (!can(reader.actor, 'write', area, reader.at)) return null;
+  return (
+    <ButtonLink
+      href={wikiNewPath({ category: category.code })}
+      variant="ghost"
+      size="sm"
+      icon="plus"
+      label={`New page in ${category.name ?? category.code}`}
     >
-      <RowList label={`Categories in ${group.code}`}>
-        {group.categories.map((category: PageCategory) => (
-          <ListRow
-            href={wikiPath(category.code)}
-            attrs={{ 'data-category': category.code }}
-            title={
-              <CategoryTitle code={category.code} name={category.name} pages={category.pages} />
-            }
-          />
-        ))}
-      </RowList>
+      <span class="pointer-coarse:sr-only">New page here</span>
+    </ButtonLink>
+  );
+}
+
+function CategoryPages(props: {
+  readonly category: PageCategory;
+  readonly filed: Filed;
+  readonly reader: Reader;
+}) {
+  const { category } = props;
+  const entries = props.filed.get(category.code) ?? [];
+  return (
+    <Disclosure
+      attrs={{ 'data-category': category.code }}
+      summary={<CategorySummary category={category} />}
+      actions={<NewHere category={category} reader={props.reader} />}
+    >
+      {entries.length === 0 ? (
+        <p class="m-0 text-sm text-text-3">No page is filed here yet.</p>
+      ) : (
+        <LinkTree label={`Pages in ${category.code}`} nodes={pageLinks(entries)} />
+      )}
+    </Disclosure>
+  );
+}
+
+function AreaSection(props: {
+  readonly group: Group;
+  readonly filed: Filed;
+  readonly reader: Reader;
+}) {
+  const { group } = props;
+  return (
+    <Section title={group.name} sub={group.code} attrs={{ 'data-area': group.code }}>
+      {group.categories.map((category) => (
+        <CategoryPages category={category} filed={props.filed} reader={props.reader} />
+      ))}
     </Section>
   );
 }
 
-function Favourites(props: {
-  readonly pages: readonly { readonly id: string; readonly title: string }[];
-}) {
-  if (props.pages.length === 0) return null;
-  return (
-    <Section title="Your favourites" attrs={{ 'data-favourites': '' }}>
-      <RowList label="Your favourites">
-        {props.pages.map((entry) => (
-          <ListRow href={pagePath(entry.id)} title={entry.title} />
-        ))}
-      </RowList>
-    </Section>
-  );
-}
+type Rail = {
+  readonly lapsed: number;
+  readonly favourites: readonly { readonly id: string; readonly title: string }[];
+  readonly areas: readonly string[];
+};
 
 function Lapsed(props: { readonly count: number }) {
   if (props.count === 0) return null;
   return (
-    <p class="m-0">
-      <ButtonLink href={wikiReviewPath()} icon="clock">
-        {props.count === 1 ? '1 page needs review' : `${String(props.count)} pages need review`}
-      </ButtonLink>
-    </p>
+    <RailList label="Needs review">
+      <li>
+        <a href={wikiReviewPath()} class={railLink}>
+          {props.count === 1 ? '1 page needs review' : `${String(props.count)} pages need review`}
+        </a>
+      </li>
+    </RailList>
+  );
+}
+
+function Favourites(props: { readonly pages: Rail['favourites'] }) {
+  if (props.pages.length === 0) return null;
+  return (
+    <RailList label="Your favourites" attrs={{ 'data-favourites': '' }}>
+      {props.pages.map((entry) => (
+        <li>
+          <a href={pagePath(entry.id)} class={railLink}>
+            {entry.title}
+          </a>
+        </li>
+      ))}
+    </RailList>
+  );
+}
+
+function WikiRail(props: { readonly rail: Rail }) {
+  const { rail } = props;
+  return (
+    <>
+      <Lapsed count={rail.lapsed} />
+      <Favourites pages={rail.favourites} />
+      {rail.areas.length === 0 ? null : (
+        <RailList label="Area pages">
+          {rail.areas.map((area) => (
+            <li>
+              <a href={wikiAreaPath(area)} class={railLink}>
+                {areaLabel(area)}
+              </a>
+            </li>
+          ))}
+        </RailList>
+      )}
+      <p class="m-0 text-sm text-text-3">
+        Know the name? Press Ctrl or Cmd with O to jump to any page.
+      </p>
+    </>
+  );
+}
+
+function areasOf(groups: readonly Group[]): readonly string[] {
+  return [...new Set(groups.flatMap((group) => group.categories.map((entry) => entry.area)))];
+}
+
+function Contents(props: {
+  readonly groups: readonly Group[];
+  readonly filed: Filed;
+  readonly reader: Reader;
+}) {
+  if (props.groups.length === 0) {
+    return (
+      <EmptyState
+        title="Nothing here yet"
+        text="No knowledge page has been filed in an area you can read."
+      />
+    );
+  }
+  return (
+    <>
+      {props.groups.map((group) => (
+        <AreaSection group={group} filed={props.filed} reader={props.reader} />
+      ))}
+    </>
   );
 }
 
@@ -91,9 +197,14 @@ export async function wikiScreen(c: Context<AppEnv>): Promise<Response> {
   const screen = screenKernel(c);
   const database = c.get('database');
   if (screen === null || database === null) return screenRefusal(c);
-  const groups = groupsOf(await categoryCounts(database.db, screen.caller.actor, screen.at));
-  const lapsed = await lapsedCount(database.db, screen.caller.actor, screen.at);
-  const favourites = await favouritesOf(database.db, screen.caller.actor, screen.at);
+  const { actor } = screen.caller;
+  const [categories, entries, lapsed, favourites] = await Promise.all([
+    categoryCounts(database.db, actor, screen.at),
+    knowledgePages(database.db, actor, screen.at),
+    lapsedCount(database.db, actor, screen.at),
+    favouritesOf(database.db, actor, screen.at),
+  ]);
+  const groups = groupsOf(categories);
   const spec = {
     title: pageNames.wiki,
     current: wikiPath(),
@@ -101,28 +212,22 @@ export async function wikiScreen(c: Context<AppEnv>): Promise<Response> {
     crumbs: [{ label: pageNames.wiki }],
     branch: branchOf(groups, { lapsed }),
   };
+  const rail = { lapsed, favourites, areas: areasOf(groups) };
   return renderScreen(
     c,
     spec,
-    <ListShape
+    <DocumentShape
       head={{
         title: pageNames.wiki,
-        lede: 'The knowledge pages you can read, by area and category. Press Ctrl or Cmd with O to jump to a page by name.',
+        lede: 'Every page you can read, by area and category.',
         actions: (
           <HumanActionLink href={wikiNewPath()} label="New page" name="New page" icon="pen" />
         ),
       }}
+      rail={<WikiRail rail={rail} />}
+      railLabel="On this wiki"
     >
-      <Lapsed count={lapsed} />
-      <Favourites pages={favourites} />
-      {groups.length === 0 ? (
-        <EmptyState
-          title="Nothing here yet"
-          text="No knowledge page has been filed in an area you can read."
-        />
-      ) : (
-        groups.map((group) => <AreaSection group={group} />)
-      )}
-    </ListShape>,
+      <Contents groups={groups} filed={byCategory(entries)} reader={{ actor, at: screen.at }} />
+    </DocumentShape>,
   );
 }

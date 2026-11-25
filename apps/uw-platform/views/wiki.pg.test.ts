@@ -63,27 +63,52 @@ async function browseListsWhatYouMayRead(db: Database): Promise<void> {
   expect(await screenProblems(page.text)).toEqual([]);
   const document = documentOf(page.text);
   expect(document.querySelector('main h1')?.textContent).toBe('Pages & Wiki');
-  expect(texts(document, 'main [data-area] h2')).toEqual(['00-09 unfoldingWord Home']);
-  expect(texts(document, 'main [data-area="00-09"] [data-category] a')).toEqual([
-    '01 3 pages',
-    '02 1 page',
+  expect(texts(document, 'main [data-area] h2')).toEqual(['unfoldingWord Home']);
+  expect(texts(document, 'main [data-area="00-09"] [data-category] > summary')).toEqual([
+    '013 pages',
+    '021 page',
   ]);
   const side = document.querySelector('nav a[href="/wiki"]');
   expect(side?.textContent).toContain('Pages & Wiki');
   expect(side?.getAttribute('aria-current')).toBe('page');
 }
 
+async function browseShowsEveryPageOpen(db: Database): Promise<void> {
+  const made = await world(db);
+  const document = documentOf((await getHtml(db, made.reader, '/wiki')).text);
+  const categories = [...document.querySelectorAll('main details[data-category]')];
+  expect(categories.map((node) => node.getAttribute('data-category'))).toEqual(['01', '02']);
+  expect(categories.every((node) => node.hasAttribute('open'))).toBe(true);
+  const first = '[data-category="01"] [data-tree]';
+  expect(texts(document, `main ${first} > li > a`)).toEqual([
+    '01.12 Strategic Intents',
+    '01.47 Security Guidelines',
+  ]);
+  expect(texts(document, `main ${first} > li > ul > li > a`)).toEqual(['Innovation']);
+  const child = document.querySelector(`main ${first} a[href="/pages/${made.childId}"]`);
+  expect(child).not.toBeNull();
+  expect(texts(document, 'main [data-category="02"] [data-tree] a')).toEqual([
+    '02.16 Beginner cohort',
+  ]);
+  const here = 'main [data-disclosure-actions] a[href="/wiki/new?category=01"]';
+  expect(document.querySelector(here)).toBeNull();
+  const writer = documentOf((await getHtml(db, made.admin, '/wiki')).text);
+  expect(writer.querySelector(here)?.getAttribute('aria-label')).toBe('New page in 01');
+  expect(document.body.textContent).not.toContain('61.01 Chad program');
+}
+
 async function clusterIsOneGroup(db: Database): Promise<void> {
   const made = await world(db);
   const page = await getHtml(db, made.field, '/wiki');
   const document = documentOf(page.text);
-  expect(texts(document, 'main [data-area] h2')).toEqual(['60-79 Field Programs']);
-  expect(texts(document, 'main [data-area="60-79"] [data-category] a')).toEqual(['61 1 page']);
-  const all = await getHtml(db, 'rowan.test@unfoldingword.org', '/wiki');
-  expect(texts(documentOf(all.text), 'main [data-area="60-79"] [data-category] a')).toEqual([
-    '61 1 page',
-    '74 1 page',
+  expect(texts(document, 'main [data-area] h2')).toEqual(['Field Programs']);
+  expect(texts(document, 'main [data-area="60-79"] [data-category] > summary')).toEqual([
+    '611 page',
   ]);
+  const all = await getHtml(db, 'rowan.test@unfoldingword.org', '/wiki');
+  expect(texts(documentOf(all.text), 'main [data-area="60-79"] [data-category] > summary')).toEqual(
+    ['611 page', '741 page'],
+  );
 }
 
 async function categoryShowsItsTree(db: Database): Promise<void> {
@@ -111,8 +136,8 @@ async function adminsNameCategories(db: Database): Promise<void> {
   const renamed = await nameCategory(db, made.admin, '01', 'Knowledge Base');
   expect(renamed.body).toMatchObject({ status: 'accepted' });
   const browse = documentOf((await getHtml(db, made.reader, '/wiki')).text);
-  expect(texts(browse, 'main [data-area="00-09"] [data-category] a')[0]).toBe(
-    '01 Knowledge Base 3 pages',
+  expect(texts(browse, 'main [data-area="00-09"] [data-category] > summary')[0]).toBe(
+    'Knowledge Base01 · 3 pages',
   );
   const category = documentOf((await getHtml(db, made.admin, '/wiki/01')).text);
   expect(category.querySelector('main h1')?.textContent).toBe('01 Knowledge Base');
@@ -139,6 +164,9 @@ async function pageSitsInItsPlace(db: Database): Promise<void> {
 describe.skipIf(!testServer)('#175 Pages & Wiki lists what a person may read', () => {
   it('lists each readable area with its categories and page counts, from the sidebar', () =>
     withAppDatabase(browseListsWhatYouMayRead));
+
+  it('shows every page and sub page on the landing, each category open and closable', () =>
+    withAppDatabase(browseShowsEveryPageOpen));
 
   it('shows 60-79 as one group over its two areas, with only the decades a person may read', () =>
     withAppDatabase(clusterIsOneGroup));
