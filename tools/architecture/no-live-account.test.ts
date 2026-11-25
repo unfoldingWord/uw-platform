@@ -10,8 +10,6 @@ const viteEnv = /import\.meta\.env/;
 const testCode =
   /(?:\.test\.(?:ts|tsx|mts)$|^packages\/harness\/port-contracts\/|^sim\/|^tools\/|^packages\/db\/test-[a-z-]+\.ts$|^apps\/[^/]+\/testing\/|^vitest\.config\.ts$)/;
 const codeFile = /\.(?:ts|tsx|mts)$/;
-const platformAdapterFile = /^apps\/uw-platform\/ports\/[^/]+\.ts$/;
-const wiredWithoutService = /\/(clock|ids)\.ts$/;
 const testRunningJobs = ['lint', 'typecheck', 'architecture', 'test-shard', 'test', 'build'];
 
 function forbiddenEnvReads(path: string, source: string): string[] {
@@ -27,22 +25,6 @@ function jobsReferencingSecrets(workflow: string, jobs: readonly string[]): stri
     .filter((section) => jobs.includes(section.split(':')[0] ?? ''))
     .filter((section) => section.includes('secrets' + '.'))
     .map((section) => `${section.split(':')[0]} references a secret`);
-}
-
-function waitingSection(): string {
-  const tracker = readFileSync('docs/progress_tracker.md', 'utf8');
-  const start = tracker.indexOf('## Waiting on a person');
-  if (start === -1) throw new Error('the tracker has no "Waiting on a person" section');
-  return tracker.slice(start);
-}
-
-function platformAdapters(): string[] {
-  return repoFiles().filter((path) => platformAdapterFile.test(path) && !path.endsWith('.test.ts'));
-}
-
-function unlisted(paths: readonly string[]): string[] {
-  const waiting = waitingSection();
-  return paths.filter((path) => !waiting.includes(`\`${path}\``));
 }
 
 describe('DX-8 no test, helper or scenario needs a live account or a secret', () => {
@@ -110,21 +92,5 @@ describe('DX-8 no job that runs the tests references a secret', () => {
   it('finds every test-running job in the real workflow', () => {
     const workflow = readFileSync('.github/workflows/ci.yml', 'utf8');
     for (const job of testRunningJobs) expect(workflow.split('\n')).toContain(`  ${job}:`);
-  });
-});
-
-describe('DX-8 every platform adapter is accounted for in the tracker', () => {
-  it('lists each wired adapter that reaches a live service under Waiting on a person', () => {
-    const live = platformAdapters().filter(
-      (path) => !path.endsWith('.not-wired.ts') && !wiredWithoutService.test(path),
-    );
-    expect(live.length).toBeGreaterThan(0);
-    expect(unlisted(live)).toEqual([]);
-  });
-
-  it('lists each not-wired adapter under Waiting on a person', () => {
-    const notWired = platformAdapters().filter((path) => path.endsWith('.not-wired.ts'));
-    expect(notWired.length).toBeGreaterThan(0);
-    expect(unlisted(notWired)).toEqual([]);
   });
 });

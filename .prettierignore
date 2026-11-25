@@ -1,6 +1,5 @@
 node_modules
 pnpm-lock.yaml
-prd
 ui-design
 docs
 *.md
