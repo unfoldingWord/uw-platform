@@ -97,11 +97,16 @@ function carriesTheEditor(headers: Headers, document: Document): void {
   expect(document.querySelector('link[rel="stylesheet"][href^="/assets/editor-"]')).not.toBeNull();
 }
 
+function titleOf(shape: Element | null | undefined): string {
+  const field = shape?.querySelector<HTMLInputElement>('h1 input');
+  return field?.value ?? shape?.querySelector('h1')?.textContent ?? 'no title';
+}
+
 function layoutOf(document: Document): readonly string[] {
   const shape = document.querySelector('main [data-shape="document"]');
   return [
     shape?.querySelector(':scope > [data-band]') === null ? 'no band' : 'band',
-    shape?.querySelector('h1')?.textContent ?? 'no title',
+    titleOf(shape),
     shape?.querySelector('aside[aria-label="Properties"]') === null ? 'no rail' : 'rail',
   ];
 }

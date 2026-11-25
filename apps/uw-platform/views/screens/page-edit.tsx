@@ -114,7 +114,6 @@ function EditBody(props: FormProps & { readonly typed: Typed }) {
     <>
       {props.children}
       <div class="flex min-w-0 flex-col gap-4">
-        <TitleField pageId={page.id} title={typed.title} />
         {options.asText ? null : (
           <EditorFrame pageId={page.id} draft={props.draft} styleNonce={props.styleNonce} />
         )}
@@ -146,7 +145,11 @@ function EditForm(props: FormProps) {
       {options.back === null ? null : <input type="hidden" name="back" value={options.back} />}
       <DocumentShape
         band={<EditBar read={props.read} drafting={props.draft !== null} />}
-        head={{ eyebrow: markOf(page), title: page.title }}
+        head={{
+          eyebrow: markOf(page),
+          title: page.title,
+          titleField: <TitleField pageId={page.id} title={typed.title} />,
+        }}
         rail={<EditRail page={page} asText={options.asText} />}
       >
         <EditBody {...props} typed={typed} />

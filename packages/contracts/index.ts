@@ -1,6 +1,7 @@
 export * from './acl-commands.ts';
 export * from './agent-commands.ts';
 export * from './areas.ts';
+export * from './jd-ids.ts';
 export * from './closed-sets.ts';
 export * from './collection-commands.ts';
 export * from './collection-convert.ts';

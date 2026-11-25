@@ -5,6 +5,7 @@ export function PageHead(props: {
   readonly eyebrow?: string | undefined;
   readonly lede?: Child | undefined;
   readonly actions?: Child | undefined;
+  readonly titleField?: Child | undefined;
   readonly flush?: boolean | undefined;
   readonly document?: boolean | undefined;
 }) {
@@ -19,9 +20,9 @@ export function PageHead(props: {
     <div
       class={`flex flex-wrap items-end justify-between gap-4 ${props.flush === true ? '' : 'mb-6'}`}
     >
-      <div class="min-w-0">
+      <div class={props.titleField === undefined ? 'min-w-0' : 'min-w-0 flex-1'}>
         {props.eyebrow === undefined ? null : <p class={eyebrow}>{props.eyebrow}</p>}
-        <h1 class={heading}>{props.title}</h1>
+        {props.titleField ?? <h1 class={heading}>{props.title}</h1>}
         {props.lede === undefined ? null : (
           <p class="m-0 mt-1 max-w-content text-sm text-text-3">{props.lede}</p>
         )}

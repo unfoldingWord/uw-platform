@@ -3,7 +3,10 @@ import {
   areaOfCategory,
   createPageCommandSchema,
   jdCategorySchema,
+  jdIdOfTitle,
   knowledgeFrontmatterSchema,
+  nextFreeJdId,
+  titleWithJdId,
 } from '@uw/contracts';
 import { TextField } from '@uw/ui/components/field.tsx';
 import { Note } from '@uw/ui/components/note.tsx';
@@ -16,6 +19,7 @@ import type { AppEnv } from '../../deps.ts';
 import { editorCssPath, editorPath } from '../../generated/editor.ts';
 import { styleNonceFor } from '../../http/security-headers.ts';
 import { slugFor } from '../../pages/copy.ts';
+import { takenJdIds } from '../../pages/jd-ids.ts';
 import { createPage, readPage } from '../../pages/store.ts';
 import { TEMPLATE_TAG, templatesFor } from '../../pages/templates.ts';
 import { EditBar } from '../parts/edit-bar.tsx';
@@ -23,6 +27,7 @@ import { EditorFrame } from '../parts/editor-frame.tsx';
 import { renderScreen, screenKernel, screenRefusal, type ScreenKernel } from '../parts/frame.tsx';
 import { moduleCodes, pageNames } from '../parts/names.ts';
 import { BodyField, EditorStatus, TitleField } from '../parts/page-fields.tsx';
+import { JdSuggest } from '../parts/jd-suggest.tsx';
 import { idParam } from '../parts/params.ts';
 import { pagePath, wikiNewPath, wikiPath } from '../parts/paths.ts';
 
@@ -52,9 +57,16 @@ const spec = {
 const editorHint =
   'Type / for blocks and [[ to link or embed a page. Pictures and files can be added once the page is saved.';
 
-function refusalText(reason: string): string {
+function refusalText(reason: string, typed: Typed): string {
+  const number = jdIdOfTitle(typed.title) ?? '';
   if (reason === 'category') return 'Not created: A category is two digits, such as 61.';
   if (reason === 'title') return 'Not created: A page needs a title.';
+  if (reason === 'jd_taken') {
+    return `Not created: ${number} is already used by another page. Choose another number.`;
+  }
+  if (reason === 'jd_category') {
+    return `Not created: ${number} belongs in category ${number.slice(0, 2)}, not ${typed.category}.`;
+  }
   return `Not created: ${reasonText(reason)}.`;
 }
 
@@ -117,9 +129,9 @@ function NewRail(props: { readonly shown: Shown }) {
   );
 }
 
-function markOf(typed: Typed): string | undefined {
+function markOf(typed: Typed): string {
   const category = jdCategorySchema.safeParse(typed.category);
-  return category.success ? category.data : undefined;
+  return category.success ? `New page in ${category.data}` : 'New page';
 }
 
 function Hidden(props: { readonly typed: Typed }) {
@@ -141,6 +153,7 @@ function NewForm(props: { readonly shown: Shown }) {
       method="post"
       action={wikiNewPath()}
       data-page-edit=""
+      data-new-page=""
       data-unsaved={refused === null ? undefined : ''}
       aria-label="New page"
       class="group/edit"
@@ -148,13 +161,21 @@ function NewForm(props: { readonly shown: Shown }) {
       <Hidden typed={typed} />
       <DocumentShape
         band={<EditBar read={cancelOf(typed)} drafting={false} />}
-        head={{ eyebrow: markOf(typed), title: pageNames.wikiNew }}
+        head={{
+          eyebrow: markOf(typed),
+          title: pageNames.wikiNew,
+          titleField: (
+            <>
+              <TitleField pageId={typed.pageId} title={typed.title} placeholder="Page title" />
+              <JdSuggest />
+            </>
+          ),
+        }}
         rail={<NewRail shown={props.shown} />}
         railLabel="Where it is filed"
       >
-        {refused === null ? null : <Note>{refusalText(refused)}</Note>}
+        {refused === null ? null : <Note>{refusalText(refused, typed)}</Note>}
         <div class="flex min-w-0 flex-col gap-4">
-          <TitleField pageId={typed.pageId} title={typed.title} />
           <EditorFrame pageId={typed.pageId} draft={null} styleNonce={styleNonce} />
           <BodyField pageId={typed.pageId} bodyMd={typed.bodyMd} />
           <EditorStatus />
@@ -214,6 +235,13 @@ function askedOf(c: Context<AppEnv>): Asked {
   };
 }
 
+async function numbered(db: Database, title: string, category: string): Promise<string> {
+  const filed = jdCategorySchema.safeParse(category);
+  if (!filed.success || jdIdOfTitle(title) !== null) return title;
+  const next = nextFreeJdId(filed.data, await takenJdIds(db, filed.data));
+  return next === null ? title : titleWithJdId(title, next);
+}
+
 export async function wikiNewScreen(c: Context<AppEnv>): Promise<Response> {
   const screen = screenKernel(c);
   const database = c.get('database');
@@ -222,10 +250,12 @@ export async function wikiNewScreen(c: Context<AppEnv>): Promise<Response> {
   const parent = idParam(c.req.query('parent')) ?? '';
   const inherited = parent === '' ? null : await categoryOfParent(c, screen, parent);
   const start = await startOf(database.db, screen.caller.actor, asked.template, screen.at);
+  const category = inherited ?? asked.category;
   const typed = {
     ...asked,
     pageId: crypto.randomUUID(),
-    category: inherited ?? asked.category,
+    title: await numbered(database.db, asked.title, category),
+    category,
     parent: inherited === null ? '' : parent,
     bodyMd: start.bodyMd,
   };
@@ -248,6 +278,11 @@ function typedFrom(posted: Record<string, unknown>): Typed {
   };
 }
 
+async function clashOf(db: Database, number: string, category: string): Promise<string | null> {
+  if (!number.startsWith(`${category}.`)) return 'jd_category';
+  return (await takenJdIds(db, category)).has(number) ? 'jd_taken' : null;
+}
+
 export async function createFromForm(c: Context<AppEnv>): Promise<Response> {
   const screen = screenKernel(c);
   const database = c.get('database');
@@ -257,6 +292,9 @@ export async function createFromForm(c: Context<AppEnv>): Promise<Response> {
   const category = jdCategorySchema.safeParse(typed.category);
   if (!category.success) return render(c, typed, 'category');
   if (typed.title === '') return render(c, typed, 'title');
+  const number = jdIdOfTitle(typed.title);
+  const clash = number === null ? null : await clashOf(database.db, number, category.data);
+  if (clash !== null) return render(c, typed, clash);
   const { actor, traceId } = screen.caller;
   const start = await startOf(database.db, actor, typed.template, screen.at);
   const command = createPageCommandSchema.safeParse({
@@ -268,7 +306,7 @@ export async function createFromForm(c: Context<AppEnv>): Promise<Response> {
     slug: slugFor(typed.title, typed.pageId),
     title: typed.title,
     parentId: typed.parent === '' ? null : typed.parent,
-    frontmatter: { jd_category: category.data, tags: start.tags },
+    frontmatter: { jd_category: category.data, jd_id: number, tags: start.tags },
     bodyMd: typed.bodyMd,
     status: 'active',
   });

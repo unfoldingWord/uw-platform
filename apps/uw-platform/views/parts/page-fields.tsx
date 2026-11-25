@@ -1,24 +1,23 @@
+import { TitleInput } from '@uw/ui/components/title-input.tsx';
 import { fieldControl, fieldLabel } from '@uw/ui/components/field.tsx';
 
 const BODY_ROWS = 24;
 
-export function TitleField(props: { readonly pageId: string; readonly title: string }) {
-  const id = `title-${props.pageId}`;
+export function TitleField(props: {
+  readonly pageId: string;
+  readonly title: string;
+  readonly placeholder?: string | undefined;
+  readonly attrs?: Readonly<Record<string, string>> | undefined;
+}) {
   return (
-    <div class="flex min-w-0 flex-col gap-1">
-      <label for={id} class={fieldLabel}>
-        Title
-      </label>
-      <input
-        id={id}
-        name="title"
-        type="text"
-        value={props.title}
-        maxLength={200}
-        required
-        class={`${fieldControl} w-full`}
-      />
-    </div>
+    <TitleInput
+      id={`title-${props.pageId}`}
+      name="title"
+      value={props.title}
+      placeholder={props.placeholder}
+      maxLength={200}
+      attrs={props.attrs}
+    />
   );
 }
 

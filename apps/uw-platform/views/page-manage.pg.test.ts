@@ -53,6 +53,21 @@ function itIsTheEditScreen(document: Document, cancel: string): void {
   expect(editing?.querySelector('textarea[name="bodyMd"]')).not.toBeNull();
 }
 
+async function numbersStayUnique(
+  db: Database,
+  editor: string,
+  fields: Readonly<Record<string, string>>,
+): Promise<void> {
+  const again = { ...fields, title: '02.01 Per diem, again' };
+  const taken = await postForm(db, editor, '/wiki/new', form(again), ORIGIN);
+  expect(taken.text).toContain('02.01 is already used by another page');
+  const elsewhere = { ...fields, title: '03.07 Per diem rates' };
+  const wrong = await postForm(db, editor, '/wiki/new', form(elsewhere), ORIGIN);
+  expect(wrong.text).toContain('03.07 belongs in category 03, not 02');
+  const next = documentOf((await getHtml(db, editor, '/wiki/new?category=02')).text);
+  expect(next.querySelector<HTMLInputElement>('input[name="title"]')?.value).toBe('02.02 ');
+}
+
 async function aNewPageIsWrittenWhereItIsEdited(db: Database): Promise<void> {
   const made = await world(db);
   const blank = await getHtml(db, made.editor, '/wiki/new?title=Per%20diem%20rates&category=02');
@@ -60,27 +75,29 @@ async function aNewPageIsWrittenWhereItIsEdited(db: Database): Promise<void> {
   expect(await screenProblems(blank.text)).toEqual([]);
   const document = documentOf(blank.text);
   itIsTheEditScreen(document, '/wiki/02');
-  expect(document.querySelector<HTMLInputElement>('input[name="title"]')?.value).toBe(
-    'Per diem rates',
+  expect(document.querySelector<HTMLInputElement>('main h1 input[name="title"]')?.value).toBe(
+    '02.01 Per diem rates',
   );
+  expect(document.querySelectorAll('input[name="title"]')).toHaveLength(1);
   expect(document.querySelector<HTMLInputElement>('aside input[name="category"]')?.value).toBe(
     '02',
   );
-  const fields = { title: 'Per diem rates', category: '02', parent: '', bodyMd: '## Rates' };
+  const fields = { title: '02.01 Per diem rates', category: '02', parent: '', bodyMd: '## Rates' };
   const sent = await postForm(db, made.editor, '/wiki/new', form(fields), ORIGIN);
   expect(sent.status).toBe(303);
   const location = sent.headers.get('location');
   expect(location).toMatch(/^\/pages\/[0-9a-f-]{36}\?saved=1$/);
   const page = await read(db, made.editor, createdId(location));
   expect([page.title, page.type, page.jdArea, page.status, page.bodyMd]).toEqual([
-    'Per diem rates',
+    '02.01 Per diem rates',
     'knowledge',
     '00-09',
     'active',
     '## Rates',
   ]);
-  expect(page.frontmatter).toMatchObject({ jd_category: '02' });
-  expect(page.slug).toMatch(/^per-diem-rates-[0-9a-f]{8}$/);
+  expect(page.frontmatter).toMatchObject({ jd_category: '02', jd_id: '02.01' });
+  expect(page.slug).toMatch(/^02-01-per-diem-rates-[0-9a-f]{8}$/);
+  await numbersStayUnique(db, made.editor, fields);
 }
 
 async function aNewPageIsRefusedWithWhatWasTyped(db: Database): Promise<void> {

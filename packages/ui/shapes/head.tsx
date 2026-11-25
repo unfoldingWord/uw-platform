@@ -6,6 +6,7 @@ export type Head = {
   readonly eyebrow?: string | undefined;
   readonly lede?: Child | undefined;
   readonly actions?: Child | undefined;
+  readonly titleField?: Child | undefined;
 };
 
 export function ShapeHead(props: { readonly head: Head; readonly document?: boolean | undefined }) {
@@ -16,6 +17,7 @@ export function ShapeHead(props: { readonly head: Head; readonly document?: bool
       eyebrow={head.eyebrow}
       lede={head.lede}
       actions={head.actions}
+      titleField={head.titleField}
       document={props.document}
       flush
     />
