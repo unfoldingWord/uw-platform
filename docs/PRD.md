@@ -294,7 +294,7 @@ Charters use the organization's NISO format (Need, Idea, Strategy, Outcomes, wit
 
 An agent loads the resolved policies, decisions and learnings for an entity through `resolve_context` before it acts (section 4.2).
 
-Issue: to be opened.
+Issue: #243.
 
 #### Credentials store
 
@@ -386,7 +386,7 @@ Issue: #206 (directory collection), #208 (profiles), #207 (migration). Rules: AD
 
 The Agents module is how AI takes part in the platform's work: the MCP surface and its verb registry, agent identities and personas, institutional memory and skills. Section 4.2 describes it in full, because every module uses it.
 
-Issue: #123 (assistant bots); the rest to be opened.
+Issue: #123 (assistant bots); the rest under #244.
 
 ### Workflow
 
@@ -839,7 +839,7 @@ Balances are always computed from the journal; there is no mutable balance colum
 
 **Proven when:** generated postings either balance or are refused; an attempt to change a posted line fails at the database; the monthly difference against the old system is 0.00; a restore drill reproduces the trial balance.
 
-Issue: #178 to #181 under epic #182 (rolling budget, the first slice); the general ledger itself to be opened.
+Issue: #178 to #181 under epic #182 (rolling budget, the first slice); the general ledger itself under #245.
 
 ### Contracts
 
@@ -856,7 +856,7 @@ Memoranda of understanding, contracts and work orders move out of shared drives 
 
 **Proven when:** a work order over its contract's remaining value is refused; a compliant one flows through both approvals with each recorded; the checklist appears on the review; a matched invoice drafts the payable entry and releases the commitment.
 
-Issue: to be opened.
+Issue: #246.
 
 ### Expenses
 
@@ -875,7 +875,7 @@ Forward the receipt; an agent does the rest; a person decides.
 - **Ledger.** Approval drafts one journal entry. Finance posts it under the normal rules. The agent drafts and can never post or approve.
 - **Corporate cards** run the same pipeline from the other end: the card feed creates items that are already paid, receipts are matched to charges, and unmatched charges age on a report. Reimbursements to field partners route to partner invoices, because those carry contract and deliverable obligations.
 
-Issue: to be opened.
+Issue: #247.
 
 ### CRM & Giving
 
@@ -902,7 +902,7 @@ The hard credit receives the receipt with substantiation language. Soft-credited
 
 **Moving from the current CRM:** contacts, gifts and soft credits import with their source ids kept. Cutover needs a reconciliation: hard-credit totals equal contributed revenue in the ledger to the cent, and no soft credit appears in any ledger total. After cutover, a nightly export keeps an archive in the old system's shape until fund development signs off.
 
-Issue: to be opened.
+Issue: #248.
 
 ### Grants
 
@@ -913,7 +913,7 @@ The grants pipeline, funder templates and grant reporting.
 - **Grant reporting** keeps the structure funders use: a set of questions per funder and a response per reporting period. The report is assembled from the same portfolio's impact model, its budget versus actual, and the consented stories that illustrate its programs in the period, so promised versus delivered is read, not rewritten.
 - **Compliance** per grant: restricted spend within period, the submission calendar, and a flag when spend or milestones drift from the award's terms.
 
-Issue: to be opened.
+Issue: #249.
 
 ### Field Data
 
@@ -933,7 +933,7 @@ Field programs and portfolios are the platform's program and portfolio pages. Th
 
 **Proven when:** counts match the source; an impact rollup returns the same numbers as the current reports; a sensitive engagement is invisible to an account with no field grant.
 
-Issue: to be opened.
+Issue: #250.
 
 ### Impact
 
@@ -945,7 +945,7 @@ One impact model per portfolio.
 
 Because events, engagements and outputs relate to programs, portfolios and funds, each portfolio's impact sits beside its budget versus actual and its grants: impact, money and work on one page. That page is the grant-report assembler's data source. OKRs and impact metrics are the measures portfolio views roll up to; output counts such as issues closed stay on development views.
 
-Issue: to be opened.
+Issue: #251.
 
 ### Story Bank
 
@@ -988,7 +988,7 @@ The public site is published from the platform as static pages. Content is not p
 
 **Proven when:** approving a page serves its rendered HTML at a public address, and the publish log matches the version served.
 
-Issue: to be opened.
+Issue: #252.
 
 ### Documents
 
@@ -1045,7 +1045,7 @@ Software work, read from GitHub and planned on the platform. GitHub stays the so
 
 The Workflow module is the mechanism that runs this path.
 
-Issue: to be opened.
+Issue: #253.
 
 ### Comms
 
@@ -1061,7 +1061,7 @@ Chat, meetings and calendars stay where they are. The platform integrates them a
   4. **The meeting page is assembled:** agenda, calendar details, attendees, recording, transcript, decisions, confirmed and suggested tasks.
 - **A conversation with an agent is keyed to its entity or item, not to the channel**, so a thread started in chat can continue in the web app or through the MCP surface.
 
-Issue: to be opened.
+Issue: #254.
 
 ### Desktop & Offline
 
@@ -1186,7 +1186,7 @@ Issue: #153, #154, #155; the quarterly access review under #203. Rules: ADR 0015
 
 **Assistant bots.** A person can talk to the platform in chat and pick the same conversation up in the web app, because a conversation is keyed to its entity or item.
 
-Issue: #123 (assistant bots); #98 and #99 for agents working the software workflow; the rest to be opened. Rules: ADR 0002, ADR 0005, ADR 0006.
+Issue: #123 (assistant bots); #98 and #99 for agents working the software workflow; the rest under #244. Rules: ADR 0002, ADR 0005, ADR 0006.
 
 ### 4.3 PDF and documents
 
@@ -1301,7 +1301,7 @@ Lean is enforced through policies, templates and views, not exhortation.
 - **Waste made visible.** Stale pages, aging blocked tasks, template drift and items waiting on a person are standard saved views.
 - **Defaults are policies.** WIP limits, definition of complete and canvas-before-commitment are organization-level `default` policies: areas inherit them and can supersede them on purpose.
 
-Issue: to be opened.
+Issue: #255.
 
 ### 4.9 Design
 

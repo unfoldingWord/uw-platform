@@ -29,7 +29,7 @@ Each document has one job, and no fact lives in two of them.
 | [`skills/harness/SKILL.md`](skills/harness/SKILL.md) | The skill an agent loads to work an item in a workflow |
 | [`design-system/README.md`](design-system/README.md) | The design system boards, synced from Claude Design |
 
-What is built and what is outstanding is not in any file. It is in GitHub: every feature in the PRD has an issue under the platform epic, and the epic is the only place status is kept.
+What is built and what is outstanding is not in any file. It is in GitHub: every feature in the PRD has an issue under the platform epic ([#242](https://github.com/unfoldingWord/uw-platform/issues/242)), and the epic is the only place status is kept.
 
 Three rules keep the documents from drifting apart:
 
