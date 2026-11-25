@@ -6,7 +6,7 @@ import type { Principal } from '@uw/core/principal';
 import type { Executor } from '@uw/db/client';
 import { pages } from '@uw/db/schema';
 import { resolvePolicies, type PolicyCandidate, type PolicyChain } from '@uw/harness';
-import { cascadeChainOf } from '../crosswalk/chain.ts';
+import { cascadeChainFrom, cascadeChainOf } from '../crosswalk/chain.ts';
 import { summaryColumns, summarySchema, type PageSummary } from './reads.ts';
 
 const POLICY_LIMIT = 200;
@@ -26,7 +26,7 @@ export type PolicyScope = {
   readonly itemPageId: string | null;
 };
 
-type Stored = { readonly page: PageSummary; readonly candidate: PolicyCandidate };
+export type Stored = { readonly page: PageSummary; readonly candidate: PolicyCandidate };
 
 async function productOf(db: Executor, pageId: string | null): Promise<string | null> {
   if (pageId === null) return null;
@@ -57,7 +57,7 @@ export async function policyChainFor(db: Executor, scope: PolicyScope): Promise<
 
 type Row = { readonly frontmatter: unknown; readonly id: string };
 
-function storedOf(row: Row): Stored | null {
+export function storedOf(row: Row): Stored | null {
   const { frontmatter, ...page } = row;
   const parsed = policyFrontmatterSchema.safeParse(frontmatter);
   if (!parsed.success) return null;
@@ -75,7 +75,7 @@ function storedOf(row: Row): Stored | null {
   };
 }
 
-async function storedPolicies(
+export async function storedPolicies(
   db: Executor,
   chain: PolicyChain,
   onInvalid: (pageId: string) => void,
@@ -127,4 +127,17 @@ export async function contextPolicies(
       },
     ];
   });
+}
+
+export async function chainOfTarget(db: Executor, target: string | null): Promise<PolicyChain> {
+  const organization = { level: 'organization', pageId: null } as const;
+  if (target === null) return [organization];
+  const [row] = await db.select({ type: pages.type }).from(pages).where(eq(pages.id, target));
+  if (row?.type === 'product') {
+    const nodes = await cascadeChainOf(db, [{ kind: 'page', id: target }]);
+    const placed = nodes.map((node) => ({ level: node.tier, pageId: node.pageId }));
+    return [{ level: 'product', pageId: target }, ...placed, organization];
+  }
+  const nodes = await cascadeChainFrom(db, target);
+  return [...nodes.map((node) => ({ level: node.tier, pageId: node.pageId })), organization];
 }

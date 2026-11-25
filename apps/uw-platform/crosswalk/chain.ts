@@ -52,6 +52,18 @@ export async function cascadeChainOf(
   for (const entity of entities) {
     node = node ?? (await placementOf(db, entity));
   }
+  return chainFrom(db, node);
+}
+
+export async function cascadeChainFrom(
+  db: Executor,
+  nodeId: string,
+): Promise<readonly CascadeLink[]> {
+  return chainFrom(db, await cascadeNode(db, nodeId));
+}
+
+async function chainFrom(db: Executor, start: CascadeNode | null): Promise<readonly CascadeLink[]> {
+  let node = start;
   const chain: CascadeLink[] = [];
   while (node !== null && chain.length < cascadeTierSchema.options.length) {
     chain.push({ tier: node.tier, pageId: node.id });
