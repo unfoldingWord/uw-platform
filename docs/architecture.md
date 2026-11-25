@@ -335,7 +335,7 @@ A rule that lives only in prose drifts. Each of these has a check.
 | Islands never call the kernel | dependency-cruiser |
 | Code carries no comments | `tools/lint/no-comments.ts`, applied to `apps/`, `packages/` and `sim/` |
 | Files stay under the length limit | ESLint `max-lines`, counting non-blank lines |
-| A query lives in a data file of a module that owns tables, never in a route, a component, a view or an island | `tools/architecture/data-files.test.ts` |
+| A query lives in a data file of a module that owns tables, never in a route, a handler, a component, a view or an island | `tools/architecture/data-files.test.ts` |
 | Nothing unused | `pnpm knip` |
 
 **Rules with no mechanical check.** These are stated in `AGENTS.md` and held by review only:

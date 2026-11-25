@@ -630,7 +630,7 @@ This number was used and withdrawn. It is not reused.
 
 *2026-11-25. Amends 0001.*
 
-**Decision.** Only the workflow kernel reaches Postgres through a port. A platform module under `apps/` uses Drizzle directly, and only in its own data files: a file imports Drizzle or the schema only inside a module that declares the tables it owns, and never in a route file, a component, a view or an island. Other code calls the module's functions. A module writes only the tables it owns and may read another module's tables in a join. `tools/architecture/data-files.test.ts` holds this.
+**Decision.** Only the workflow kernel reaches Postgres through a port. A platform module under `apps/` uses Drizzle directly, and only in its own data files: a file imports Drizzle or the schema only inside a module that declares the tables it owns, and never in a route or handler file, a component, a view, an island or any file that imports Hono. Other code calls the module's functions. A module writes only the tables it owns and may read another module's tables in a join. `tools/architecture/data-files.test.ts` holds this.
 
 **Why.**
 - **A port needs a second implementation to earn its cost.** There is one database by decision, and the kernel's own Store port has one Drizzle implementation that the sim binds to an embedded Postgres.

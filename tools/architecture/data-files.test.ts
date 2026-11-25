@@ -55,15 +55,28 @@ describe('AGENTS.md rule 2: a query lives in a data file of a module that owns t
       `${path} queries the database outside a module that owns tables`,
     ]);
   });
+});
 
+describe('AGENTS.md rule 2: a route, a handler or a view never queries the database', () => {
   it.each([
     ['a route file', 'apps/uw-platform/pages/routes.ts'],
     ['a component', 'apps/uw-platform/pages/panel.tsx'],
     ['a view', 'apps/uw-platform/pages/views/list.ts'],
     ['an island', 'apps/uw-platform/pages/islands/editor.ts'],
+    ['a handler file the router registers', 'apps/uw-platform/pages/read-handlers.ts'],
+    ['a single handler', 'apps/uw-platform/commands/handler.ts'],
+    ['a named route file', 'apps/uw-platform/pages/file-routes.ts'],
   ])('fails on a planted query in %s, even inside a data module', (_name, path) => {
     expect(misplacedQueries(planted({ [path]: schema }))).toEqual([
-      `${path} is a route or a view and queries the database`,
+      `${path} is a route, a handler or a view and queries the database`,
+    ]);
+  });
+
+  it('fails on a planted query in any file that imports the web framework', () => {
+    const path = 'apps/uw-platform/pages/reads.ts';
+    const text = `import type { Context } from 'ho` + `no';\n${schema}`;
+    expect(misplacedQueries(planted({ [path]: text }))).toEqual([
+      `${path} is a route, a handler or a view and queries the database`,
     ]);
   });
 });
