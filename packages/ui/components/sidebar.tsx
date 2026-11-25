@@ -28,33 +28,18 @@ export type NavSection = {
 };
 
 const focus = 'outline-offset-2 outline-side-code focus-visible:outline-2';
-const row = 'flex items-center gap-2 rounded-sm px-2 py-1 text-sm font-semibold whitespace-nowrap';
-const unbuilt = 'cursor-default opacity-45';
+const row =
+  'flex items-center gap-2 rounded-md px-2 py-1 text-base whitespace-nowrap no-underline transition-colors motion-reveal';
+const unbuilt = 'cursor-default text-side-text-3';
 const guides = { 1: 'ml-4', 2: 'ml-6', 3: 'ml-7' } as const;
-const current =
-  'aria-[current=page]:bg-accent aria-[current=page]:font-heavy aria-[current=page]:text-on-accent';
+const current = 'aria-[current=page]:bg-side-hover aria-[current=page]:font-semibold';
 
 function Count(props: { readonly count: NavCount | undefined }) {
   const { count } = props;
   if (count === undefined) return null;
   if (count.kind === 'person') return <PersonCount count={count.count} label={count.label} />;
   const tone = count.kind === 'watch' ? 'text-side-code' : 'text-side-text-3';
-  return (
-    <span class={`ml-auto font-mono text-xs ${tone} group-aria-[current=page]:text-on-accent`}>
-      {count.text}
-    </span>
-  );
-}
-
-function Code(props: { readonly code: string | undefined; readonly alone: boolean }) {
-  if (props.code === undefined) return null;
-  return (
-    <span
-      class={`${props.alone ? 'ml-auto ' : ''}font-mono text-xs text-side-text-3 group-aria-[current=page]:text-on-accent`}
-    >
-      {props.code}
-    </span>
-  );
+  return <span class={`ml-auto font-mono text-xs ${tone}`}>{count.text}</span>;
 }
 
 function Mark(props: { readonly icon: IconName | undefined }) {
@@ -69,19 +54,17 @@ function TreeRow(props: {
   readonly current: string;
 }) {
   const { item } = props;
-  const weight = item.open === true ? 'font-heavy' : 'font-semibold';
+  const weight = item.open === true ? 'font-semibold' : 'font-regular';
   return (
     <li class={`${guides[props.depth]} border-l border-side-line pl-1`}>
       <a
         href={props.href}
         aria-current={props.href === props.current ? 'page' : undefined}
         data-open={item.open === true ? '' : undefined}
-        class={`group flex items-center gap-2 rounded-sm px-2 py-1 text-sm ${weight} whitespace-nowrap text-side-text hover:bg-side-hover ${current} ${focus}`}
+        class={`group flex items-center gap-2 rounded-md px-2 py-1 text-sm ${weight} whitespace-nowrap text-side-text no-underline transition-colors motion-reveal hover:bg-side-hover ${current} ${focus}`}
       >
         {item.code === undefined ? null : (
-          <span class="font-mono text-xs text-side-code group-aria-[current=page]:text-on-accent">
-            {item.code}
-          </span>
+          <span class="font-mono text-xs text-side-code">{item.code}</span>
         )}
         <span class="min-w-0 truncate">{item.label}</span>
         <Count count={item.count} />
@@ -119,7 +102,6 @@ function NavRow(props: { readonly item: NavItem; readonly current: string }) {
         <Mark icon={item.icon} />
         <span class="min-w-0 truncate">{item.label}</span>
         <Count count={item.count} />
-        <Code code={item.code} alone={item.count === undefined} />
       </a>
     </li>
   );
@@ -132,15 +114,13 @@ function allUnbuilt(section: NavSection): boolean {
 function Heading(props: { readonly section: NavSection }) {
   const { section } = props;
   if (section.heading === undefined) return null;
-  const dim = allUnbuilt(section) ? 'opacity-60' : '';
   return (
     <p
       data-area={section.code}
-      data-unbuilt={allUnbuilt(section) ? 'true' : undefined}
-      class={`flex items-baseline gap-2 px-2 pb-1 text-xs leading-snug font-heavy tracking-wide text-side-text-3 uppercase ${dim}`}
+      class="flex items-baseline gap-2 px-2 pb-1 text-xs leading-snug font-semibold text-side-text-3"
     >
       {section.code === undefined ? null : (
-        <span class="shrink-0 font-mono font-regular whitespace-nowrap text-side-code">
+        <span class="shrink-0 font-mono font-regular whitespace-nowrap text-side-text-3">
           {section.code}
         </span>
       )}
@@ -149,13 +129,49 @@ function Heading(props: { readonly section: NavSection }) {
   );
 }
 
+function built(section: NavSection): NavSection {
+  return { ...section, items: section.items.filter((item) => item.href !== undefined) };
+}
+
+function unbuiltItems(sections: readonly NavSection[]): readonly NavItem[] {
+  return sections.flatMap((section) => section.items.filter((item) => item.href === undefined));
+}
+
+function More(props: { readonly items: readonly NavItem[] }) {
+  if (props.items.length === 0) return null;
+  return (
+    <li>
+      <details data-more="">
+        <summary
+          class={`${row} cursor-pointer list-none text-side-text-3 hover:bg-side-hover ${focus}`}
+        >
+          <Icon name="ellipsis" size={2} />
+          <span>More</span>
+        </summary>
+        <ul class="flex flex-col">
+          {props.items.map((item) => (
+            <li>
+              <span aria-disabled="true" data-unbuilt="true" class={`${row} pl-6 ${unbuilt}`}>
+                <span class="min-w-0 truncate">{item.label}</span>
+                <span class="ml-auto text-xs">Not built yet</span>
+              </span>
+            </li>
+          ))}
+        </ul>
+      </details>
+    </li>
+  );
+}
+
 function Section(props: { readonly section: NavSection; readonly current: string }) {
   const { section } = props;
+  if (allUnbuilt(section)) return null;
+  const shown = built(section);
   return (
     <li>
       <Heading section={section} />
       <ul class="flex flex-col">
-        {section.items.map((item) => (
+        {shown.items.map((item) => (
           <NavRow item={item} current={props.current} />
         ))}
       </ul>
@@ -175,15 +191,16 @@ export function NavList(props: {
       {props.sections.map((section) => (
         <Section section={section} current={props.current} />
       ))}
+      <More items={unbuiltItems(props.sections)} />
     </ul>
   );
 }
 
 function Brand(props: { readonly wordmarkPath: string }) {
   return (
-    <div class="flex items-center gap-2 border-b border-side-line p-4">
+    <div class="flex items-center gap-2 px-4 pt-5 pb-4">
       <img src={props.wordmarkPath} alt="unfoldingWord" class="h-size-3 w-auto shrink-0" />
-      <p class="border-l border-side-line pl-2 text-sm font-heavy">Platform</p>
+      <p class="border-l border-side-line pl-2 text-sm font-semibold text-side-text-3">Platform</p>
     </div>
   );
 }
@@ -197,10 +214,10 @@ export function Sidebar(props: {
   return (
     <aside data-side class="hidden min-h-0 flex-col bg-side text-side-text md:flex">
       <Brand wordmarkPath={props.wordmarkPath} />
-      <nav aria-label="Main" class="flex-1 overflow-auto p-2">
+      <nav aria-label="Main" class="flex-1 overflow-auto px-2 pb-4">
         <NavList sections={props.sections} current={props.current} />
       </nav>
-      <div class="border-t border-side-line p-2">
+      <div class="p-2">
         <AccountRow person={props.person} />
       </div>
     </aside>

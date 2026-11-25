@@ -45,7 +45,17 @@ function screen(options: Screen = {}) {
     document.querySelector('a[data-leave-edit]')?.dispatchEvent(click);
     return click.defaultPrevented;
   };
-  return { document, went, asked, press, type, clickBack };
+  const unload = () => {
+    const event = new dom.window.Event('beforeunload', { cancelable: true });
+    dom.window.dispatchEvent(event);
+    return event.defaultPrevented;
+  };
+  const save = (blocked: boolean) => {
+    const event = new dom.window.Event('submit', { bubbles: true, cancelable: true });
+    if (blocked) event.preventDefault();
+    document.querySelector('form')?.dispatchEvent(event);
+  };
+  return { document, went, asked, press, type, clickBack, unload, save };
 }
 
 describe('ADR 0026 Esc leaves edit mode for the read view, as Back to reading does', () => {
@@ -108,5 +118,37 @@ describe('ADR 0026 leaving edit mode never drops text no shared draft holds with
     const clean = screen();
     expect(clean.clickBack()).toBe(false);
     expect(clean.asked).toEqual([]);
+  });
+});
+
+describe('leaving through the frame, switcher or browser', () => {
+  it('guards navigation after typing or a refused save, but allows shared drafts', () => {
+    const made = screen();
+    expect(made.unload()).toBe(false);
+    made.type();
+    expect(made.unload()).toBe(true);
+    expect(screen({ unsaved: true }).unload()).toBe(true);
+    expect(screen({ unsaved: true, live: true }).unload()).toBe(false);
+  });
+
+  it('protects a title change even when the body is in a shared draft', () => {
+    const made = screen({ live: true });
+    const title = made.document.querySelector('input');
+    if (title === null) throw new Error('Missing title field');
+    title.value = 'Updated title';
+    made.type();
+    expect(made.unload()).toBe(true);
+  });
+
+  it('allows a save or confirmed departure without a second prompt', () => {
+    const made = screen({ unsaved: true, answer: true });
+    made.save(true);
+    expect(made.unload()).toBe(true);
+    made.save(false);
+    expect(made.unload()).toBe(false);
+    made.type();
+    expect(made.unload()).toBe(true);
+    made.clickBack();
+    expect(made.unload()).toBe(false);
   });
 });

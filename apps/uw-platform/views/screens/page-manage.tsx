@@ -7,11 +7,11 @@ import {
   type PageEntry,
 } from '@uw/contracts';
 import { formatDate } from '@uw/core/dates';
-import { Card } from '@uw/ui/components/card.tsx';
-import { commandButton } from '@uw/ui/components/command-form.tsx';
+import { Button } from '@uw/ui/components/button.tsx';
 import { SelectField, TextField } from '@uw/ui/components/field.tsx';
 import { Note } from '@uw/ui/components/note.tsx';
-import { PageHead } from '@uw/ui/components/page-head.tsx';
+import { Hairline, Section } from '@uw/ui/components/section.tsx';
+import { FormActions, FormShape } from '@uw/ui/shapes/form.tsx';
 import { reasonText } from '@uw/ui/components/text.ts';
 import type { Child } from 'hono/jsx';
 import type { AppEnv } from '../../deps.ts';
@@ -58,7 +58,7 @@ function MoveCard(props: { readonly managed: Managed; readonly siblings: readonl
       .map((entry) => ({ value: entry.id, label: entry.title })),
   ];
   return (
-    <Card title="Move" sub="Links to this page keep working">
+    <Section title="Move" sub="Links to this page keep working">
       <Action page={page} intent="move">
         <TextField
           name="category"
@@ -76,13 +76,11 @@ function MoveCard(props: { readonly managed: Managed; readonly siblings: readonl
           choices={choices}
           selected={page.parentId ?? TOP}
         />
-        <p class="m-0">
-          <button type="submit" class={commandButton}>
-            Move page
-          </button>
-        </p>
+        <FormActions>
+          <Button type="submit">Move page</Button>
+        </FormActions>
       </Action>
-    </Card>
+    </Section>
   );
 }
 
@@ -94,7 +92,7 @@ const periods = [
 
 function VerifyCard(props: { readonly page: Page }) {
   return (
-    <Card title="Verify" sub="Says you read this page and it is still right">
+    <Section title="Verify" sub="Says you read this page and it is still right">
       <Action page={props.page} intent="verify">
         <SelectField
           name="days"
@@ -103,13 +101,11 @@ function VerifyCard(props: { readonly page: Page }) {
           choices={periods}
           selected="90"
         />
-        <p class="m-0">
-          <button type="submit" class={commandButton}>
-            Mark as verified
-          </button>
-        </p>
+        <FormActions>
+          <Button type="submit">Mark as verified</Button>
+        </FormActions>
       </Action>
-    </Card>
+    </Section>
   );
 }
 
@@ -118,16 +114,15 @@ function OtherCards(props: { readonly page: Page }) {
   const retired = page.status === 'retired';
   return (
     <>
-      <Card title="Copy" sub="A new page with the same text, filed beside this one">
+      <Section title="Copy" sub="A new page with the same text, filed beside this one">
         <Action page={page} intent="copy">
-          <p class="m-0">
-            <button type="submit" class={commandButton}>
-              Copy page
-            </button>
-          </p>
+          <FormActions>
+            <Button type="submit">Copy page</Button>
+          </FormActions>
         </Action>
-      </Card>
-      <Card
+      </Section>
+      <Hairline />
+      <Section
         title={retired ? 'Restore' : 'Retire'}
         sub={
           retired
@@ -136,13 +131,11 @@ function OtherCards(props: { readonly page: Page }) {
         }
       >
         <Action page={page} intent={retired ? 'restore' : 'retire'}>
-          <p class="m-0">
-            <button type="submit" class={commandButton}>
-              {retired ? 'Restore page' : 'Retire page'}
-            </button>
-          </p>
+          <FormActions>
+            <Button type="submit">{retired ? 'Restore page' : 'Retire page'}</Button>
+          </FormActions>
         </Action>
-      </Card>
+      </Section>
     </>
   );
 }
@@ -171,17 +164,18 @@ async function readOnly(c: Context<AppEnv>, found: Found): Promise<Response> {
   return renderScreen(
     c,
     await pageScreenSpec(c, found.screen, found.shown, pageNames.pageManage),
-    <>
-      <PageHead eyebrow={pageNames.wiki} title={page.title} lede="Nothing to manage here." />
-      <Card title="Read only">
+    <FormShape
+      head={{ eyebrow: pageNames.wiki, title: page.title, lede: 'Nothing to manage here.' }}
+    >
+      <Section title="Read only">
         <p class="m-0 text-sm text-text-2">{why}</p>
         <p class="m-0">
           <a href={pagePath(page.id)} class={pageLink}>
             Back to the page
           </a>
         </p>
-      </Card>
-    </>,
+      </Section>
+    </FormShape>,
   );
 }
 
@@ -200,25 +194,26 @@ async function render(
   return renderScreen(
     c,
     await pageScreenSpec(c, screen, shown, pageNames.pageManage, siblings),
-    <>
-      <PageHead
-        eyebrow={pageNames.wiki}
-        title={shown.page.title}
-        lede="Move, copy or retire this page. To change its title or text, edit it."
-      />
-      <div class="flex flex-col gap-5">
-        {refused === null ? null : <Note>{`Not done: ${reasonText(refused)}.`}</Note>}
-        <p class="m-0">
-          <a href={pagePath(shown.page.id)} class={pageLink}>
-            Back to the page
-          </a>
-        </p>
-        <VerifyCard page={shown.page} />
-        <MoveCard managed={managed} siblings={siblings} />
-        <OtherCards page={shown.page} />
-        <AreaHomeCard page={shown.page} state={await homeStateOf(c, screen, shown.page)} />
-      </div>
-    </>,
+    <FormShape
+      head={{
+        eyebrow: pageNames.wiki,
+        title: shown.page.title,
+        lede: 'Move, copy or retire this page. To change its title or text, edit it.',
+      }}
+    >
+      {refused === null ? null : <Note>{`Not done: ${reasonText(refused)}.`}</Note>}
+      <p class="m-0">
+        <a href={pagePath(shown.page.id)} class={pageLink}>
+          Back to the page
+        </a>
+      </p>
+      <VerifyCard page={shown.page} />
+      <Hairline />
+      <MoveCard managed={managed} siblings={siblings} />
+      <Hairline />
+      <OtherCards page={shown.page} />
+      <AreaHomeCard page={shown.page} state={await homeStateOf(c, screen, shown.page)} />
+    </FormShape>,
   );
 }
 

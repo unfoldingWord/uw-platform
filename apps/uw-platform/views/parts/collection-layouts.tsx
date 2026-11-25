@@ -7,7 +7,9 @@ import {
   type RowsReply,
 } from '@uw/contracts';
 import { KanbanCard, type ShownFact } from '@uw/ui/components/kanban-card.tsx';
+import { Section } from '@uw/ui/components/section.tsx';
 import { Table } from '@uw/ui/components/table.tsx';
+import { domId } from '@uw/ui/components/text.ts';
 import { CellValue, propertyValue, RowTitle } from './collection-cells.tsx';
 import { PropertyEditor, type Choice } from './collection-edit.tsx';
 import { drawnTable } from './collection-table.tsx';
@@ -91,10 +93,13 @@ export function rowFacts(layout: LayoutProps, row: CollectionRow): readonly Show
 export function ListLayout(props: LayoutProps) {
   const shown = shownProperties(props);
   return (
-    <ul class="m-0 flex list-none flex-col divide-y divide-line-soft rounded-md border border-line bg-surface p-0">
+    <ul
+      aria-label={props.definition.name}
+      class="m-0 flex list-none flex-col divide-y divide-line-soft p-0"
+    >
       {props.reply.rows.map((row) => (
-        <li class="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 py-2 text-sm">
-          <span class="min-w-0 font-heavy">
+        <li class="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-1 py-2 text-sm">
+          <span class="min-w-0 text-base font-semibold">
             <RowTitle collection={props.definition.key} row={row} />
           </span>
           {shown.map((property) => (
@@ -133,18 +138,22 @@ function Grid(props: { readonly layout: LayoutProps; readonly rows: readonly Col
 export function GalleryLayout(props: LayoutProps) {
   const groups = props.reply.groups;
   if (groups === null) return <Grid layout={props} rows={props.reply.rows} />;
+  const viewId = props.reply.view?.id ?? '';
   return (
-    <div class="flex flex-col gap-5">
+    <div class="flex flex-col gap-7">
       {groups
         .filter((group) => group.visible)
         .map((group) => (
-          <section class="flex flex-col gap-2" aria-label={group.label}>
-            <h2 class="m-0 text-sm font-heavy text-text-2">{`${group.label} (${group.count})`}</h2>
+          <Section
+            title={group.label}
+            headingId={domId('gallery', viewId, group.value)}
+            sub={String(group.count)}
+          >
             <Grid
               layout={props}
               rows={props.reply.rows.filter((row) => row.group === group.value)}
             />
-          </section>
+          </Section>
         ))}
     </div>
   );

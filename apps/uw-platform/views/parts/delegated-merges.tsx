@@ -1,12 +1,12 @@
 import { formatInstant } from '@uw/core/dates';
 import type { DelegatedMergeList, DelegatedMergeRow } from '@uw/harness';
+import { ListRow, RowList } from '@uw/ui/components/list-row.tsx';
 import { Note } from '@uw/ui/components/note.tsx';
+import { Section } from '@uw/ui/components/section.tsx';
 import { mergedCapNote } from './caps.ts';
 import type { Holding } from './holder.tsx';
 import { Person } from './person.tsx';
 import { itemPath } from './paths.ts';
-
-const focus = 'outline-offset-2 outline-accent-text focus-visible:outline-2';
 
 function GrantedBy(props: {
   readonly row: DelegatedMergeRow;
@@ -34,26 +34,21 @@ export function DelegatedMerges(props: {
   const { rows, capped } = props.merged;
   if (rows.length === 0) return null;
   return (
-    <section aria-labelledby="delegated-merges-heading" class="mt-5 flex flex-col gap-2">
-      <h2 id="delegated-merges-heading" class="m-0 text-base font-heavy text-text">
-        Merged under a delegation
-      </h2>
+    <Section title="Merged under a delegation" headingId="delegated-merges-heading">
       {capped ? <Note>{mergedCapNote}</Note> : null}
-      <ul class="m-0 flex list-none flex-col gap-3 p-0">
+      <RowList label="Merged under a delegation">
         {rows.map((row) => (
-          <li class="flex flex-col gap-1">
-            <a
-              href={itemPath(row.harness.id, row.itemId)}
-              class={`break-words text-accent-text underline ${focus}`}
-            >
-              {`${row.title} on ${row.harness.title}`}
-            </a>
-            <span class="break-words text-sm text-text-3">
-              <GrantedBy row={row} holding={props.holding} />
-            </span>
-          </li>
+          <ListRow
+            title={<span class="break-words">{`${row.title} on ${row.harness.title}`}</span>}
+            href={itemPath(row.harness.id, row.itemId)}
+            meta={
+              <span class="break-words">
+                <GrantedBy row={row} holding={props.holding} />
+              </span>
+            }
+          />
         ))}
-      </ul>
-    </section>
+      </RowList>
+    </Section>
   );
 }

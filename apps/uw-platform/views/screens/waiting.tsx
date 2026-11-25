@@ -2,7 +2,8 @@ import type { Context } from 'hono';
 import type { Harness } from '@uw/contracts';
 import type { DelegatedMergeList } from '@uw/harness';
 import { Note } from '@uw/ui/components/note.tsx';
-import { PageHead } from '@uw/ui/components/page-head.tsx';
+import { SidePanel } from '@uw/ui/components/side-panel.tsx';
+import { ListShape } from '@uw/ui/shapes/list.tsx';
 import type { AppEnv } from '../../deps.ts';
 import { ApproveAll } from '../parts/approve-all.tsx';
 import { workflowCapNote } from '../parts/caps.ts';
@@ -12,8 +13,9 @@ import { renderScreen, screenKernel, screenRefusal, type ScreenKernel } from '..
 import { approvable, panelsOf, type Shown } from '../parts/gate-rows.tsx';
 import { moduleCodes, pageNames } from '../parts/names.ts';
 import { idParam } from '../parts/params.ts';
-import { agentQueuesPath, queuePath, waitingPath } from '../parts/paths.ts';
+import { agentQueuesPath, gatePath, queuePath, waitingPath } from '../parts/paths.ts';
 import { ShadowList } from '../parts/shadow-list.tsx';
+import { ShipRules } from '../parts/ship-rules.tsx';
 import { WaitingTable } from '../parts/waiting-table.tsx';
 import { workflowCrumbs, workflowTabs } from '../parts/workflow-tabs.ts';
 import { notFound } from './not-found.tsx';
@@ -28,6 +30,7 @@ type Body = {
   readonly shadow: Readonly<{ harness: Harness; list: Awaited<ReturnType<typeof shadowOf>> }>;
   readonly merged: DelegatedMergeList;
   readonly holding: Holding;
+  readonly peek: string | null;
 };
 
 function lede(count: number, capped: boolean): string {
@@ -42,30 +45,57 @@ async function shadowOf(screen: ScreenKernel, harness: Harness) {
   return comparison.status === 'accepted' ? comparison.value : null;
 }
 
-function WaitingBody(props: Body) {
-  const { shown, capped, shadow, merged } = props;
-  const note = capped ? <Note>{workflowCapNote}</Note> : null;
-  const list =
-    shadow.list === null ? null : (
-      <ShadowList comparison={shadow.list} harnessTitle={shadow.harness.title} />
-    );
-  const head =
-    shown.length === 0 ? (
-      <PageHead eyebrow={eyebrow} title={pageNames.waiting} />
-    ) : (
-      <PageHead eyebrow={eyebrow} title={pageNames.waiting} lede={lede(shown.length, capped)} />
-    );
+function Peek(props: { readonly shown: Shown | undefined }) {
+  if (props.shown === undefined) return null;
+  const { row, gate } = props.shown;
+  const { harness, item } = row;
+  const waited = gate.place?.waited ?? null;
   return (
-    <>
-      {head}
-      {note ?? (shown.length === 0 ? <Note>{empty}</Note> : null)}
-      {shown.length === 0 ? null : <WaitingTable shown={shown} />}
-      {approvable(shown).map((batch) => (
-        <ApproveAll batch={batch} />
-      ))}
-      {list}
+    <SidePanel
+      id={item.itemId}
+      title={item.title}
+      reference={gate.place?.number ?? undefined}
+      closeHref={waitingPath(harness.id)}
+      openHref={gatePath(harness.id, item.itemId)}
+    >
+      <p class="m-0 text-sm text-text-3">
+        {waited === null ? `At ${row.stage.title}` : `At ${row.stage.title} · waiting ${waited}`}
+      </p>
+      <ShipRules view={gate.view} />
+    </SidePanel>
+  );
+}
+
+function Empty(props: { readonly capped: boolean }) {
+  return <Note>{props.capped ? workflowCapNote : empty}</Note>;
+}
+
+function WaitingBody(props: Body) {
+  const { shown, capped, shadow, merged, peek } = props;
+  const opened = peek === null ? undefined : shown.find((one) => one.row.item.itemId === peek);
+  const batches = approvable(shown);
+  const head = {
+    eyebrow,
+    title: pageNames.waiting,
+    lede: shown.length === 0 ? undefined : lede(shown.length, capped),
+    actions:
+      batches.length === 0 ? undefined : batches.map((batch) => <ApproveAll batch={batch} />),
+  };
+  return (
+    <ListShape head={head} peek={opened === undefined ? undefined : <Peek shown={opened} />}>
+      {shown.length === 0 ? (
+        <Empty capped={capped} />
+      ) : (
+        <>
+          {capped ? <Note>{workflowCapNote}</Note> : null}
+          <WaitingTable shown={shown} peek={opened === undefined ? null : peek} />
+        </>
+      )}
+      {shadow.list === null ? null : (
+        <ShadowList comparison={shadow.list} harnessTitle={shadow.harness.title} />
+      )}
       <DelegatedMerges merged={merged} holding={props.holding} />
-    </>
+    </ListShape>
   );
 }
 
@@ -121,6 +151,7 @@ export async function waitingScreen(c: Context<AppEnv>): Promise<Response> {
       shadow={shadow}
       merged={merged}
       holding={holding}
+      peek={idParam(c.req.query('peek'))}
     />,
   );
 }

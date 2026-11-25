@@ -5,7 +5,7 @@ const inputId = 'quick-switcher-input';
 const listId = 'quick-switcher-list';
 
 const option =
-  'flex cursor-pointer items-baseline gap-3 rounded-sm px-3 py-2 text-base text-text aria-selected:bg-accent aria-selected:font-heavy aria-selected:text-on-accent';
+  'flex cursor-pointer items-baseline gap-3 rounded-sm px-3 py-2 text-base text-text aria-selected:bg-accent-soft aria-selected:font-semibold aria-selected:text-accent-text';
 
 export function QuickSwitcherButton() {
   return (
@@ -14,10 +14,11 @@ export function QuickSwitcherButton() {
       data-open-switcher=""
       aria-haspopup="dialog"
       aria-controls={switcherId}
-      class="inline-flex h-size-5 items-center gap-2 rounded-md border border-line bg-surface px-3 text-sm font-heavy text-text outline-offset-2 outline-accent-text hover:border-accent hover:text-accent-text focus-visible:outline-2"
+      title="Jump to a page"
+      class="inline-flex h-size-5 cursor-pointer items-center gap-2 rounded-md border border-transparent px-2 text-sm font-semibold text-text-2 outline-offset-2 outline-accent-text transition-colors motion-reveal hover:bg-hover hover:text-text focus-visible:outline-2"
     >
-      <Icon name="file-lines" size={1} />
-      <span>Jump to a page</span>
+      <Icon name="file-lines" size={2} />
+      <span class="sr-only">Jump to a page</span>
     </button>
   );
 }
@@ -39,7 +40,7 @@ function SwitcherInput() {
         autocomplete="off"
         spellcheck={false}
         placeholder="Page name or JD ID"
-        class="rounded-md border border-line bg-canvas px-3 py-2 text-md text-text outline-offset-2 outline-accent-text focus-visible:outline-2"
+        class="rounded-md border border-line bg-raised px-3 py-2 text-md text-text outline-offset-2 outline-accent-text focus-visible:outline-2"
       />
     </>
   );
@@ -51,7 +52,7 @@ export function QuickSwitcher() {
       id={switcherId}
       data-switcher=""
       aria-label="Jump to a page"
-      class="m-auto mt-8 w-full max-w-content rounded-lg border border-line bg-surface p-0 text-text shadow-3 backdrop:bg-side/60"
+      class="m-auto mt-8 w-full max-w-content rounded-lg border-0 bg-surface p-0 text-text shadow-3 backdrop:bg-side/60"
     >
       <div class="flex flex-col gap-2 p-3">
         <SwitcherInput />
@@ -59,7 +60,7 @@ export function QuickSwitcher() {
           data-switcher-status=""
           role="status"
           aria-live="polite"
-          class="m-0 px-3 text-xs font-semibold tracking-wide text-text-3 uppercase empty:hidden"
+          class="m-0 px-3 text-xs font-semibold text-text-3 empty:hidden"
         ></p>
         <ul
           id={listId}

@@ -12,3 +12,10 @@
     0 0 0 1px var(--uw-line-strong);
   --uw-shadow-person: 0 0 0 3px var(--uw-glow-human), 0 0 16px -4px var(--uw-human);
 }
+:root {
+  --uw-motion-reveal: 120ms;
+  --uw-motion-popover: 160ms;
+  --uw-motion-panel: 200ms;
+  --uw-motion-ease: cubic-bezier(0, 0, 0.2, 1);
+  --uw-delay-tooltip: 500ms;
+}

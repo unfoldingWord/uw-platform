@@ -3,10 +3,11 @@ import type { Child } from 'hono/jsx';
 import { formatInstant } from '@uw/core/dates';
 import { formatCount, formatMoney } from '@uw/core/money';
 import type { PlaneIndicator } from '@uw/harness';
+import { fieldLabel } from '@uw/ui/components/field.tsx';
 import { Kpi } from '@uw/ui/components/kpi.tsx';
 import { Note } from '@uw/ui/components/note.tsx';
-import { PageHead } from '@uw/ui/components/page-head.tsx';
 import { Table } from '@uw/ui/components/table.tsx';
+import { ListShape } from '@uw/ui/shapes/list.tsx';
 import { reasonText } from '@uw/ui/components/text.ts';
 import type { AppEnv } from '../../deps.ts';
 import { sweepsBacking } from '../../health/agent-plane.ts';
@@ -127,15 +128,14 @@ const levels = ['open', 'holding', 'pausing'] as const;
 function BreakerFigures(props: { readonly breaker: Breaker }) {
   const { breaker } = props;
   return (
-    <div class="mb-5 grid grid-cols-1 gap-5 rounded-lg bg-surface p-5 shadow-1 md:grid-cols-2">
+    <div class="grid grid-cols-1 gap-5 md:grid-cols-2">
       <Kpi
         label="Spent this month"
         value={breaker.spent}
         detail={`of the ${breaker.cap} cap · ${breaker.percent} percent`}
-        plain
       />
       <div class="flex flex-col gap-2">
-        <p class="m-0 text-xs text-text-3">Level</p>
+        <p class={`m-0 ${fieldLabel}`}>Level</p>
         <ol class="m-0 grid list-none grid-cols-3 gap-1 p-0">
           {levels.map((level) => (
             <li
@@ -146,7 +146,7 @@ function BreakerFigures(props: { readonly breaker: Breaker }) {
             </li>
           ))}
         </ol>
-        <p class="m-0 text-xs text-text-3">
+        <p class="m-0 text-sm text-text-3">
           Open lets runs start. Holding stops new runs. Pausing stops runs in progress.
         </p>
       </div>
@@ -183,14 +183,13 @@ export async function healthListScreen(c: Context<AppEnv>): Promise<Response> {
   return renderScreen(
     c,
     spec,
-    <>
-      <PageHead eyebrow="Health" title={title} lede={lede} />
+    <ListShape head={{ eyebrow: 'Health', title, lede }}>
       {listing.breaker === undefined ? null : <BreakerFigures breaker={listing.breaker} />}
       {listing.rows.length === 0 ? (
         <Note>Nothing to list for you here.</Note>
       ) : (
         <Table caption={title} columns={listing.columns} rows={listing.rows} />
       )}
-    </>,
+    </ListShape>,
   );
 }

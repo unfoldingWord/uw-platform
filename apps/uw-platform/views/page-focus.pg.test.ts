@@ -72,7 +72,7 @@ async function readViewSitsOnASheet(db: Database): Promise<void> {
   expect(document.querySelector('main a[rel="next"]')?.getAttribute('href')).toBe(
     `/pages/${made.last}`,
   );
-  const more = document.querySelector('main details[data-page-more]');
+  const more = document.querySelector('main [data-page-more]');
   expect(more?.textContent).toContain('Move, copy or retire');
   expect(more?.textContent).toContain('Export as markdown');
   expect(document.querySelector('main [data-comment-passage]')).not.toBeNull();
@@ -83,7 +83,7 @@ async function readerGetsNoManageEntries(db: Database): Promise<void> {
   const made = await world(db);
   const page = await getHtml(db, made.outsider, `/pages/${made.middle}`);
   const document = documentOf(page.text);
-  const more = document.querySelector('main details[data-page-more]');
+  const more = document.querySelector('main [data-page-more]');
   expect(more?.textContent).not.toContain('Move, copy or retire');
   expect(document.querySelector('main a[aria-label="Edit this page"]')).toBeNull();
 }
@@ -97,20 +97,44 @@ function carriesTheEditor(headers: Headers, document: Document): void {
   expect(document.querySelector('link[rel="stylesheet"][href^="/assets/editor-"]')).not.toBeNull();
 }
 
-async function editModeIsFocused(db: Database): Promise<void> {
+function layoutOf(document: Document): readonly string[] {
+  const shape = document.querySelector('main [data-shape="document"]');
+  return [
+    shape?.querySelector(':scope > [data-band]') === null ? 'no band' : 'band',
+    shape?.querySelector('h1')?.textContent ?? 'no title',
+    shape?.querySelector('aside[aria-label="Properties"]') === null ? 'no rail' : 'rail',
+  ];
+}
+
+function sharesTheReadLayout(edit: Document, read: Document): void {
+  expect(layoutOf(edit)).toEqual(['band', 'Bravo guide', 'rail']);
+  expect(layoutOf(edit)).toEqual(layoutOf(read));
+  expect(read.querySelector('main form, main textarea, main input')).toBeNull();
+  expect(read.querySelector('script[src^="/assets/editor-"]')).toBeNull();
+}
+
+function bandHoldsCancelAndSave(form: Element | null, pageId: string): void {
+  expect(form?.getAttribute('action')).toBe(`/pages/${pageId}/edit`);
+  const band = form?.querySelector('[data-edit-bar]');
+  expect(band?.querySelector('[data-leave-edit]')?.textContent).toContain('Cancel');
+  expect(band?.querySelector('button[type="submit"]')?.textContent).toContain('Save');
+  expect(band?.querySelector('[data-editor-discard]')).not.toBeNull();
+  expect(band?.querySelector('[data-editor-people]')).not.toBeNull();
+}
+
+async function editStaysInTheFrame(db: Database): Promise<void> {
   const made = await world(db);
   const edit = await getHtml(db, made.editor, `/pages/${made.middle}/edit`);
   expect(edit.status).toBe(200);
   expect(await screenProblems(edit.text)).toEqual([]);
   const document = documentOf(edit.text);
-  expect(document.querySelector('[data-frame]')).toBeNull();
-  expect(document.querySelector('aside[data-side]')).toBeNull();
+  expect(document.querySelector('[data-frame]')).not.toBeNull();
+  expect(document.querySelector('[data-focus]')).toBeNull();
+  expect(document.querySelector('aside[data-side] a[href="/wiki"][data-open]')).not.toBeNull();
+  const read = documentOf((await getHtml(db, made.editor, `/pages/${made.middle}`)).text);
+  sharesTheReadLayout(document, read);
   const form = document.querySelector('main form[data-page-edit]');
-  expect(form?.querySelector('[data-edit-bar] button[type="submit"]')?.textContent).toContain(
-    'Save',
-  );
-  expect(form?.querySelector('[data-edit-bar] [data-editor-discard]')).not.toBeNull();
-  expect(form?.querySelector('[data-edit-bar] [data-editor-people]')).not.toBeNull();
+  bandHoldsCancelAndSave(form, made.middle);
   carriesTheEditor(edit.headers, document);
   expect(form?.querySelector('input[name="title"]')?.getAttribute('value')).toBe('Bravo guide');
   expect(
@@ -127,7 +151,7 @@ async function readerStaysInTheFrame(db: Database): Promise<void> {
 }
 
 describe.skipIf(!testServer)(
-  'ADR 0026 pages are found in the tree, read under a band and edited in focus',
+  'ADR 0026 and ADR 0029 pages are found in the tree, read under a band and edited in place',
   () => {
     it('opens the page tree at the page being read, showing only areas the reader may read', () =>
       withAppDatabase(treeShowsWhereTheReaderIs));
@@ -138,8 +162,8 @@ describe.skipIf(!testServer)(
     it('offers a reader neither the manage entries nor the pencil', () =>
       withAppDatabase(readerGetsNoManageEntries));
 
-    it('edits in focus mode: no sidebar, one bar with Back, Discard and Save inside the form', () =>
-      withAppDatabase(editModeIsFocused));
+    it("edits in the frame, on the read view's layout, with Cancel, Discard and Save in its band", () =>
+      withAppDatabase(editStaysInTheFrame));
 
     it('keeps a person who may not write the page in the ordinary frame', () =>
       withAppDatabase(readerStaysInTheFrame));

@@ -3,7 +3,7 @@ import { Badge } from './badge.tsx';
 import { HumanMark, humanLane } from './human-action.tsx';
 import { domId } from './text.ts';
 
-const column = 'flex w-aside shrink-0 flex-col gap-2 rounded-md bg-lane p-3';
+const column = 'flex w-aside shrink-0 flex-col gap-2 rounded-lg bg-raised p-2';
 
 export type LaneFact = {
   readonly label: string;
@@ -66,11 +66,8 @@ export function Lane(props: {
       data-folded={props.folded === true ? 'true' : undefined}
       class={`${column} ${gate ? humanLane : ''}`}
     >
-      <div class="flex items-center gap-2 px-1">
-        <h2
-          id={headingId}
-          class="m-0 min-w-0 truncate text-xs font-heavy tracking-wide text-text-3 uppercase"
-        >
+      <div class="flex items-center gap-2 px-1 pt-1">
+        <h2 id={headingId} class="m-0 min-w-0 truncate text-sm font-heavy text-text">
           {props.title}
         </h2>
         <p class="m-0 ml-auto font-mono text-xs whitespace-nowrap text-text-3">
@@ -83,7 +80,7 @@ export function Lane(props: {
       <div class="flex flex-col gap-2">
         {props.children}
         {props.count === 0 ? (
-          <p class="m-0 rounded-md border border-dashed border-line px-3 py-3 text-center text-xs text-text-3">
+          <p class="m-0 rounded-md border border-dashed border-line px-3 py-3 text-center text-sm text-text-3">
             No items
           </p>
         ) : null}

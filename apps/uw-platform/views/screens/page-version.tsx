@@ -2,10 +2,10 @@ import type { Context } from 'hono';
 import { raw } from 'hono/html';
 import { updatePageCommandSchema } from '@uw/contracts';
 import { formatInstant } from '@uw/core/dates';
-import { Card } from '@uw/ui/components/card.tsx';
-import { commandButton } from '@uw/ui/components/command-form.tsx';
+import { Button } from '@uw/ui/components/button.tsx';
 import { Note } from '@uw/ui/components/note.tsx';
-import { PageHead } from '@uw/ui/components/page-head.tsx';
+import { Section } from '@uw/ui/components/section.tsx';
+import { DocumentShape } from '@uw/ui/shapes/document.tsx';
 import { reasonText } from '@uw/ui/components/text.ts';
 import type { AppEnv } from '../../deps.ts';
 import { lineChanges, type LineChange } from '../../pages/diff.ts';
@@ -15,13 +15,14 @@ import { updatePage } from '../../pages/store.ts';
 import { renderScreen, screenKernel, screenRefusal, type ScreenKernel } from '../parts/frame.tsx';
 import { pageNames } from '../parts/names.ts';
 import {
+  markOf,
   pageLink,
   pageScreenSpec,
   shownPage,
-  typeWords,
   type ShownPage,
 } from '../parts/page-shown.ts';
 import { printedPage } from '../parts/page-printed.ts';
+import { PageBand } from '../parts/page-read.tsx';
 import { idParam } from '../parts/params.ts';
 import { pagePath, pageVersionPath } from '../parts/paths.ts';
 import { shownPerson, shownText, Who, type Reading } from '../parts/person.tsx';
@@ -38,7 +39,7 @@ type Old = {
   readonly snapshot: Kept;
 };
 
-const line = 'block px-3 py-1 font-mono text-xs whitespace-pre-wrap no-underline';
+const line = 'block rounded-sm px-3 py-1 font-mono text-xs whitespace-pre-wrap no-underline';
 const looks: Readonly<Record<LineChange['kind'], string>> = {
   same: `${line} text-text-3`,
   added: `${line} bg-ok-soft text-ok-text`,
@@ -57,34 +58,29 @@ function Changes(props: { readonly old: Old }) {
   const changes = lineChanges(snapshot.page.bodyMd, shown.page.bodyMd);
   const differs = changes?.some((change) => change.kind !== 'same') ?? true;
   return (
-    <Card
+    <Section
       title="Changed since"
       sub={`From version ${String(snapshot.page.version)} to version ${String(shown.page.version)}`}
-      flush
     >
       {changes === null ? (
-        <p class="m-0 px-4 py-3 text-sm text-text-2">
-          These versions are too long to compare line by line.
-        </p>
+        <p class="m-0 text-sm text-text-2">These versions are too long to compare line by line.</p>
       ) : differs ? (
-        <div data-changes="" class="flex flex-col py-2">
+        <div data-changes="" class="-mx-3 flex flex-col">
           {changes.map((change) => (
             <Line change={change} />
           ))}
         </div>
       ) : (
-        <p class="m-0 px-4 py-3 text-sm text-text-2">
-          The text is the same as the current version.
-        </p>
+        <p class="m-0 text-sm text-text-2">The text is the same as the current version.</p>
       )}
-    </Card>
+    </Section>
   );
 }
 
 function Restore(props: { readonly old: Old }) {
   const { shown, snapshot } = props.old;
   return (
-    <Card title="Restore" sub="Saves this text and title as a new version. Nothing is deleted">
+    <Section title="Restore" sub="Saves this text and title as a new version. Nothing is deleted">
       <form
         method="post"
         action={pageVersionPath(shown.page.id, snapshot.page.version)}
@@ -93,12 +89,10 @@ function Restore(props: { readonly old: Old }) {
         <input type="hidden" name="expectedVersion" value={String(shown.page.version)} />
         <input type="hidden" name="requestId" value={crypto.randomUUID()} />
         <p class="m-0">
-          <button type="submit" class={commandButton}>
-            Restore this version
-          </button>
+          <Button type="submit">Restore this version</Button>
         </p>
       </form>
-    </Card>
+    </Section>
   );
 }
 
@@ -122,7 +116,7 @@ function SavedBy(props: { readonly saved: Kept['saved']; readonly reading: Readi
   const { saved } = props;
   if (saved === null) return null;
   return (
-    <p class="m-0 flex flex-wrap items-center gap-2 text-sm text-text-3">
+    <p class="m-0 flex flex-wrap items-center gap-2">
       <span>Saved by</span>
       <Who
         reading={props.reading}
@@ -152,31 +146,28 @@ async function render(c: Context<AppEnv>, old: Old, refused: string | null): Pro
   return renderScreen(
     c,
     { ...spec, ...(await printedPage(c, snapshot.page)) },
-    <>
-      <PageHead
-        eyebrow={typeWords[shown.page.type] ?? shown.page.type}
-        title={snapshot.page.title}
-        lede={ledeOf(snapshot)}
-      />
-      <div class="flex flex-col gap-5">
-        {refused === null ? null : <Note>{`Not restored: ${reasonText(refused)}.`}</Note>}
-        <SavedBy saved={snapshot.saved} reading={{ reader: actor, at: screen.at }} />
-        <p class="m-0">
-          <a href={pagePath(shown.page.id)} class={pageLink}>
-            {current ? 'This is the current version' : 'Back to the current version'}
-          </a>
-        </p>
-        <Card>
-          <div data-page-body="">{raw(rendered.html)}</div>
-        </Card>
-        {current ? null : (
-          <div data-pdf-hidden="">
-            <Changes old={old} />
-          </div>
-        )}
-        {current || !shown.canEdit ? null : <Restore old={old} />}
-      </div>
-    </>,
+    <DocumentShape
+      band={
+        <PageBand
+          status={<SavedBy saved={snapshot.saved} reading={{ reader: actor, at: screen.at }} />}
+          actions={
+            <a href={pagePath(shown.page.id)} class={pageLink}>
+              {current ? 'This is the current version' : 'Back to the current version'}
+            </a>
+          }
+        />
+      }
+      head={{ eyebrow: markOf(shown.page), title: snapshot.page.title, lede: ledeOf(snapshot) }}
+    >
+      {refused === null ? null : <Note>{`Not restored: ${reasonText(refused)}.`}</Note>}
+      <div data-page-body="">{raw(rendered.html)}</div>
+      {current ? null : (
+        <div data-pdf-hidden="">
+          <Changes old={old} />
+        </div>
+      )}
+      {current || !shown.canEdit ? null : <Restore old={old} />}
+    </DocumentShape>,
   );
 }
 

@@ -35,6 +35,15 @@ describe('the bar that shows a page is on its way', () => {
     expect(clicked(page('<a id="go" href="/runs">x</a>'), '#go', { metaKey: true })).toBe(false);
   });
 
+  it('stops when leaving the editor requires confirmation', () => {
+    const dom = page('<a id="go" href="/runs">Runs</a>');
+    expect(clicked(dom, '#go')).toBe(true);
+    const event = new dom.window.Event('beforeunload', { cancelable: true });
+    event.preventDefault();
+    dom.window.dispatchEvent(event);
+    expect(dom.window.document.documentElement.hasAttribute('data-navigating')).toBe(false);
+  });
+
   it('starts for a plain form post but not one a script took over, and stops on return', () => {
     const dom = page('<form id="plain"></form><form id="taken"></form>');
     const document = dom.window.document;

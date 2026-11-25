@@ -1,8 +1,9 @@
 import type { Context } from 'hono';
 import { setAreaHomeCommandSchema, type ErrorReason, type Page } from '@uw/contracts';
 import { can } from '@uw/core/acl';
-import { Card } from '@uw/ui/components/card.tsx';
-import { commandButton } from '@uw/ui/components/command-form.tsx';
+import { Button } from '@uw/ui/components/button.tsx';
+import { Hairline, Section } from '@uw/ui/components/section.tsx';
+import { FormActions } from '@uw/ui/shapes/form.tsx';
 import type { AppEnv } from '../../deps.ts';
 import { homePageOf, setAreaHome } from '../../pages/area-homes.ts';
 import type { ScreenKernel } from './frame.tsx';
@@ -25,25 +26,28 @@ export function AreaHomeCard(props: { readonly page: Page; readonly state: HomeS
   const { page, state } = props;
   if (!state.admin) return null;
   return (
-    <Card
-      title="Area home"
-      sub={
-        state.isHome
-          ? `This is the home page of area ${page.jdArea}`
-          : `Shown first when someone opens area ${page.jdArea}`
-      }
-    >
-      <form method="post" action={pageManagePath(page.id)} class="flex flex-col gap-4">
-        <input type="hidden" name="intent" value="home" />
-        <input type="hidden" name="requestId" value={crypto.randomUUID()} />
-        <input type="hidden" name="home" value={state.isHome ? 'clear' : 'set'} />
-        <p class="m-0">
-          <button type="submit" class={commandButton}>
-            {state.isHome ? 'Stop using it as the home page' : 'Make it the home page'}
-          </button>
-        </p>
-      </form>
-    </Card>
+    <>
+      <Hairline />
+      <Section
+        title="Area home"
+        sub={
+          state.isHome
+            ? `This is the home page of area ${page.jdArea}`
+            : `Shown first when someone opens area ${page.jdArea}`
+        }
+      >
+        <form method="post" action={pageManagePath(page.id)} class="flex flex-col gap-4">
+          <input type="hidden" name="intent" value="home" />
+          <input type="hidden" name="requestId" value={crypto.randomUUID()} />
+          <input type="hidden" name="home" value={state.isHome ? 'clear' : 'set'} />
+          <FormActions>
+            <Button type="submit">
+              {state.isHome ? 'Stop using it as the home page' : 'Make it the home page'}
+            </Button>
+          </FormActions>
+        </form>
+      </Section>
+    </>
   );
 }
 

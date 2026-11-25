@@ -60,28 +60,21 @@ async function areasInPrototypeOrder(db: Database): Promise<void> {
   const headings = [...nav.querySelectorAll('[data-area]')].map((element) =>
     element.getAttribute('data-area'),
   );
-  expect(headings).toEqual([
-    '00-09',
-    '10-19',
-    '20-29',
-    '30-39',
-    '40-49',
-    '50-59',
-    '60-79',
-    '80-89',
-    '90-99',
-  ]);
+  expect(headings).toEqual(['00-09', '10-19', '30-39', '90-99']);
 }
 
-async function unbuiltAreDimmed(db: Database): Promise<void> {
+async function unbuiltLeaveForMore(db: Database): Promise<void> {
   await parked(db);
   const document = documentOf((await getHtml(db, ROWAN, '/', {}, clock)).text);
   const nav = desktopNav(document);
+  const more = nav.querySelector('[data-more]');
+  expect(more?.querySelector('summary')?.textContent).toContain('More');
   for (const label of ['Meetings', 'Ledger', 'Modules', 'Grants', 'Engagements', 'Development']) {
     const row = [...nav.querySelectorAll('[aria-disabled="true"]')].find((element) =>
       element.textContent?.includes(label),
     );
-    expect(row?.getAttribute('class'), label).toContain('opacity-45');
+    expect(row?.closest('[data-more]'), label).not.toBeNull();
+    expect(row?.getAttribute('class'), label).toContain('text-side-text-3');
     expect(row?.textContent, label).not.toMatch(/Coming Soon|Future/);
     expect(row?.closest('a'), label).toBeNull();
   }
@@ -89,10 +82,8 @@ async function unbuiltAreDimmed(db: Database): Promise<void> {
   expect(document.querySelector('header form[role="search"]')?.getAttribute('action')).toBe(
     '/search',
   );
-  const finance = desktopNav(document).querySelector('[data-area="20-29"]');
-  expect(finance?.getAttribute('data-unbuilt')).toBe('true');
-  const infrastructure = desktopNav(document).querySelector('[data-area="30-39"]');
-  expect(infrastructure?.hasAttribute('data-unbuilt')).toBe(false);
+  expect(nav.querySelector('[data-area="20-29"]')).toBeNull();
+  expect(nav.querySelector('[data-area="30-39"]')?.textContent).toContain('Infrastructure');
 }
 
 async function statusBarSays(db: Database): Promise<void> {
@@ -128,10 +119,10 @@ async function noProblems(db: Database): Promise<void> {
 describe.skipIf(!testServer)('UI-5 the frame', () => {
   it('UI-5 the sidebar carries the logo, Today with its count, each workflow under Agent Queues, Health and the person', () =>
     withAppDatabase(sidebarReadsTheFrame));
-  it('UI-5 the sidebar groups the platform by area in the prototype order', () =>
+  it('UI-5 the sidebar groups the platform by area in the prototype order, leaving out groups with nothing built', () =>
     withAppDatabase(areasInPrototypeOrder));
-  it('UI-5 every unbuilt module and an all-unbuilt group are dimmed, carry no pill and open nothing, and search is built', () =>
-    withAppDatabase(unbuiltAreDimmed));
+  it('ADR 0029 every unbuilt module leaves its group for More, carries no pill and opens nothing, an all-unbuilt group is gone, and search is built', () =>
+    withAppDatabase(unbuiltLeaveForMore));
   it('UI-5 the status bar says what loaded, what is open, what is on, the commit and where', () =>
     withAppDatabase(statusBarSays));
   it('UI-5 on a phone a header shows the mark, the page and the count waiting', () =>

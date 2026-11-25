@@ -99,13 +99,13 @@ async function areaAdmin(db: Database): Promise<void> {
   const detail = await page(app, cast.admin.email, credentialPath(finance));
   expect(detail.status).toBe(200);
   expect(cards(detail.document)).toEqual([
-    'About',
     'Value',
     'Where it can be used',
     'Reveal grants',
     'Rotate',
     'Revoke',
     'Access log',
+    'About',
   ]);
   expect(commands(detail.document)).toEqual([
     'bind_credential',
@@ -137,7 +137,7 @@ async function viewerAndEditor(db: Database): Promise<void> {
     expect(commands(list.document)).toEqual([]);
     expect(list.text).toContain('You see that each one exists, never its value.');
     const detail = await page(app, who.email, credentialPath(finance));
-    expect(cards(detail.document)).toEqual(['About', 'Value']);
+    expect(cards(detail.document)).toEqual(['Value', 'About']);
     expect(commands(detail.document)).toEqual([]);
     expect(detail.document.querySelector('form[data-reveal]')).toBeNull();
     expect(detail.text).toContain(cast.editor.email);
@@ -241,11 +241,11 @@ async function logAndRevoked(db: Database): Promise<void> {
   await app.send(cast.admin.email, { command: 'revoke_credential', credentialId: finance });
   const revoked = await page(app, cast.admin.email, credentialPath(finance));
   expect(cards(revoked.document)).toEqual([
-    'About',
     'Value',
     'Where it can be used',
     'Reveal grants',
     'Access log',
+    'About',
   ]);
   expect(commands(revoked.document)).toEqual(['unbind_credential']);
   expect(revoked.text).toContain('This credential is revoked. Nobody can reveal its value.');

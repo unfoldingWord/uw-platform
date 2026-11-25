@@ -177,6 +177,7 @@ async function cappedSaysAtLeast(db: Database): Promise<void> {
   expect(document.querySelector('main [role="note"]')?.textContent).toBe(
     'At least 50 runs failed on your items in the last 7 days. The newest 50 are listed.',
   );
+  expect(document.querySelector('main dl dt + dd')?.textContent).toBe('At least 52');
   expect(linksOf(page.text)).toHaveLength(52);
 }
 
@@ -229,7 +230,8 @@ async function emptyHome(db: Database): Promise<void> {
   expect(page.status).toBe(200);
   expect(linksOf(page.text)).toEqual([]);
   const { document } = new JSDOM(page.text).window;
-  expect(document.querySelector('main [role="note"]')?.textContent).toBe(
+  expect(document.querySelector('main [role="note"]')).toBeNull();
+  expect(document.querySelector('main')?.textContent).toContain(
     'Nothing is waiting on you right now.',
   );
 }

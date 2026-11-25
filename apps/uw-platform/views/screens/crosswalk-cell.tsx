@@ -1,9 +1,10 @@
 import type { Context } from 'hono';
 import { z } from 'zod';
 import { cascadeTierSchema, jdAreaSchema } from '@uw/contracts';
-import { Card } from '@uw/ui/components/card.tsx';
-import { PageHead } from '@uw/ui/components/page-head.tsx';
+import { EmptyState } from '@uw/ui/components/empty-state.tsx';
+import { Section } from '@uw/ui/components/section.tsx';
 import { Table } from '@uw/ui/components/table.tsx';
+import { ListShape } from '@uw/ui/shapes/list.tsx';
 import type { AppEnv } from '../../deps.ts';
 import { cellEntities, type CellEntity, type CellTier } from '../../crosswalk/cells.ts';
 import { can } from '@uw/core/acl';
@@ -12,11 +13,10 @@ import { PlaceForm, crosswalkCrumbs, nodeChoices, tierWord } from '../parts/cros
 import { KeptOutcome } from '../parts/access-forms.tsx';
 import { renderScreen, screenKernel, screenRefusal } from '../parts/frame.tsx';
 import { areaLabel, moduleCodes, pageNames } from '../parts/names.ts';
-import { pageLink } from '../parts/page-shown.ts';
+import { cellLink } from '../parts/collection-cells.tsx';
 import { collectionRowPath, crosswalkCellPath, itemPath, pagePath } from '../parts/paths.ts';
 import { notFound } from './not-found.tsx';
 
-const empty = 'm-0 px-4 py-3 text-sm text-text-3';
 const cellTierSchema = z.union([cascadeTierSchema, z.literal('unplaced')]);
 const kindWords = { page: 'Page', task: 'Task', item: 'Item' } as const;
 
@@ -45,7 +45,7 @@ function EntityTable(props: {
   readonly entities: readonly CellEntity[];
   readonly choices: Choices;
 }) {
-  if (props.entities.length === 0) return <p class={empty}>Nothing is filed here.</p>;
+  if (props.entities.length === 0) return <EmptyState title="Nothing is filed here." />;
   const columns = [
     { key: 'title', label: 'Title' },
     { key: 'kind', label: 'Kind' },
@@ -53,14 +53,14 @@ function EntityTable(props: {
   ];
   const rows = props.entities.map((entity) => ({
     title: (
-      <a href={hrefOf(entity)} class={pageLink}>
+      <a href={hrefOf(entity)} class={cellLink}>
         {entity.title}
       </a>
     ),
     kind: kindWords[entity.kind],
     node: placedCell(entity, props.choices),
   }));
-  return <Table caption="Filed here" columns={columns} rows={rows} bare />;
+  return <Table caption="Filed here" columns={columns} rows={rows} />;
 }
 
 export async function crosswalkCellScreen(c: Context<AppEnv>): Promise<Response> {
@@ -89,20 +89,18 @@ export async function crosswalkCellScreen(c: Context<AppEnv>): Promise<Response>
   return renderScreen(
     c,
     spec,
-    <>
-      <PageHead eyebrow={pageNames.crosswalk} title={title} />
+    <ListShape head={{ eyebrow: pageNames.crosswalk, title }}>
       <KeptOutcome />
-      <Card
+      <Section
         title="Filed here"
         sub={
           writes
             ? 'Up to 200 of each kind. Choose where each sits in the cascade.'
             : 'Up to 200 of each kind'
         }
-        flush
       >
         <EntityTable entities={found} choices={choices} />
-      </Card>
-    </>,
+      </Section>
+    </ListShape>,
   );
 }

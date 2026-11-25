@@ -64,7 +64,7 @@ async function browseListsWhatYouMayRead(db: Database): Promise<void> {
   const document = documentOf(page.text);
   expect(document.querySelector('main h1')?.textContent).toBe('Pages & Wiki');
   expect(texts(document, 'main [data-area] h2')).toEqual(['00-09 unfoldingWord Home']);
-  expect(texts(document, 'main [data-area="00-09"] a[data-category]')).toEqual([
+  expect(texts(document, 'main [data-area="00-09"] [data-category] a')).toEqual([
     '01 3 pages',
     '02 1 page',
   ]);
@@ -78,9 +78,9 @@ async function clusterIsOneGroup(db: Database): Promise<void> {
   const page = await getHtml(db, made.field, '/wiki');
   const document = documentOf(page.text);
   expect(texts(document, 'main [data-area] h2')).toEqual(['60-79 Field Programs']);
-  expect(texts(document, 'main [data-area="60-79"] a[data-category]')).toEqual(['61 1 page']);
+  expect(texts(document, 'main [data-area="60-79"] [data-category] a')).toEqual(['61 1 page']);
   const all = await getHtml(db, 'rowan.test@unfoldingword.org', '/wiki');
-  expect(texts(documentOf(all.text), 'main [data-area="60-79"] a[data-category]')).toEqual([
+  expect(texts(documentOf(all.text), 'main [data-area="60-79"] [data-category] a')).toEqual([
     '61 1 page',
     '74 1 page',
   ]);
@@ -111,7 +111,7 @@ async function adminsNameCategories(db: Database): Promise<void> {
   const renamed = await nameCategory(db, made.admin, '01', 'Knowledge Base');
   expect(renamed.body).toMatchObject({ status: 'accepted' });
   const browse = documentOf((await getHtml(db, made.reader, '/wiki')).text);
-  expect(texts(browse, 'main [data-area="00-09"] a[data-category]')[0]).toBe(
+  expect(texts(browse, 'main [data-area="00-09"] [data-category] a')[0]).toBe(
     '01 Knowledge Base 3 pages',
   );
   const category = documentOf((await getHtml(db, made.admin, '/wiki/01')).text);

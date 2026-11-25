@@ -2,9 +2,11 @@ import type { Holding } from './holder.tsx';
 import { shownIdentity, Who } from './person.tsx';
 import { formatDate } from '@uw/core/dates';
 import { grantableFor, type AgentsView, type StandingPermission } from '@uw/harness';
-import { Card } from '@uw/ui/components/card.tsx';
-import { CommandForm, commandButton } from '@uw/ui/components/command-form.tsx';
-import { SelectField } from '@uw/ui/components/field.tsx';
+import { Button } from '@uw/ui/components/button.tsx';
+import { CommandForm } from '@uw/ui/components/command-form.tsx';
+import { EmptyState } from '@uw/ui/components/empty-state.tsx';
+import { fieldControl, fieldLabel, SelectField } from '@uw/ui/components/field.tsx';
+import { Section } from '@uw/ui/components/section.tsx';
 import { Table } from '@uw/ui/components/table.tsx';
 import { domId } from '@uw/ui/components/text.ts';
 import { capabilityWord } from './agent-words.ts';
@@ -16,9 +18,6 @@ const columns = [
   { key: 'ends', label: 'Ends' },
   { key: 'revoke', label: 'Revoke' },
 ];
-
-const dateControl =
-  'rounded-md border border-line bg-surface px-3 py-1 text-sm text-text outline-offset-2 outline-accent-text focus-visible:outline-2';
 
 export type PermissionViewer = {
   readonly admin: boolean;
@@ -35,13 +34,13 @@ function Revoke(props: { readonly harnessId: string; readonly permission: Standi
   return (
     <CommandForm harnessId={props.harnessId} command="revoke_delegation" itemId={permission.id}>
       <input type="hidden" name="delegationId" value={permission.id} />
-      <button
+      <Button
         type="submit"
-        class={commandButton}
-        aria-label={`Revoke ${capabilityWord(permission.capability)} for ${permission.agentTitle ?? permission.persona}`}
+        size="sm"
+        label={`Revoke ${capabilityWord(permission.capability)} for ${permission.agentTitle ?? permission.persona}`}
       >
         Revoke
-      </button>
+      </Button>
     </CommandForm>
   );
 }
@@ -72,10 +71,10 @@ export function EndsField(props: { readonly scope: string }) {
   const id = domId('field', 'expiresOn', props.scope);
   return (
     <div class="flex min-w-0 flex-col gap-1">
-      <label for={id} class="text-xs font-heavy tracking-wide text-text-3 uppercase">
+      <label for={id} class={fieldLabel}>
         Ends
       </label>
-      <input id={id} type="date" name="expiresOn" class={dateControl} />
+      <input id={id} type="date" name="expiresOn" class={fieldControl} />
     </div>
   );
 }
@@ -103,7 +102,7 @@ function GrantForm(props: { readonly view: AgentsView }) {
   const pairs = grantPairs(view);
   if (pairs.length === 0) {
     return (
-      <p class="m-0 border-t border-line px-4 py-3 text-sm text-text-3">
+      <p class="m-0 text-sm text-text-3">
         An agent needs to be live, with a kind of work, before it can be given a standing
         permission.
       </p>
@@ -111,15 +110,13 @@ function GrantForm(props: { readonly view: AgentsView }) {
   }
   const scope = view.harness.id;
   return (
-    <div class="border-t border-line px-4 py-3">
+    <div class="flex flex-col gap-2">
       <CommandForm harnessId={view.harness.id} command="schedule_regular_tweak">
         <SelectField name="grant" label="Agent and kind of work" scope={scope} choices={pairs} />
         <EndsField scope={scope} />
-        <button type="submit" class={commandButton}>
-          Grant
-        </button>
+        <Button type="submit">Grant</Button>
       </CommandForm>
-      <p class="m-0 mt-2 text-xs text-text-3">
+      <p class="m-0 text-xs text-text-3">
         With no end date, it lasts 90 days. You can revoke it at any time.
       </p>
     </div>
@@ -132,13 +129,12 @@ export function StandingPermissions(props: {
 }) {
   const { view, viewer } = props;
   return (
-    <Card
-      title="Standing permissions"
-      sub="Let an agent work without someone starting each run"
-      flush
-    >
+    <Section title="Standing permissions" sub="Let an agent work without someone starting each run">
       {view.permissions.length === 0 ? (
-        <p class="m-0 px-4 py-3 text-sm text-text-3">No standing permissions on this workflow.</p>
+        <EmptyState
+          title="No standing permissions on this workflow."
+          text="An admin grants one to a live agent for one kind of work."
+        />
       ) : (
         <Table
           caption="Standing permissions"
@@ -148,11 +144,11 @@ export function StandingPermissions(props: {
         />
       )}
       {view.admin ? <GrantForm view={view} /> : null}
-      <p class="m-0 border-t border-line px-4 py-3 text-sm text-text-3">
+      <p class="m-0 text-sm text-text-3">
         Each one covers one kind of work and reaches only the stages in the matching phase: build,
         review and fix reach the build stages, iterate reaches the iterate stages, and merge reaches
         a stage whose exit an agent may decide.
       </p>
-    </Card>
+    </Section>
   );
 }

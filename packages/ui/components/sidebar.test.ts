@@ -92,7 +92,7 @@ const longArea: readonly NavSection[] = [
   {
     heading: 'Internal Operations & Administration',
     code: '10-19',
-    items: [{ label: 'Directory & Access' }],
+    items: [{ label: 'Directory & Access', href: '/access' }],
   },
 ];
 
@@ -141,17 +141,18 @@ describe('UI-5 the sidebar becomes a phone header below the md breakpoint', () =
     expect(displayRules.some((rule) => rule.selector.startsWith('.hidden'))).toBe(true);
   });
 
-  it('UI-5 an item without a page is dimmed, carries no pill and is not a link', async () => {
+  it('ADR 0029 an item without a page leaves its group for More, quiet and not a link', async () => {
     const document = await frame();
-    const ledger = [...document.querySelectorAll('aside [aria-disabled="true"]')].find((row) =>
-      row.textContent?.includes('Ledger'),
+    const ledger = [...document.querySelectorAll('aside [data-more] [aria-disabled="true"]')].find(
+      (row) => row.textContent?.includes('Ledger'),
     );
-    expect(ledger?.getAttribute('class')).toContain('opacity-45');
+    expect(ledger?.getAttribute('class')).toContain('text-side-text-3');
     expect(ledger?.textContent).not.toMatch(/Coming Soon|Future/);
     expect(ledger?.closest('a')).toBeNull();
     expect(document.querySelector('aside [data-area="30-39"]')?.textContent).toContain(
       'Infrastructure',
     );
+    expect(found(document, 'aside [data-more] summary').textContent).toContain('More');
   });
 });
 

@@ -1,7 +1,8 @@
 import type { Context } from 'hono';
-import { Card } from '@uw/ui/components/card.tsx';
-import { PageHead } from '@uw/ui/components/page-head.tsx';
+import { EmptyState } from '@uw/ui/components/empty-state.tsx';
+import { Section } from '@uw/ui/components/section.tsx';
 import { Table } from '@uw/ui/components/table.tsx';
+import { ListShape } from '@uw/ui/shapes/list.tsx';
 import {
   manageableAreas,
   seenCredentials,
@@ -18,9 +19,8 @@ import { renderScreen, screenKernel, screenRefusal } from '../parts/frame.tsx';
 import { areaLabel, everyArea, moduleCodes, pageNames } from '../parts/names.ts';
 import { credentialPath, credentialsPath } from '../parts/paths.ts';
 
-const empty = 'm-0 px-4 py-3 text-sm text-text-3';
 const link =
-  'font-heavy text-accent-text underline outline-offset-2 outline-accent-text focus-visible:outline-2';
+  'font-semibold text-text no-underline outline-offset-2 outline-accent-text hover:text-accent-text hover:underline focus-visible:outline-2';
 
 const columns = [
   { key: 'name', label: 'Credential' },
@@ -39,7 +39,7 @@ function NameCell(props: { readonly line: CredentialLine }) {
       <a href={credentialPath(line.id)} class={link}>
         {line.name}
       </a>
-      <span class="text-xs text-text-3">
+      <span class="text-sm text-text-3">
         {kindWord(line.kind)}
         {line.revealable ? ' · you can reveal it' : ''}
       </span>
@@ -86,34 +86,32 @@ export async function credentialsScreen(c: Context<AppEnv>): Promise<Response> {
   return renderScreen(
     c,
     spec,
-    <>
-      <PageHead title={pageNames.credentials} lede={ledeOf(lines, areas.length > 0)} />
+    <ListShape head={{ title: pageNames.credentials, lede: ledeOf(lines, areas.length > 0) }}>
       <KeptOutcome />
-      <div class="flex flex-col gap-5">
-        {areas.length === 0 ? null : (
-          <Card title="Add a credential" sub="Only in the areas you manage">
-            <CreateForm
-              areas={areas.map((area) => ({ value: area, label: areaLabel(area) }))}
-              owners={owners.map((person) => ({ value: person.personId, label: person.email }))}
-              self={viewer.personId}
-            />
-          </Card>
+      <Section title="Credentials" sub="What you can see" flush>
+        {lines.length === 0 ? (
+          <EmptyState
+            title="No credentials to show."
+            text="A credential appears here once you hold a grant on its area."
+          />
+        ) : (
+          <Table
+            caption="Credentials"
+            columns={columns}
+            rows={lines.map((line) => rowOf(line, { reader: screen.caller.actor, at: screen.at }))}
+            bare
+          />
         )}
-        <Card title="Credentials" sub="What you can see" flush>
-          {lines.length === 0 ? (
-            <p class={empty}>No credentials to show.</p>
-          ) : (
-            <Table
-              caption="Credentials"
-              columns={columns}
-              rows={lines.map((line) =>
-                rowOf(line, { reader: screen.caller.actor, at: screen.at }),
-              )}
-              bare
-            />
-          )}
-        </Card>
-      </div>
-    </>,
+      </Section>
+      {areas.length === 0 ? null : (
+        <Section title="Add a credential" sub="Only in the areas you manage">
+          <CreateForm
+            areas={areas.map((area) => ({ value: area, label: areaLabel(area) }))}
+            owners={owners.map((person) => ({ value: person.personId, label: person.email }))}
+            self={viewer.personId}
+          />
+        </Section>
+      )}
+    </ListShape>,
   );
 }

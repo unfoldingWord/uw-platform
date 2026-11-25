@@ -34,7 +34,6 @@ function wireKeys(page: Document): void {
 
 document.addEventListener('DOMContentLoaded', () => {
   const send: typeof fetch = (input, init) => window.fetch(input, init);
-  wireNavigating(document);
   const refresher = createRefresher({ document, fetch: send, morph: morphMain });
   void registerWorker(navigator);
   const commandDeps = {
@@ -62,6 +61,7 @@ document.addEventListener('DOMContentLoaded', () => {
   wirePrint(document, () => window.print());
   wireFavourite(document, send);
   wireKeys(document);
+  wireNavigating(document);
   wirePassageComment(document, {
     selected: () => {
       const selection = window.getSelection();

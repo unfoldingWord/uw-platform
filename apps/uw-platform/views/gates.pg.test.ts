@@ -468,7 +468,7 @@ async function delegatedMergeListed(world: GateWorld): Promise<void> {
   expect(page.text).toContain('Merged under a delegation');
   expect(page.text).toContain('granted by rowan.test@unfoldingword.org until');
   const document = new JSDOM(page.text).window.document;
-  const link = document.querySelector('#delegated-merges-heading + ul a');
+  const link = document.querySelector('section[aria-labelledby="delegated-merges-heading"] ul a');
   expect(link?.getAttribute('href')).toBe(itemPath(harnessId, itemId));
   expect(link?.textContent).toContain(title);
   expect(await screenProblems(page.text)).toEqual([]);

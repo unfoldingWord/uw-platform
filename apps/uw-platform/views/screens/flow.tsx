@@ -4,11 +4,11 @@ import { can } from '@uw/core/acl';
 import { formatDuration } from '@uw/core/dates';
 import { formatCount } from '@uw/core/money';
 import { VIEW_LIMIT, type FlowStage, type FlowView, type WorkflowDraftView } from '@uw/harness';
-import { Card } from '@uw/ui/components/card.tsx';
 import { HumanGateMark } from '@uw/ui/components/human-action.tsx';
 import { Note } from '@uw/ui/components/note.tsx';
-import { PageHead } from '@uw/ui/components/page-head.tsx';
+import { Section } from '@uw/ui/components/section.tsx';
 import { Table } from '@uw/ui/components/table.tsx';
+import { BoardShape } from '@uw/ui/shapes/board.tsx';
 import type { AppEnv } from '../../deps.ts';
 import { costText } from '../parts/costs.ts';
 import { DraftSection } from '../parts/draft-editor.tsx';
@@ -41,7 +41,10 @@ function StageCell(props: { readonly harnessId: string; readonly entry: FlowStag
   const { stage } = props.entry;
   return (
     <span class="flex flex-wrap items-center gap-2">
-      <a href={queuePath(props.harnessId, stage.key)} class={`text-accent-text underline ${focus}`}>
+      <a
+        href={queuePath(props.harnessId, stage.key)}
+        class={`text-accent-text underline-offset-2 hover:underline ${focus}`}
+      >
         {stage.title}
       </a>
       {stage.exitGate === 'human_approval' ? <HumanGateMark label="Person decides" /> : null}
@@ -77,22 +80,20 @@ function Diagram(props: {
   readonly at: Date;
 }) {
   return (
-    <Card
+    <Section
       title="Flow"
       sub="the live map of this workflow: stages in four phases, with forward and loop arrows"
     >
-      <div class="flex flex-col gap-3">
-        <FlowDiagram
-          harnessId={props.harnessId}
-          harnessTitle={props.view.harness.title}
-          stages={props.view.stages}
-          at={props.at}
-        />
-        <p data-fixed-note class="m-0 text-sm text-text-2">
-          {props.admin ? `${fixedWords} ${yoursWords}` : fixedWords}
-        </p>
-      </div>
-    </Card>
+      <FlowDiagram
+        harnessId={props.harnessId}
+        harnessTitle={props.view.harness.title}
+        stages={props.view.stages}
+        at={props.at}
+      />
+      <p data-fixed-note class="m-0 text-sm text-text-3">
+        {props.admin ? `${fixedWords} ${yoursWords}` : fixedWords}
+      </p>
+    </Section>
   );
 }
 
@@ -113,7 +114,7 @@ function FlowBody(props: {
   readonly holding: Holding;
 }) {
   return (
-    <div class="flex flex-col gap-5">
+    <>
       {props.view.capped ? <Note>{cappedNote}</Note> : null}
       <Diagram harnessId={props.harnessId} view={props.view} admin={props.admin} at={props.at} />
       <DraftSection
@@ -124,15 +125,15 @@ function FlowBody(props: {
         at={props.at}
         holding={props.holding}
       />
-      <Card title="Stage details" sub="what each stage holds, costs and waits on" flush>
+      <Section title="Stage details" sub="what each stage holds, costs and waits on" flush>
         <Table
           caption="Stages"
           columns={columns}
           rows={props.view.stages.map((entry) => rowOf(props.view, entry, props.at))}
           bare
         />
-      </Card>
-    </div>
+      </Section>
+    </>
   );
 }
 
@@ -165,12 +166,13 @@ export async function flowScreen(c: Context<AppEnv>): Promise<Response> {
   return renderScreen(
     c,
     spec,
-    <>
-      <PageHead
-        eyebrow={`Workflow · ${view.harness.template} template`}
-        title={view.harness.title}
-        lede={summaryOf(view)}
-      />
+    <BoardShape
+      head={{
+        eyebrow: `Workflow · ${view.harness.template} template`,
+        title: view.harness.title,
+        lede: summaryOf(view),
+      }}
+    >
       <FlowBody
         harnessId={harnessId}
         view={view}
@@ -179,6 +181,6 @@ export async function flowScreen(c: Context<AppEnv>): Promise<Response> {
         at={screen.at}
         holding={holding}
       />
-    </>,
+    </BoardShape>,
   );
 }

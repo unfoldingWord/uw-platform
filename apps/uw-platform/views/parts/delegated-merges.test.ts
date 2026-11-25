@@ -37,6 +37,6 @@ describe('MD-6 the delegated merges list says when it is capped', () => {
 
   it('MD-6 the title wraps at phone width', () => {
     const html = String(DelegatedMerges({ merged: { rows: [row], capped: false } }));
-    expect(html).toMatch(/<a [^>]*class="break-words /u);
+    expect(html).toMatch(/<a [^>]*>\s*<span class="break-words">/u);
   });
 });

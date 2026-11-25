@@ -1,8 +1,9 @@
 import type { Context } from 'hono';
 import type { RunSummary, RunsView } from '@uw/harness';
 import { Badge } from '@uw/ui/components/badge.tsx';
-import { Card } from '@uw/ui/components/card.tsx';
-import { PageHead } from '@uw/ui/components/page-head.tsx';
+import { EmptyState } from '@uw/ui/components/empty-state.tsx';
+import { Section } from '@uw/ui/components/section.tsx';
+import { ListShape } from '@uw/ui/shapes/list.tsx';
 import { Table } from '@uw/ui/components/table.tsx';
 import { formatInstant } from '@uw/core/dates';
 import type { AppEnv } from '../../deps.ts';
@@ -16,7 +17,7 @@ import { workflowCrumbs, workflowTabs } from '../parts/workflow-tabs.ts';
 import { notFound } from './not-found.tsx';
 
 const link =
-  'font-heavy text-accent-text underline outline-offset-2 outline-accent-text focus-visible:outline-2';
+  'font-semibold text-text no-underline outline-offset-2 outline-accent-text hover:text-accent-text hover:underline focus-visible:outline-2';
 
 const columns = [
   { key: 'agent', label: 'Agent' },
@@ -51,17 +52,17 @@ function RecentRuns(props: { readonly view: RunsView }) {
   const { view } = props;
   const rows = view.runs.map((run) => rowOf(view.harness.id, run));
   return (
-    <Card title="Recent runs" sub="Newest first. Open a run to see each step it took" flush>
+    <Section title="Recent runs" sub="Newest first. Open a run to see each step it took">
       {rows.length === 0 ? (
-        <p class="m-0 px-4 py-3 text-sm text-text-3">No agent has run on this workflow yet.</p>
+        <EmptyState title="No agent has run on this workflow yet." />
       ) : (
-        <Table caption="Recent runs" columns={columns} rows={rows} bare />
+        <Table caption="Recent runs" columns={columns} rows={rows} />
       )}
-      <p class="m-0 border-t border-line px-4 py-3 text-sm text-text-3">
+      <p class="m-0 text-sm text-text-3">
         Runs on the platform are paid from the shared cap and show dollars. Runs on a person’s own
         Claude Code show tokens marked “own subscription”. The two are never added together.
       </p>
-    </Card>
+    </Section>
   );
 }
 
@@ -86,13 +87,14 @@ export async function runsScreen(c: Context<AppEnv>): Promise<Response> {
   return renderScreen(
     c,
     spec,
-    <>
-      <PageHead
-        eyebrow={`Workflow · ${view.harness.template} template`}
-        title={view.harness.title}
-        lede="What agents did on this workflow, what each run cost, and where each one is now."
-      />
+    <ListShape
+      head={{
+        eyebrow: `Workflow · ${view.harness.template} template`,
+        title: view.harness.title,
+        lede: 'What agents did on this workflow, what each run cost, and where each one is now.',
+      }}
+    >
       <RecentRuns view={view} />
-    </>,
+    </ListShape>,
   );
 }

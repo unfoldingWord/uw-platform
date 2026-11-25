@@ -1,6 +1,7 @@
 import type { ShadowComparison, ShadowRow } from '@uw/contracts';
 import { Badge } from '@uw/ui/components/badge.tsx';
-import { Note } from '@uw/ui/components/note.tsx';
+import { EmptyState } from '@uw/ui/components/empty-state.tsx';
+import { Section } from '@uw/ui/components/section.tsx';
 import { Table, type Column } from '@uw/ui/components/table.tsx';
 import { domId, reasonText } from '@uw/ui/components/text.ts';
 import { pullRequestUrl, shadowExportPath } from './paths.ts';
@@ -66,26 +67,25 @@ export function ShadowList(props: {
   readonly harnessTitle: string;
 }) {
   const { comparison, harnessTitle } = props;
-  const headingId = domId('shadow', comparison.harnessId);
   const caption = `Shadow verdicts on ${harnessTitle}`;
   return (
-    <section aria-labelledby={headingId} class="flex flex-col gap-2">
-      <h2 id={headingId} class="m-0 text-base font-heavy text-text">
-        {caption}
-      </h2>
-      <p class="m-0">
+    <Section
+      title={caption}
+      headingId={domId('shadow', comparison.harnessId)}
+      actions={
         <a
           href={shadowExportPath(comparison.harnessId)}
-          class={`text-accent-text underline ${focus}`}
+          class={`text-sm text-accent-text underline ${focus}`}
         >
           {`Export the shadow verdicts for ${harnessTitle}`}
         </a>
-      </p>
+      }
+    >
       {comparison.rows.length === 0 ? (
-        <Note>No shadow verdict has been recorded on this harness yet.</Note>
+        <EmptyState title="No shadow verdict has been recorded on this harness yet." />
       ) : (
         <Table caption={caption} columns={columns} rows={comparison.rows.map(rowOf)} />
       )}
-    </section>
+    </Section>
   );
 }

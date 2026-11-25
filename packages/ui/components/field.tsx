@@ -1,8 +1,12 @@
 import type { Child } from 'hono/jsx';
 import { domId } from './text.ts';
 
-const control =
-  'rounded-md border border-line bg-surface px-3 py-1 text-sm text-text outline-offset-2 outline-accent-text focus-visible:outline-2';
+export const fieldControl =
+  'min-h-size-5 rounded-md border border-line bg-surface px-3 py-1 text-base text-text transition-colors motion-reveal hover:border-line-strong outline-offset-2 outline-accent-text focus-visible:outline-2';
+
+const control = fieldControl;
+
+export const fieldLabel = 'text-xs font-semibold text-text-3';
 
 type Choice = { readonly value: string; readonly label: string };
 
@@ -13,7 +17,7 @@ function Labelled(props: {
 }) {
   return (
     <div class="flex min-w-0 flex-col gap-1">
-      <label for={props.id} class="text-xs font-heavy tracking-wide text-text-3 uppercase">
+      <label for={props.id} class={fieldLabel}>
         {props.label}
       </label>
       {props.children}

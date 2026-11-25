@@ -1,13 +1,12 @@
 import type { Context } from 'hono';
 import { createPageCommandSchema } from '@uw/contracts';
 import type { AgentsView } from '@uw/harness';
-import { Card } from '@uw/ui/components/card.tsx';
-import { commandButton, primaryButton } from '@uw/ui/components/command-form.tsx';
+import { Button, ButtonLink } from '@uw/ui/components/button.tsx';
 import { TextField } from '@uw/ui/components/field.tsx';
 import { Note } from '@uw/ui/components/note.tsx';
-import { PageHead } from '@uw/ui/components/page-head.tsx';
 import { ChoiceCards, type CardChoice } from '@uw/ui/components/segmented-control.tsx';
 import { reasonText } from '@uw/ui/components/text.ts';
+import { FormActions, FormShape } from '@uw/ui/shapes/form.tsx';
 import type { AppEnv } from '../../deps.ts';
 import { createPage } from '../../pages/store.ts';
 import { capabilityWord, doesWords, runShapeWord } from '../parts/agent-words.ts';
@@ -78,14 +77,14 @@ function AddForm(props: {
         maxLength={MODEL_LIMIT}
         hint="Leave it blank to keep the template's model."
       />
-      <div class="flex flex-wrap items-center gap-3">
-        <button type="submit" class={primaryButton}>
-          Add the agent
-        </button>
-        <a href={agentsPath(view.harness.id)} class={commandButton}>
+      <FormActions>
+        <ButtonLink href={agentsPath(view.harness.id)} variant="ghost">
           Cancel
-        </a>
-      </div>
+        </ButtonLink>
+        <Button type="submit" variant="primary">
+          Add the agent
+        </Button>
+      </FormActions>
     </form>
   );
 }
@@ -106,23 +105,22 @@ function render(
   return renderScreen(
     c,
     spec,
-    <>
-      <PageHead
-        eyebrow={`${harness.title} · ${pageNames.agents}`}
-        title={pageNames.newAgent}
-        lede="Start from a template agent. It isn't live until an admin puts it live on its page."
-      />
-      <Card>
-        {view.admin ? (
-          <>
-            {refusal === null ? null : <Note>{refusal}</Note>}
-            <AddForm view={view} posted={posted} pageId={crypto.randomUUID()} />
-          </>
-        ) : (
-          <Note>{notAdminWords}</Note>
-        )}
-      </Card>
-    </>,
+    <FormShape
+      head={{
+        eyebrow: `${harness.title} · ${pageNames.agents}`,
+        title: pageNames.newAgent,
+        lede: "Start from a template agent. It isn't live until an admin puts it live on its page.",
+      }}
+    >
+      {view.admin ? (
+        <>
+          {refusal === null ? null : <Note>{refusal}</Note>}
+          <AddForm view={view} posted={posted} pageId={crypto.randomUUID()} />
+        </>
+      ) : (
+        <Note>{notAdminWords}</Note>
+      )}
+    </FormShape>,
   );
 }
 

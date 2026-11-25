@@ -3,7 +3,7 @@ import type { Child } from 'hono/jsx';
 export function PageHead(props: {
   readonly title: string;
   readonly eyebrow?: string | undefined;
-  readonly lede?: string | undefined;
+  readonly lede?: Child | undefined;
   readonly actions?: Child | undefined;
   readonly flush?: boolean | undefined;
   readonly document?: boolean | undefined;
@@ -11,19 +11,19 @@ export function PageHead(props: {
   const big = props.document === true;
   const eyebrow = big
     ? 'm-0 mb-1 font-mono text-sm font-semibold text-accent-text'
-    : 'm-0 mb-1 text-xs font-heavy tracking-wide text-accent-text uppercase';
+    : 'm-0 mb-1 text-sm text-text-3';
   const heading = big
-    ? 'm-0 text-3xl leading-tight font-heavy tracking-heading text-balance text-accent-text'
+    ? 'm-0 text-2xl leading-tight font-heavy tracking-heading text-balance text-accent-text'
     : 'm-0 text-xl leading-tight font-heavy tracking-tight text-balance text-text';
   return (
     <div
-      class={`flex flex-wrap items-end justify-between gap-4 ${props.flush === true ? '' : 'mb-5'}`}
+      class={`flex flex-wrap items-end justify-between gap-4 ${props.flush === true ? '' : 'mb-6'}`}
     >
       <div class="min-w-0">
         {props.eyebrow === undefined ? null : <p class={eyebrow}>{props.eyebrow}</p>}
         <h1 class={heading}>{props.title}</h1>
         {props.lede === undefined ? null : (
-          <p class="m-0 mt-2 max-w-content text-base text-text-3">{props.lede}</p>
+          <p class="m-0 mt-1 max-w-content text-sm text-text-3">{props.lede}</p>
         )}
       </div>
       {props.actions === undefined ? null : (

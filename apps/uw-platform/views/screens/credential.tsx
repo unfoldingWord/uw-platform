@@ -3,9 +3,11 @@ import type { Principal } from '@uw/core/principal';
 import type { Context } from 'hono';
 import { formatInstant } from '@uw/core/dates';
 import { Badge } from '@uw/ui/components/badge.tsx';
-import { Card } from '@uw/ui/components/card.tsx';
-import { PageHead } from '@uw/ui/components/page-head.tsx';
+import { EmptyState } from '@uw/ui/components/empty-state.tsx';
+import { fieldLabel } from '@uw/ui/components/field.tsx';
+import { Section } from '@uw/ui/components/section.tsx';
 import { Table } from '@uw/ui/components/table.tsx';
+import { DocumentShape } from '@uw/ui/shapes/document.tsx';
 import {
   seenCredential,
   type CredentialLine,
@@ -45,7 +47,6 @@ import { areaLabel, moduleCodes, pageNames } from '../parts/names.ts';
 import { credentialPath, credentialsPath } from '../parts/paths.ts';
 import { notFound } from './not-found.tsx';
 
-const empty = 'm-0 px-4 py-3 text-sm text-text-3';
 const quiet = 'm-0 text-sm text-text-3';
 const otherWorkflow = 'A workflow you cannot open';
 
@@ -55,11 +56,6 @@ type Seen = {
   readonly at: Date;
   readonly reader: Principal;
 };
-
-const factColumns = [
-  { key: 'fact', label: 'Fact' },
-  { key: 'value', label: 'Value' },
-];
 
 function Facts(props: { readonly seen: Seen }) {
   const { line, managed } = props.seen.record;
@@ -82,14 +78,16 @@ function Facts(props: { readonly seen: Seen }) {
         ]),
   ];
   return (
-    <Card title="About" sub={<StandingBadge line={line} at={props.seen.at} />} flush>
-      <Table
-        caption="About this credential"
-        columns={factColumns}
-        rows={facts.map(([fact, value]) => ({ fact, value }))}
-        bare
-      />
-    </Card>
+    <Section title="About" sub={<StandingBadge line={line} at={props.seen.at} />} tight>
+      <ul aria-label="About this credential" class="m-0 flex list-none flex-col gap-3 p-0">
+        {facts.map(([fact, value]) => (
+          <li class="flex min-w-0 flex-col gap-1">
+            <span class={fieldLabel}>{fact}</span>
+            <span class="text-sm text-text">{value}</span>
+          </li>
+        ))}
+      </ul>
+    </Section>
   );
 }
 
@@ -104,13 +102,13 @@ function Reveal(props: { readonly seen: Seen }) {
   const { line } = props.seen.record;
   const open = line.revealable && standingOf(line, props.seen.at) === 'active';
   return (
-    <Card title="Value" sub="Never shown unless you reveal it">
+    <Section title="Value" sub="Never shown unless you reveal it">
       {open ? (
         <RevealControl line={line} />
       ) : (
         <p class={quiet}>{revealWords(line, props.seen.at)}</p>
       )}
-    </Card>
+    </Section>
   );
 }
 
@@ -133,18 +131,16 @@ function Bindings(props: { readonly seen: Seen; readonly managed: Managed }) {
     };
   });
   return (
-    <Card title="Where it can be used" sub="A workflow and a connector, and nowhere else" flush>
+    <Section title="Where it can be used" sub="A workflow and a connector, and nowhere else">
       {rows.length === 0 ? (
-        <p class={empty}>Bound nowhere, so nothing can use it.</p>
+        <EmptyState title="Bound nowhere, so nothing can use it." />
       ) : (
         <Table caption="Where it can be used" columns={bindingColumns} rows={rows} bare />
       )}
       {line.revokedAt === null ? (
-        <div class="border-t border-line px-4 py-3">
-          <BindForm credentialId={line.id} workflows={seen.workflows} />
-        </div>
+        <BindForm credentialId={line.id} workflows={seen.workflows} />
       ) : null}
-    </Card>
+    </Section>
   );
 }
 
@@ -185,22 +181,20 @@ function Grants(props: { readonly seen: Seen; readonly managed: Managed }) {
     change: <GrantControls grant={grant} />,
   }));
   return (
-    <Card title="Reveal grants" sub="Who may see the value, and until when" flush>
+    <Section title="Reveal grants" sub="Who may see the value, and until when">
       {rows.length === 0 ? (
-        <p class={empty}>Nobody holds a reveal grant.</p>
+        <EmptyState title="Nobody holds a reveal grant." />
       ) : (
         <Table caption="Reveal grants" columns={grantColumns} rows={rows} bare />
       )}
       {line.revokedAt === null ? (
-        <div class="border-t border-line px-4 py-3">
-          <GrantRevealForm
-            credentialId={line.id}
-            alone={managed.alone}
-            seers={managed.seers.map((person) => ({ value: person.personId, label: person.email }))}
-          />
-        </div>
+        <GrantRevealForm
+          credentialId={line.id}
+          alone={managed.alone}
+          seers={managed.seers.map((person) => ({ value: person.personId, label: person.email }))}
+        />
       ) : null}
-    </Card>
+    </Section>
   );
 }
 
@@ -240,9 +234,9 @@ function Log(props: { readonly seen: Seen; readonly managed: Managed }) {
         : `${titles.get(entry.harnessId) ?? otherWorkflow} · ${connectorWord(entry.connectorKey ?? '')}`,
   }));
   return (
-    <Card title="Access log" sub="Every use, reveal and change, newest first" flush>
+    <Section title="Access log" sub="Every use, reveal and change, newest first" flush>
       <Table caption="Access log" columns={logColumns} rows={rows} bare />
-    </Card>
+    </Section>
   );
 }
 
@@ -255,14 +249,14 @@ function Manage(props: { readonly seen: Seen; readonly managed: Managed }) {
       <Bindings seen={seen} managed={managed} />
       <Grants seen={seen} managed={managed} />
       {live ? (
-        <Card title="Rotate" sub="Seal a new value; the old one stops being used">
+        <Section title="Rotate" sub="Seal a new value; the old one stops being used">
           <RotateForm credentialId={line.id} />
-        </Card>
+        </Section>
       ) : null}
       {live ? (
-        <Card title="Revoke" sub="For a credential that must never be used again">
+        <Section title="Revoke" sub="For a credential that must never be used again">
           <RevokeCredential line={line} />
-        </Card>
+        </Section>
       ) : null}
       <Log seen={seen} managed={managed} />
     </>
@@ -296,14 +290,13 @@ export async function credentialScreen(c: Context<AppEnv>): Promise<Response> {
   return renderScreen(
     c,
     spec,
-    <>
-      <PageHead title={line.name} eyebrow={areaLabel(line.jdArea)} lede={kindWord(line.kind)} />
+    <DocumentShape
+      head={{ title: line.name, eyebrow: areaLabel(line.jdArea), lede: kindWord(line.kind) }}
+      rail={<Facts seen={seen} />}
+    >
       <KeptOutcome />
-      <div class="flex flex-col gap-5">
-        <Facts seen={seen} />
-        <Reveal seen={seen} />
-        {managed === null ? null : <Manage seen={seen} managed={managed} />}
-      </div>
-    </>,
+      <Reveal seen={seen} />
+      {managed === null ? null : <Manage seen={seen} managed={managed} />}
+    </DocumentShape>,
   );
 }

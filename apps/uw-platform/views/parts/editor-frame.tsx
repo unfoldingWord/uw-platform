@@ -1,5 +1,5 @@
 const option =
-  'flex cursor-pointer items-baseline gap-3 rounded-sm px-3 py-2 text-sm text-text aria-selected:bg-accent aria-selected:font-heavy aria-selected:text-on-accent';
+  'flex cursor-pointer items-baseline gap-3 rounded-sm px-3 py-2 text-sm text-text aria-selected:bg-accent aria-selected:font-semibold aria-selected:text-on-accent';
 
 function PagePickerMenu() {
   return (

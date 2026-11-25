@@ -17,8 +17,8 @@ export function initialsOf(name: string): string {
 }
 
 const shape = 'inline-flex max-w-full min-w-0 items-center gap-2 align-middle';
-const linked = `${shape} rounded-sm font-heavy text-accent-text outline-offset-2 outline-accent-text hover:underline focus-visible:outline-2`;
-const plain = `${shape} font-heavy text-text`;
+const linked = `${shape} rounded-sm font-semibold text-accent-text outline-offset-2 outline-accent-text hover:underline focus-visible:outline-2`;
+const plain = `${shape} font-semibold text-text`;
 const avatar =
   'grid size-size-4 shrink-0 place-items-center rounded-full bg-accent-soft text-xs font-heavy text-accent-text';
 

@@ -4,13 +4,14 @@ import { can } from '@uw/core/acl';
 import type { BoardColumn, BoardInput, BoardView, CostTotals } from '@uw/harness';
 import type { HarnessEvent } from '@uw/contracts';
 import { Chip } from '@uw/ui/components/chip.tsx';
-import { CommandForm, commandButton } from '@uw/ui/components/command-form.tsx';
-import { TextField } from '@uw/ui/components/field.tsx';
+import { Button, ButtonLink } from '@uw/ui/components/button.tsx';
+import { CommandForm } from '@uw/ui/components/command-form.tsx';
+import { TextField, fieldLabel } from '@uw/ui/components/field.tsx';
 import { Lane, type LaneFact } from '@uw/ui/components/lane.tsx';
 import { HumanChip } from '@uw/ui/components/human-action.tsx';
 import { Icon } from '@uw/ui/components/icon.tsx';
 import { Kpi } from '@uw/ui/components/kpi.tsx';
-import { PageHead } from '@uw/ui/components/page-head.tsx';
+import { BoardShape, Lanes as LaneRow } from '@uw/ui/shapes/board.tsx';
 import { cursorOf } from '../../commands/reads.ts';
 import type { AppEnv } from '../../deps.ts';
 import type { PersonName } from '../../people/directory.ts';
@@ -28,8 +29,6 @@ import { workflowCrumbs, workflowTabs } from '../parts/workflow-tabs.ts';
 import { formatMoney } from '@uw/core/money';
 import { notFound } from './not-found.tsx';
 import { pageNames } from '../parts/names.ts';
-
-const focus = 'outline-offset-2 outline-accent-text focus-visible:outline-2';
 
 const pickupWords: Readonly<Record<AgentPickup, string>> = {
   none: 'No agents',
@@ -72,9 +71,9 @@ function EnqueueForm(props: { readonly harnessId: string }) {
   return (
     <CommandForm harnessId={props.harnessId} command="enqueue">
       <TextField name="title" label="Title" scope={props.harnessId} required maxLength={200} />
-      <button type="submit" class={commandButton}>
+      <Button type="submit" icon="plus">
         Add item
-      </button>
+      </Button>
     </CommandForm>
   );
 }
@@ -126,12 +125,13 @@ function ColumnView(props: {
         />
       ))}
       {column.next === null ? null : (
-        <a
+        <ButtonLink
           href={`${queuePath(harnessId, stage.key)}&after=${encodeURIComponent(column.next)}`}
-          class={`text-accent-text underline ${focus}`}
+          variant="ghost"
+          size="sm"
         >
           Show more
-        </a>
+        </ButtonLink>
       )}
       {props.first ? <EnqueueForm harnessId={harnessId} /> : null}
     </Lane>
@@ -142,8 +142,8 @@ function StageChips(props: { readonly view: Shown; readonly stageKey: string | n
   const { view } = props;
   const harnessId = view.harness.id;
   return (
-    <nav aria-label="Stages" class="mb-5 flex flex-wrap items-center gap-2">
-      <span class="mr-1 text-xs font-heavy tracking-wide text-text-3 uppercase">Stage</span>
+    <nav aria-label="Stages" class="flex flex-wrap items-center gap-2">
+      <span class={`mr-1 ${fieldLabel}`}>Stage</span>
       <Chip label="All stages" href={queuePath(harnessId)} selected={props.stageKey === null} />
       {view.stages.map((stage) => (
         <Chip
@@ -205,29 +205,26 @@ function tallyOf(view: BoardView): Tally {
   };
 }
 
-function Head(props: { readonly view: Shown; readonly tally: Tally }) {
-  const { view, tally } = props;
+function headOf(view: Shown, tally: Tally) {
   const need = tally.waiting === 0 ? '' : ` ${tally.waiting} need a person.`;
-  return (
-    <PageHead
-      eyebrow={`Workflow · ${view.stages.length} stages`}
-      title={view.harness.title}
-      lede={`${tally.items} items moving through ${view.stages.length} stages. Agents claim cards like anyone else; a person decides at the gate.${need}`}
-      actions={
-        <div aria-label="Figures" role="group" class="flex flex-wrap gap-6">
-          <Kpi label="Agents working" value={String(tally.working)} plain />
-          <Kpi label="Waiting on you" value={String(tally.waiting)} plain person />
-          <Kpi label="Spent on these items" value={spentText(totalCost(view))} plain />
-        </div>
-      }
-    />
-  );
+  return {
+    eyebrow: `Workflow · ${view.stages.length} stages`,
+    title: view.harness.title,
+    lede: `${tally.items} items moving through ${view.stages.length} stages. Agents claim cards like anyone else; a person decides at the gate.${need}`,
+    actions: (
+      <div aria-label="Figures" role="group" class="flex flex-wrap gap-6">
+        <Kpi label="Agents working" value={String(tally.working)} plain />
+        <Kpi label="Waiting on you" value={String(tally.waiting)} plain person />
+        <Kpi label="Spent on these items" value={spentText(totalCost(view))} plain />
+      </div>
+    ),
+  };
 }
 
 function Toolbar(props: { readonly tally: Tally; readonly harnessId: string }) {
   const quiet = 'inline-flex items-center gap-2 px-2 text-sm font-semibold text-text-2';
   return (
-    <div class="mb-3 flex flex-wrap items-center gap-2">
+    <>
       <HumanChip
         label="Waiting on you"
         count={props.tally.waiting}
@@ -243,7 +240,7 @@ function Toolbar(props: { readonly tally: Tally; readonly harnessId: string }) {
         <Icon name="bars-filter" size={1} />
         Filter
       </span>
-    </div>
+    </>
   );
 }
 
@@ -291,7 +288,7 @@ function Lanes(props: {
   const { view } = props;
   const firstKey = view.stages[0]?.key;
   return (
-    <div class="flex items-start gap-6 overflow-x-auto pb-2">
+    <LaneRow label="Stage lanes">
       {phasesOf(view.columns).map((phase) => (
         <div
           role="group"
@@ -299,13 +296,10 @@ function Lanes(props: {
           data-phase={phase.bracket}
           class="flex shrink-0 flex-col gap-2"
         >
-          <p
-            aria-hidden="true"
-            class="m-0 px-1 text-xs font-heavy tracking-wide text-text-3 uppercase"
-          >
+          <p aria-hidden="true" class={`m-0 px-1 ${fieldLabel}`}>
             {bracketText(phase.bracket)}
           </p>
-          <div class="flex items-start gap-4">
+          <div class="flex items-start gap-3">
             {phase.columns.map((column) => (
               <ColumnView
                 view={view}
@@ -318,7 +312,7 @@ function Lanes(props: {
           </div>
         </div>
       ))}
-    </div>
+    </LaneRow>
   );
 }
 
@@ -362,13 +356,14 @@ export async function queueScreen(c: Context<AppEnv>): Promise<Response> {
   return renderScreen(
     c,
     specOf(view, cursor, await waitingCount(screen, harnessId)),
-    <>
-      <Head view={view} tally={tally} />
-      <Toolbar tally={tally} harnessId={harnessId} />
+    <BoardShape
+      head={headOf(view, tally)}
+      toolbar={<Toolbar tally={tally} harnessId={harnessId} />}
+    >
       <StageChips view={view} stageKey={input.stageKey} />
       <EpicGroups harnessId={harnessId} epics={board.epics} />
       <NotReadyList harnessId={harnessId} entries={board.notReady} />
       <Lanes view={view} viewer={viewer} marks={marks} />
-    </>,
+    </BoardShape>,
   );
 }

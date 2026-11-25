@@ -5,9 +5,10 @@ import { formatDate, formatInstant } from '@uw/core/dates';
 import { formatCount } from '@uw/core/money';
 import type { AgentsView } from '@uw/harness';
 import { Badge } from '@uw/ui/components/badge.tsx';
-import { Card } from '@uw/ui/components/card.tsx';
-import { commandButton, primaryButton } from '@uw/ui/components/command-form.tsx';
+import { Button } from '@uw/ui/components/button.tsx';
+import { EmptyState } from '@uw/ui/components/empty-state.tsx';
 import { SelectField, TextField } from '@uw/ui/components/field.tsx';
+import { Section } from '@uw/ui/components/section.tsx';
 import { Table } from '@uw/ui/components/table.tsx';
 import type { RoutineRow } from '../../agents/routines.ts';
 import { capabilityWord } from './agent-words.ts';
@@ -50,13 +51,9 @@ function ChangeButton(props: {
   return (
     <form method="post" action={routineChangePath(props.harnessId, routine.id)} class="m-0">
       <input type="hidden" name="change" value={props.change} />
-      <button
-        type="submit"
-        class={commandButton}
-        aria-label={`${props.label} the routine ${routine.name}`}
-      >
+      <Button type="submit" size="sm" label={`${props.label} the routine ${routine.name}`}>
         {props.label}
-      </button>
+      </Button>
     </form>
   );
 }
@@ -135,7 +132,7 @@ function routineChoices(view: AgentsView, personId: string | null, at: Date) {
 }
 
 function SetupHint(props: { readonly text: string }) {
-  return <p class="m-0 border-t border-line px-4 py-3 text-sm text-text-3">{props.text}</p>;
+  return <p class="m-0 text-sm text-text-3">{props.text}</p>;
 }
 
 const notSwitchedOn =
@@ -158,7 +155,7 @@ function SetupForm(props: {
     <form
       method="post"
       action={routinesPath(view.harness.id)}
-      class="flex flex-col gap-3 border-t border-line px-4 py-3"
+      class="flex max-w-flow flex-col gap-3"
     >
       <SelectField name="delegationId" label="Works under" scope={scope} choices={choices} />
       <TextField
@@ -179,9 +176,7 @@ function SetupForm(props: {
         hint="Lowercase letters, numbers and dashes. The machine it runs on."
       />
       <div>
-        <button type="submit" class={primaryButton}>
-          Set up a routine
-        </button>
+        <Button type="submit">Set up a routine</Button>
       </div>
     </form>
   );
@@ -197,17 +192,19 @@ export function Routines(props: {
   const shown = visibleRoutines(viewer, props.routines);
   const rows = shown.map((routine) => rowOf(view.harness.id, viewer, routine));
   return (
-    <Card
+    <Section
       title="Routines"
       sub="Your own Claude Code or Codex, working this workflow on a timer under a standing permission"
-      flush
     >
       {rows.length === 0 ? (
-        <p class="m-0 px-4 py-3 text-sm text-text-3">No routines on this workflow yet.</p>
+        <EmptyState
+          title="No routines on this workflow yet."
+          text="A routine works under one of your own standing permissions."
+        />
       ) : (
         <Table caption="Routines" columns={columns} rows={rows} bare />
       )}
       <SetupForm view={view} viewer={viewer} at={props.at} />
-    </Card>
+    </Section>
   );
 }

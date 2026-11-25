@@ -1,19 +1,19 @@
 import type { CollectionRow, FilterGroup, PropertyDefinition, RowQuery } from '@uw/contracts';
 import { rowQuerySchema } from '@uw/contracts';
-import { Card } from '@uw/ui/components/card.tsx';
+import { EmptyState } from '@uw/ui/components/empty-state.tsx';
+import { ListRow, RowList } from '@uw/ui/components/list-row.tsx';
+import { Section } from '@uw/ui/components/section.tsx';
 import { loadCollection } from '../../collections/definitions.ts';
 import { valueOf } from '../../collections/display.ts';
 import { readRows } from '../../collections/reader.ts';
 import { pagesOwnedBy, type PageSummary } from '../../pages/reads.ts';
 import { CellValue } from './collection-cells.tsx';
 import type { ScreenKernel } from './frame.tsx';
-import { pageLink } from './page-shown.ts';
 import { collectionRowPath, pagePath } from './paths.ts';
 
 type Db = Parameters<typeof loadCollection>[0];
 
 const MOST_LISTED = 20;
-const quiet = 'm-0 text-sm text-text-3';
 
 type ListedRow = {
   readonly collection: string;
@@ -113,59 +113,65 @@ export async function profileLists(
   return { tasks, work: [...programs, ...projects], pages };
 }
 
-function Rows(props: { readonly rows: readonly ListedRow[]; readonly empty: string }) {
-  if (props.rows.length === 0) return <p class={quiet}>{props.empty}</p>;
+function Facts(props: { readonly listed: ListedRow }) {
+  if (props.listed.facts.length === 0) return undefined;
   return (
-    <ul class="m-0 flex list-none flex-col gap-2 p-0 text-sm">
-      {props.rows.map((listed) => (
-        <li class="flex flex-wrap items-center gap-x-3 gap-y-1">
-          <a href={collectionRowPath(listed.collection, listed.row.id)} class={pageLink}>
-            {listed.row.title === '' ? 'Untitled' : listed.row.title}
-          </a>
-          {listed.facts.map((property) => (
-            <span class="text-text-3">
-              <CellValue
-                property={property}
-                value={valueOf(listed.row, property.key)}
-                people={new Map()}
-              />
-            </span>
-          ))}
-        </li>
+    <span class="flex flex-wrap items-center gap-x-3 gap-y-1">
+      {props.listed.facts.map((property) => (
+        <CellValue
+          property={property}
+          value={valueOf(props.listed.row, property.key)}
+          people={new Map()}
+        />
       ))}
-    </ul>
+    </span>
+  );
+}
+
+function Rows(props: {
+  readonly label: string;
+  readonly rows: readonly ListedRow[];
+  readonly empty: string;
+}) {
+  if (props.rows.length === 0) return <EmptyState title={props.empty} />;
+  return (
+    <RowList label={props.label}>
+      {props.rows.map((listed) => (
+        <ListRow
+          title={listed.row.title === '' ? 'Untitled' : listed.row.title}
+          href={collectionRowPath(listed.collection, listed.row.id)}
+          meta={Facts({ listed })}
+        />
+      ))}
+    </RowList>
   );
 }
 
 function Owned(props: { readonly pages: readonly PageSummary[] }) {
-  if (props.pages.length === 0) return <p class={quiet}>None that you can read.</p>;
+  if (props.pages.length === 0) return <EmptyState title="None that you can read." />;
   return (
-    <ul class="m-0 flex list-none flex-col gap-2 p-0 text-sm">
+    <RowList label="Pages they own">
       {props.pages.map((page) => (
-        <li>
-          <a class={pageLink} href={pagePath(page.id)}>
-            {page.title}
-          </a>
-        </li>
+        <ListRow title={page.title} href={pagePath(page.id)} />
       ))}
-    </ul>
+    </RowList>
   );
 }
 
-export function ProfileListCards(props: { readonly lists: ProfileLists }) {
+export function ProfileListSections(props: { readonly lists: ProfileLists }) {
   const { lists } = props;
   const readable = 'Only what you can read';
   return (
     <>
-      <Card title="Open tasks" sub={readable}>
-        <Rows rows={lists.tasks} empty="No open tasks that you can read." />
-      </Card>
-      <Card title="Programs and projects" sub="Ones they lead, manage or are on the team of">
-        <Rows rows={lists.work} empty="None that you can read." />
-      </Card>
-      <Card title="Pages they own" sub={readable}>
+      <Section title="Open tasks" sub={readable}>
+        <Rows label="Open tasks" rows={lists.tasks} empty="No open tasks that you can read." />
+      </Section>
+      <Section title="Programs and projects" sub="Ones they lead, manage or are on the team of">
+        <Rows label="Programs and projects" rows={lists.work} empty="None that you can read." />
+      </Section>
+      <Section title="Pages they own" sub={readable}>
         <Owned pages={lists.pages} />
-      </Card>
+      </Section>
     </>
   );
 }

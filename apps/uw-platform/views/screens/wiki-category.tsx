@@ -1,30 +1,37 @@
 import type { Context } from 'hono';
 import { areaOfCategory, jdCategorySchema, type JdCategory } from '@uw/contracts';
 import { can } from '@uw/core/acl';
-import { Card } from '@uw/ui/components/card.tsx';
-import { PlatformCommandForm, commandButton } from '@uw/ui/components/command-form.tsx';
+import { Button, ButtonLink } from '@uw/ui/components/button.tsx';
+import { PlatformCommandForm } from '@uw/ui/components/command-form.tsx';
+import { EmptyState } from '@uw/ui/components/empty-state.tsx';
 import { TextField } from '@uw/ui/components/field.tsx';
-import { PageHead } from '@uw/ui/components/page-head.tsx';
+import { Section } from '@uw/ui/components/section.tsx';
+import { ListShape } from '@uw/ui/shapes/list.tsx';
 import type { AppEnv } from '../../deps.ts';
 import { categoryName, pagesInCategory } from '../../pages/categories.ts';
 import { treeOf, type TreeNode } from '../../pages/tree.ts';
 import { renderScreen, screenKernel, screenRefusal } from '../parts/frame.tsx';
 import { wikiBranch } from '../parts/wiki-tree.ts';
 import { areaLabel, moduleCodes, pageNames } from '../parts/names.ts';
-import { pageLink } from '../parts/page-shown.ts';
 import { pagePath, wikiNewPath, wikiPath } from '../parts/paths.ts';
 import { notFound } from './not-found.tsx';
 import { countWords } from './wiki.tsx';
 
 const PAGES_ENDPOINT = '/api/pages/commands';
 
+const treeLink =
+  'text-base font-semibold text-text no-underline outline-offset-2 outline-accent-text hover:text-accent-text focus-visible:outline-2';
+
 function Branch(props: { readonly nodes: readonly TreeNode[]; readonly top: boolean }) {
   const tree = props.top ? { 'data-tree': '' } : {};
   return (
-    <ul class={`m-0 flex list-none flex-col gap-1 p-0 ${props.top ? '' : 'mt-1 pl-5'}`} {...tree}>
+    <ul
+      class={`m-0 flex list-none flex-col gap-2 p-0 ${props.top ? '' : 'mt-2 border-l border-line-soft pl-4'}`}
+      {...tree}
+    >
       {props.nodes.map((node) => (
         <li>
-          <a href={pagePath(node.page.id)} class={pageLink}>
+          <a href={pagePath(node.page.id)} class={treeLink}>
             {node.page.title}
           </a>
           {node.children.length === 0 ? null : <Branch nodes={node.children} top={false} />}
@@ -36,7 +43,7 @@ function Branch(props: { readonly nodes: readonly TreeNode[]; readonly top: bool
 
 function NameForm(props: { readonly category: JdCategory; readonly name: string | null }) {
   return (
-    <Card title="Name this category" sub="Shown beside its number everywhere">
+    <Section title="Name this category" sub="Shown beside its number everywhere">
       <PlatformCommandForm
         endpoint={PAGES_ENDPOINT}
         command="name_category"
@@ -52,11 +59,11 @@ function NameForm(props: { readonly category: JdCategory; readonly name: string 
           maxLength={80}
           required
         />
-        <button type="submit" class={commandButton}>
+        <Button type="submit" variant="human">
           Save name
-        </button>
+        </Button>
       </PlatformCommandForm>
-    </Card>
+    </Section>
   );
 }
 
@@ -87,31 +94,28 @@ export async function wikiCategoryScreen(c: Context<AppEnv>): Promise<Response> 
   return renderScreen(
     c,
     spec,
-    <>
-      <PageHead
-        eyebrow={areaLabel(area)}
-        title={title}
-        lede={`${countWords(entries.length)} filed in this category.`}
-      />
-      <div class="flex flex-col gap-5">
-        {can(actor, 'write', { kind: 'area', area }, screen.at) ? (
-          <p class="m-0">
-            <a href={wikiNewPath({ category })} class={pageLink}>
-              New page in this category
-            </a>
-          </p>
-        ) : null}
-        <Card title="Pages">
-          {entries.length === 0 ? (
-            <p class="m-0 text-sm text-text-2">No page is filed here yet.</p>
-          ) : (
-            <Branch nodes={treeOf(entries)} top />
-          )}
-        </Card>
-        {can(actor, 'admin', { kind: 'area', area }, screen.at) ? (
-          <NameForm category={category} name={name} />
-        ) : null}
-      </div>
-    </>,
+    <ListShape
+      head={{
+        eyebrow: areaLabel(area),
+        title,
+        lede: `${countWords(entries.length)} filed in this category.`,
+        actions: can(actor, 'write', { kind: 'area', area }, screen.at) ? (
+          <ButtonLink href={wikiNewPath({ category })} variant="primary" icon="pen">
+            New page in this category
+          </ButtonLink>
+        ) : undefined,
+      }}
+    >
+      <Section title="Pages">
+        {entries.length === 0 ? (
+          <EmptyState title="No pages yet" text="No page is filed here yet." />
+        ) : (
+          <Branch nodes={treeOf(entries)} top />
+        )}
+      </Section>
+      {can(actor, 'admin', { kind: 'area', area }, screen.at) ? (
+        <NameForm category={category} name={name} />
+      ) : null}
+    </ListShape>,
   );
 }

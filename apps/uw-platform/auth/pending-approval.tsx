@@ -1,7 +1,7 @@
 import type { Context } from 'hono';
-import { PageHead } from '@uw/ui/components/page-head.tsx';
 import { Shell } from '@uw/ui/components/shell.tsx';
 import { appCssPath } from '@uw/ui/generated/app-css';
+import { FormShape } from '@uw/ui/shapes/form.tsx';
 import type { AppEnv } from '../deps.ts';
 import { frameOf } from '../views/parts/frame-data.ts';
 import { pageNames } from '../views/parts/names.ts';
@@ -18,8 +18,9 @@ async function noAccessPage(c: Context<AppEnv>, words: Words): Promise<Response>
       crumbs={[{ label: words.name }]}
       stylesheet={appCssPath}
     >
-      <PageHead title={words.title} />
-      <p>{words.text}</p>
+      <FormShape head={{ title: words.title }}>
+        <p>{words.text}</p>
+      </FormShape>
     </Shell>
   );
   return c.html(`<!DOCTYPE html>${await page.toString()}`, 403);

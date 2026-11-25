@@ -9,17 +9,20 @@ import {
   type PropertyDefinition,
   type SavedView,
 } from '@uw/contracts';
-import { Card } from '@uw/ui/components/card.tsx';
-import { PlatformCommandForm, commandButton } from '@uw/ui/components/command-form.tsx';
+import { Button } from '@uw/ui/components/button.tsx';
+import { PlatformCommandForm } from '@uw/ui/components/command-form.tsx';
+import { EmptyState } from '@uw/ui/components/empty-state.tsx';
 import { SelectField, TextAreaField, TextField } from '@uw/ui/components/field.tsx';
-import { PageHead } from '@uw/ui/components/page-head.tsx';
+import { ListRow, RowList, revealed } from '@uw/ui/components/list-row.tsx';
+import { Hairline, Section } from '@uw/ui/components/section.tsx';
+import { FormShape } from '@uw/ui/shapes/form.tsx';
 import type { AppEnv } from '../../deps.ts';
 import { ensureBuiltIns } from '../../collections/builtins/seed.ts';
 import { loadCollection } from '../../collections/definitions.ts';
 import { mayReadCollection } from '../../collections/reader.ts';
 import { collectionReply } from '../../collections/replies.ts';
 import { viewsOf } from '../../collections/view-rows.ts';
-import { COLLECTIONS_ENDPOINT } from '../parts/collection-edit.tsx';
+import { COLLECTIONS_ENDPOINT, Confirmed, Fields, Submit } from '../parts/collection-edit.tsx';
 import { renderScreen, screenKernel, screenRefusal } from '../parts/frame.tsx';
 import { areaLabel, moduleCodes, pageNames } from '../parts/names.ts';
 import { collectionPath, collectionSettingsPath, collectionsPath } from '../parts/paths.ts';
@@ -47,24 +50,44 @@ const layoutNames: ReadonlyMap<string, string> = new Map([
   ['chart', 'Chart'],
 ]);
 
+function typeChoices() {
+  return storedTypes
+    .filter((type) => type !== 'title')
+    .map((type) => ({ value: type, label: typeName(type) }));
+}
+
+function OptionsField(props: { readonly scope: string }) {
+  return (
+    <TextField
+      name="options"
+      label="Options"
+      scope={props.scope}
+      maxLength={2000}
+      hint="Names separated by commas. A status needs at least three: the first is to do and the last is complete."
+    />
+  );
+}
+
 function sourceName(property: PropertyDefinition): string {
   if (property.source.kind === 'column') return `column ${property.source.column}`;
   return property.source.kind === 'frontmatter' ? 'page frontmatter' : 'worked out';
 }
 
-function Confirmed(props: {
-  readonly opener: string;
-  readonly loss: string;
-  readonly children: Child;
+function SettingRow(props: {
+  readonly title: string;
+  readonly meta: string;
+  readonly actions?: Child | undefined;
 }) {
   return (
-    <details>
-      <summary class={`${commandButton} cursor-pointer list-none`}>{props.opener}</summary>
-      <div class="mt-2 flex flex-col gap-2">
-        <p class="m-0 text-sm text-text">{props.loss}</p>
-        {props.children}
+    <li class="group/row relative flex min-w-0 items-center gap-3 rounded-md px-3 py-2 transition-colors motion-reveal focus-within:bg-raised hover:bg-raised">
+      <div class="min-w-0 flex-1">
+        <p class="m-0 text-base font-semibold text-text">{props.title}</p>
+        <p class="m-0 text-sm text-text-3">{props.meta}</p>
       </div>
-    </details>
+      {props.actions === undefined ? null : (
+        <div class={`${revealed} has-open:opacity-100`}>{props.actions}</div>
+      )}
+    </li>
   );
 }
 
@@ -76,7 +99,8 @@ function RemoveProperty(props: {
   const scope = `${props.collection}-${props.property.key}`;
   return (
     <Confirmed
-      opener={`Remove ${name}`}
+      opener="Remove"
+      subject={name}
       loss={`Every row loses its ${name} value, and saved views drop their filters and sorts on it. You cannot undo this.`}
     >
       <PlatformCommandForm
@@ -87,7 +111,9 @@ function RemoveProperty(props: {
       >
         <input type="hidden" name="collection" value={props.collection} />
         <input type="hidden" name="property" value={props.property.key} />
-        <button type="submit" class={commandButton}>{`Confirm remove ${name}`}</button>
+        <Button type="submit" size="sm">
+          Confirm<span class="sr-only">{` remove ${name}`}</span>
+        </Button>
       </PlatformCommandForm>
     </Confirmed>
   );
@@ -98,7 +124,8 @@ function DeleteView(props: { readonly view: SavedView }) {
   const who = view.settings.scope === 'shared' ? 'everyone who uses it' : 'you';
   return (
     <Confirmed
-      opener={`Delete ${view.settings.name}`}
+      opener="Delete"
+      subject={view.settings.name}
       loss={`${view.settings.name} goes away for ${who}, with its filters, sorts, groups and card order. Page embeds of it stop showing. You cannot undo this.`}
     >
       <PlatformCommandForm
@@ -108,13 +135,18 @@ function DeleteView(props: { readonly view: SavedView }) {
         done="Deleted"
       >
         <input type="hidden" name="viewId" value={view.id} />
-        <button
-          type="submit"
-          class={commandButton}
-        >{`Confirm delete ${view.settings.name}`}</button>
+        <Button type="submit" size="sm">
+          Confirm<span class="sr-only">{` delete ${view.settings.name}`}</span>
+        </Button>
       </PlatformCommandForm>
     </Confirmed>
   );
+}
+
+function readers(property: PropertyDefinition): string {
+  if (property.classification === 'internal') return '';
+  const owner = property.rule?.owner === true ? ' and the row’s person' : '';
+  return ` · ${property.classification}, read by ${property.rule?.steward ?? 'its own area'}${owner}`;
 }
 
 function PropertyRow(props: {
@@ -125,27 +157,21 @@ function PropertyRow(props: {
   const { property } = props;
   const removable = props.editable && property.config.type !== 'title';
   return (
-    <li class="flex flex-col gap-1 px-4 py-3">
-      <p class="m-0 text-sm">
-        <span class="font-heavy">{property.name}</span>
-        <span class="text-text-3">{` · ${property.key} · ${typeName(property.config.type)} · ${sourceName(property)}`}</span>
-        {property.classification === 'internal' ? null : (
-          <span class="text-text-3">{` · ${property.classification}, read by ${property.rule?.steward ?? 'its own area'}${property.rule?.owner === true ? ' and the row’s person' : ''}`}</span>
-        )}
-      </p>
-      {removable ? (
-        <RemoveProperty collection={props.reply.collection.key} property={property} />
-      ) : null}
-    </li>
+    <SettingRow
+      title={property.name}
+      meta={`${property.key} · ${typeName(property.config.type)} · ${sourceName(property)}${readers(property)}`}
+      actions={
+        removable ? (
+          <RemoveProperty collection={props.reply.collection.key} property={property} />
+        ) : undefined
+      }
+    />
   );
 }
 
 function AddProperty(props: { readonly collection: string }) {
-  const types = storedTypes
-    .filter((type) => type !== 'title')
-    .map((type) => ({ value: type, label: typeName(type) }));
   return (
-    <Card title="Add a property" sub="Stored in each page's frontmatter">
+    <Section title="Add a property" sub="Stored in each page's frontmatter">
       <PlatformCommandForm
         endpoint={COLLECTIONS_ENDPOINT}
         command="add_property"
@@ -153,28 +179,22 @@ function AddProperty(props: { readonly collection: string }) {
         done="Added. Reload to see it."
       >
         <input type="hidden" name="collection" value={props.collection} />
-        <TextField
-          name="key"
-          label="Key"
-          scope={props.collection}
-          maxLength={48}
-          required
-          hint="Lowercase letters, digits and underscores"
-        />
-        <TextField name="name" label="Name" scope={props.collection} maxLength={80} required />
-        <SelectField name="type" label="Type" scope={props.collection} choices={types} />
-        <TextField
-          name="options"
-          label="Options"
-          scope={props.collection}
-          maxLength={2000}
-          hint="Names separated by commas. A status needs at least three: the first is to do and the last is complete."
-        />
-        <button type="submit" class={commandButton}>
-          Add property
-        </button>
+        <Fields>
+          <TextField
+            name="key"
+            label="Key"
+            scope={props.collection}
+            maxLength={48}
+            required
+            hint="Lowercase letters, digits and underscores"
+          />
+          <TextField name="name" label="Name" scope={props.collection} maxLength={80} required />
+          <SelectField name="type" label="Type" scope={props.collection} choices={typeChoices()} />
+          <OptionsField scope={props.collection} />
+        </Fields>
+        <Submit>Add property</Submit>
       </PlatformCommandForm>
-    </Card>
+    </Section>
   );
 }
 
@@ -184,12 +204,9 @@ function ChangeType(props: {
 }) {
   const stored = props.properties.filter((p) => p.source.kind === 'frontmatter');
   if (stored.length === 0) return null;
-  const types = storedTypes
-    .filter((type) => type !== 'title')
-    .map((type) => ({ value: type, label: typeName(type) }));
   const scope = `${props.collection}-type`;
   return (
-    <Card
+    <Section
       title="Change a property's type"
       sub="Every row is converted, or none is and the rows that do not fit are listed"
     >
@@ -200,25 +217,19 @@ function ChangeType(props: {
         done="Changed"
       >
         <input type="hidden" name="collection" value={props.collection} />
-        <SelectField
-          name="property"
-          label="Property"
-          scope={scope}
-          choices={stored.map((p) => ({ value: p.key, label: p.name }))}
-        />
-        <SelectField name="type" label="New type" scope={scope} choices={types} />
-        <TextField
-          name="options"
-          label="Options"
-          scope={scope}
-          maxLength={2000}
-          hint="Names separated by commas. A status needs at least three: the first is to do and the last is complete."
-        />
-        <button type="submit" class={commandButton}>
-          Change type
-        </button>
+        <Fields>
+          <SelectField
+            name="property"
+            label="Property"
+            scope={scope}
+            choices={stored.map((p) => ({ value: p.key, label: p.name }))}
+          />
+          <SelectField name="type" label="New type" scope={scope} choices={typeChoices()} />
+          <OptionsField scope={scope} />
+        </Fields>
+        <Submit>Change type</Submit>
       </PlatformCommandForm>
-    </Card>
+    </Section>
   );
 }
 
@@ -226,7 +237,7 @@ function CollectionForm(props: { readonly reply: CollectionReply }) {
   const { collection, definition } = props.reply;
   const scope = `${collection.key}-collection`;
   return (
-    <Card
+    <Section
       title="Collection"
       sub={collection.locked ? 'Locked: unlock to change its properties' : undefined}
     >
@@ -237,48 +248,49 @@ function CollectionForm(props: { readonly reply: CollectionReply }) {
         done="Saved"
       >
         <input type="hidden" name="collection" value={collection.key} />
-        <TextField
-          name="name"
-          label="Name"
-          scope={scope}
-          value={collection.name}
-          maxLength={80}
-          required
-        />
-        <TextAreaField
-          name="description"
-          label="Description"
-          scope={scope}
-          value={definition.description}
-          maxLength={1000}
-          rows={2}
-        />
-        <SelectField
-          name="locked"
-          label="Locked"
-          scope={scope}
-          selected={collection.locked ? 'true' : 'false'}
-          choices={[
-            { value: 'true', label: 'Locked' },
-            { value: 'false', label: 'Unlocked' },
-          ]}
-        />
-        <button type="submit" class={commandButton}>
-          Save
-        </button>
+        <Fields>
+          <TextField
+            name="name"
+            label="Name"
+            scope={scope}
+            value={collection.name}
+            maxLength={80}
+            required
+          />
+          <TextAreaField
+            name="description"
+            label="Description"
+            scope={scope}
+            value={definition.description}
+            maxLength={1000}
+            rows={2}
+          />
+          <SelectField
+            name="locked"
+            label="Locked"
+            scope={scope}
+            selected={collection.locked ? 'true' : 'false'}
+            choices={[
+              { value: 'true', label: 'Locked' },
+              { value: 'false', label: 'Unlocked' },
+            ]}
+          />
+        </Fields>
+        <Submit>Save</Submit>
       </PlatformCommandForm>
-    </Card>
+    </Section>
   );
 }
 
 function ViewRow(props: { readonly view: SavedView; readonly writable: boolean }) {
   const { view } = props;
+  const deletable = props.writable || view.settings.scope === 'personal';
   return (
-    <li class="flex flex-wrap items-center gap-3 px-4 py-3 text-sm">
-      <span class="font-heavy">{view.settings.name}</span>
-      <span class="text-text-3">{`${layoutNames.get(view.settings.layout) ?? view.settings.layout} · ${view.settings.scope === 'shared' ? 'Shared' : 'Only you'}`}</span>
-      {props.writable || view.settings.scope === 'personal' ? <DeleteView view={view} /> : null}
-    </li>
+    <SettingRow
+      title={view.settings.name}
+      meta={`${layoutNames.get(view.settings.layout) ?? view.settings.layout} · ${view.settings.scope === 'shared' ? 'Shared' : 'Only you'}`}
+      actions={deletable ? <DeleteView view={view} /> : undefined}
+    />
   );
 }
 
@@ -329,7 +341,7 @@ function NewView(props: { readonly reply: CollectionReply; readonly writable: bo
   const key = props.reply.collection.key;
   const scope = `${key}-view`;
   return (
-    <Card title="New view">
+    <Section title="New view">
       <PlatformCommandForm
         endpoint={COLLECTIONS_ENDPOINT}
         command="save_view"
@@ -338,25 +350,28 @@ function NewView(props: { readonly reply: CollectionReply; readonly writable: bo
       >
         <input type="hidden" name="collection" value={key} />
         <input type="hidden" name="viewId" value={crypto.randomUUID()} />
-        <TextField name="name" label="Name" scope={scope} maxLength={80} required />
-        <SelectField
-          name="layout"
-          label="Layout"
-          scope={scope}
-          choices={layoutSchema.options.map((l) => ({ value: l, label: layoutNames.get(l) ?? l }))}
-        />
-        <SelectField
-          name="scope"
-          label="Shared with"
-          scope={scope}
-          choices={props.writable ? shareChoices : shareChoices.slice(0, 1)}
-        />
-        <ViewShape scope={scope} properties={props.reply.definition.properties} />
-        <button type="submit" class={commandButton}>
-          Save view
-        </button>
+        <Fields>
+          <TextField name="name" label="Name" scope={scope} maxLength={80} required />
+          <SelectField
+            name="layout"
+            label="Layout"
+            scope={scope}
+            choices={layoutSchema.options.map((l) => ({
+              value: l,
+              label: layoutNames.get(l) ?? l,
+            }))}
+          />
+          <SelectField
+            name="scope"
+            label="Shared with"
+            scope={scope}
+            choices={props.writable ? shareChoices : shareChoices.slice(0, 1)}
+          />
+          <ViewShape scope={scope} properties={props.reply.definition.properties} />
+        </Fields>
+        <Submit>Save view</Submit>
       </PlatformCommandForm>
-    </Card>
+    </Section>
   );
 }
 
@@ -364,15 +379,15 @@ function Templates(props: { readonly reply: CollectionReply }) {
   const key = props.reply.collection.key;
   const scope = `${key}-template`;
   return (
-    <Card title="Row templates" sub="A new row can start from one; a view names its default">
+    <Section title="Row templates" sub="A new row can start from one; a view names its default">
       {props.reply.templates.length === 0 ? (
-        <p class="m-0 text-sm text-text-3">No template yet.</p>
+        <EmptyState title="No template yet." />
       ) : (
-        <ul class="m-0 flex list-none flex-col gap-1 p-0 text-sm">
+        <RowList label="Row templates">
           {props.reply.templates.map((t) => (
-            <li>{t.name}</li>
+            <ListRow title={t.name} />
           ))}
-        </ul>
+        </RowList>
       )}
       <PlatformCommandForm
         endpoint={COLLECTIONS_ENDPOINT}
@@ -382,13 +397,13 @@ function Templates(props: { readonly reply: CollectionReply }) {
       >
         <input type="hidden" name="collection" value={key} />
         <input type="hidden" name="templateId" value={crypto.randomUUID()} />
-        <TextField name="name" label="Template name" scope={scope} maxLength={80} required />
-        <TextAreaField name="bodyMd" label="Body" scope={scope} maxLength={100000} rows={4} />
-        <button type="submit" class={commandButton}>
-          Save template
-        </button>
+        <Fields>
+          <TextField name="name" label="Template name" scope={scope} maxLength={80} required />
+          <TextAreaField name="bodyMd" label="Body" scope={scope} maxLength={100000} rows={4} />
+        </Fields>
+        <Submit>Save template</Submit>
       </PlatformCommandForm>
-    </Card>
+    </Section>
   );
 }
 
@@ -401,27 +416,28 @@ function Settings(props: {
   const editable = admin && !reply.collection.locked;
   const key = reply.collection.key;
   return (
-    <div class="flex flex-col gap-5">
-      <Card title="Properties" flush>
-        <ul class="m-0 flex list-none flex-col divide-y divide-line-soft p-0">
+    <>
+      <Section title="Properties" sub={String(reply.definition.properties.length)}>
+        <RowList label="Properties">
           {reply.definition.properties.map((property) => (
             <PropertyRow reply={reply} property={property} editable={editable} />
           ))}
-        </ul>
-      </Card>
+        </RowList>
+      </Section>
       {editable ? <AddProperty collection={key} /> : null}
       {editable ? <ChangeType collection={key} properties={reply.definition.properties} /> : null}
       {admin ? <CollectionForm reply={reply} /> : null}
-      <Card title="Saved views" flush>
-        <ul class="m-0 flex list-none flex-col divide-y divide-line-soft p-0">
+      <Hairline />
+      <Section title="Saved views" sub={String(props.views.length)}>
+        <RowList label="Saved views">
           {props.views.map((view) => (
             <ViewRow view={view} writable={write} />
           ))}
-        </ul>
-      </Card>
+        </RowList>
+      </Section>
       <NewView reply={reply} writable={write} />
       {write ? <Templates reply={reply} /> : null}
-    </div>
+    </>
   );
 }
 
@@ -454,13 +470,14 @@ export async function collectionSettingsScreen(c: Context<AppEnv>): Promise<Resp
   return renderScreen(
     c,
     specOf(reply),
-    <>
-      <PageHead
-        eyebrow={areaLabel(collection.jdArea)}
-        title={`${collection.name} properties and views`}
-        lede={`Version ${collection.version}. Only an admin of ${collection.jdArea} changes the properties.`}
-      />
+    <FormShape
+      head={{
+        eyebrow: areaLabel(collection.jdArea),
+        title: `${collection.name} properties and views`,
+        lede: `Version ${collection.version}. Only an admin of ${collection.jdArea} changes the properties.`,
+      }}
+    >
       <Settings reply={reply} views={views} />
-    </>,
+    </FormShape>,
   );
 }

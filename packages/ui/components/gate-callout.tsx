@@ -30,7 +30,7 @@ export function GateCallout(props: {
   return (
     <section
       aria-labelledby={headingId}
-      class="flex min-w-0 flex-col rounded-md border border-line bg-surface text-text"
+      class="flex min-w-0 flex-col rounded-md bg-surface text-text shadow-1"
     >
       <div class="flex flex-wrap items-start justify-between gap-4 border-b border-line px-4 py-3">
         <div class="min-w-0">

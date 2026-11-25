@@ -1,7 +1,8 @@
 import { formatInstant } from '@uw/core/dates';
 import { Badge } from '@uw/ui/components/badge.tsx';
-import { PlatformCommandForm, commandButton } from '@uw/ui/components/command-form.tsx';
-import { SelectField, TextField } from '@uw/ui/components/field.tsx';
+import { Button, buttonClass } from '@uw/ui/components/button.tsx';
+import { PlatformCommandForm } from '@uw/ui/components/command-form.tsx';
+import { SelectField, TextField, fieldControl, fieldLabel } from '@uw/ui/components/field.tsx';
 import { HumanActionButton } from '@uw/ui/components/human-action.tsx';
 import { domId } from '@uw/ui/components/text.ts';
 import type { CredentialLine, GrantLine } from '../../credentials/records.ts';
@@ -19,10 +20,7 @@ const VALUE_MAX = 65_536;
 const NAME_MAX = 120;
 const REF_MAX = 5;
 
-const label = 'text-xs font-heavy tracking-wide text-text-3 uppercase';
-const control =
-  'rounded-md border border-line bg-surface px-3 py-1 text-sm text-text outline-offset-2 outline-accent-text focus-visible:outline-2';
-const hint = 'm-0 text-xs text-text-3';
+const hint = 'm-0 text-sm text-text-3';
 
 export type Choice = { readonly value: string; readonly label: string };
 
@@ -34,10 +32,10 @@ function DayField(props: {
   const id = domId('field', props.name, props.scope);
   return (
     <div class="flex min-w-0 flex-col gap-1">
-      <label for={id} class={label}>
+      <label for={id} class={fieldLabel}>
         {props.label}
       </label>
-      <input id={id} type="date" name={props.name} class={control} />
+      <input id={id} type="date" name={props.name} class={fieldControl} />
     </div>
   );
 }
@@ -46,7 +44,7 @@ function ValueField(props: { readonly scope: string; readonly label: string }) {
   const id = domId('field', 'value', props.scope);
   return (
     <div class="flex w-full min-w-0 flex-col gap-1">
-      <label for={id} class={label}>
+      <label for={id} class={fieldLabel}>
         {props.label}
       </label>
       <textarea
@@ -59,7 +57,7 @@ function ValueField(props: { readonly scope: string; readonly label: string }) {
         autocomplete="off"
         autocapitalize="off"
         spellcheck={false}
-        class={`${control} font-mono`}
+        class={`${fieldControl} font-mono`}
       ></textarea>
     </div>
   );
@@ -84,7 +82,7 @@ export function CreateForm(props: {
         endpoint={ENDPOINT}
         command="create_credential"
         scope="new"
-        done="Added. The list below shows it."
+        done="Added. The list above shows it."
       >
         <TextField name="name" label="Name" scope="new" maxLength={NAME_MAX} required />
         <SelectField name="kind" label="Kind" scope="new" choices={kindChoices} />
@@ -153,7 +151,7 @@ export function RevokeCredential(props: { readonly line: CredentialLine }) {
   const { line } = props;
   return (
     <details>
-      <summary class={`${commandButton} cursor-pointer list-none`}>Revoke this credential</summary>
+      <summary class={`${buttonClass('secondary')} list-none`}>Revoke this credential</summary>
       <div class="mt-2 flex flex-col gap-2">
         <p class="m-0 text-sm text-text">
           {line.name} stops working everywhere it is bound, and nobody can reveal it. You cannot
@@ -339,15 +337,13 @@ export function RevealControl(props: { readonly line: CredentialLine }) {
           name="decision"
           value="reveal_credential"
         />
-        <button type="button" data-reveal-hide="" hidden class={commandButton}>
-          Hide the value
-        </button>
+        <Button attrs={{ 'data-reveal-hide': '', hidden: true }}>Hide the value</Button>
       </div>
       <p data-outcome role="status" aria-live="polite" class="m-0 text-sm text-text-3"></p>
       <pre
         data-revealed=""
         hidden
-        class="m-0 overflow-x-auto rounded-md border border-line bg-raised p-3 font-mono text-sm break-all whitespace-pre-wrap text-text"
+        class="m-0 overflow-x-auto rounded-md bg-raised p-3 font-mono text-sm break-all whitespace-pre-wrap text-text"
       ></pre>
     </form>
   );

@@ -1,11 +1,11 @@
 import type { Context } from 'hono';
 import { templates } from '@uw/harness';
-import { Card } from '@uw/ui/components/card.tsx';
-import { NewHarnessForm, commandButton, primaryButton } from '@uw/ui/components/command-form.tsx';
+import { Button, ButtonLink } from '@uw/ui/components/button.tsx';
+import { NewHarnessForm } from '@uw/ui/components/command-form.tsx';
 import { SelectField, TextField } from '@uw/ui/components/field.tsx';
 import { Note } from '@uw/ui/components/note.tsx';
-import { PageHead } from '@uw/ui/components/page-head.tsx';
 import { ChoiceCards, type CardChoice } from '@uw/ui/components/segmented-control.tsx';
+import { FormActions, FormShape } from '@uw/ui/shapes/form.tsx';
 import type { AppEnv } from '../../deps.ts';
 import { renderScreen, screenKernel, screenRefusal } from '../parts/frame.tsx';
 import { areaLabel, everyArea, moduleCodes, pageNames } from '../parts/names.ts';
@@ -40,49 +40,52 @@ function templateChoices(): readonly CardChoice[] {
 
 function NewWorkflowForm(props: { readonly areas: readonly string[] }) {
   return (
-    <Card>
-      <NewHarnessForm command="activate_template">
-        <TextField
-          name="title"
-          label="Name"
-          scope={SCOPE}
-          required
-          maxLength={NAME_LIMIT}
-          placeholder="Translation helps review"
-        />
-        <SelectField
-          name="jdArea"
-          label="Area"
-          scope={SCOPE}
-          choices={props.areas.map((area) => ({ value: area, label: areaLabel(area) }))}
-          hint={areaHint}
-        />
-        <ChoiceCards
-          name="template"
-          legend="Start from"
-          hint={templateHint}
-          choices={templateChoices()}
-          selected="software"
-        />
-        <TextField
-          name="repository"
-          label="GitHub repository"
-          scope={SCOPE}
-          maxLength={REPOSITORY_LIMIT}
-          placeholder="unfoldingWord/repo-name"
-          hint={repositoryHint}
-        />
-        <div class="flex flex-wrap items-center gap-2 border-t border-line-soft pt-4">
-          <button type="submit" class={primaryButton}>
-            Create and open in Flow
-          </button>
-          <a href={agentQueuesPath()} class={commandButton}>
-            Cancel
-          </a>
-          <p data-outcome role="status" aria-live="polite" class="m-0 text-sm text-text-3"></p>
-        </div>
-      </NewHarnessForm>
-    </Card>
+    <NewHarnessForm command="activate_template">
+      <TextField
+        name="title"
+        label="Name"
+        scope={SCOPE}
+        required
+        maxLength={NAME_LIMIT}
+        placeholder="Translation helps review"
+      />
+      <SelectField
+        name="jdArea"
+        label="Area"
+        scope={SCOPE}
+        choices={props.areas.map((area) => ({ value: area, label: areaLabel(area) }))}
+        hint={areaHint}
+      />
+      <ChoiceCards
+        name="template"
+        legend="Start from"
+        hint={templateHint}
+        choices={templateChoices()}
+        selected="software"
+      />
+      <TextField
+        name="repository"
+        label="GitHub repository"
+        scope={SCOPE}
+        maxLength={REPOSITORY_LIMIT}
+        placeholder="unfoldingWord/repo-name"
+        hint={repositoryHint}
+      />
+      <FormActions>
+        <p
+          data-outcome
+          role="status"
+          aria-live="polite"
+          class="m-0 mr-auto text-sm text-text-3"
+        ></p>
+        <ButtonLink href={agentQueuesPath()} variant="ghost">
+          Cancel
+        </ButtonLink>
+        <Button type="submit" variant="primary">
+          Create and open in Flow
+        </Button>
+      </FormActions>
+    </NewHarnessForm>
   );
 }
 
@@ -104,14 +107,14 @@ export async function newWorkflowScreen(c: Context<AppEnv>): Promise<Response> {
   return renderScreen(
     c,
     spec,
-    <div class="flex max-w-content flex-col gap-5">
-      <PageHead
-        eyebrow={pageNames.agentQueues}
-        title={pageNames.newWorkflow}
-        lede="A workflow is a set of stages that work moves through. Start from a template, then shape its stages in Flow."
-        flush
-      />
+    <FormShape
+      head={{
+        eyebrow: pageNames.agentQueues,
+        title: pageNames.newWorkflow,
+        lede: 'A workflow is a set of stages that work moves through. Start from a template, then shape its stages in Flow.',
+      }}
+    >
       {areas.length === 0 ? <Note>{notAdminWords}</Note> : <NewWorkflowForm areas={areas} />}
-    </div>,
+    </FormShape>,
   );
 }

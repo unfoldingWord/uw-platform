@@ -218,7 +218,7 @@ describe('the evidence label with its definition shown', () => {
     const document = await dom(jsx(EvidenceLabel, { label: 'inferred', showDefinition: true }));
     expect(document.querySelector('[title]')).toBeNull();
     expect(document.querySelector('.sr-only')).toBeNull();
-    const definition = document.querySelector('.text-text-3:not(.font-heavy)');
+    const definition = document.querySelector('.text-text-3:not(.font-semibold)');
     expect(definition?.textContent).toBe('Concluded from other evidence, not seen directly.');
     expect(document.body.textContent).toBe(
       'inferredConcluded from other evidence, not seen directly.',

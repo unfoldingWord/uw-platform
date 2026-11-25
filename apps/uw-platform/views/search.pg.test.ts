@@ -50,28 +50,28 @@ async function findsAndMarks(db: Database): Promise<void> {
   expect(await screenProblems(page.text)).toEqual([]);
   const document = documentOf(page.text);
   expect(document.querySelector<HTMLInputElement>('main input[name="q"]')?.value).toBe('password');
-  expect(texts(document, 'main [data-result] h2')).toEqual(['01.47 Security Guidelines']);
+  expect(texts(document, 'main [data-result] a')).toEqual(['01.47 Security Guidelines']);
   expect(texts(document, 'main [data-result] mark')).toEqual(['password']);
   expect(document.querySelector('main [data-result] a')?.getAttribute('href')).toMatch(
     /^\/pages\/[0-9a-f-]{36}$/,
   );
   const hidden = await getHtml(db, made.stranger, '/search?q=password');
-  expect(texts(documentOf(hidden.text), 'main [data-result] h2')).toEqual([]);
+  expect(texts(documentOf(hidden.text), 'main [data-result] a')).toEqual([]);
   expect(hidden.text).toContain('No page you can read matches');
 }
 
 async function narrowsByTitleAndType(db: Database): Promise<void> {
   const made = await world(db);
   const both = documentOf((await getHtml(db, made.reader, '/search?q=budget')).text);
-  expect(texts(both, 'main [data-result] h2')).toEqual([
+  expect(texts(both, 'main [data-result] a')).toEqual([
     '01.26 Budgeting',
     '01.47 Security Guidelines',
   ]);
   const titles = documentOf((await getHtml(db, made.reader, '/search?q=budget&titles=1')).text);
-  expect(texts(titles, 'main [data-result] h2')).toEqual(['01.26 Budgeting']);
+  expect(texts(titles, 'main [data-result] a')).toEqual(['01.26 Budgeting']);
   expect(titles.querySelector<HTMLInputElement>('main input[name="titles"]')?.checked).toBe(true);
   const every = documentOf((await getHtml(db, made.reader, '/search?q=budget&type=all')).text);
-  expect(texts(every, 'main [data-result] h2')).toContain('Draft a budget');
+  expect(texts(every, 'main [data-result] a')).toContain('Draft a budget');
 }
 
 async function emptyAndOddQueries(db: Database): Promise<void> {

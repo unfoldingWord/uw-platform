@@ -3,10 +3,12 @@ import { shownIdentity, Who } from './person.tsx';
 import { formatDuration } from '@uw/core/dates';
 import type { DraftProblem, DraftStage } from '@uw/contracts';
 import type { WorkflowDraftView } from '@uw/harness';
-import { Card } from '@uw/ui/components/card.tsx';
-import { CommandForm, commandButton, primaryButton } from '@uw/ui/components/command-form.tsx';
+import { Button } from '@uw/ui/components/button.tsx';
+import { CommandForm } from '@uw/ui/components/command-form.tsx';
 import { TextField } from '@uw/ui/components/field.tsx';
 import { Note } from '@uw/ui/components/note.tsx';
+import { Section, SectionHeading } from '@uw/ui/components/section.tsx';
+import { domId } from '@uw/ui/components/text.ts';
 import { DraftMap } from './draft-map.tsx';
 import { DraftRow } from './draft-row.tsx';
 import { cleanCheck, problemCount } from './draft-words.ts';
@@ -51,7 +53,7 @@ function General(props: { readonly draft: WorkflowDraftView }) {
     (problem) => problem.stage === null || !keys.has(problem.stage),
   );
   return (
-    <ul data-draft-general class="m-0 flex list-none flex-col gap-1 px-4 pt-3 empty:hidden">
+    <ul data-draft-general class="m-0 flex list-none flex-col gap-1 p-0 empty:hidden">
       {general.map((problem) => (
         <li
           data-code={problem.code}
@@ -68,7 +70,7 @@ function DraftBar(props: { readonly harnessId: string; readonly draft: WorkflowD
   const { draft } = props;
   const clean = draft.problems.length === 0;
   return (
-    <div class="flex flex-col gap-3 border-b border-line bg-accent-soft px-4 py-3 text-sm text-accent-text">
+    <div class="flex flex-col gap-3 rounded-md bg-accent-soft px-4 py-3 text-sm text-accent-text">
       <p class="m-0 font-semibold">
         Draft · only you see these changes until you publish · the live workflow keeps running
       </p>
@@ -76,24 +78,23 @@ function DraftBar(props: { readonly harnessId: string; readonly draft: WorkflowD
         {clean ? cleanCheck : problemCount(draft.problems.length)}
       </p>
       <div class="flex flex-wrap items-end gap-2">
-        <button type="button" data-draft-add class={commandButton}>
+        <Button icon="plus" attrs={{ 'data-draft-add': '' }}>
           Add stage
-        </button>
+        </Button>
         <CommandForm harnessId={props.harnessId} command="discard_workflow_draft">
-          <button type="submit" class={commandButton}>
+          <Button type="submit" variant="ghost">
             Discard
-          </button>
+          </Button>
         </CommandForm>
         <CommandForm harnessId={props.harnessId} command="publish_workflow_draft">
           <input type="hidden" name="revision" value={String(draft.revision)} data-draft-revision />
-          <button
+          <Button
             type="submit"
-            data-draft-publish
-            aria-disabled={clean ? undefined : 'true'}
-            class={primaryButton}
+            variant="primary"
+            attrs={{ 'data-draft-publish': '', 'aria-disabled': clean ? undefined : 'true' }}
           >
             Publish
-          </button>
+          </Button>
         </CommandForm>
       </div>
     </div>
@@ -103,13 +104,16 @@ function DraftBar(props: { readonly harnessId: string; readonly draft: WorkflowD
 type Named = { readonly harnessId: string; readonly harnessTitle: string };
 
 function Editor(props: Named & { readonly draft: WorkflowDraftView }) {
+  const headingId = domId('draft', props.harnessId);
   return (
     <section
       data-draft-editor
       data-harness={props.harnessId}
       data-revision={String(props.draft.revision)}
-      class="flex min-w-0 flex-col rounded-md border border-line bg-surface text-text"
+      aria-labelledby={headingId}
+      class="flex min-w-0 flex-col gap-4 text-text"
     >
+      <SectionHeading id={headingId} title="Your draft" sub="checked as you type" />
       <DraftBar harnessId={props.harnessId} draft={props.draft} />
       <DraftMap
         harnessId={props.harnessId}
@@ -153,23 +157,21 @@ function LockBar(props: { readonly draft: WorkflowDraftView; readonly holding: H
 function EditButton(props: { readonly harnessId: string; readonly label: string }) {
   return (
     <CommandForm harnessId={props.harnessId} command="open_workflow_draft">
-      <button type="submit" class={primaryButton}>
+      <Button type="submit" variant="primary" icon="pen">
         {props.label}
-      </button>
+      </Button>
     </CommandForm>
   );
 }
 
 function TakeOver(props: Named & { readonly draft: WorkflowDraftView }) {
   return (
-    <Card title="Their draft" sub="you can watch; to edit, take over the lock with a reason">
+    <Section title="Their draft" sub="you can watch; to edit, take over the lock with a reason">
       <CommandForm harnessId={props.harnessId} command="take_over_workflow_draft">
         <TextField name="reason" label="Reason" scope={props.harnessId} required maxLength={500} />
-        <button type="submit" class={commandButton}>
-          Take over
-        </button>
+        <Button type="submit">Take over</Button>
       </CommandForm>
-      <section data-draft-view class="rounded-md border border-line">
+      <section data-draft-view aria-label="Their draft, read only" class="flex flex-col gap-4">
         <DraftMap
           harnessId={props.harnessId}
           harnessTitle={props.harnessTitle}
@@ -178,7 +180,7 @@ function TakeOver(props: Named & { readonly draft: WorkflowDraftView }) {
         />
         <Rows draft={props.draft} locked />
       </section>
-    </Card>
+    </Section>
   );
 }
 
@@ -211,16 +213,16 @@ export function DraftSection(props: {
   if (draft === null) {
     if (!props.admin) return null;
     return (
-      <Card
+      <Section
         title="Change the stages"
         sub="in a draft, checked as you type, live only when you publish"
         actions={<EditButton harnessId={props.harnessId} label="Edit workflow" />}
       >
-        <p class="m-0 text-sm text-text-2">
+        <p class="m-0 text-sm text-text-3">
           While you edit, the live workflow keeps running on the stages it has now. Others see that
           you are editing.
         </p>
-      </Card>
+      </Section>
     );
   }
   if (draft.mine)

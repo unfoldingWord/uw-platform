@@ -1,6 +1,7 @@
 import { roleSchema } from '@uw/contracts';
 import { Badge } from '@uw/ui/components/badge.tsx';
-import { PlatformCommandForm, commandButton } from '@uw/ui/components/command-form.tsx';
+import { Button, buttonClass } from '@uw/ui/components/button.tsx';
+import { PlatformCommandForm } from '@uw/ui/components/command-form.tsx';
 import { SelectField } from '@uw/ui/components/field.tsx';
 import { HumanActionButton } from '@uw/ui/components/human-action.tsx';
 import type { AccessPerson } from '@uw/db/store';
@@ -37,7 +38,7 @@ export function KeptOutcome() {
       data-outcome-keep
       role="status"
       aria-live="polite"
-      class="m-0 mb-3 text-sm font-semibold text-text empty:hidden"
+      class="m-0 text-sm font-semibold text-text empty:hidden"
     ></p>
   );
 }
@@ -62,7 +63,7 @@ export function GrantForm(props: { readonly view: AccessView }) {
         <EndsField scope="grant" />
         <HumanActionButton itemId="grant" label="Grant" name="decision" value="grant_role" />
       </PlatformCommandForm>
-      <p class="m-0 text-xs text-text-3">
+      <p class="m-0 text-sm text-text-3">
         A grant on an area reaches only that area. With no end date it lasts until someone revokes
         it.
       </p>
@@ -76,7 +77,7 @@ export function RevokeControl(props: { readonly person: AccessPerson; readonly l
   return (
     <details>
       <summary
-        class={`${commandButton} cursor-pointer list-none`}
+        class={`${buttonClass('secondary', 'sm')} list-none`}
         aria-label={`Revoke ${what} for ${props.person.email}`}
       >
         Revoke
@@ -161,9 +162,7 @@ export function FilterForm(props: { readonly view: AccessView; readonly filter: 
         choices={people}
         selected={filter.personId ?? ALL}
       />
-      <button type="submit" class={commandButton}>
-        Filter
-      </button>
+      <Button type="submit">Filter</Button>
     </form>
   );
 }

@@ -3,12 +3,15 @@ import type { Child } from 'hono/jsx';
 import type { Stage } from '@uw/contracts';
 import type { OpenDraft, StageControlsView } from '@uw/harness';
 import { Badge } from '@uw/ui/components/badge.tsx';
-import { Card } from '@uw/ui/components/card.tsx';
-import { CommandForm, commandButton, primaryButton } from '@uw/ui/components/command-form.tsx';
+import { Button } from '@uw/ui/components/button.tsx';
+import { CommandForm } from '@uw/ui/components/command-form.tsx';
+import { fieldControl } from '@uw/ui/components/field.tsx';
+import { ListRow, RowList } from '@uw/ui/components/list-row.tsx';
 import { Note } from '@uw/ui/components/note.tsx';
-import { PageHead } from '@uw/ui/components/page-head.tsx';
+import { Section } from '@uw/ui/components/section.tsx';
 import { Table } from '@uw/ui/components/table.tsx';
 import { domId } from '@uw/ui/components/text.ts';
+import { DocumentShape } from '@uw/ui/shapes/document.tsx';
 import type { AppEnv } from '../../deps.ts';
 import { draftChoices, type Choice } from '../parts/draft-words.ts';
 import { renderScreen, screenKernel, screenRefusal } from '../parts/frame.tsx';
@@ -22,8 +25,7 @@ import { InstructionsExtras } from '../parts/stage-instructions.tsx';
 
 const RULES_COMMAND = 'set_stage_rules';
 
-const control =
-  'rounded-md border border-line bg-surface px-2 py-1 text-sm text-text outline-offset-2 outline-accent-text focus-visible:outline-2 disabled:text-text-3';
+const control = `${fieldControl} disabled:text-text-3`;
 const box = 'outline-offset-2 outline-accent-text focus-visible:outline-2';
 
 function rulesFormId(harnessId: string): string {
@@ -76,7 +78,7 @@ function pageChoices(view: StageControlsView): readonly Choice[] {
 function StageName(props: RowProps) {
   const { view, stage, index } = props;
   return (
-    <span class="font-heavy text-text">
+    <span class="font-semibold text-text">
       {stage.title}
       {view.admin ? (
         <input type="hidden" name={fieldName(index, 'id')} value={stage.id} {...linked(view)} />
@@ -159,9 +161,9 @@ function Running(props: RowProps) {
       {state}
       <CommandForm harnessId={view.harness.id} command={verb.toLowerCase()} itemId={stage.id}>
         <input type="hidden" name="stageKey" value={stage.key} />
-        <button type="submit" class={commandButton} aria-label={`${verb} ${stage.title}`}>
+        <Button type="submit" size="sm" label={`${verb} ${stage.title}`}>
           {verb}
-        </button>
+        </Button>
       </CommandForm>
     </div>
   );
@@ -172,6 +174,10 @@ const ruleColumns = [
   { key: 'pickup', label: 'Agents pick up' },
   { key: 'exit', label: 'To leave the stage' },
   { key: 'limit', label: 'Most at once' },
+];
+
+const extraColumns = [
+  { key: 'name', label: 'Stage' },
   { key: 'instructions', label: 'Instructions' },
   { key: 'checks', label: 'Checks run' },
   { key: 'running', label: 'Running' },
@@ -181,6 +187,7 @@ function ruleRow(props: RowProps): Readonly<Record<string, Child>> {
   const { view, stage, index } = props;
   return {
     stage: <StageName {...props} />,
+    name: <span class="font-semibold text-text">{stage.title}</span>,
     pickup: (
       <Pick
         view={view}
@@ -212,11 +219,15 @@ function ruleRow(props: RowProps): Readonly<Record<string, Child>> {
 function SaveRules(props: { readonly view: StageControlsView }) {
   const blocked = props.view.draft !== null;
   return (
-    <div class="border-t border-line px-4 py-3">
+    <div class="flex justify-end">
       <CommandForm harnessId={props.view.harness.id} command={RULES_COMMAND}>
-        <button type="submit" class={primaryButton} aria-disabled={blocked ? 'true' : undefined}>
+        <Button
+          type="submit"
+          variant="human"
+          attrs={{ 'aria-disabled': blocked ? 'true' : undefined }}
+        >
           Save changes
-        </button>
+        </Button>
       </CommandForm>
     </div>
   );
@@ -224,20 +235,17 @@ function SaveRules(props: { readonly view: StageControlsView }) {
 
 function StageRules(props: { readonly view: StageControlsView }) {
   const { view } = props;
+  const rows = view.stages.map((stage, index) => ruleRow({ view, stage, index }));
   return (
-    <Card title="Stage rules" sub="Applies to everyone on this workflow" flush>
-      <Table
-        caption="Stage rules"
-        columns={ruleColumns}
-        rows={view.stages.map((stage, index) => ruleRow({ view, stage, index }))}
-        bare
-      />
+    <Section title="Stage rules" sub="Applies to everyone on this workflow">
+      <Table caption="Stage rules" columns={ruleColumns} rows={rows} bare />
+      <Table caption="Stage instructions and checks" columns={extraColumns} rows={rows} bare />
       {view.admin ? <SaveRules view={view} /> : null}
-      <p class="m-0 border-t border-line px-4 py-3 text-sm text-text-3">
+      <p class="m-0 text-sm text-text-3">
         Adding, removing or reordering stages, and loops between them, happen in Flow. “A person
         approves” means an agent can finish its work but never moves the item on.
       </p>
-    </Card>
+    </Section>
   );
 }
 
@@ -290,36 +298,33 @@ function SwitchState(props: { readonly item: Switch }) {
   );
 }
 
-function SwitchRow(props: { readonly view: StageControlsView; readonly item: Switch }) {
+function SwitchToggle(props: { readonly view: StageControlsView; readonly item: Switch }) {
   const { view, item } = props;
+  if (!view.admin) return null;
   return (
-    <li class="flex flex-wrap items-start gap-3 border-t border-line px-4 py-3 first:border-t-0">
-      <SwitchState item={item} />
-      <div class="min-w-0 flex-1">
-        <p class="m-0 text-sm font-heavy text-text">{item.title}</p>
-        <p class="m-0 text-sm text-text-3">{item.about}</p>
-      </div>
-      {view.admin ? (
-        <CommandForm harnessId={view.harness.id} command={item.command}>
-          <input type="hidden" name={item.field} value={item.on ? 'false' : 'true'} />
-          <button type="submit" class={commandButton}>
-            {item.on ? 'Turn off' : 'Turn on'}
-          </button>
-        </CommandForm>
-      ) : null}
-    </li>
+    <CommandForm harnessId={view.harness.id} command={item.command}>
+      <input type="hidden" name={item.field} value={item.on ? 'false' : 'true'} />
+      <Button type="submit" size="sm" label={`${item.on ? 'Turn off' : 'Turn on'}: ${item.title}`}>
+        {item.on ? 'Turn off' : 'Turn on'}
+      </Button>
+    </CommandForm>
   );
 }
 
 function Switches(props: { readonly view: StageControlsView }) {
   return (
-    <Card title="Workflow switches" sub="Apply to everyone on this workflow" flush>
-      <ul class="m-0 list-none p-0">
+    <Section title="Workflow switches" sub="Apply to everyone on this workflow">
+      <RowList label="Workflow switches">
         {switchesOf(props.view).map((item) => (
-          <SwitchRow view={props.view} item={item} />
+          <ListRow
+            lead={<SwitchState item={item} />}
+            title={item.title}
+            meta={item.about}
+            trail={<SwitchToggle view={props.view} item={item} />}
+          />
         ))}
-      </ul>
-    </Card>
+      </RowList>
+    </Section>
   );
 }
 
@@ -371,18 +376,17 @@ export async function controlsScreen(c: Context<AppEnv>): Promise<Response> {
   return renderScreen(
     c,
     spec,
-    <>
-      <PageHead
-        eyebrow={`Workflow · ${view.harness.template} template`}
-        title={view.harness.title}
-        lede="The rules each stage follows and the switches for the whole workflow."
-      />
-      <div class="flex flex-col gap-5">
-        <Access view={view} />
-        <DraftNote draft={view.draft} />
-        <StageRules view={view} />
-        <Switches view={view} />
-      </div>
-    </>,
+    <DocumentShape
+      head={{
+        eyebrow: `Workflow · ${view.harness.template} template`,
+        title: view.harness.title,
+        lede: 'The rules each stage follows and the switches for the whole workflow.',
+      }}
+    >
+      <Access view={view} />
+      <DraftNote draft={view.draft} />
+      <StageRules view={view} />
+      <Switches view={view} />
+    </DocumentShape>,
   );
 }

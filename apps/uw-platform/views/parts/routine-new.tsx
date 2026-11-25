@@ -3,10 +3,11 @@ import { z } from 'zod';
 import { deviceSegmentSchema, personaSlugOf, routineChangeCommandSchema } from '@uw/contracts';
 import { formatDate } from '@uw/core/dates';
 import type { AgentsView } from '@uw/harness';
-import { Card } from '@uw/ui/components/card.tsx';
-import { primaryButton } from '@uw/ui/components/command-form.tsx';
+import { ButtonLink } from '@uw/ui/components/button.tsx';
+import { fieldLabel } from '@uw/ui/components/field.tsx';
 import { Note } from '@uw/ui/components/note.tsx';
-import { PageHead } from '@uw/ui/components/page-head.tsx';
+import { Section } from '@uw/ui/components/section.tsx';
+import { FormActions, FormShape } from '@uw/ui/shapes/form.tsx';
 import {
   accessTokensConfigOf,
   AccessTokenError,
@@ -111,8 +112,8 @@ async function setUp(
 function Copyable(props: { readonly label: string; readonly text: string }) {
   return (
     <div class="flex flex-col gap-1">
-      <p class="m-0 text-xs font-heavy tracking-wide text-text-3 uppercase">{props.label}</p>
-      <pre class="m-0 overflow-x-auto rounded-md border border-line bg-surface px-3 py-2 font-mono text-sm whitespace-pre-wrap break-all text-text">
+      <p class={`m-0 ${fieldLabel}`}>{props.label}</p>
+      <pre class="m-0 overflow-x-auto rounded-md bg-raised px-3 py-2 font-mono text-sm whitespace-pre-wrap break-all text-text">
         {props.text}
       </pre>
     </div>
@@ -144,31 +145,29 @@ function OneTimePage(props: { readonly made: Made; readonly mcpUrl: string }) {
   const { made } = props;
   const lines = setupLines(made, props.mcpUrl);
   return (
-    <div class="flex flex-col gap-5">
+    <>
       <Note>
         This secret is shown once. Copy it now: it is not kept anywhere and cannot be shown again.
       </Note>
-      <Card
+      <Section
         title="Connect your Claude Code"
         sub={`Works under your standing permission until ${formatDate(made.grant.expiresAt)}`}
       >
-        <div class="flex flex-col gap-4">
-          <Copyable label="Run this once on the device" text={lines.command} />
-          <Copyable label="Starter prompt" text={lines.prompt} />
-          <Copyable label="Address" text={props.mcpUrl} />
-          <Copyable label="Headers, for Codex or another client" text={lines.headers} />
-          <p class="m-0 text-sm text-text-3">
-            To run it on a timer, schedule the prompt on that device, for example hourly with cron
-            and claude -p.
-          </p>
-          <div>
-            <a href={agentsPath(made.view.harness.id)} class={primaryButton}>
-              Done, back to agents
-            </a>
-          </div>
-        </div>
-      </Card>
-    </div>
+        <Copyable label="Run this once on the device" text={lines.command} />
+        <Copyable label="Starter prompt" text={lines.prompt} />
+        <Copyable label="Address" text={props.mcpUrl} />
+        <Copyable label="Headers, for Codex or another client" text={lines.headers} />
+        <p class="m-0 text-sm text-text-3">
+          To run it on a timer, schedule the prompt on that device, for example hourly with cron and
+          claude -p.
+        </p>
+      </Section>
+      <FormActions>
+        <ButtonLink href={agentsPath(made.view.harness.id)} variant="primary">
+          Done, back to agents
+        </ButtonLink>
+      </FormActions>
+    </>
   );
 }
 
@@ -192,14 +191,15 @@ export async function newRoutine(c: Context<AppEnv>): Promise<Response> {
   return renderScreen(
     c,
     spec,
-    <>
-      <PageHead
-        eyebrow="Routine set up"
-        title={made.posted.name}
-        lede={`On ${made.posted.device}. Paste these into the device's Claude Code.`}
-      />
+    <FormShape
+      head={{
+        eyebrow: 'Routine set up',
+        title: made.posted.name,
+        lede: `On ${made.posted.device}. Paste these into the device's Claude Code.`,
+      }}
+    >
       <OneTimePage made={made} mcpUrl={mcpUrl} />
-    </>,
+    </FormShape>,
   );
 }
 

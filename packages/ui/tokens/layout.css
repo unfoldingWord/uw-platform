@@ -27,6 +27,8 @@
   --uw-layout-col-min: 150px;
   --uw-layout-col-max: 320px;
   --uw-layout-flow: 48rem;
+  --uw-layout-prop: 120px;
+  --uw-layout-figure: 140px;
   --uw-breakpoint-md: 48rem;
   --uw-breakpoint-lg: 64rem;
   --uw-print-paper: letter;

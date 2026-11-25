@@ -14,7 +14,7 @@ const toneClasses: Readonly<Record<BadgeTone, string>> = {
 export function Badge(props: { readonly tone: BadgeTone; readonly children: Child }) {
   return (
     <span
-      class={`inline-flex items-center gap-1 rounded-sm px-1 text-xs leading-normal font-heavy whitespace-nowrap ${toneClasses[props.tone]}`}
+      class={`inline-flex h-size-3 items-center gap-1 rounded-sm px-2 text-xs font-semibold whitespace-nowrap ${toneClasses[props.tone]}`}
     >
       {props.children}
     </span>

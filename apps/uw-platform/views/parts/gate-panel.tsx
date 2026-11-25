@@ -57,7 +57,7 @@ function Risk(props: { readonly view: GateView }) {
   const { view } = props;
   return (
     <aside aria-label="Risk" class="min-w-0 lg:w-aside lg:shrink-0">
-      <h3 class="m-0 mb-2 text-sm font-heavy text-text">Risk</h3>
+      <h3 class="m-0 mb-2 text-sm font-semibold text-text">Risk</h3>
       <GateFacts
         declaration={view.facts?.declaration ?? null}
         riskDerived={view.recorded}
@@ -100,14 +100,14 @@ function Findings(props: { readonly view: GateView }) {
   const { reviews } = props.view;
   return (
     <div class="flex flex-col gap-2">
-      <h3 class="m-0 text-base font-heavy text-text">Reviewer findings</h3>
+      <h3 class="m-0 text-sm font-semibold text-text">Reviewer findings</h3>
       {reviews.length === 0 ? (
         <p class="m-0 text-sm text-text-3">No Reviewer has reviewed this head yet</p>
       ) : (
         <ul class="m-0 flex list-none flex-col gap-2 p-0 text-sm">
           {reviews.map((review) => (
             <li class="flex flex-col gap-1">
-              <p class="m-0 font-heavy">
+              <p class="m-0 font-semibold">
                 {`${review.reviewer} (${review.provider ?? 'unknown provider'}): ${reasonText(review.state)}`}
               </p>
               {review.findings.length === 0 ? (
@@ -144,7 +144,7 @@ function DecisionForm(props: { readonly gate: PanelGate }) {
   const refusals = new Map(Object.entries(refusalsOf(view, ability)));
   return (
     <CommandForm harnessId={harnessId} command="decide" itemId={itemId}>
-      <div class="flex w-full min-w-0 flex-col gap-3 border-t border-line pt-4">
+      <div class="flex w-full min-w-0 flex-col gap-3 border-t border-line-soft pt-4">
         <input type="hidden" name="itemId" value={itemId} />
         {view.facts?.head === undefined || view.facts.head === null ? null : (
           <input type="hidden" name="head" value={view.facts.head} />
@@ -222,11 +222,11 @@ function Verdicts(props: { readonly view: GateView; readonly refutes: boolean })
   if (view.verdicts.length === 0) return null;
   return (
     <div class="flex flex-col gap-2">
-      <h3 class="m-0 text-base font-heavy text-text">Reviewer verdicts on this item</h3>
+      <h3 class="m-0 text-sm font-semibold text-text">Reviewer verdicts on this item</h3>
       <ul class="m-0 flex list-none flex-col gap-3 p-0 text-sm">
         {view.verdicts.map((verdict, place) => (
           <li class="flex flex-col gap-1">
-            <p class="m-0 font-heavy">{`${verdict.reviewer}: ${reasonText(verdict.verdict)}`}</p>
+            <p class="m-0 font-semibold">{`${verdict.reviewer}: ${reasonText(verdict.verdict)}`}</p>
             <VerdictFindings view={view} verdict={verdict} place={place} refutes={refutes} />
           </li>
         ))}

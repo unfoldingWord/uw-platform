@@ -115,7 +115,13 @@ async function provesReaders(world: World) {
 async function provesRowPage(world: World) {
   const row = await page(world, world.editor, `/collections/program/rows/${world.program}`);
   const sections = [...row.querySelectorAll('main section h2')].map((h) => h.textContent);
-  expect(sections).toEqual(['Overview', 'Details', 'Properties', 'Budget', 'Linked from', 'Page']);
+  expect(sections).toEqual(['Linked from', 'Page', 'Overview', 'Details', 'Properties', 'Budget']);
+  expect([...row.querySelectorAll('main aside section h2')].map((h) => h.textContent)).toEqual([
+    'Overview',
+    'Details',
+    'Properties',
+    'Budget',
+  ]);
   expect(row.body.textContent).not.toContain('Stakeholders');
   expect(row.body.textContent).toContain('Nairobi workshop');
   expect(row.querySelector('a[href^="/pages/"][href$="/edit"]')).not.toBeNull();

@@ -1,7 +1,8 @@
 import { jsx } from 'hono/jsx';
 import { JSDOM } from 'jsdom';
 import { describe, expect, it } from 'vitest';
-import { CommandForm, commandButton } from './command-form.tsx';
+import { buttonClass } from './button.tsx';
+import { CommandForm } from './command-form.tsx';
 import { domId } from './text.ts';
 
 async function documentOf(element: ReturnType<typeof jsx>): Promise<Document> {
@@ -10,7 +11,11 @@ async function documentOf(element: ReturnType<typeof jsx>): Promise<Document> {
 
 describe('the command form', () => {
   it('the command form names its command and harness and has a status region', async () => {
-    const button = jsx('button', { type: 'submit', class: commandButton, children: 'Claim' });
+    const button = jsx('button', {
+      type: 'submit',
+      class: buttonClass('secondary'),
+      children: 'Claim',
+    });
     const document = await documentOf(
       jsx(CommandForm, { harnessId: 'h1', command: 'claim', itemId: 'i1', children: button }),
     );

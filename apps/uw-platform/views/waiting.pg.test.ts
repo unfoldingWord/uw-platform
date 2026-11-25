@@ -191,6 +191,29 @@ async function capOfThisWorkflowOnly(world: GateWorld): Promise<void> {
   );
 }
 
+async function peekBesideTheList(world: GateWorld): Promise<void> {
+  const { harnessId, itemId, title } = world.item;
+  const path = `${waitingPath(harnessId)}?peek=${itemId}`;
+  const page = await getHtml(world.db, world.kimEmail, path, {}, clock);
+  expect(await screenProblems(page.text)).toEqual([]);
+  const document = new JSDOM(page.text).window.document;
+  const panel = document.querySelector(`main aside[data-peek="${itemId}"]`);
+  expect(panel?.querySelector('h2')?.textContent).toBe(title);
+  expect(panel?.querySelector('a[aria-label="Open full page"]')?.getAttribute('href')).toBe(
+    gatePath(harnessId, itemId),
+  );
+  expect(panel?.querySelector('a[aria-label="Close panel"]')?.getAttribute('href')).toBe(
+    waitingPath(harnessId),
+  );
+  const selected = document.querySelector('main tbody tr a[aria-current="true"]');
+  expect(selected?.textContent).toBe(title);
+  expect(rowButtons(document)).toEqual(['Approve merge', 'Send back']);
+  const plain = await documentOf(world, world.kimEmail, waitingPath(harnessId));
+  expect(plain.querySelector('main aside[data-peek]')).toBeNull();
+  const preview = plain.querySelector('a[aria-label^="Preview "]');
+  expect(preview?.getAttribute('href')).toBe(`${path}#${panel?.id}`);
+}
+
 async function noProblems(world: GateWorld): Promise<void> {
   for (const email of [world.kimEmail, world.viewerEmail]) {
     const page = await getHtml(world.db, email, waitingPath(world.item.harnessId), {}, clock);
@@ -211,6 +234,8 @@ describe.skipIf(!testServer)('the Waiting On You tab', () => {
   it('#106 sending back with a reason records the reason as a finding', () =>
     inGates(sentBackWithReason));
   it('#106 a person without the grant sees no decide buttons', () => inGates(viewerCannotDecide));
+  it('UI-7 a gate opens in a side panel beside the list from its address, without script', () =>
+    inGates(peekBesideTheList));
   it('#106 a stranger gets not found, and the old Gates address moves to Agent Queues', () =>
     inGates(strangerAndOldAddress));
   it('#106 another workflow reaching the read limit does not mark this one as capped', () =>

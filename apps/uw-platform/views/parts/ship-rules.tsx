@@ -66,7 +66,7 @@ export function RulesRing(props: { readonly met: number }) {
 
 function Row(props: { readonly title: string; readonly detail: string; readonly met: boolean }) {
   return (
-    <li class="flex items-start gap-3 border-b border-line px-4 py-3 last:border-b-0">
+    <li class="flex items-start gap-3 border-b border-line-soft py-2 last:border-b-0">
       <Icon
         name={props.met ? 'check' : 'clock'}
         size={2}
@@ -88,10 +88,10 @@ export function ShipRules(props: { readonly view: GateView }) {
   return (
     <section aria-label="Ship rule" class="flex flex-col gap-2">
       <p class="m-0 text-sm">
-        <span class="font-heavy text-text">Ship rule</span>
+        <span class="font-semibold text-text">Ship rule</span>
         <span class="ml-2 text-xs text-text-3">checked against the head below</span>
       </p>
-      <ul class="m-0 list-none rounded-lg bg-raised p-0 shadow-1">
+      <ul class="m-0 list-none p-0">
         {failing.map((rule) => (
           <Row title={wordsOf(rule)} detail={reasonText(rule)} met={false} />
         ))}

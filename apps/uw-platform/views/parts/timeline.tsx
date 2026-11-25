@@ -1,5 +1,6 @@
 import type { EvidenceLabel as Label, HarnessEvent } from '@uw/contracts';
 import { formatDate } from '@uw/core/dates';
+import { Chip } from '@uw/ui/components/chip.tsx';
 import { HumanDot } from '@uw/ui/components/human-action.tsx';
 import type { Holding } from './holder.tsx';
 import { PlayRow } from './play-row.tsx';
@@ -47,23 +48,16 @@ function Dot(props: { readonly kind: EventKind }) {
   return <span aria-hidden="true" class={`mt-1 size-size-1 shrink-0 rounded-full ${tone}`}></span>;
 }
 
-const focus = 'outline-offset-2 outline-accent-text focus-visible:outline-2';
-
 export function KindFilters(props: { readonly base: string; readonly kind: EventKind | null }) {
-  const chip = `rounded-full px-3 py-1 text-sm font-semibold text-text-3 hover:text-text aria-[current=true]:bg-hover aria-[current=true]:text-text ${focus}`;
   return (
-    <nav aria-label="Kinds of event" class="mb-4 flex flex-wrap gap-1">
-      <a href={props.base} aria-current={props.kind === null ? 'true' : undefined} class={chip}>
-        All events
-      </a>
+    <nav aria-label="Kinds of event" class="flex flex-wrap gap-2">
+      <Chip label="All events" href={props.base} selected={props.kind === null} />
       {eventKinds.map((kind) => (
-        <a
+        <Chip
+          label={kindWords.get(kind) ?? kind}
           href={`${props.base}?kind=${kind}`}
-          aria-current={props.kind === kind ? 'true' : undefined}
-          class={chip}
-        >
-          {kindWords.get(kind) ?? kind}
-        </a>
+          selected={props.kind === kind}
+        />
       ))}
     </nav>
   );
@@ -89,11 +83,11 @@ export function Timeline(props: {
   readonly holding: Holding;
 }) {
   return (
-    <div class="flex flex-col gap-5">
+    <div class="flex flex-col gap-6">
       {daysOf(props.events).map((group) => (
         <section aria-label={group.day} class="flex flex-col gap-2">
           <h2 class="m-0 font-mono text-xs font-regular text-text-3">{group.day}</h2>
-          <ol class="m-0 flex list-none flex-col gap-2 border-l border-line p-0 pl-4">
+          <ol class="m-0 flex list-none flex-col p-0">
             {group.events.map((event) => (
               <PlayRow
                 event={event}

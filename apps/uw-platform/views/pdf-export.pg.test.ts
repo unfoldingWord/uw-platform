@@ -171,7 +171,7 @@ function textOf(element: Element | null | undefined): string | undefined {
 
 async function menuOf(db: Database, email: string, pageId: string): Promise<Element | null> {
   const page = await getHtml(db, email, `/pages/${pageId}`);
-  return new JSDOM(page.text).window.document.querySelector('main details[data-page-more]');
+  return new JSDOM(page.text).window.document.querySelector('main [data-page-more]');
 }
 
 function offersTheBinder(more: Element | null, pageId: string): void {
