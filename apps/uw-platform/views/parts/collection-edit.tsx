@@ -10,8 +10,6 @@ export const COLLECTIONS_ENDPOINT = '/api/collections/commands';
 
 const control = `min-w-0 ${fieldControl}`;
 
-const focusRing = 'outline-offset-2 outline-accent-text focus-visible:outline-2';
-
 export type Choice = { readonly value: string; readonly label: string };
 
 export type EditTarget = {
@@ -191,18 +189,13 @@ function Control(props: {
 }
 
 function SaveButton(props: { readonly compact: boolean; readonly label: string }) {
-  if (props.compact) {
-    return (
-      <button type="submit" class={`sr-only focus:not-sr-only ${focusRing}`}>
-        {`Save ${props.label}`}
-      </button>
-    );
-  }
-  return (
+  const button = (
     <Button type="submit" variant="human" size="sm" label={`Save ${props.label}`}>
       Save
     </Button>
   );
+  if (!props.compact) return button;
+  return <span class="sr-only focus-within:not-sr-only">{button}</span>;
 }
 
 export function PropertyEditor(props: { readonly target: EditTarget }) {

@@ -38,6 +38,24 @@ function Facts(props: { readonly facts: readonly LaneFact[] }) {
   );
 }
 
+type Attributes = Readonly<Record<string, string | undefined>>;
+
+function Count(props: {
+  readonly count: number;
+  readonly wipLimit: number | null;
+  readonly unit: string;
+}) {
+  const limited = props.wipLimit !== null;
+  return (
+    <p class="m-0 ml-auto font-mono text-xs whitespace-nowrap text-text-3">
+      {limited ? `${props.count} of ${props.wipLimit}` : String(props.count)}
+      <span class="sr-only">
+        {limited ? ` ${props.unit} against the WIP limit` : ` ${props.unit}`}
+      </span>
+    </p>
+  );
+}
+
 function LaneBadges(props: { readonly paused: boolean }) {
   if (!props.paused) return null;
   return (
@@ -51,7 +69,10 @@ export function Lane(props: {
   readonly stageKey: string;
   readonly title: string;
   readonly count: number;
-  readonly wipLimit: number;
+  readonly wipLimit: number | null;
+  readonly unit?: string | undefined;
+  readonly attrs?: Attributes | undefined;
+  readonly listAttrs?: Attributes | undefined;
   readonly paused?: boolean;
   readonly gate?: boolean;
   readonly folded?: boolean;
@@ -60,28 +81,27 @@ export function Lane(props: {
 }) {
   const headingId = domId('lane', props.stageKey);
   const gate = props.gate === true;
+  const unit = props.unit ?? 'items';
   return (
     <section
       aria-labelledby={headingId}
       data-folded={props.folded === true ? 'true' : undefined}
       class={`${column} ${gate ? humanLane : ''}`}
+      {...(props.attrs ?? {})}
     >
       <div class="flex items-center gap-2 px-1 pt-1">
         <h2 id={headingId} class="m-0 min-w-0 truncate text-sm font-heavy text-text">
           {props.title}
         </h2>
-        <p class="m-0 ml-auto font-mono text-xs whitespace-nowrap text-text-3">
-          {`${props.count} of ${props.wipLimit}`}
-          <span class="sr-only"> items against the WIP limit</span>
-        </p>
+        <Count count={props.count} wipLimit={props.wipLimit} unit={unit} />
       </div>
       <LaneBadges paused={props.paused === true} />
       <Facts facts={props.facts ?? []} />
-      <div class="flex flex-col gap-2">
+      <div class="flex flex-col gap-2" {...(props.listAttrs ?? {})}>
         {props.children}
         {props.count === 0 ? (
           <p class="m-0 rounded-md border border-dashed border-line px-3 py-3 text-center text-sm text-text-3">
-            No items
+            {`No ${unit}`}
           </p>
         ) : null}
       </div>

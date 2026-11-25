@@ -11,6 +11,32 @@
 @import '@milkdown/crepe/theme/common/table.css';
 @import '@milkdown/crepe/theme/classic.css';
 
+[data-editor-surface] .milkdown {
+  --crepe-color-background: var(--uw-surface);
+  --crepe-color-on-background: var(--uw-text);
+  --crepe-color-surface: var(--uw-surface);
+  --crepe-color-surface-low: var(--uw-raised);
+  --crepe-color-on-surface: var(--uw-text);
+  --crepe-color-on-surface-variant: var(--uw-text-2);
+  --crepe-color-outline: var(--uw-text-3);
+  --crepe-color-primary: var(--uw-accent-text);
+  --crepe-color-secondary: var(--uw-accent-soft);
+  --crepe-color-on-secondary: var(--uw-accent-text);
+  --crepe-color-inverse: var(--uw-text);
+  --crepe-color-on-inverse: var(--uw-surface);
+  --crepe-color-inline-code: var(--uw-text);
+  --crepe-color-error: var(--uw-text-2);
+  --crepe-color-hover: var(--uw-hover);
+  --crepe-color-selected: var(--uw-accent-soft);
+  --crepe-color-inline-area: var(--uw-lane);
+  --crepe-base-font-size: var(--uw-text-md);
+  --crepe-font-title: var(--uw-font-sans);
+  --crepe-font-default: var(--uw-font-sans);
+  --crepe-font-code: var(--uw-font-mono);
+  --crepe-shadow-1: var(--uw-shadow-3);
+  --crepe-shadow-2: var(--uw-shadow-3);
+}
+
 [data-editor-surface] [data-wiki-text] {
   padding-inline: var(--uw-space-1);
   border-radius: var(--uw-radius-sm);
