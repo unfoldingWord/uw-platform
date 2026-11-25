@@ -62,11 +62,11 @@ function Decide(props: { readonly review: Review }) {
       >
         <input type="hidden" name="requestId" value={crypto.randomUUID()} />
         {stale ? null : (
-          <Button type="submit" variant="human" name="intent" value="accept">
+          <Button type="submit" variant="human" name="intent" value="accept_suggestion">
             Accept the change
           </Button>
         )}
-        <Button type="submit" variant="secondary" name="intent" value="reject">
+        <Button type="submit" variant="secondary" name="intent" value="reject_suggestion">
           Reject the change
         </Button>
       </form>
@@ -160,6 +160,42 @@ export async function pageSuggestionScreen(c: Context<AppEnv>): Promise<Response
   return review === null ? notFound(c) : render(c, review, null);
 }
 
+const deciders = {
+  accept_suggestion: acceptSuggestion,
+  reject_suggestion: rejectSuggestion,
+} as const;
+
+type Intent = keyof typeof deciders;
+
+function intentOf(raw: unknown): Intent | null {
+  return raw === 'accept_suggestion' || raw === 'reject_suggestion' ? raw : null;
+}
+
+function decide(
+  review: Review,
+  db: Parameters<typeof acceptSuggestion>[0],
+  intent: Intent,
+  requestId: string,
+) {
+  const { actor, traceId } = review.screen.caller;
+  const command = { requestId, suggestionId: review.found.set.id };
+  return intent === 'accept_suggestion'
+    ? deciders.accept_suggestion(
+        db,
+        actor,
+        { command: intent, ...command },
+        traceId,
+        review.screen.at,
+      )
+    : deciders.reject_suggestion(
+        db,
+        actor,
+        { command: intent, ...command },
+        traceId,
+        review.screen.at,
+      );
+}
+
 export async function decideSuggestion(c: Context<AppEnv>): Promise<Response> {
   if (screenKernel(c) === null) return screenRefusal(c);
   const review = await reviewOf(c);
@@ -167,27 +203,10 @@ export async function decideSuggestion(c: Context<AppEnv>): Promise<Response> {
   if (review === null || database === null || !review.shown.canEdit) return notFound(c);
   const posted = await c.req.parseBody();
   const requestId = idParam(String(posted['requestId'] ?? ''));
-  if (requestId === null) return render(c, review, 'malformed_command');
-  const { actor, traceId } = review.screen.caller;
-  const suggestionId = review.found.set.id;
-  const at = review.screen.at;
-  const decided =
-    posted['intent'] === 'accept'
-      ? await acceptSuggestion(
-          database.db,
-          actor,
-          { command: 'accept_suggestion', requestId, suggestionId },
-          traceId,
-          at,
-        )
-      : await rejectSuggestion(
-          database.db,
-          actor,
-          { command: 'reject_suggestion', requestId, suggestionId },
-          traceId,
-          at,
-        );
+  const intent = intentOf(posted['intent']);
+  if (requestId === null || intent === null) return render(c, review, 'malformed_command');
+  const decided = await decide(review, database.db, intent, requestId);
   if (!decided.ok) return render(c, review, decided.reason);
-  const saved = posted['intent'] === 'accept' ? `?saved=${String(decided.page.version)}` : '';
+  const saved = intent === 'accept_suggestion' ? `?saved=${String(decided.page.version)}` : '';
   return c.redirect(`${pagePath(review.shown.page.id)}${saved}`, 303);
 }

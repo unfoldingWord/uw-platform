@@ -113,9 +113,9 @@ async function reviewAndAccept(db: Database): Promise<void> {
   expect(document.querySelector('[data-changes] ins')?.textContent).toBe(
     'Safeguarding, with two named adults.',
   );
-  const accept = document.querySelector('button[name="intent"][value="accept"]');
+  const accept = document.querySelector('button[name="intent"][value="accept_suggestion"]');
   expect(accept?.textContent.trim()).toBe('Accept the change');
-  const sent = new URLSearchParams({ requestId: crypto.randomUUID(), intent: 'accept' });
+  const sent = new URLSearchParams({ requestId: crypto.randomUUID(), intent: 'accept_suggestion' });
   const posted = await postForm(db, made.editor, path, sent, ORIGIN);
   expect(posted.status).toBe(303);
   expect(posted.headers.get('location')).toBe(`/pages/${REQUIRED}?saved=2`);
@@ -129,7 +129,7 @@ async function reviewAndAccept(db: Database): Promise<void> {
 async function rejectLeavesThePage(db: Database): Promise<void> {
   const made = await world(db);
   const path = `/pages/${REQUIRED}/suggestions/${SUGGESTION}`;
-  const sent = new URLSearchParams({ requestId: crypto.randomUUID(), intent: 'reject' });
+  const sent = new URLSearchParams({ requestId: crypto.randomUUID(), intent: 'reject_suggestion' });
   const posted = await postForm(db, made.editor, path, sent, ORIGIN);
   expect(posted.headers.get('location')).toBe(`/pages/${REQUIRED}`);
   const after = documentOf((await getHtml(db, made.editor, `/pages/${REQUIRED}`)).text);
