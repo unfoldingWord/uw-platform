@@ -1,3 +1,4 @@
+import { jdIdOfTitle, knowledgeFrontmatterSchema, type Page } from '@uw/contracts';
 import { Button } from '@uw/ui/components/button.tsx';
 import { railLink } from '@uw/ui/components/rail-list.tsx';
 
@@ -31,4 +32,27 @@ export function JdSuggest() {
       </template>
     </div>
   );
+}
+
+export function jdRefusalText(reason: string, title: string, category: string): string | null {
+  const number = jdIdOfTitle(title) ?? '';
+  if (reason === 'jd_taken') {
+    return `${number} is already used by another page. Choose another number.`;
+  }
+  if (reason === 'jd_category') {
+    return `${number} belongs in category ${number.slice(0, 2)}, not ${category}.`;
+  }
+  return null;
+}
+
+export function categoryOfPage(page: Page): string | null {
+  const filed = knowledgeFrontmatterSchema.safeParse(page.frontmatter);
+  return page.type === 'knowledge' && filed.success ? filed.data.jd_category : null;
+}
+
+export function numberedAttrs(category: string | null, pageId?: string): Record<string, string> {
+  if (category === null) return {};
+  const fixed =
+    pageId === undefined ? {} : { 'data-jd-category': category, 'data-page-id': pageId };
+  return { 'data-jd-numbered': '', ...fixed };
 }

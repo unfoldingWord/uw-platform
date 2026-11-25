@@ -2,6 +2,7 @@ import type { Context } from 'hono';
 import { updatePageCommandSchema, type Page } from '@uw/contracts';
 import type { AppEnv } from '../../deps.ts';
 import { draftsOf } from '../../pages/drafts.ts';
+import { renumbered } from '../../pages/jd-ids.ts';
 import { updatePage } from '../../pages/store.ts';
 import { renderPageEdit, type Typed } from '../screens/page-edit.tsx';
 import { notFound } from '../screens/not-found.tsx';
@@ -38,6 +39,8 @@ async function saved(
   const database = c.get('database');
   if (database === null) return { ok: false, reason: 'database_not_configured' };
   const typed = typedOf(page, posted);
+  const numbering = await renumbered(database.db, page, typed.title);
+  if (!numbering.ok) return numbering;
   const command = updatePageCommandSchema.safeParse({
     command: 'update_page',
     requestId: posted.get('requestId'),
@@ -46,7 +49,7 @@ async function saved(
     slug: page.slug,
     title: typed.title,
     parentId: page.parentId,
-    frontmatter: page.frontmatter,
+    frontmatter: numbering.frontmatter,
     bodyMd: typed.bodyMd,
     status: page.status,
   });

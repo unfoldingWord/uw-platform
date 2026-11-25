@@ -1,6 +1,6 @@
 import { JSDOM } from 'jsdom';
 import { describe, expect, it } from 'vitest';
-import { wireNewPage } from './new-page.ts';
+import { wireJdNumbers } from './jd-numbers.ts';
 
 const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
 
@@ -34,7 +34,7 @@ const index = {
 };
 
 function page(title = '', category = '') {
-  const html = `<form data-new-page>
+  const html = `<form data-jd-numbered>
     <input name="title" value="${title}">
     <div data-jd-suggest>
       <p data-jd-status></p>
@@ -51,7 +51,7 @@ function page(title = '', category = '') {
 async function wired(title = '', category = '') {
   const window = page(title, category);
   const sent: string[] = [];
-  wireNewPage(window.document, {
+  wireJdNumbers(window.document, {
     fetch: (input) => {
       sent.push(String(input));
       return Promise.resolve(Response.json(index));
@@ -112,5 +112,47 @@ describe('a new page keeps its title number and its category in step', () => {
     expect(named[0]?.textContent?.trim()).toBe('01.12 Strategic Intents');
     made.type('title', '');
     expect(made.document.querySelector<HTMLElement>('[data-jd-matches]')?.hidden).toBe(true);
+  });
+});
+
+function editing(title: string) {
+  const html = `<form data-jd-numbered data-jd-category="00" data-page-id="a">
+    <input name="title" value="${title}">
+    <div data-jd-suggest>
+      <p data-jd-status></p>
+      <button type="button" data-jd-use hidden>Use</button>
+      <ul data-jd-matches hidden></ul>
+      <template data-jd-row><li><a><span data-number></span> <span data-title></span></a></li></template>
+    </div>
+  </form>`;
+  return new JSDOM(html).window;
+}
+
+describe('an existing page keeps its title number in its own category', () => {
+  it('never counts the page itself as a clash, and offers the next free number when taken', async () => {
+    const window = editing('00.27 Holiday calendar');
+    wireJdNumbers(window.document, { fetch: () => Promise.resolve(Response.json(index)) });
+    await tick();
+    const title = window.document.querySelector<HTMLInputElement>('input[name="title"]');
+    const status = () => window.document.querySelector('[data-jd-status]')?.textContent;
+    title?.dispatchEvent(new window.Event('input', { bubbles: true }));
+    expect(status()).toBe('00.27 is free.');
+    if (title !== null) title.value = '00.05 Holiday calendar';
+    title?.dispatchEvent(new window.Event('input', { bubbles: true }));
+    expect(status()).toBe('00.05 is already used by 00.05 Colleague Directory.');
+    expect(window.document.querySelector('[data-jd-use]')?.textContent).toBe('Use 00.06');
+  });
+
+  it('says a number from another category needs a move, and offers one in its own', async () => {
+    const window = editing('01.40 Holiday calendar');
+    wireJdNumbers(window.document, { fetch: () => Promise.resolve(Response.json(index)) });
+    await tick();
+    const status = window.document.querySelector('[data-jd-status]')?.textContent;
+    expect(status).toBe(
+      '01.40 belongs in category 01. This page is in 00; move it to change that.',
+    );
+    window.document.querySelector<HTMLButtonElement>('[data-jd-use]')?.click();
+    const title = window.document.querySelector<HTMLInputElement>('input[name="title"]');
+    expect(title?.value).toBe('00.06 Holiday calendar');
   });
 });

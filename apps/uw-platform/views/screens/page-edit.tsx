@@ -25,6 +25,7 @@ import {
   type ShownPage,
 } from '../parts/page-shown.ts';
 import { BodyField, EditorStatus, TitleField } from '../parts/page-fields.tsx';
+import { JdSuggest, categoryOfPage, jdRefusalText, numberedAttrs } from '../parts/jd-suggest.tsx';
 import { Properties } from '../parts/page-read.tsx';
 import { pageFacts } from '../parts/page-status.tsx';
 import { idParam } from '../parts/params.ts';
@@ -48,7 +49,9 @@ export type EditOptions = {
   readonly typed: Typed | null;
 };
 
-function refusalText(reason: string): string {
+function refusalText(reason: string, page: Page, title: string): string {
+  const numbering = jdRefusalText(reason, title, categoryOfPage(page) ?? '');
+  if (numbering !== null) return `Not saved: ${numbering}`;
   if (reason === 'stale_version') {
     return 'Someone saved a newer version. Your text is kept below; copy what you need, then reload to edit the newest version.';
   }
@@ -139,6 +142,7 @@ function EditForm(props: FormProps) {
       data-page-edit=""
       data-unsaved={options.typed === null ? undefined : ''}
       class="group/edit"
+      {...numberedAttrs(categoryOfPage(page), page.id)}
     >
       <input type="hidden" name="expectedVersion" value={String(typed.expectedVersion)} />
       <input type="hidden" name="requestId" value={crypto.randomUUID()} />
@@ -148,7 +152,12 @@ function EditForm(props: FormProps) {
         head={{
           eyebrow: markOf(page),
           title: page.title,
-          titleField: <TitleField pageId={page.id} title={typed.title} />,
+          titleField: (
+            <>
+              <TitleField pageId={page.id} title={typed.title} />
+              {categoryOfPage(page) === null ? null : <JdSuggest />}
+            </>
+          ),
         }}
         rail={<EditRail page={page} asText={options.asText} />}
       >
@@ -179,11 +188,12 @@ type Editing = {
   readonly styleNonce: string;
 };
 
-function EditNotes(props: { readonly options: EditOptions }) {
-  const { options } = props;
+function EditNotes(props: { readonly options: EditOptions; readonly page: Page }) {
+  const { options, page } = props;
+  const title = options.typed?.title ?? page.title;
   return (
     <>
-      {options.refused === null ? null : <Note>{refusalText(options.refused)}</Note>}
+      {options.refused === null ? null : <Note>{refusalText(options.refused, page, title)}</Note>}
       {options.asText ? (
         <Note>Text you type here is kept only until you leave. Save before going back.</Note>
       ) : null}
@@ -206,7 +216,7 @@ function Editable(props: {
         styleNonce={props.editing.styleNonce}
         read={props.read}
       >
-        <EditNotes options={options} />
+        <EditNotes options={options} page={props.page} />
       </EditForm>
       {options.asText ? null : (
         <>
@@ -238,7 +248,9 @@ function readOnlyScreen(c: Context<AppEnv>, shown: ShownPage, options: EditOptio
     c,
     pageSpec(shown, pageNames.pageEdit),
     <DocumentShape head={{ eyebrow: markOf(page), title: page.title }}>
-      {options.refused === null ? null : <Note>{refusalText(options.refused)}</Note>}
+      {options.refused === null ? null : (
+        <Note>{refusalText(options.refused, page, page.title)}</Note>
+      )}
       <ReadOnly page={page} read={read} />
     </DocumentShape>,
   );

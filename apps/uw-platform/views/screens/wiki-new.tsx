@@ -27,7 +27,7 @@ import { EditorFrame } from '../parts/editor-frame.tsx';
 import { renderScreen, screenKernel, screenRefusal, type ScreenKernel } from '../parts/frame.tsx';
 import { moduleCodes, pageNames } from '../parts/names.ts';
 import { BodyField, EditorStatus, TitleField } from '../parts/page-fields.tsx';
-import { JdSuggest } from '../parts/jd-suggest.tsx';
+import { JdSuggest, jdRefusalText, numberedAttrs } from '../parts/jd-suggest.tsx';
 import { idParam } from '../parts/params.ts';
 import { pagePath, wikiNewPath, wikiPath } from '../parts/paths.ts';
 
@@ -58,15 +58,10 @@ const editorHint =
   'Type / for blocks and [[ to link or embed a page. Pictures and files can be added once the page is saved.';
 
 function refusalText(reason: string, typed: Typed): string {
-  const number = jdIdOfTitle(typed.title) ?? '';
   if (reason === 'category') return 'Not created: A category is two digits, such as 61.';
   if (reason === 'title') return 'Not created: A page needs a title.';
-  if (reason === 'jd_taken') {
-    return `Not created: ${number} is already used by another page. Choose another number.`;
-  }
-  if (reason === 'jd_category') {
-    return `Not created: ${number} belongs in category ${number.slice(0, 2)}, not ${typed.category}.`;
-  }
+  const numbering = jdRefusalText(reason, typed.title, typed.category);
+  if (numbering !== null) return `Not created: ${numbering}`;
   return `Not created: ${reasonText(reason)}.`;
 }
 
@@ -154,6 +149,7 @@ function NewForm(props: { readonly shown: Shown }) {
       action={wikiNewPath()}
       data-page-edit=""
       data-new-page=""
+      {...numberedAttrs('')}
       data-unsaved={refused === null ? undefined : ''}
       aria-label="New page"
       class="group/edit"

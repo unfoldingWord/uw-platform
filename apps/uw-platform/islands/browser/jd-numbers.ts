@@ -1,12 +1,13 @@
 import { jdCategorySchema, jdIdOfTitle, nextFreeJdId, titleWithJdId } from '@uw/contracts';
 
-type NewPageDeps = { readonly fetch: typeof fetch };
+type JdNumbersDeps = { readonly fetch: typeof fetch };
 
 type Entry = { readonly id: string; readonly title: string; readonly jdId: string | null };
 
 type Parts = {
   readonly title: HTMLInputElement;
-  readonly category: HTMLInputElement;
+  readonly category: HTMLInputElement | null;
+  readonly fixed: string | null;
   readonly status: HTMLElement;
   readonly use: HTMLButtonElement;
   readonly list: HTMLUListElement;
@@ -35,7 +36,7 @@ function entriesOf(body: unknown): readonly Entry[] {
   });
 }
 
-async function loadIndex(deps: NewPageDeps): Promise<readonly Entry[]> {
+async function loadIndex(deps: JdNumbersDeps): Promise<readonly Entry[]> {
   try {
     const response = await deps.fetch(INDEX, { headers: { accept: 'application/json' } });
     return response.ok ? entriesOf(await response.json()) : [];
@@ -88,13 +89,23 @@ function showNumber(parts: Parts, entries: readonly Entry[]): void {
     parts.status.textContent = '';
     return;
   }
+  const category = parts.fixed ?? number.slice(0, 2);
+  if (!number.startsWith(`${category}.`)) {
+    parts.status.textContent = `${number} belongs in category ${number.slice(0, 2)}. This page is in ${category}; move it to change that.`;
+    offerNext(parts, entries, category);
+    return;
+  }
   const holder = entries.find((entry) => numberOf(entry) === number);
   if (holder === undefined) {
     parts.status.textContent = `${number} is free.`;
     return;
   }
   parts.status.textContent = `${number} is already used by ${holder.title}.`;
-  const next = nextFreeJdId(number.slice(0, 2), takenIn(entries, number.slice(0, 2)));
+  offerNext(parts, entries, category);
+}
+
+function offerNext(parts: Parts, entries: readonly Entry[], category: string): void {
+  const next = nextFreeJdId(category, takenIn(entries, category));
   if (next === null) return;
   parts.use.textContent = `Use ${next}`;
   parts.use.dataset['next'] = next;
@@ -103,13 +114,12 @@ function showNumber(parts: Parts, entries: readonly Entry[]): void {
 
 function categoryFromTitle(parts: Parts): void {
   const category = LEADING_CATEGORY.exec(parts.title.value)?.[1];
-  if (category !== undefined && parts.category.value.trim() !== category) {
-    parts.category.value = category;
-  }
+  if (parts.category === null || category === undefined) return;
+  if (parts.category.value.trim() !== category) parts.category.value = category;
 }
 
 function titleFromCategory(parts: Parts, entries: readonly Entry[]): void {
-  const category = jdCategorySchema.safeParse(parts.category.value.trim());
+  const category = jdCategorySchema.safeParse(parts.category?.value.trim());
   if (!category.success) return;
   if (jdIdOfTitle(parts.title.value)?.startsWith(`${category.data}.`) === true) return;
   const next = nextFreeJdId(category.data, takenIn(entries, category.data));
@@ -123,15 +133,17 @@ function partsOf(form: HTMLFormElement): Parts | null {
   const use = form.querySelector<HTMLButtonElement>('[data-jd-use]');
   const list = form.querySelector<HTMLUListElement>('[data-jd-matches]');
   const row = form.querySelector<HTMLTemplateElement>('template[data-jd-row]');
-  if (title === null || category === null || status === null) return null;
+  if (title === null || status === null) return null;
   if (use === null || list === null || row === null) return null;
-  return { title, category, status, use, list, row };
+  const fixed = form.getAttribute('data-jd-category');
+  return { title, category, fixed, status, use, list, row };
 }
 
-export function wireNewPage(document: Document, deps: NewPageDeps): void {
-  const form = document.querySelector<HTMLFormElement>('form[data-new-page]');
+export function wireJdNumbers(document: Document, deps: JdNumbersDeps): void {
+  const form = document.querySelector<HTMLFormElement>('form[data-jd-numbered]');
   const parts = form === null ? null : partsOf(form);
   if (parts === null) return;
+  const self = form?.getAttribute('data-page-id') ?? null;
   let entries: readonly Entry[] = [];
   const refresh = () => {
     showMatches(parts, matchesFor(entries, parts.title.value));
@@ -141,7 +153,7 @@ export function wireNewPage(document: Document, deps: NewPageDeps): void {
     categoryFromTitle(parts);
     refresh();
   });
-  parts.category.addEventListener('input', () => {
+  parts.category?.addEventListener('input', () => {
     titleFromCategory(parts, entries);
     refresh();
   });
@@ -154,7 +166,7 @@ export function wireNewPage(document: Document, deps: NewPageDeps): void {
     parts.title.focus();
   });
   void loadIndex(deps).then((loaded) => {
-    entries = loaded;
+    entries = loaded.filter((entry) => entry.id !== self);
     if (parts.title.value.trim() !== '') refresh();
   });
 }
