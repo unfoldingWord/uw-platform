@@ -1,4 +1,10 @@
-import { jdCategorySchema, jdIdOfTitle, nextFreeJdId, titleWithJdId } from '@uw/contracts';
+import {
+  areaOfCategory,
+  jdCategorySchema,
+  jdIdOfTitle,
+  nextFreeJdId,
+  titleWithJdId,
+} from '@uw/contracts';
 
 type JdNumbersDeps = { readonly fetch: typeof fetch };
 
@@ -89,19 +95,22 @@ function showNumber(parts: Parts, entries: readonly Entry[]): void {
     parts.status.textContent = '';
     return;
   }
-  const category = parts.fixed ?? number.slice(0, 2);
-  if (!number.startsWith(`${category}.`)) {
-    parts.status.textContent = `${number} belongs in category ${number.slice(0, 2)}. This page is in ${category}; move it to change that.`;
-    offerNext(parts, entries, category);
-    return;
-  }
+  const category = number.slice(0, 2);
+  const move = moveNote(parts.fixed, category);
   const holder = entries.find((entry) => numberOf(entry) === number);
   if (holder === undefined) {
-    parts.status.textContent = `${number} is free.`;
+    parts.status.textContent = `${number} is free.${move}`;
     return;
   }
-  parts.status.textContent = `${number} is already used by ${holder.title}.`;
+  parts.status.textContent = `${number} is already used by ${holder.title}.${move}`;
   offerNext(parts, entries, category);
+}
+
+function moveNote(fixed: string | null, category: string): string {
+  if (fixed === null || fixed === category) return '';
+  const area = areaOfCategory(category);
+  const across = area === areaOfCategory(fixed) ? '' : `, in area ${area}`;
+  return ` Saving moves this page to category ${category}${across}.`;
 }
 
 function offerNext(parts: Parts, entries: readonly Entry[], category: string): void {

@@ -34,15 +34,10 @@ export function JdSuggest() {
   );
 }
 
-export function jdRefusalText(reason: string, title: string, category: string): string | null {
+export function jdRefusalText(reason: string, title: string): string | null {
+  if (reason !== 'jd_taken') return null;
   const number = jdIdOfTitle(title) ?? '';
-  if (reason === 'jd_taken') {
-    return `${number} is already used by another page. Choose another number.`;
-  }
-  if (reason === 'jd_category') {
-    return `${number} belongs in category ${number.slice(0, 2)}, not ${category}.`;
-  }
-  return null;
+  return `${number} is already used by another page. Choose another number.`;
 }
 
 export function categoryOfPage(page: Page): string | null {

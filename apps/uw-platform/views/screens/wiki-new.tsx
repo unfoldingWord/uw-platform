@@ -60,7 +60,7 @@ const editorHint =
 function refusalText(reason: string, typed: Typed): string {
   if (reason === 'category') return 'Not created: A category is two digits, such as 61.';
   if (reason === 'title') return 'Not created: A page needs a title.';
-  const numbering = jdRefusalText(reason, typed.title, typed.category);
+  const numbering = jdRefusalText(reason, typed.title);
   if (numbering !== null) return `Not created: ${numbering}`;
   return `Not created: ${reasonText(reason)}.`;
 }
@@ -275,8 +275,13 @@ function typedFrom(posted: Record<string, unknown>): Typed {
 }
 
 async function clashOf(db: Database, number: string, category: string): Promise<string | null> {
-  if (!number.startsWith(`${category}.`)) return 'jd_category';
   return (await takenJdIds(db, category)).has(number) ? 'jd_taken' : null;
+}
+
+function filedByNumber(typed: Typed): Typed {
+  const category = jdIdOfTitle(typed.title)?.slice(0, 2);
+  if (category === undefined || category === typed.category) return typed;
+  return { ...typed, category, parent: '' };
 }
 
 export async function createFromForm(c: Context<AppEnv>): Promise<Response> {
@@ -284,7 +289,7 @@ export async function createFromForm(c: Context<AppEnv>): Promise<Response> {
   const database = c.get('database');
   if (screen === null || database === null) return screenRefusal(c);
   const posted = await c.req.parseBody();
-  const typed = typedFrom(posted);
+  const typed = filedByNumber(typedFrom(posted));
   const category = jdCategorySchema.safeParse(typed.category);
   if (!category.success) return render(c, typed, 'category');
   if (typed.title === '') return render(c, typed, 'title');

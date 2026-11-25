@@ -143,16 +143,19 @@ describe('an existing page keeps its title number in its own category', () => {
     expect(window.document.querySelector('[data-jd-use]')?.textContent).toBe('Use 00.06');
   });
 
-  it('says a number from another category needs a move, and offers one in its own', async () => {
-    const window = editing('01.40 Holiday calendar');
+  it('says saving moves the page when the number is in another category, and checks it there', async () => {
+    const window = editing('41.41 Holiday calendar');
     wireJdNumbers(window.document, { fetch: () => Promise.resolve(Response.json(index)) });
     await tick();
-    const status = window.document.querySelector('[data-jd-status]')?.textContent;
-    expect(status).toBe(
-      '01.40 belongs in category 01. This page is in 00; move it to change that.',
-    );
-    window.document.querySelector<HTMLButtonElement>('[data-jd-use]')?.click();
+    const status = () => window.document.querySelector('[data-jd-status]')?.textContent;
+    expect(status()).toBe('41.41 is free. Saving moves this page to category 41, in area 40-49.');
+    expect(window.document.querySelector<HTMLButtonElement>('[data-jd-use]')?.hidden).toBe(true);
     const title = window.document.querySelector<HTMLInputElement>('input[name="title"]');
-    expect(title?.value).toBe('00.06 Holiday calendar');
+    if (title !== null) title.value = '01.12 Holiday calendar';
+    title?.dispatchEvent(new window.Event('input', { bubbles: true }));
+    expect(status()).toBe(
+      '01.12 is already used by Strategic Intents. Saving moves this page to category 01.',
+    );
+    expect(window.document.querySelector('[data-jd-use]')?.textContent).toBe('Use 01.13');
   });
 });

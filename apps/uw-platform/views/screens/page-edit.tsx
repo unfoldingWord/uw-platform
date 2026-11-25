@@ -49,8 +49,8 @@ export type EditOptions = {
   readonly typed: Typed | null;
 };
 
-function refusalText(reason: string, page: Page, title: string): string {
-  const numbering = jdRefusalText(reason, title, categoryOfPage(page) ?? '');
+function refusalText(reason: string, title: string): string {
+  const numbering = jdRefusalText(reason, title);
   if (numbering !== null) return `Not saved: ${numbering}`;
   if (reason === 'stale_version') {
     return 'Someone saved a newer version. Your text is kept below; copy what you need, then reload to edit the newest version.';
@@ -193,7 +193,7 @@ function EditNotes(props: { readonly options: EditOptions; readonly page: Page }
   const title = options.typed?.title ?? page.title;
   return (
     <>
-      {options.refused === null ? null : <Note>{refusalText(options.refused, page, title)}</Note>}
+      {options.refused === null ? null : <Note>{refusalText(options.refused, title)}</Note>}
       {options.asText ? (
         <Note>Text you type here is kept only until you leave. Save before going back.</Note>
       ) : null}
@@ -248,9 +248,7 @@ function readOnlyScreen(c: Context<AppEnv>, shown: ShownPage, options: EditOptio
     c,
     pageSpec(shown, pageNames.pageEdit),
     <DocumentShape head={{ eyebrow: markOf(page), title: page.title }}>
-      {options.refused === null ? null : (
-        <Note>{refusalText(options.refused, page, page.title)}</Note>
-      )}
+      {options.refused === null ? null : <Note>{refusalText(options.refused, page.title)}</Note>}
       <ReadOnly page={page} read={read} />
     </DocumentShape>,
   );

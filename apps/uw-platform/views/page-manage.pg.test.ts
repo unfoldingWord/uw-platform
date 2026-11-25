@@ -62,8 +62,9 @@ async function numbersStayUnique(
   const taken = await postForm(db, editor, '/wiki/new', form(again), ORIGIN);
   expect(taken.text).toContain('02.01 is already used by another page');
   const elsewhere = { ...fields, title: '03.07 Per diem rates' };
-  const wrong = await postForm(db, editor, '/wiki/new', form(elsewhere), ORIGIN);
-  expect(wrong.text).toContain('03.07 belongs in category 03, not 02');
+  const filed = await postForm(db, editor, '/wiki/new', form(elsewhere), ORIGIN);
+  const moved = await read(db, editor, createdId(filed.headers.get('location')));
+  expect(moved.frontmatter).toMatchObject({ jd_category: '03', jd_id: '03.07' });
   const next = documentOf((await getHtml(db, editor, '/wiki/new?category=02')).text);
   expect(next.querySelector<HTMLInputElement>('input[name="title"]')?.value).toBe('02.02 ');
 }
