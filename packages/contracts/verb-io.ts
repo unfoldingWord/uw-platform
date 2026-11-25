@@ -70,6 +70,7 @@ export const verbIo = {
       pageId: z.uuid(),
       version: z.number().int().min(1),
       status: pageStatusSchema,
+      suggestionId: z.uuid().nullable(),
     }),
   },
   attach_file: {

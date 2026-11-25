@@ -235,10 +235,9 @@ async function agentSuggestsAndPersonConfirms(db: Database): Promise<void> {
   const confirmed = await confirmPage(db, person, confirm, crypto.randomUUID(), ON);
   expect(confirmed).toMatchObject({ ok: true, page: { status: 'active' } });
   const edit = { ...input, bodyMd: 'Rewritten by an agent.', expectedVersion: 2 };
-  expect(await writePageAsAgent(db, agent, edit, request)).toMatchObject({
-    ok: false,
-    reason: 'not_permitted',
-  });
+  const held = await writePageAsAgent(db, agent, edit, request);
+  expect(held).toMatchObject({ ok: true, page: { version: 2, bodyMd: 'Proposed.' } });
+  expect(held.ok && held.suggestionId).toEqual(expect.any(String));
 }
 
 describe.skipIf(!testServer)('PO-1 policy and charter pages are checked on save', () => {
@@ -254,7 +253,7 @@ describe.skipIf(!testServer)('PO-1 policy and charter pages are checked on save'
   it('refuses a decision without Context, Decision and Consequences', () =>
     withAppDatabase(decisionNeedsItsHeadings));
 
-  it('lands an agent policy as suggested, refuses an agent edit once active, and a person confirms it', () =>
+  it('lands an agent policy as suggested, a person confirms it, and an agent edit then waits as a suggested change', () =>
     withAppDatabase(agentSuggestsAndPersonConfirms));
 });
 

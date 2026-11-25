@@ -5,7 +5,15 @@ import type { Database } from '@uw/db/client';
 import type { Kernel } from '@uw/harness';
 import { isGatedType } from './gating.ts';
 import type { ExternalWriter } from './provenance.ts';
-import { createPageAs, updateCheckedPage, type PageRefusal, type PageResult } from './store.ts';
+import {
+  createPageAs,
+  updateCheckedPage,
+  type Divert,
+  type PageRefusal,
+  type PageResult,
+} from './store.ts';
+import { proposeIn } from './suggestions.ts';
+import { agentSuggests } from './validate.ts';
 
 type AgentPage = z.infer<(typeof verbIo)['write_page']['input']>;
 
@@ -23,6 +31,15 @@ function refusedWith(reason: PageRefusal['reason'], detail: PageRefusal['detail'
 const ISSUE_MIRROR = 'issue';
 const issueMirror = (): PageRefusal => refusedWith('not_permitted', { why: 'issue_mirror' });
 
+function heldAsSuggestion(stored: Page): boolean {
+  return agentSuggests(stored.type) && stored.status === 'active';
+}
+
+function divertFor(actor: Principal, at: Date): Divert {
+  return (tx, stored, full) =>
+    heldAsSuggestion(stored) ? proposeIn(tx, actor, stored, full, at) : null;
+}
+
 function statusFor(input: AgentPage, expectedVersion: number, instructions: boolean) {
   return (stored: Page): PageStatus | PageRefusal => {
     if (stored.type === ISSUE_MIRROR) return issueMirror();
@@ -33,6 +50,7 @@ function statusFor(input: AgentPage, expectedVersion: number, instructions: bool
     ];
     if (moved.length > 0) return refusedWith('malformed_command', { fields: moved });
     if (instructions) return refusedWith('not_permitted', { why: 'stage_instructions' });
+    if (heldAsSuggestion(stored)) return stored.status;
     if (isGatedType(stored.type) && stored.status !== 'suggested') {
       return refusedWith('not_permitted', { why: 'gated_page' });
     }
@@ -62,6 +80,10 @@ export async function writePageAsAgent(
     ...editable,
     expectedVersion,
   };
-  const checked = { command, statusFor: statusFor(input, expectedVersion, instructions) };
+  const checked = {
+    command,
+    statusFor: statusFor(input, expectedVersion, instructions),
+    divert: divertFor(actor, at),
+  };
   return updateCheckedPage(db, actor, checked, traceId, at);
 }

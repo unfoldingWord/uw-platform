@@ -1,6 +1,8 @@
 import { Hono, type Context } from 'hono';
 import {
+  acceptSuggestionCommandSchema,
   adoptTemplateUpdateCommandSchema,
+  rejectSuggestionCommandSchema,
   confirmPageCommandSchema,
   copyTemplatePolicyCommandSchema,
   movePageCommandSchema,
@@ -34,6 +36,7 @@ import { connectDraft } from './draft-handlers.ts';
 import { downloadFile, listPageFiles, uploadFile } from './file-handlers.ts';
 import { movePage } from './move.ts';
 import { adoptTemplateUpdate, copyTemplatePolicy } from './policy-templates.ts';
+import { acceptSuggestion, rejectSuggestion } from './suggestion-decisions.ts';
 import {
   dropFavourite,
   handleComment,
@@ -53,6 +56,24 @@ type Run = (
 ) => Promise<{ readonly requestId: string; readonly result: PageResult | PageRefusal } | null>;
 
 const handlers = new Map<string, Run>([
+  [
+    'accept_suggestion',
+    async (db, actor, body, traceId, at) => {
+      const parsed = acceptSuggestionCommandSchema.safeParse(body);
+      if (!parsed.success) return null;
+      const result = await acceptSuggestion(db, actor, parsed.data, traceId, at);
+      return { requestId: parsed.data.requestId, result };
+    },
+  ],
+  [
+    'reject_suggestion',
+    async (db, actor, body, traceId, at) => {
+      const parsed = rejectSuggestionCommandSchema.safeParse(body);
+      if (!parsed.success) return null;
+      const result = await rejectSuggestion(db, actor, parsed.data, traceId, at);
+      return { requestId: parsed.data.requestId, result };
+    },
+  ],
   [
     'copy_template_policy',
     async (db, actor, body, traceId, at) => {

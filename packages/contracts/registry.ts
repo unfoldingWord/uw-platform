@@ -28,6 +28,11 @@ import {
 } from './credential-commands.ts';
 import { draftCheckSchema, draftStageSchema } from './drafts.ts';
 import {
+  acceptSuggestionCommandSchema,
+  rejectSuggestionCommandSchema,
+  suggestionSetStatusSchema,
+} from './suggestions.ts';
+import {
   adoptTemplateUpdateCommandSchema,
   charterFrontmatterSchema,
   charterSectionSchema,
@@ -337,6 +342,9 @@ export const schemaRegistry: Record<string, ZodType> = {
   'policy-frontmatter': policyFrontmatterSchema,
   'charter-frontmatter': charterFrontmatterSchema,
   'charter-section': charterSectionSchema,
+  'suggestion-set-status': suggestionSetStatusSchema,
+  'accept-suggestion-command': acceptSuggestionCommandSchema,
+  'reject-suggestion-command': rejectSuggestionCommandSchema,
   'template-source': templateSourceSchema,
   'copy-template-policy-command': copyTemplatePolicyCommandSchema,
   'adopt-template-update-command': adoptTemplateUpdateCommandSchema,

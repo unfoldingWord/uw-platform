@@ -35,10 +35,12 @@ export const owns = [
   'page_comments',
   'area_homes',
   'page_renders',
+  'page_suggestion_sets',
 ] as const;
 
 export type PageResult =
-  { readonly ok: true; readonly page: Page } | { readonly ok: false; readonly reason: ErrorReason };
+  | { readonly ok: true; readonly page: Page; readonly suggestionId?: string }
+  | { readonly ok: false; readonly reason: ErrorReason };
 
 export type PageRefusal = {
   readonly ok: false;
@@ -46,9 +48,16 @@ export type PageRefusal = {
   readonly detail: Readonly<Record<string, string | readonly string[]>>;
 };
 
-type CheckedSave = {
+export type Divert = (
+  tx: Transaction,
+  stored: Page,
+  full: UpdatePageCommand,
+) => Promise<PageResult | PageRefusal> | null;
+
+export type CheckedSave = {
   readonly command: Omit<UpdatePageCommand, 'status'>;
   readonly statusFor: (stored: Page) => PageStatus | PageRefusal;
+  readonly divert?: Divert;
 };
 
 type PageRow = typeof pages.$inferSelect;
@@ -429,9 +438,28 @@ async function updateInTransaction(tx: Transaction, save: Save): Promise<PageRes
   if (typeof chosen !== 'string') return chosen;
   const full = await derivedSave(tx, stored, chosen, keptFrontmatter(stored, command));
   if ('ok' in full) return full;
-  const unfit = await saveRefusal(tx, actor, { ...full, type: stored.type }, at);
+  return finishSave(tx, save, stored, full);
+}
+
+async function finishSave(
+  tx: Transaction,
+  save: Save,
+  stored: Page,
+  full: UpdatePageCommand,
+): Promise<PageResult | PageRefusal> {
+  const unfit = await saveRefusal(tx, save.actor, { ...full, type: stored.type }, save.at);
   if (unfit !== null) return unfit;
-  return writeLinked(tx, save, stored, full);
+  const diverted = save.checked.divert?.(tx, stored, full) ?? null;
+  return diverted === null ? writeLinked(tx, save, stored, full) : diverted;
+}
+
+export function updateWithin(
+  tx: Transaction,
+  actor: Principal,
+  checked: CheckedSave,
+  request: { readonly traceId: string; readonly at: Date },
+): Promise<PageResult | PageRefusal> {
+  return updateInTransaction(tx, { actor, checked, ...request });
 }
 
 async function saveChecked(db: Database, save: Save): Promise<PageResult | PageRefusal> {

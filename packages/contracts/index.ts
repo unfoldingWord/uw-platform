@@ -35,6 +35,7 @@ export * from './policies.ts';
 export * from './principal.ts';
 export * from './runs.ts';
 export * from './shadow.ts';
+export * from './suggestions.ts';
 export * from './ship-rule.ts';
 export * from './verb-io.ts';
 export * from './verb-names.ts';

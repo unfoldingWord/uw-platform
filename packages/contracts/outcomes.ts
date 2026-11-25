@@ -137,6 +137,8 @@ export const errorReasonSchema = z.enum([
   'export_limit_reached',
   'sections_missing',
   'applies_to_not_found',
+  'suggestion_not_found',
+  'suggestion_decided',
 ]);
 
 export const refusalSchema = z.object({

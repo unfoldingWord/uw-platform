@@ -292,7 +292,12 @@ describe.skipIf(!testServer)(
     it('creates a new product page as a draft', async () => {
       const page = newPage('agent-product');
       const created = await write(await runner(rig(), EDITOR.email), page);
-      expect(created.body).toEqual({ pageId: page['pageId'], version: 1, status: 'draft' });
+      expect(created.body).toEqual({
+        pageId: page['pageId'],
+        version: 1,
+        status: 'draft',
+        suggestionId: null,
+      });
     });
 
     it('refuses an unknown frontmatter field, a taken slug and a stale version', async () => {
@@ -366,7 +371,7 @@ describe.skipIf(!testServer)(
       });
     });
 
-    it('refuses policy, which is not a registered page type, and a save that changes type or area', async () => {
+    it('refuses a type the registry does not hold, and a save that changes type or area', async () => {
       const r = rig();
       const editor = await runner(r, EDITOR.email);
       expect((await write(editor, newPage('agent-memo', { type: 'memo' }))).body['reason']).toBe(

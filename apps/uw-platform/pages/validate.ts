@@ -17,6 +17,10 @@ export function appliesToNode(type: string): boolean {
   return pageTypeDefinition(type)?.appliesToNode === true;
 }
 
+export function agentSuggests(type: string): boolean {
+  return pageTypeDefinition(type)?.agentSuggests === true;
+}
+
 export function missingSections(type: string, bodyMd: string): readonly string[] {
   return pageTypeDefinition(type)?.bodyProblems?.(bodyMd) ?? [];
 }

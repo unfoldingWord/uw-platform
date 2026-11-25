@@ -1,5 +1,5 @@
 {
-  "id": "7e468fed-4476-435c-936f-a7bbc47d8d82",
+  "id": "d2054d66-c66b-4b8f-bb55-dbff2690c2ce",
   "prevId": "01a11ab1-1f49-41b7-912b-27102e8f5ff3",
   "version": "7",
   "dialect": "postgresql",
@@ -7621,6 +7621,176 @@
         "pdf_exports_expires_after_creation": {
           "name": "pdf_exports_expires_after_creation",
           "value": "\"pdf_exports\".\"expires_at\" > \"pdf_exports\".\"created_at\""
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.page_suggestion_sets": {
+      "name": "page_suggestion_sets",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "page_id": {
+          "name": "page_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "base_version": {
+          "name": "base_version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "title": {
+          "name": "title",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "frontmatter": {
+          "name": "frontmatter",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "body_md": {
+          "name": "body_md",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "proposed_by": {
+          "name": "proposed_by",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "proposed_at": {
+          "name": "proposed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "decided_by": {
+          "name": "decided_by",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "decided_at": {
+          "name": "decided_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "accepted_version": {
+          "name": "accepted_version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "page_suggestion_sets_one_pending_per_proposer": {
+          "name": "page_suggestion_sets_one_pending_per_proposer",
+          "columns": [
+            {
+              "expression": "page_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "proposed_by",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"page_suggestion_sets\".\"status\" = 'pending'",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "page_suggestion_sets_page": {
+          "name": "page_suggestion_sets_page",
+          "columns": [
+            {
+              "expression": "page_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "status",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "proposed_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "page_suggestion_sets_page_id_pages_id_fk": {
+          "name": "page_suggestion_sets_page_id_pages_id_fk",
+          "tableFrom": "page_suggestion_sets",
+          "tableTo": "pages",
+          "columnsFrom": ["page_id"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "page_suggestion_sets_status_known": {
+          "name": "page_suggestion_sets_status_known",
+          "value": "\"page_suggestion_sets\".\"status\" IN ('pending', 'accepted', 'rejected')"
+        },
+        "page_suggestion_sets_base_positive": {
+          "name": "page_suggestion_sets_base_positive",
+          "value": "\"page_suggestion_sets\".\"base_version\" >= 1"
+        },
+        "page_suggestion_sets_proposed_by_identity": {
+          "name": "page_suggestion_sets_proposed_by_identity",
+          "value": "\"page_suggestion_sets\".\"proposed_by\" ~ '^(?:human:[A-Za-z0-9][A-Za-z0-9_-]*|agent:[a-z0-9][a-z0-9_-]*|agent:[A-Za-z0-9][A-Za-z0-9_-]*/[a-z0-9][a-z0-9-]{0,31}|agent:[A-Za-z0-9][A-Za-z0-9_-]*/[a-z0-9][a-z0-9-]{0,31} as [a-z0-9][a-z0-9_-]* via delegation:[A-Za-z0-9][A-Za-z0-9_-]*)$'"
+        },
+        "page_suggestion_sets_decided_by_human": {
+          "name": "page_suggestion_sets_decided_by_human",
+          "value": "\"page_suggestion_sets\".\"decided_by\" IS NULL OR \"page_suggestion_sets\".\"decided_by\" ~ '^human:[A-Za-z0-9][A-Za-z0-9_-]*$'"
+        },
+        "page_suggestion_sets_decided_together": {
+          "name": "page_suggestion_sets_decided_together",
+          "value": "(\"page_suggestion_sets\".\"status\" = 'pending') = (\"page_suggestion_sets\".\"decided_by\" IS NULL) AND (\"page_suggestion_sets\".\"decided_by\" IS NULL) = (\"page_suggestion_sets\".\"decided_at\" IS NULL)"
+        },
+        "page_suggestion_sets_accepted_has_version": {
+          "name": "page_suggestion_sets_accepted_has_version",
+          "value": "(\"page_suggestion_sets\".\"status\" = 'accepted') = (\"page_suggestion_sets\".\"accepted_version\" IS NOT NULL) AND (\"page_suggestion_sets\".\"accepted_version\" IS NULL OR \"page_suggestion_sets\".\"accepted_version\" > \"page_suggestion_sets\".\"base_version\")"
         }
       },
       "isRLSEnabled": false

@@ -102,6 +102,7 @@ export type PageTypeDefinition = {
   readonly offlineEligibility: OfflineEligibility;
   readonly bodyProblems?: (bodyMd: string) => readonly string[];
   readonly appliesToNode?: true;
+  readonly agentSuggests?: true;
 };
 
 export const platformPageSlug = 'platform';
@@ -164,7 +165,12 @@ export const pageTypeRegistry = {
   knowledge: { frontmatter: knowledgeFrontmatterSchema, ...internalSync },
   entry: { frontmatter: collectionFrontmatterSchema, ...internalSync },
   profile: { frontmatter: z.strictObject({}), ...internalSync },
-  policy: { frontmatter: policyFrontmatterSchema, ...internalSync, appliesToNode: true },
+  policy: {
+    frontmatter: policyFrontmatterSchema,
+    ...internalSync,
+    appliesToNode: true,
+    agentSuggests: true,
+  },
   portfolio: { frontmatter: collectionFrontmatterSchema, ...internalSync },
   program: { frontmatter: collectionFrontmatterSchema, ...internalSync },
   project: { frontmatter: collectionFrontmatterSchema, ...internalSync },
@@ -173,6 +179,7 @@ export const pageTypeRegistry = {
     frontmatter: charterFrontmatterSchema,
     ...internalSync,
     appliesToNode: true,
+    agentSuggests: true,
     bodyProblems: (bodyMd: string) => charterSections(bodyMd).missing,
   },
 } as const satisfies Record<PageType, PageTypeDefinition>;

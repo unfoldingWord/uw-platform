@@ -63,7 +63,7 @@ export const verbRegistry: readonly VerbDefinition[] = [
     'write_page',
     'pages_and_context',
     onResource('editor'),
-    'Create a page or save a new version of one; learning, skill, persona, policy and charter pages land as suggested for a person to confirm.',
+    'Create or save a page; gated pages land as suggested, and a save to an active policy or charter is held as a suggested change for a person.',
   ),
   verb(
     'attach_file',

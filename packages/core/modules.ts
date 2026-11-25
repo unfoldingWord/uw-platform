@@ -54,6 +54,7 @@ export const modules = [
       'page_views',
       'page_links',
       'page_files',
+      'page_suggestion_sets',
       'webhook_deliveries',
       'queue_watermarks',
       'tasks',

@@ -16311,7 +16311,9 @@
           "binder_too_large",
           "export_limit_reached",
           "sections_missing",
-          "applies_to_not_found"
+          "applies_to_not_found",
+          "suggestion_not_found",
+          "suggestion_decided"
         ],
         "event-name": [
           "item_created",
@@ -16600,6 +16602,7 @@
         "stage-bracket": ["product_package", "build_package", "deploy_package", "iterate"],
         "status-group": ["to_do", "in_progress", "complete"],
         "submit-to-gate-result": ["advanced", "parked", "checks_failed", "awaiting_review"],
+        "suggestion-set-status": ["pending", "accepted", "rejected"],
         "task-priority": ["urgent", "high", "normal", "low"],
         "task-status": [
           "suggested",
