@@ -3,14 +3,13 @@ import { Button } from '@uw/ui/components/button.tsx';
 import { PlatformCommandForm } from '@uw/ui/components/command-form.tsx';
 import { fieldControl } from '@uw/ui/components/field.tsx';
 import { KanbanCard } from '@uw/ui/components/kanban-card.tsx';
+import { Lane } from '@uw/ui/components/lane.tsx';
 import { Popover } from '@uw/ui/components/menu.tsx';
 import { domId } from '@uw/ui/components/text.ts';
 import { Lanes } from '@uw/ui/shapes/board.tsx';
 import { COLLECTIONS_ENDPOINT } from './collection-edit.tsx';
 import { rowFacts, type LayoutProps } from './collection-layouts.tsx';
 import { collectionRowPath } from './paths.ts';
-
-const lane = 'flex w-aside shrink-0 flex-col gap-2 rounded-lg bg-raised p-2';
 
 function MoveForm(props: {
   readonly viewId: string;
@@ -92,17 +91,6 @@ function BoardCard(props: {
   );
 }
 
-function Count(props: { readonly group: RowGroup }) {
-  const { count, wipLimit } = props.group;
-  const text = wipLimit === null ? String(count) : `${count} of ${wipLimit}`;
-  return (
-    <p class="m-0 ml-auto font-mono text-xs whitespace-nowrap text-text-3">
-      {text}
-      <span class="sr-only">{wipLimit === null ? ' rows' : ' rows against the WIP limit'}</span>
-    </p>
-  );
-}
-
 function Column(props: {
   readonly layout: LayoutProps;
   readonly group: RowGroup;
@@ -110,27 +98,21 @@ function Column(props: {
   readonly viewId: string;
 }) {
   const { layout, group } = props;
-  const headingId = domId('group', props.viewId, group.value);
   const rows = layout.reply.rows.filter((row) => row.group === group.value);
   return (
-    <section aria-labelledby={headingId} data-group={group.value} class={lane}>
-      <div class="flex items-center gap-2 px-1 pt-1">
-        <h2 id={headingId} class="m-0 min-w-0 truncate text-sm font-heavy text-text">
-          {group.label}
-        </h2>
-        <Count group={group} />
-      </div>
-      <div class="flex flex-col gap-2" data-cards="">
-        {rows.map((row) => (
-          <BoardCard layout={layout} row={row} groups={props.groups} viewId={props.viewId} />
-        ))}
-        {rows.length === 0 ? (
-          <p class="m-0 rounded-md border border-dashed border-line px-3 py-3 text-center text-sm text-text-3">
-            No rows
-          </p>
-        ) : null}
-      </div>
-    </section>
+    <Lane
+      stageKey={`${props.viewId}-${group.value}`}
+      title={group.label}
+      count={group.count}
+      wipLimit={group.wipLimit}
+      unit="rows"
+      attrs={{ 'data-group': group.value }}
+      listAttrs={{ 'data-cards': '' }}
+    >
+      {rows.map((row) => (
+        <BoardCard layout={layout} row={row} groups={props.groups} viewId={props.viewId} />
+      ))}
+    </Lane>
   );
 }
 

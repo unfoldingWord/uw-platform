@@ -60,6 +60,39 @@ describe('WB-11 the lane', () => {
   });
 });
 
+describe('a lane on a collection board', () => {
+  it('a lane with no WIP limit shows only its count, in its own unit', async () => {
+    const document = await dom(
+      jsx(Lane, { stageKey: 'done', title: 'Done', count: 2, wipLimit: null, unit: 'rows' }),
+    );
+    const count = found(document.querySelector('section p'));
+    expect(count.textContent).toBe('2 rows');
+    expect(document.body.textContent).not.toContain(' of ');
+    const empty = await dom(
+      jsx(Lane, { stageKey: 'done', title: 'Done', count: 0, wipLimit: null, unit: 'rows' }),
+    );
+    expect(empty.body.textContent).toContain('No rows');
+  });
+
+  it('a lane carries the data its island reads on the lane and on its card list', async () => {
+    const document = await dom(
+      jsx(Lane, {
+        stageKey: 'done',
+        title: 'Done',
+        count: 1,
+        wipLimit: 4,
+        unit: 'rows',
+        attrs: { 'data-group': 'done' },
+        listAttrs: { 'data-cards': '' },
+        children: card('one'),
+      }),
+    );
+    const lane = found(document.querySelector('section[data-group="done"]'));
+    expect(lane.querySelector('[data-cards] article')).not.toBeNull();
+    expect(lane.textContent).toContain('1 of 4 rows against the WIP limit');
+  });
+});
+
 describe('the lane facts', () => {
   it('a lane lists its facts under its heading', async () => {
     const document = await dom(

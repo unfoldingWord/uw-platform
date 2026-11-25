@@ -197,7 +197,7 @@ function Buttons(props: {
   if (!dashboard.canEdit) return <Outcome saved={props.saved} />;
   return (
     <div class="flex flex-wrap items-center gap-3">
-      <Button type="submit" variant="primary">
+      <Button type="submit" variant="human">
         Save and re-check
       </Button>
       {dashboard.page.status === 'retired' ? null : (
