@@ -1,4 +1,3 @@
-import type { Child } from 'hono/jsx';
 import type { Context } from 'hono';
 import {
   groupableType,
@@ -13,7 +12,7 @@ import { Button } from '@uw/ui/components/button.tsx';
 import { PlatformCommandForm } from '@uw/ui/components/command-form.tsx';
 import { EmptyState } from '@uw/ui/components/empty-state.tsx';
 import { SelectField, TextAreaField, TextField } from '@uw/ui/components/field.tsx';
-import { ListRow, RowList, revealed } from '@uw/ui/components/list-row.tsx';
+import { ListRow, RowList } from '@uw/ui/components/list-row.tsx';
 import { Hairline, Section } from '@uw/ui/components/section.tsx';
 import { FormShape } from '@uw/ui/shapes/form.tsx';
 import type { AppEnv } from '../../deps.ts';
@@ -71,24 +70,6 @@ function OptionsField(props: { readonly scope: string }) {
 function sourceName(property: PropertyDefinition): string {
   if (property.source.kind === 'column') return `column ${property.source.column}`;
   return property.source.kind === 'frontmatter' ? 'page frontmatter' : 'worked out';
-}
-
-function SettingRow(props: {
-  readonly title: string;
-  readonly meta: string;
-  readonly actions?: Child | undefined;
-}) {
-  return (
-    <li class="group/row relative flex min-w-0 items-center gap-3 rounded-md px-3 py-2 transition-colors motion-reveal focus-within:bg-raised hover:bg-raised">
-      <div class="min-w-0 flex-1">
-        <p class="m-0 text-base font-semibold text-text">{props.title}</p>
-        <p class="m-0 text-sm text-text-3">{props.meta}</p>
-      </div>
-      {props.actions === undefined ? null : (
-        <div class={`${revealed} has-open:opacity-100`}>{props.actions}</div>
-      )}
-    </li>
-  );
 }
 
 function RemoveProperty(props: {
@@ -157,7 +138,7 @@ function PropertyRow(props: {
   const { property } = props;
   const removable = props.editable && property.config.type !== 'title';
   return (
-    <SettingRow
+    <ListRow
       title={property.name}
       meta={`${property.key} · ${typeName(property.config.type)} · ${sourceName(property)}${readers(property)}`}
       actions={
@@ -286,7 +267,7 @@ function ViewRow(props: { readonly view: SavedView; readonly writable: boolean }
   const { view } = props;
   const deletable = props.writable || view.settings.scope === 'personal';
   return (
-    <SettingRow
+    <ListRow
       title={view.settings.name}
       meta={`${layoutNames.get(view.settings.layout) ?? view.settings.layout} · ${view.settings.scope === 'shared' ? 'Shared' : 'Only you'}`}
       actions={deletable ? <DeleteView view={view} /> : undefined}

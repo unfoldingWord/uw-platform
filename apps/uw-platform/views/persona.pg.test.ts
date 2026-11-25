@@ -333,8 +333,9 @@ async function rendersCleanly(db: Database): Promise<void> {
     'light dark',
   );
   const kindled = [...document.querySelectorAll('main [class*="human"]')];
-  expect(kindled.map((element) => [element.tagName, element.textContent])).toEqual([
+  expect(kindled.map((element) => [element.tagName, element.textContent?.trim()]).sort()).toEqual([
     ['BUTTON', 'Activate'],
+    ['BUTTON', 'Save and re-check'],
   ]);
 }
 
@@ -348,7 +349,7 @@ async function lookOfPersona(db: Database): Promise<void> {
 }
 
 describe.skipIf(!testServer)('the persona view', () => {
-  it('the persona view declares both colour schemes and names every control, and Kindle marks only Activate', () =>
+  it('the persona view declares both colour schemes and names every control, and Kindle marks only its human actions, Activate and Save', () =>
     withAppDatabase(rendersCleanly));
   it('PE-4 a persona page opens on its dashboard', () => withAppDatabase(opensOnDashboard));
   it('UI-12 the persona screen shows its name, figures, last runs and delegations', () =>
