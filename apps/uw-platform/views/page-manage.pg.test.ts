@@ -9,7 +9,7 @@ import { screenProblems } from '../testing/screen-checks.ts';
 import { getHtml, postForm } from '../testing/views.ts';
 
 const ORIGIN = { origin: 'http://localhost' };
-const ID = /^\/pages\/([0-9a-f-]{36})\/edit$/;
+const ID = /^\/pages\/([0-9a-f-]{36})(?:\/edit|\?saved=\d+)$/;
 
 type World = { readonly editor: string; readonly viewer: string; readonly pageId: string };
 
@@ -43,25 +43,41 @@ function createdId(location: string | null): string {
   return id;
 }
 
-async function aNewPageIsFiledAndOpensInEditMode(db: Database): Promise<void> {
+function itIsTheEditScreen(document: Document, cancel: string): void {
+  const editing = document.querySelector('main form[data-page-edit]');
+  expect(editing?.getAttribute('action')).toBe('/wiki/new');
+  const bar = editing?.querySelector('[data-edit-bar]');
+  expect(bar?.querySelector('button[type="submit"]')?.textContent).toContain('Save');
+  expect(bar?.querySelector('a[data-leave-edit]')?.getAttribute('href')).toBe(cancel);
+  expect(editing?.querySelector('[data-editor]')).not.toBeNull();
+  expect(editing?.querySelector('textarea[name="bodyMd"]')).not.toBeNull();
+}
+
+async function aNewPageIsWrittenWhereItIsEdited(db: Database): Promise<void> {
   const made = await world(db);
   const blank = await getHtml(db, made.editor, '/wiki/new?title=Per%20diem%20rates&category=02');
   expect(blank.status).toBe(200);
   expect(await screenProblems(blank.text)).toEqual([]);
   const document = documentOf(blank.text);
+  itIsTheEditScreen(document, '/wiki/02');
   expect(document.querySelector<HTMLInputElement>('input[name="title"]')?.value).toBe(
     'Per diem rates',
   );
-  expect(document.querySelector<HTMLInputElement>('input[name="category"]')?.value).toBe('02');
-  const fields = { title: 'Per diem rates', category: '02', parent: '' };
+  expect(document.querySelector<HTMLInputElement>('aside input[name="category"]')?.value).toBe(
+    '02',
+  );
+  const fields = { title: 'Per diem rates', category: '02', parent: '', bodyMd: '## Rates' };
   const sent = await postForm(db, made.editor, '/wiki/new', form(fields), ORIGIN);
   expect(sent.status).toBe(303);
-  const page = await read(db, made.editor, createdId(sent.headers.get('location')));
-  expect([page.title, page.type, page.jdArea, page.status]).toEqual([
+  const location = sent.headers.get('location');
+  expect(location).toMatch(/^\/pages\/[0-9a-f-]{36}\?saved=1$/);
+  const page = await read(db, made.editor, createdId(location));
+  expect([page.title, page.type, page.jdArea, page.status, page.bodyMd]).toEqual([
     'Per diem rates',
     'knowledge',
     '00-09',
     'active',
+    '## Rates',
   ]);
   expect(page.frontmatter).toMatchObject({ jd_category: '02' });
   expect(page.slug).toMatch(/^per-diem-rates-[0-9a-f]{8}$/);
@@ -69,13 +85,16 @@ async function aNewPageIsFiledAndOpensInEditMode(db: Database): Promise<void> {
 
 async function aNewPageIsRefusedWithWhatWasTyped(db: Database): Promise<void> {
   const made = await world(db);
-  const fields = { title: 'Not mine to file', category: '61', parent: '' };
+  const fields = { title: 'Not mine to file', category: '61', parent: '', bodyMd: 'Kept.' };
   const refused = await postForm(db, made.editor, '/wiki/new', form(fields), ORIGIN);
   expect(refused.status).toBe(200);
   expect(refused.text).toContain('Not created');
   expect(
     documentOf(refused.text).querySelector<HTMLInputElement>('input[name="title"]')?.value,
   ).toBe('Not mine to file');
+  expect(documentOf(refused.text).querySelector('textarea[name="bodyMd"]')?.textContent).toBe(
+    'Kept.',
+  );
   const odd = await postForm(
     db,
     made.editor,
@@ -187,8 +206,8 @@ async function theReadViewLinksToAllOfIt(db: Database): Promise<void> {
 }
 
 describe.skipIf(!testServer)('#175 pages are created, moved, copied, retired and restored', () => {
-  it('files a new page from its title and category and opens it in edit mode', () =>
-    withAppDatabase(aNewPageIsFiledAndOpensInEditMode));
+  it('writes a new page on the edit screen and files it on the first save', () =>
+    withAppDatabase(aNewPageIsWrittenWhereItIsEdited));
 
   it('keeps what was typed when a new page is refused, and files under a page', () =>
     withAppDatabase(aNewPageIsRefusedWithWhatWasTyped));

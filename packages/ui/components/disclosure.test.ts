@@ -27,6 +27,22 @@ describe('a disclosure over a tree of links', () => {
     expect(shut.querySelector('details')?.hasAttribute('open')).toBe(false);
   });
 
+  it('keeps its actions outside the summary, so a click on one never closes it', async () => {
+    const document = await dom(
+      jsx(Disclosure, {
+        summary: 'Shown',
+        actions: jsx('a', { href: '/new' }, 'New'),
+        children: 'body',
+      }),
+    );
+    expect(document.querySelector('summary a')).toBeNull();
+    expect(document.querySelector('[data-disclosure-actions] a')?.getAttribute('href')).toBe(
+      '/new',
+    );
+    const bare = await dom(jsx(Disclosure, { summary: 'Shown', children: 'body' }));
+    expect(bare.querySelector('[data-disclosure-actions]')).toBeNull();
+  });
+
   it('nests every child under its parent, every level shown', async () => {
     const document = await dom(jsx(LinkTree, { label: 'Pages', nodes }));
     const top = [...document.querySelectorAll('[data-tree] > li > a')];

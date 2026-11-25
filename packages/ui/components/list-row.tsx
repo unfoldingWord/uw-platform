@@ -1,7 +1,7 @@
 import type { Child } from 'hono/jsx';
 import { safeHref } from './href.ts';
 
-const revealed =
+export const revealed =
   'flex shrink-0 items-center gap-1 opacity-0 transition-opacity motion-reveal group-focus-within/row:opacity-100 group-hover/row:opacity-100 has-open:opacity-100 pointer-coarse:opacity-100';
 
 const link =

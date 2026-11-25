@@ -70,18 +70,34 @@ async function aNewPageStartsFromATemplate(db: Database): Promise<void> {
     bodyMd: '## Attendees\n\n## Decisions',
     frontmatter: { jd_category: '02', tags: ['template', 'meetings'] },
   });
-  const blank = documentOf((await getHtml(db, made.editor.email, '/wiki/new')).text);
-  const offered = [...blank.querySelectorAll('select[name="template"] option')];
-  expect(offered.map((option) => option.textContent)).toEqual([
+  const blank = documentOf((await getHtml(db, made.editor.email, '/wiki/new?category=01')).text);
+  const offered = [...blank.querySelectorAll('aside [data-templates] a')];
+  expect(offered.map((link) => link.textContent)).toEqual([
     'A blank page',
     'Meeting notes template',
   ]);
-  const fields = { title: 'Board, March', category: '01', parent: '', template: template.pageId };
+  const chosen = offered[1]?.getAttribute('href') ?? '';
+  expect(chosen).toContain(`template=${template.pageId}`);
+  expect(chosen).toContain('category=01');
+  const started = documentOf((await getHtml(db, made.editor.email, chosen)).text);
+  expect(started.querySelector('textarea[name="bodyMd"]')?.textContent).toBe(
+    '## Attendees\n\n## Decisions',
+  );
+  expect(started.querySelector<HTMLInputElement>('input[name="template"]')?.value).toBe(
+    template.pageId,
+  );
+  const fields = {
+    title: 'Board, March',
+    category: '01',
+    parent: '',
+    template: template.pageId,
+    bodyMd: '## Attendees\n\nAll\n\n## Decisions',
+  };
   const sent = await postForm(db, made.editor.email, '/wiki/new', form(fields), ORIGIN);
   expect(sent.status).toBe(303);
-  const id = /^\/pages\/([0-9a-f-]{36})\/edit$/.exec(sent.headers.get('location') ?? '')?.[1];
+  const id = /^\/pages\/([0-9a-f-]{36})\?saved=1$/.exec(sent.headers.get('location') ?? '')?.[1];
   const page = await read(db, made.editor.email, id ?? '');
-  expect(page.bodyMd).toBe('## Attendees\n\n## Decisions');
+  expect(page.bodyMd).toBe('## Attendees\n\nAll\n\n## Decisions');
   expect(page.frontmatter).toMatchObject({ jd_category: '01', tags: ['meetings'] });
 }
 

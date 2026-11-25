@@ -2,7 +2,6 @@ import type { Context } from 'hono';
 import type { Child } from 'hono/jsx';
 import type { Page } from '@uw/contracts';
 import { buttonClass } from '@uw/ui/components/button.tsx';
-import { fieldControl, fieldLabel } from '@uw/ui/components/field.tsx';
 import { Note } from '@uw/ui/components/note.tsx';
 import { Section } from '@uw/ui/components/section.tsx';
 import { DocumentShape } from '@uw/ui/shapes/document.tsx';
@@ -25,13 +24,13 @@ import {
   shownPage,
   type ShownPage,
 } from '../parts/page-shown.ts';
+import { BodyField, EditorStatus, TitleField } from '../parts/page-fields.tsx';
 import { Properties } from '../parts/page-read.tsx';
 import { pageFacts } from '../parts/page-status.tsx';
 import { idParam } from '../parts/params.ts';
 import { pageEditPath, pagePath, withBack } from '../parts/paths.ts';
 import { notFound } from './not-found.tsx';
 
-const BODY_ROWS = 24;
 const instructionsHint =
   'Agents at a stage using this page receive this text as their instructions.';
 const markdownHint = 'Write in markdown.';
@@ -92,46 +91,6 @@ type FormProps = {
   readonly children?: Child;
 };
 
-function TitleField(props: { readonly page: Page; readonly title: string }) {
-  const id = `title-${props.page.id}`;
-  return (
-    <div class="flex min-w-0 flex-col gap-1">
-      <label for={id} class={fieldLabel}>
-        Title
-      </label>
-      <input
-        id={id}
-        name="title"
-        type="text"
-        value={props.title}
-        maxLength={200}
-        required
-        class={`${fieldControl} w-full`}
-      />
-    </div>
-  );
-}
-
-function BodyField(props: { readonly page: Page; readonly bodyMd: string }) {
-  const id = `body-${props.page.id}`;
-  return (
-    <div data-editor-text="" class="flex min-w-0 flex-col gap-1">
-      <label for={id} class={fieldLabel}>
-        Text
-      </label>
-      <textarea
-        id={id}
-        name="bodyMd"
-        rows={BODY_ROWS}
-        maxLength={1_000_000}
-        class={`${fieldControl} w-full resize-y font-mono`}
-      >
-        {props.bodyMd}
-      </textarea>
-    </div>
-  );
-}
-
 function hintOf(page: Page, asText: boolean): string {
   if (page.type === 'skill') return instructionsHint;
   const saved = `Readers see version ${String(page.version)} until you save.`;
@@ -155,17 +114,12 @@ function EditBody(props: FormProps & { readonly typed: Typed }) {
     <>
       {props.children}
       <div class="flex min-w-0 flex-col gap-4">
-        <TitleField page={page} title={typed.title} />
+        <TitleField pageId={page.id} title={typed.title} />
         {options.asText ? null : (
           <EditorFrame pageId={page.id} draft={props.draft} styleNonce={props.styleNonce} />
         )}
-        <BodyField page={page} bodyMd={typed.bodyMd} />
-        <p
-          data-editor-status=""
-          role="status"
-          aria-live="polite"
-          class="m-0 text-sm text-text-3 empty:hidden"
-        ></p>
+        <BodyField pageId={page.id} bodyMd={typed.bodyMd} />
+        <EditorStatus />
       </div>
       <UploadControl pageId={page.id} />
     </>

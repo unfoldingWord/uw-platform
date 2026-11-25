@@ -63,10 +63,10 @@ async function browseListsWhatYouMayRead(db: Database): Promise<void> {
   expect(await screenProblems(page.text)).toEqual([]);
   const document = documentOf(page.text);
   expect(document.querySelector('main h1')?.textContent).toBe('Pages & Wiki');
-  expect(texts(document, 'main [data-area] h2')).toEqual(['00-09 unfoldingWord Home']);
+  expect(texts(document, 'main [data-area] h2')).toEqual(['unfoldingWord Home']);
   expect(texts(document, 'main [data-area="00-09"] [data-category] > summary')).toEqual([
-    '01 3 pages',
-    '02 1 page',
+    '013 pages',
+    '021 page',
   ]);
   const side = document.querySelector('nav a[href="/wiki"]');
   expect(side?.textContent).toContain('Pages & Wiki');
@@ -90,7 +90,10 @@ async function browseShowsEveryPageOpen(db: Database): Promise<void> {
   expect(texts(document, 'main [data-category="02"] [data-tree] a')).toEqual([
     '02.16 Beginner cohort',
   ]);
-  expect(document.querySelector('main a[href="/wiki/01"]')?.textContent).toBe('Open category 01');
+  const here = 'main [data-disclosure-actions] a[href="/wiki/new?category=01"]';
+  expect(document.querySelector(here)).toBeNull();
+  const writer = documentOf((await getHtml(db, made.admin, '/wiki')).text);
+  expect(writer.querySelector(here)?.getAttribute('aria-label')).toBe('New page in 01');
   expect(document.body.textContent).not.toContain('61.01 Chad program');
 }
 
@@ -98,13 +101,13 @@ async function clusterIsOneGroup(db: Database): Promise<void> {
   const made = await world(db);
   const page = await getHtml(db, made.field, '/wiki');
   const document = documentOf(page.text);
-  expect(texts(document, 'main [data-area] h2')).toEqual(['60-79 Field Programs']);
+  expect(texts(document, 'main [data-area] h2')).toEqual(['Field Programs']);
   expect(texts(document, 'main [data-area="60-79"] [data-category] > summary')).toEqual([
-    '61 1 page',
+    '611 page',
   ]);
   const all = await getHtml(db, 'rowan.test@unfoldingword.org', '/wiki');
   expect(texts(documentOf(all.text), 'main [data-area="60-79"] [data-category] > summary')).toEqual(
-    ['61 1 page', '74 1 page'],
+    ['611 page', '741 page'],
   );
 }
 
@@ -134,7 +137,7 @@ async function adminsNameCategories(db: Database): Promise<void> {
   expect(renamed.body).toMatchObject({ status: 'accepted' });
   const browse = documentOf((await getHtml(db, made.reader, '/wiki')).text);
   expect(texts(browse, 'main [data-area="00-09"] [data-category] > summary')[0]).toBe(
-    '01 Knowledge Base 3 pages',
+    'Knowledge Base01 · 3 pages',
   );
   const category = documentOf((await getHtml(db, made.admin, '/wiki/01')).text);
   expect(category.querySelector('main h1')?.textContent).toBe('01 Knowledge Base');
