@@ -48,6 +48,7 @@ async function activeAuthority(
 ): Promise<RunAuthority> {
   const activation = await activationFor(db, measure.id);
   if (activation === null || activation.pausedReason !== null) return stopped;
+  if (run.measureVersion !== activation.version) return stopped;
   if (run.toolHash !== activation.toolHash || run.lock !== activation.lock) return stopped;
   if (measure.status === 'retired') {
     await pauseActivation(db, measure.id, 'retired');

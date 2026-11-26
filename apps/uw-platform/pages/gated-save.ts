@@ -7,6 +7,7 @@ import {
   updateCheckedPage,
   type PageRefusal,
   type PageResult,
+  type UpdateRequest,
 } from './store.ts';
 
 export type GatedSave = {
@@ -20,7 +21,7 @@ export type GatedSave = {
   readonly bodyMd: string;
 };
 
-type SaveRequest = { readonly traceId: string; readonly at: Date };
+type SaveRequest = UpdateRequest;
 
 function refusedWith(reason: PageRefusal['reason'], detail: PageRefusal['detail'] = {}) {
   const refusal: PageRefusal = { ok: false, reason, detail };
@@ -54,7 +55,11 @@ function created(db: Database, actor: Principal, save: GatedSave, request: SaveR
     bodyMd: save.bodyMd,
     status: 'suggested' as const,
   };
-  return createPageAs(db, actor, command, { ...request, writer: null });
+  return createPageAs(db, actor, command, {
+    traceId: request.traceId,
+    at: request.at,
+    writer: null,
+  });
 }
 
 export async function saveGatedPageAsAgent(
@@ -78,5 +83,5 @@ export async function saveGatedPageAsAgent(
     bodyMd: save.bodyMd,
   };
   const checked = { command, statusFor: landing(save, save.expectedVersion) };
-  return updateCheckedPage(db, actor, checked, request.traceId, request.at);
+  return updateCheckedPage(db, actor, checked, request);
 }

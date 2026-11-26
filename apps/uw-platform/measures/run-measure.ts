@@ -1,5 +1,4 @@
 import type { MeasureRunState } from '@uw/contracts';
-import type { MeasuredResource } from './resources.ts';
 import {
   failedStep,
   finishMeasureRun,
@@ -19,15 +18,15 @@ export type MeasureStep = <T>(name: string, work: () => Promise<T>, kind: StepKi
 async function observedOne(
   deps: RunDeps,
   runId: string,
-  resource: MeasuredResource,
+  resourceId: string,
   install: RunInstall,
   step: MeasureStep,
 ): Promise<Observed> {
-  const name = `resource ${resource.resourceId}`;
+  const name = `resource ${resourceId}`;
   try {
-    return await step(name, () => observeResource(deps, runId, resource, install), 'sandbox');
+    return await step(name, () => observeResource(deps, runId, resourceId, install), 'sandbox');
   } catch {
-    return step(`failed ${name}`, () => failedStep(deps, runId, resource), 'record');
+    return step(`failed ${name}`, () => failedStep(deps, runId, resourceId), 'record');
   }
 }
 
@@ -39,8 +38,8 @@ async function measureEach(
 ): Promise<void> {
   try {
     const install = await step('install', () => installRun(deps, runId), 'sandbox');
-    for (const resource of prepared.resources) {
-      if ((await observedOne(deps, runId, resource, install, step)) === 'stopped') break;
+    for (const resourceId of prepared.resourceIds) {
+      if ((await observedOne(deps, runId, resourceId, install, step)) === 'stopped') break;
     }
   } finally {
     await step('release', () => releaseRun(deps, runId), 'record');
@@ -53,7 +52,7 @@ async function measuredAll(
   prepared: Prepared,
   step: MeasureStep,
 ): Promise<void> {
-  if (prepared.resources.length === 0) return;
+  if (prepared.resourceIds.length === 0) return;
   try {
     await measureEach(deps, runId, prepared, step);
   } catch {
@@ -68,5 +67,6 @@ export async function runMeasure(
 ): Promise<MeasureRunState> {
   const prepared = await step('prepare', () => prepareRun(deps, runId), 'record');
   await measuredAll(deps, runId, prepared, step);
-  return step('finish', () => finishMeasureRun(deps.db, runId, deps.now()), 'record');
+  const planned = prepared.resourceIds.length;
+  return step('finish', () => finishMeasureRun(deps.db, runId, planned, deps.now()), 'record');
 }

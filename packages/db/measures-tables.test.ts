@@ -46,11 +46,11 @@ function addObservation(db: AnyDatabase, id: string, row: Row = {}) {
     key in row ? (row[key] ?? null) : fallback;
   return db.execute(sql`INSERT INTO observations
       (id, run_id, measure_page_id, measure_version, resource_page_id, observed_at, tool_version,
-       values, outcome, reason, raw_key, raw_sha256, area)
+       values, outcome, reason, raw_key, raw_sha256, raw_length, area)
     VALUES (${id}, ${run}, ${measure}, 1, ${value('resource', site)}, ${at}::timestamptz,
       '4.19.10', ${value('values', '{"score": 84}')}::jsonb, ${value('outcome', 'ok')},
       ${value('reason', null)}, ${value('rawKey', `measures/raw/${run}/${site}.json`)},
-      ${value('rawSha256', hash)}, ${value('area', '30-39')})`);
+      ${value('rawSha256', hash)}, ${value('rawLength', 120)}, ${value('area', '30-39')})`);
 }
 
 function addActivation(db: AnyDatabase, row: Row = {}) {
@@ -117,6 +117,9 @@ const observationRefusals: readonly (readonly [string, Row, string])[] = [
   ['values that are not an object', { values: '[84]' }, 'observations_values_object'],
   ['raw output without its hash', { rawSha256: null }, 'observations_raw_hashed'],
   ['a raw hash that is not hex', { rawSha256: 'abc' }, 'observations_raw_sha256_form'],
+  ['raw output without its length', { rawLength: null }, 'observations_raw_measured'],
+  ['a length without raw output', { rawKey: null, rawSha256: null }, 'observations_raw_measured'],
+  ['a negative raw length', { rawLength: -1 }, 'observations_raw_length_counted'],
 ];
 
 const activationRefusals: readonly (readonly [string, Row, string])[] = [
@@ -135,6 +138,7 @@ function rowRules(db: () => AnyDatabase): void {
       values: null,
       rawKey: null,
       rawSha256: null,
+      rawLength: null,
     });
     await addActivation(db());
   });

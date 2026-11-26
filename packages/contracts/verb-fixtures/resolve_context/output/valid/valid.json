@@ -72,6 +72,7 @@
           "name": "Score",
           "rule": "latest",
           "unit": null,
+          "figureUnit": null,
           "target": 90,
           "asOf": "2026-11-02T06:00:00.000Z",
           "figure": 81,

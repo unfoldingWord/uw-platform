@@ -1,5 +1,5 @@
 {
-  "id": "f0e2538a-5004-49bc-8651-245ecf7c3ebe",
+  "id": "82e9f920-b67d-4b6f-b74b-a4996879e9ef",
   "prevId": "d14b1444-5167-4e9b-86b2-ead7327a146c",
   "version": "7",
   "dialect": "postgresql",
@@ -8198,6 +8198,12 @@
           "primaryKey": false,
           "notNull": false
         },
+        "raw_length": {
+          "name": "raw_length",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
         "area": {
           "name": "area",
           "type": "text",
@@ -8315,6 +8321,14 @@
         "observations_raw_hashed": {
           "name": "observations_raw_hashed",
           "value": "(\"observations\".\"raw_key\" IS NULL) = (\"observations\".\"raw_sha256\" IS NULL)"
+        },
+        "observations_raw_measured": {
+          "name": "observations_raw_measured",
+          "value": "(\"observations\".\"raw_key\" IS NULL) = (\"observations\".\"raw_length\" IS NULL)"
+        },
+        "observations_raw_length_counted": {
+          "name": "observations_raw_length_counted",
+          "value": "\"observations\".\"raw_length\" >= 0"
         },
         "observations_raw_sha256_form": {
           "name": "observations_raw_sha256_form",

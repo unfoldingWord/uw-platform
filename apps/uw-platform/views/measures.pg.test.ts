@@ -239,6 +239,18 @@ async function exportsReadableRows(db: Database): Promise<void> {
   expect(text.split('\n')[0]).toBe('Resource,Score,Observed');
   expect(text).toContain('unfoldingWord,90,');
   expect(text).not.toContain('Hidden site');
+  const trend = await get(
+    world.admin.email,
+    `/api/measures/dashboards/${world.dashboardId}/panels/3`,
+  );
+  const series = new TextDecoder().decode(trend.bytes).split('\n');
+  expect(series[0]).toBe('Resource,Observed,Score over time,Tool version');
+  expect(series.slice(1).map((line) => line.replace(/,[^,]*,/, ',at,'))).toEqual([
+    'Door43,at,60,4.19.10',
+    'unfoldingWord,at,70,4.19.10',
+    'unfoldingWord,at,90,5.0.0',
+  ]);
+  expect(new Set(series.slice(1).map((line) => line.split(',')[1])).size).toBe(2);
   const json = await get(world.admin.email, `/api/measures/${world.measureId}`);
   expect(JSON.parse(new TextDecoder().decode(json.bytes))).toMatchObject({
     measureId: world.measureId,

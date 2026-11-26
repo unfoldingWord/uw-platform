@@ -144,6 +144,6 @@ jobs:
             python3 /opt/measure/runner.py lock 120000 cowsay==6.1 | grep -q "\"exit_code\": 0,"
             grep -q -- "--hash=sha256:" /workspace/requirements.txt
             python3 /opt/measure/runner.py install 300000 | grep -q "\"exit_code\": 0,"
-            python3 /opt/measure/runner.py run 60000 100000 -- cowsay -t smoke | grep -q smoke
-            python3 /opt/measure/runner.py run 60000 100000 -- sh | grep -q "\"exit_code\": 127,"
+            python3 /opt/measure/runner.py run 60000 100000 https://example.org/ example.org -- cowsay -t smoke | grep -q smoke
+            python3 /opt/measure/runner.py run 60000 100000 https://example.org/ example.org -- sh | grep -q "\"exit_code\": 127,"
           '

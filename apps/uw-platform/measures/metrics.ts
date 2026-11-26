@@ -53,15 +53,30 @@ function meets(value: number, condition: Condition): boolean {
   return condition.op === 'at_least' ? value >= condition.threshold : value <= condition.threshold;
 }
 
-function ruledValue(of: MetricOf, series: readonly Observed[]): ObservedValue | null {
+type Ruled = {
+  readonly value: ObservedValue | null;
+  readonly source: Observed | undefined;
+  readonly reason: ObservationReason | null;
+};
+
+function failureOf(...observed: readonly (Observed | undefined)[]): ObservationReason | null {
+  return observed.find((each) => each?.outcome === 'failed')?.reason ?? null;
+}
+
+function ruled(of: MetricOf, series: readonly Observed[]): Ruled {
   const key = of.value.key;
-  const latest = valueIn(series.at(-1), key);
-  const previous = valueIn(series.at(-2), key);
-  if (of.metric.rule === 'previous') return previous;
-  if (of.metric.rule !== 'change') return latest;
-  const now = numberOf(latest);
-  const before = numberOf(previous);
-  return now === null || before === null ? null : now - before;
+  const latest = series.at(-1);
+  const previous = series.at(-2);
+  if (of.metric.rule === 'previous') {
+    return { value: valueIn(previous, key), source: previous, reason: failureOf(previous) };
+  }
+  if (of.metric.rule !== 'change') {
+    return { value: valueIn(latest, key), source: latest, reason: failureOf(latest) };
+  }
+  const now = numberOf(valueIn(latest, key));
+  const before = numberOf(valueIn(previous, key));
+  const value = now === null || before === null ? null : now - before;
+  return { value, source: latest, reason: value === null ? failureOf(latest, previous) : null };
 }
 
 function meetsOf(metric: MetricDefinition, value: ObservedValue | null): boolean | null {
@@ -82,14 +97,13 @@ function pointsOf(series: readonly Observed[], key: string): Point[] {
 }
 
 function resourceFigure(of: MetricOf, measured: Measured): ResourceFigure {
-  const latest = measured.series.at(-1);
-  const value = ruledValue(of, measured.series);
+  const { value, source, reason } = ruled(of, measured.series);
   return {
     resourceId: measured.resourceId,
     title: measured.title,
     value,
-    observedAt: latest === undefined ? null : latest.observedAt.toISOString(),
-    reason: latest?.outcome === 'failed' ? latest.reason : null,
+    observedAt: source === undefined ? null : source.observedAt.toISOString(),
+    reason,
     meetsTarget: meetsOf(of.metric, value),
     points: pointsOf(measured.series, of.value.key),
   };
@@ -154,6 +168,12 @@ function asOfOf(resources: readonly ResourceFigure[]): string | null {
   return times.length === 0 ? null : (times.sort().at(-1) ?? null);
 }
 
+function figureUnitOf(of: MetricOf): string | null {
+  if (of.metric.rule === 'count_meeting') return null;
+  if (of.metric.rule === 'share_meeting' || of.value.type === 'percent') return '%';
+  return of.value.unit ?? null;
+}
+
 export function metricFigures(of: MetricOf, measured: readonly Measured[]): MetricFigures {
   const resources = measured.map((each) => resourceFigure(of, each));
   return {
@@ -161,6 +181,7 @@ export function metricFigures(of: MetricOf, measured: readonly Measured[]): Metr
     name: of.metric.name,
     rule: of.metric.rule,
     unit: of.value.unit ?? null,
+    figureUnit: figureUnitOf(of),
     target: of.metric.target ?? null,
     asOf: asOfOf(resources),
     figure: figureOf(of.metric, resources),

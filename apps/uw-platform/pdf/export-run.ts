@@ -27,6 +27,11 @@ export type PdfExportDeps = {
 export type PdfExportResult = 'ready' | 'failed' | 'skipped';
 
 type Run = { readonly deps: PdfExportDeps; readonly exportId: string; readonly at: Date };
+type Rendering = {
+  readonly actor: Principal;
+  readonly printable: Printable;
+  readonly queued: QueuedExport;
+};
 
 const queuedRequestSchema = z.object({ target: binderRequestSchema });
 const HUMAN = 'human:';
@@ -71,9 +76,9 @@ async function requesterNow(
 async function rendered(
   run: Run,
   renderer: PdfRenderer,
-  actor: Principal,
-  printable: Printable,
+  rendering: Rendering,
 ): Promise<PdfExportResult> {
+  const { actor, printable, queued } = rendering;
   const { db, files, origin } = run.deps;
   const provenance = await provenanceOf(run, actor, printable.printed);
   const image = fileImages(db, files, { actor, at: run.at }, origin);
@@ -83,7 +88,8 @@ async function rendered(
   const r2Key = exportKey(run.exportId);
   await files.put(r2Key, { bytes: pdf, contentType: PDF });
   const hashes = { sourceSha256: provenance.sourceSha256, fileSha256: await sha256Hex(pdf) };
-  const ready = { kind: 'ready', r2Key, ...hashes, bytes: pdf.byteLength } as const;
+  const areas = [...new Set([...queued.areas, ...printable.areas])];
+  const ready = { kind: 'ready', r2Key, ...hashes, bytes: pdf.byteLength, areas } as const;
   await finishExport(db, run.exportId, ready, run.at);
   return 'ready';
 }
@@ -104,7 +110,7 @@ export async function runPdfExport(
   const plan = await binderPlan(deps.db, principal, target, run.at);
   if (typeof plan === 'string') return failed(run, plan);
   const printable = await printPlannedBinder(deps.db, principal, plan, run.at, deps.commit);
-  return rendered(run, deps.renderer, principal, printable);
+  return rendered(run, deps.renderer, { actor: principal, printable, queued });
 }
 
 export async function abandonPdfExport(

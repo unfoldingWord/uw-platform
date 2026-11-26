@@ -85,5 +85,5 @@ export async function writePageAsAgent(
     statusFor: statusFor(input, expectedVersion, instructions),
     divert: divertFor(actor, at),
   };
-  return updateCheckedPage(db, actor, checked, traceId, at);
+  return updateCheckedPage(db, actor, checked, { traceId, at });
 }

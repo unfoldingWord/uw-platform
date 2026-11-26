@@ -437,10 +437,9 @@ export function updateCheckedPage(
   db: Database,
   actor: Principal,
   checked: CheckedSave,
-  traceId: string,
-  at: Date,
+  request: UpdateRequest,
 ): Promise<PageResult | PageRefusal> {
-  return saveChecked(db, { actor, checked, traceId, at });
+  return saveChecked(db, { actor, checked, ...request });
 }
 
 export type UpdateRequest = {

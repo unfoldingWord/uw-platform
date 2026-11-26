@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { verbIo } from '@uw/contracts';
 import { outlineOf } from './raw-outline.ts';
 
 const audit = {
@@ -44,5 +45,20 @@ describe("outlining a tool's JSON output as pointers an agent can name", () => {
     const long = outlineOf(JSON.stringify({ text: 'x'.repeat(500) }), 5);
     expect(String(long?.leaves[0]?.sample).length).toBeLessThanOrEqual(80);
     expect(outlineOf('Traceback (most recent call last)', 5)).toBeNull();
+  });
+
+  it('keeps a sample of emoji within the reply limit, without splitting one', () => {
+    const outline = outlineOf(JSON.stringify({ text: '\u{1F600}'.repeat(60) }), 5);
+    const sample = String(outline?.leaves[0]?.sample);
+    expect(sample.length).toBeLessThanOrEqual(80);
+    expect(sample.endsWith('\u{1F600}…')).toBe(true);
+    expect(() => encodeURIComponent(sample)).not.toThrow();
+    const reply = verbIo.read_measure_run.output.shape.observations.element.shape.outline;
+    expect(reply.safeParse(outline?.leaves).success).toBe(true);
+  });
+
+  it('keeps a sample of exactly the limit whole', () => {
+    const outline = outlineOf(JSON.stringify({ text: 'x'.repeat(80) }), 5);
+    expect(outline?.leaves[0]?.sample).toBe('x'.repeat(80));
   });
 });

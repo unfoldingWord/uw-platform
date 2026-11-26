@@ -2,6 +2,7 @@ import glob
 import hashlib
 import json
 import os
+import re
 import shutil
 import signal
 import subprocess
@@ -22,6 +23,7 @@ PYTHON = "/usr/local/bin/python3"
 TAIL_BYTES = 4096
 LOCK_BYTES = 1048576
 READ_BYTES = 65536
+PLACEHOLDER = re.compile(r"\{address\}|\{host\}")
 
 
 def envelope(exit_code, timed_out, stdout, stderr_tail):
@@ -171,6 +173,11 @@ def install(timeout_ms):
     return envelope(0, False, "", "")
 
 
+def filled(template, address, host):
+    values = {"{address}": address, "{host}": host}
+    return [PLACEHOLDER.sub(lambda token: values[token.group(0)], argument) for argument in template]
+
+
 def run(timeout_ms, limit, argv):
     name = argv[0] if argv else ""
     tool = os.path.join(VENV, "bin", name)
@@ -202,8 +209,8 @@ def answer(args):
         return lock(int(args[1]), args[2])
     if command == "install" and len(args) == 2:
         return install(int(args[1]))
-    if command == "run" and len(args) >= 5 and args[3] == "--":
-        return run(int(args[1]), int(args[2]), args[4:])
+    if command == "run" and len(args) >= 7 and args[5] == "--":
+        return run(int(args[1]), int(args[2]), filled(args[6:], args[3], args[4]))
     return None
 
 

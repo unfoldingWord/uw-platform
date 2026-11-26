@@ -156,13 +156,6 @@ function toolVersionIn(lock: string, packageSpec: string): string | null {
   return pin?.[2] ?? null;
 }
 
-function filledCommand(command: readonly string[], address: string): string[] {
-  const host = new URL(address).host;
-  return command.map((arg) =>
-    arg.replace(/\{address\}|\{host\}/g, (token) => (token === '{host}' ? host : address)),
-  );
-}
-
 function stopped(envelope: Envelope, lock: string, gate: MeasureGate): SandboxMeasureResult {
   return {
     exitCode: envelope.exit_code,
@@ -203,7 +196,8 @@ async function measured(container: MeasureContainer, gate: MeasureGate, job: San
   if (install.exitCode !== 0) return install;
   gate.enter({ kind: 'measure', origin: new URL(job.address).origin });
   const limits = [String(job.timeoutMs), String(job.outputLimitBytes)];
-  const command = ['run', ...limits, '--', ...filledCommand(job.command, job.address)];
+  const target = [job.address, new URL(job.address).host];
+  const command = ['run', ...limits, ...target, '--', ...job.command];
   const run = await runner(container, command, job.timeoutMs);
   return {
     exitCode: run.exit_code,

@@ -122,7 +122,7 @@ describe('the measure sandbox on a trial', () => {
       'exec python3 /opt/measure/runner.py lock 120000 geo-optimizer-skill==4.19.10 @150000',
       `write /workspace/requirements.txt ${LOCK}`,
       'exec python3 /opt/measure/runner.py install 300000 @330000',
-      'exec python3 /opt/measure/runner.py run 60000 1048576 -- geo audit --url https://www.example.org/start --host=www.example.org @90000',
+      'exec python3 /opt/measure/runner.py run 60000 1048576 https://www.example.org/start www.example.org -- geo audit --url {address} --host={host} @90000',
     ]);
     expect(await statusOf(rig.egress, 'https://www.example.org/')).toBe(403);
   });
@@ -247,5 +247,29 @@ describe('the measure job a run hands the sandbox', () => {
     expect(lockIsPinned(`geo==1.0 \\\n    ${HASH_A}\n--extra-index-url https://x.test\n`)).toBe(
       false,
     );
+  });
+});
+
+describe('the measure job keeps the template and the address apart', () => {
+  it('hands the runner the template and a long address apart, to fill once in the container', async () => {
+    const address = `https://www.example.org/${'a'.repeat(600)}`;
+    const rig = fakeContainer({
+      install: async () => envelope(''),
+      run: async () => envelope('{}'),
+    });
+    const long = measureJobSchema.parse({ ...job, address, lock: LOCK });
+    expect(await measureIn(rig.container, rig.gate, long)).toMatchObject({ exitCode: 0 });
+    expect(rig.log.at(-1)).toBe(
+      `exec python3 /opt/measure/runner.py run 60000 1048576 ${address} www.example.org -- geo audit --url {address} --host={host} @90000`,
+    );
+  });
+
+  it('checks each template argument and the address against limits of their own', () => {
+    expect(measureJobSchema.safeParse({ ...job, command: ['geo', 'a'.repeat(501)] }).success).toBe(
+      false,
+    );
+    const longest = `https://www.example.org/${'a'.repeat(2048 - 24)}`;
+    expect(measureJobSchema.safeParse({ ...job, address: longest }).success).toBe(true);
+    expect(measureJobSchema.safeParse({ ...job, address: `${longest}a` }).success).toBe(false);
   });
 });

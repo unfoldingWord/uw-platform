@@ -80,9 +80,9 @@ async function observationOf(
 ): Promise<ObservationReply> {
   const { resourceId, title, outcome, reason, toolVersion, values } = observed;
   const fields = { resourceId, title, outcome, reason, toolVersion, values };
+  if (!detailed) return { ...fields, ...noDetail(observed.rawLength) };
   const text = await rawTextOf(reading.files, observed.rawKey);
-  if (text === null) return { ...fields, ...noDetail(0) };
-  return { ...fields, ...(detailed ? detailOf(text, reading.rule) : noDetail(text.length)) };
+  return { ...fields, ...(text === null ? noDetail(0) : detailOf(text, reading.rule)) };
 }
 
 type Reading = {

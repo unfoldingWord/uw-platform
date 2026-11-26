@@ -39,15 +39,17 @@ function metricRows(figures: MetricFigures, type: MeasureValueDefinition['type']
 }
 
 function trendRows(figures: MetricFigures): PanelRow[] {
-  return figures.resources.map((resource) => {
-    const versions = [...new Set(resource.points.map((point) => point.toolVersion ?? 'unknown'))];
-    const last = resource.points.at(-1);
-    return {
+  return figures.resources.flatMap((resource) => {
+    if (resource.points.length === 0) {
+      const observed = observedCell(resource.observedAt, resource.reason);
+      return [{ resource: plain(resource.title), observed, value: plain('Not scored') }];
+    }
+    return resource.points.map((point) => ({
       resource: plain(resource.title),
-      points: plain(String(resource.points.length)),
-      latest: plain(last === undefined ? 'Not scored' : figureText(last.value, figures.unit)),
-      versions: plain(versions.join(', ')),
-    };
+      observed: plain(formatInstant(new Date(point.at))),
+      value: plain(figureText(point.value, figures.unit)),
+      version: plain(point.toolVersion ?? 'unknown'),
+    }));
   });
 }
 
@@ -56,11 +58,11 @@ function metricTable(panel: Panel, figures: MetricFigures, measure: MeasurePage)
   if (panel.kind === 'trend') {
     const columns = [
       { key: 'resource', label: 'Resource' },
-      { key: 'points', label: 'Points', numeric: true },
-      { key: 'latest', label: 'Latest', numeric: true },
-      { key: 'versions', label: 'Tool versions' },
+      { key: 'observed', label: 'Observed' },
+      { key: 'value', label: figures.name, numeric: true },
+      { key: 'version', label: 'Tool version' },
     ];
-    return { caption, columns, rows: trendRows(figures) };
+    return { caption: `${figures.name}, by resource over time`, columns, rows: trendRows(figures) };
   }
   const type =
     valueOf(measure, measure.measure.metrics.find((m) => m.key === figures.metric)?.value ?? '')

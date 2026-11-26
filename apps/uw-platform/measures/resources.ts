@@ -1,6 +1,7 @@
 import type { CollectionRow } from '@uw/contracts';
+import { can } from '@uw/core/acl';
 import type { Principal } from '@uw/core/principal';
-import { inArray } from 'drizzle-orm';
+import { and, eq, inArray } from 'drizzle-orm';
 import type { Executor } from '@uw/db/client';
 import { pages } from '@uw/db/schema';
 import { loadCollection } from '../collections/definitions.ts';
@@ -14,6 +15,7 @@ export type MeasuredResource = {
 };
 
 const RESOURCES_COLLECTION = 'resource';
+const RESOURCE_PAGE = 'resource';
 const PAGE_SIZE = 200;
 const MOST_PAGES = 5;
 
@@ -48,12 +50,12 @@ async function withAddresses(
   return listed.map((each) => ({ ...each, address: addresses.get(each.resourceId) ?? '' }));
 }
 
-export async function resourcesOfView(
+async function listedOfView(
   db: Executor,
   actor: Principal,
   request: { readonly viewId: string; readonly most: number },
   at: Date,
-): Promise<readonly MeasuredResource[] | null> {
+): Promise<readonly Listed[] | null> {
   const stored = await loadCollection(db, RESOURCES_COLLECTION);
   if (stored === null) return null;
   const found: Listed[] = [];
@@ -64,10 +66,46 @@ export async function resourcesOfView(
       limit: PAGE_SIZE,
       cursor,
     });
-    if (!read.ok) return page === 0 ? null : withAddresses(db, found);
+    if (!read.ok) return page === 0 ? null : found.slice(0, request.most);
     found.push(...read.value.rows.flatMap((row) => listedOf(row) ?? []));
     cursor = read.value.next;
     if (cursor === null) break;
   }
-  return withAddresses(db, found.slice(0, request.most));
+  return found.slice(0, request.most);
+}
+
+export async function resourcesOfView(
+  db: Executor,
+  actor: Principal,
+  request: { readonly viewId: string; readonly most: number },
+  at: Date,
+): Promise<readonly MeasuredResource[] | null> {
+  const listed = await listedOfView(db, actor, request, at);
+  return listed === null ? null : withAddresses(db, listed);
+}
+
+export async function resourceIdsOfView(
+  db: Executor,
+  actor: Principal,
+  request: { readonly viewId: string; readonly most: number },
+  at: Date,
+): Promise<readonly string[]> {
+  const listed = await listedOfView(db, actor, request, at);
+  return (listed ?? []).map((each) => each.resourceId);
+}
+
+export async function readableResource(
+  db: Executor,
+  actor: Principal,
+  resourceId: string,
+  at: Date,
+): Promise<MeasuredResource | null> {
+  const [row] = await db
+    .select({ title: pages.title, area: pages.jdArea, frontmatter: pages.frontmatter })
+    .from(pages)
+    .where(and(eq(pages.id, resourceId), eq(pages.type, RESOURCE_PAGE)));
+  if (row === undefined) return null;
+  if (!can(actor, 'read', { kind: 'area', area: row.area }, at)) return null;
+  const address = addressIn(row.frontmatter);
+  return { resourceId, title: row.title, address, area: row.area };
 }

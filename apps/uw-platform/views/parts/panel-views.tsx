@@ -60,12 +60,14 @@ function under(figures: MetricFigures): boolean {
 function FigurePanel(props: { readonly figures: MetricFigures }) {
   const { figures } = props;
   const target =
-    figures.target === null ? '' : ` Target ${figureText(figures.target, figures.unit)}.`;
+    figures.target === null ? '' : ` Target ${figureText(figures.target, figures.figureUnit)}.`;
   const shortfall = under(figures) ? ' Under target.' : '';
   return (
     <Kpi
       label={figures.name}
-      value={figures.figure === null ? 'Not scored' : figureText(figures.figure, figures.unit)}
+      value={
+        figures.figure === null ? 'Not scored' : figureText(figures.figure, figures.figureUnit)
+      }
       detail={`${coverageLine(figures.coverage)}.${target}${shortfall}`}
       tone={under(figures) ? 'held' : undefined}
     />

@@ -68,9 +68,12 @@ function ownerOf(page: Page, placed: PlacedPanel): string | null {
   return page.type === 'dashboard' ? page.id : null;
 }
 
-type Drawn =
+type Drawn = { readonly areas: readonly string[] } & (
   | { readonly kind: 'hosted' }
-  | { readonly kind: 'panels'; readonly html: ReadonlyMap<number, string> };
+  | { readonly kind: 'panels'; readonly html: ReadonlyMap<number, string> }
+);
+
+export type PanelsRendered = Rendered & { readonly areas: readonly string[] };
 
 function hostOf(page: Page, dashboard: DashboardPage): string | null {
   return dashboard.id !== page.id && dashboard.context.kind === 'host' ? page.id : null;
@@ -81,10 +84,11 @@ async function drawnFor(reader: Reader, page: Page, owner: string): Promise<Draw
   if (dashboard === null) return null;
   const host = hostOf(page, dashboard);
   const read = await dashboardRead(reader, dashboard, host);
-  if (read.context === null) return { kind: 'hosted' };
+  const areas = [dashboard.jdArea, ...read.areas];
+  if (read.context === null) return { kind: 'hosted', areas };
   const scope = dashboard.id === page.id ? dashboard.id : `${dashboard.id}-in-${page.id}`;
   const html = await drawnPanels({ read, dashboardId: dashboard.id, scope, host });
-  return { kind: 'panels', html };
+  return { kind: 'panels', html, areas };
 }
 
 async function drawnByOwner(reader: Reader, page: Page, placed: readonly PlacedPanel[]) {
@@ -104,11 +108,12 @@ export async function withPanels(
   screen: ScreenKernel,
   page: Page,
   rendered: Rendered,
-): Promise<Rendered> {
+): Promise<PanelsRendered> {
   const placed = placedPanels(rendered.html);
-  if (placed.length === 0) return rendered;
+  if (placed.length === 0) return { ...rendered, areas: [] };
   const drawn = await drawnByOwner(readerOf(db, screen), page, placed);
   const started = new Set<string>();
+  const areas = new Set<string>();
   let html = '';
   let from = 0;
   for (const each of placed) {
@@ -117,9 +122,10 @@ export async function withPanels(
     if (owner === null || panels === null) continue;
     html += rendered.html.slice(from, each.start) + textFor(panels, each, !started.has(owner));
     started.add(owner);
+    for (const area of panels.areas) areas.add(area);
     from = each.end;
   }
-  return { ...rendered, html: html + rendered.html.slice(from) };
+  return { ...rendered, html: html + rendered.html.slice(from), areas: [...areas] };
 }
 
 async function reportCardBlock(props: { readonly card: ReportCard; readonly reader: Reader }) {

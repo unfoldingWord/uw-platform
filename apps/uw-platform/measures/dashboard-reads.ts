@@ -1,5 +1,5 @@
 import type { AuthoringProblem, MetricContext, Panel } from '@uw/contracts';
-import { resourcesInContext } from './context-resources.ts';
+import { resourcesInContext, type ContextResource } from './context-resources.ts';
 import type { DashboardPage } from './measure-pages.ts';
 import type { Reader } from './metric-reads.ts';
 import { panelBlocks } from './panel-blocks.ts';
@@ -17,7 +17,21 @@ export type DashboardRead = {
   readonly context: MetricContext | null;
   readonly panels: readonly PlacedPanelRead[];
   readonly unreadable: readonly UnreadablePanel[];
+  readonly areas: readonly string[];
 };
+
+function areasDrawn(
+  panels: readonly PlacedPanelRead[],
+  resources: readonly ContextResource[],
+): readonly string[] {
+  const drawn = panels.flatMap((placed) => (placed.read === null ? [] : [placed.read]));
+  if (drawn.length === 0) return [];
+  const areas = [
+    ...drawn.map((read) => read.measure.jdArea),
+    ...resources.map((each) => each.area),
+  ];
+  return [...new Set(areas)];
+}
 
 export async function dashboardRead(
   reader: Reader,
@@ -25,7 +39,7 @@ export async function dashboardRead(
   hostPageId: string | null,
 ): Promise<DashboardRead> {
   const context = metricContextOf(dashboard.context, hostPageId);
-  if (context === null) return { context, panels: [], unreadable: [] };
+  if (context === null) return { context, panels: [], unreadable: [], areas: [] };
   const resources = await resourcesInContext(reader.db, reader.actor, context, reader.at);
   const read = panelReader(reader, storedMeasured(reader, resources));
   const panels: PlacedPanelRead[] = [];
@@ -39,5 +53,5 @@ export async function dashboardRead(
         problem: block.problems[0] ?? { path: '', message: 'unknown' },
       });
   }
-  return { context, panels, unreadable };
+  return { context, panels, unreadable, areas: areasDrawn(panels, resources) };
 }

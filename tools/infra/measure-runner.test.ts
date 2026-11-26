@@ -6,6 +6,8 @@ import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 
 const runner = 'infra/containers/measure/runner.py';
+const ADDRESS = 'https://x.test/';
+const HOST = 'x.test';
 const workspaces: string[] = [];
 
 type Envelope = {
@@ -57,6 +59,8 @@ describe('the measure runner inside the container', () => {
       'run',
       '5000',
       '1000',
+      ADDRESS,
+      HOST,
       '--',
       'geo',
       'audit',
@@ -75,7 +79,11 @@ describe('the measure runner inside the container', () => {
     const workspace = workspaceWith({ geo: 'env | sort' });
     const authority = join(workspace, 'cloudflare-containers-ca.crt');
     writeFileSync(authority, 'certificate');
-    const said = runnerSays(workspace, ['run', '5000', '10000', '--', 'geo'], authority);
+    const said = runnerSays(
+      workspace,
+      ['run', '5000', '10000', ADDRESS, HOST, '--', 'geo'],
+      authority,
+    );
     const names = said.stdout
       .trim()
       .split('\n')
@@ -91,8 +99,18 @@ describe('the measure runner inside the container', () => {
 
   it('falls back to the system bundle where no container CA is mounted, as in the CI smoke run', () => {
     const workspace = workspaceWith({ geo: 'env | sort' });
-    const said = runnerSays(workspace, ['run', '5000', '10000', '--', 'geo']);
+    const said = runnerSays(workspace, ['run', '5000', '10000', ADDRESS, HOST, '--', 'geo']);
     expect(said.stdout).toContain('SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt\n');
+  });
+});
+
+describe('the measure runner fills the template', () => {
+  it('fills the address and host into the template once, however long the address', () => {
+    const workspace = workspaceWith({ geo: 'printf "%s|" "$@"' });
+    const address = `https://x.test/${'a'.repeat(600)}?next={host}`;
+    const template = ['geo', '--url', '{address}', '--host={host}', '{address}{host}'];
+    const said = runnerSays(workspace, ['run', '5000', '10000', address, HOST, '--', ...template]);
+    expect(said.stdout).toBe(`--url|${address}|--host=${HOST}|${address}${HOST}|`);
   });
 });
 
@@ -103,17 +121,17 @@ describe('the measure runner limits and refusals', () => {
       loud: 'i=0; while [ $i -lt 400 ]; do printf "0123456789"; i=$((i+1)); done',
     });
     const started = Date.now();
-    const slow = runnerSays(workspace, ['run', '500', '1000', '--', 'slow']);
+    const slow = runnerSays(workspace, ['run', '500', '1000', ADDRESS, HOST, '--', 'slow']);
     expect(slow).toMatchObject({ exit_code: null, timed_out: true });
     expect(Date.now() - started).toBeLessThan(10_000);
-    const loud = runnerSays(workspace, ['run', '5000', '25', '--', 'loud']);
+    const loud = runnerSays(workspace, ['run', '5000', '25', ADDRESS, HOST, '--', 'loud']);
     expect(loud).toMatchObject({ exit_code: 0, stdout: '0123456789012345678901234' });
   });
 
   it('refuses a tool the package does not install', () => {
     const workspace = workspaceWith({});
     for (const name of ['geo', '../../../bin/sh', 'sh']) {
-      const said = runnerSays(workspace, ['run', '5000', '1000', '--', name]);
+      const said = runnerSays(workspace, ['run', '5000', '1000', ADDRESS, HOST, '--', name]);
       expect(said).toMatchObject({ exit_code: 127, timed_out: false, stdout: '' });
     }
   });

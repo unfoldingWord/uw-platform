@@ -56,6 +56,7 @@ CREATE TABLE "observations" (
 	"reason" text,
 	"raw_key" text,
 	"raw_sha256" text,
+	"raw_length" integer,
 	"area" text NOT NULL,
 	CONSTRAINT "observations_version_counted" CHECK ("observations"."measure_version" >= 1),
 	CONSTRAINT "observations_outcome_known" CHECK ("observations"."outcome" IN ('ok', 'failed')),
@@ -64,6 +65,8 @@ CREATE TABLE "observations" (
 	CONSTRAINT "observations_failed_has_reason" CHECK ("observations"."outcome" <> 'failed' OR ("observations"."reason" IS NOT NULL AND "observations"."values" IS NULL)),
 	CONSTRAINT "observations_values_object" CHECK (jsonb_typeof("observations"."values") = 'object'),
 	CONSTRAINT "observations_raw_hashed" CHECK (("observations"."raw_key" IS NULL) = ("observations"."raw_sha256" IS NULL)),
+	CONSTRAINT "observations_raw_measured" CHECK (("observations"."raw_key" IS NULL) = ("observations"."raw_length" IS NULL)),
+	CONSTRAINT "observations_raw_length_counted" CHECK ("observations"."raw_length" >= 0),
 	CONSTRAINT "observations_raw_sha256_form" CHECK ("observations"."raw_sha256" ~ '^[0-9a-f]{64}$'),
 	CONSTRAINT "observations_area_form" CHECK ("observations"."area" ~ '^([0-9])0-\1[9]$')
 );

@@ -6,7 +6,7 @@ import { ensureBuiltIns } from '../collections/builtins/seed.ts';
 import { saveGatedPageAsAgent } from '../pages/gated-save.ts';
 import type { FileStore } from '../pages/file-store.ts';
 import type { PageRefusal, PageResult } from '../pages/store.ts';
-import { activationFor, pauseActivation } from './activations.ts';
+import { activationFor, measurePauses } from './activations.ts';
 import { dashboardBody } from './panel-blocks.ts';
 import { dashboardProblems, measureProblems } from './problems.ts';
 import { usableTrialOf } from './runs.ts';
@@ -85,9 +85,12 @@ export async function saveMeasure(
     frontmatter: input.measure,
     bodyMd: input.bodyMd,
   };
-  const saved = await saveGatedPageAsAgent(db, actor, save, { traceId, at });
+  const saved = await saveGatedPageAsAgent(db, actor, save, {
+    traceId,
+    at,
+    effects: measurePauses,
+  });
   if (!saved.ok) return refusalOf(saved);
-  if (input.expectedVersion !== null) await pauseActivation(db, input.measureId, 'changed');
   const toolHash = await toolHashOf(input.measure);
   const { page } = saved;
   const awaiting = await awaitingOf(db, page, toolHash);

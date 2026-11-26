@@ -112,14 +112,7 @@ async function triesTrialMostThree(db: Database): Promise<void> {
     'https://b.example.org/',
     'https://c.example.org/',
   ]);
-  expect(sandbox.jobs[0]?.command).toEqual([
-    'geo',
-    'audit',
-    '--url',
-    'https://a.example.org/',
-    '--format',
-    'json',
-  ]);
+  expect(sandbox.jobs[0]?.command).toEqual(scored.command);
   expect(sandbox.installs.map((job) => job.lock)).toEqual([null]);
   expect(sandbox.jobs.map((job) => job.lock)).toEqual([PINNED_LOCK, PINNED_LOCK, PINNED_LOCK]);
   expect((await runById(db, runId))?.lockSha256).toMatch(/^[0-9a-f]{64}$/);

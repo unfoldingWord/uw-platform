@@ -125,3 +125,73 @@ describe('ADR 0036 metrics read one value over time, never summing it', () => {
     expect(read).toMatchObject({ figure: null, asOf: null, coverage: { scored: 0, total: 1 } });
   });
 });
+
+describe('ADR 0036 a resource reading is dated by the observation its rule reads', () => {
+  it('dates the previous value and counts its failure by the observation it came from', () => {
+    const okThenTimedOut = [site(ids.a, [ok(1, 70), failed(2)])];
+    const read = metricFigures(
+      { metric: metric({ rule: 'previous' }), value: score },
+      okThenTimedOut,
+    );
+    expect(read.figure).toBe(70);
+    expect(read.resources[0]).toMatchObject({ observedAt: day(1).toISOString(), reason: null });
+    expect(read.asOf).toBe(day(1).toISOString());
+    expect(read.coverage).toEqual({ scored: 1, total: 1, failed: [] });
+    const timedOutThenOk = [site(ids.a, [failed(1), ok(2, 80)])];
+    const back = metricFigures(
+      { metric: metric({ rule: 'previous' }), value: score },
+      timedOutThenOk,
+    );
+    expect(back.resources[0]).toMatchObject({
+      value: null,
+      observedAt: day(1).toISOString(),
+      reason: 'timed_out',
+    });
+    expect(back.coverage).toEqual({
+      scored: 0,
+      total: 1,
+      failed: [{ reason: 'timed_out', count: 1 }],
+    });
+  });
+
+  it('names the failure behind a change that cannot be worked out', () => {
+    const series = [site(ids.a, [failed(1, 'unreachable'), ok(2, 80)])];
+    const read = metricFigures({ metric: metric({ rule: 'change' }), value: score }, series);
+    expect(read.resources[0]).toMatchObject({
+      value: null,
+      observedAt: day(2).toISOString(),
+      reason: 'unreachable',
+    });
+  });
+});
+
+describe('ADR 0036 a figure carries the unit of its rule', () => {
+  const latency: MeasureValueDefinition = {
+    key: 'score',
+    name: 'Latency',
+    type: 'number',
+    path: '/s',
+    unit: 'ms',
+  };
+  const both = [site(ids.a, [ok(1, 70)]), site(ids.b, [ok(1, 120)])];
+  const condition = { op: 'at_most', threshold: 100 } as const;
+  const read = (rule: MetricDefinition['rule'], value = latency) =>
+    metricFigures({ metric: metric({ rule, condition }), value }, both);
+
+  it('counts with no unit and shares as a percentage, keeping the unit on each reading', () => {
+    expect(read('count_meeting')).toMatchObject({ figure: 1, figureUnit: null, unit: 'ms' });
+    expect(read('share_meeting')).toMatchObject({ figure: 50, figureUnit: '%', unit: 'ms' });
+  });
+
+  it('keeps the value unit on a figure read from the values themselves', () => {
+    expect(read('average')).toMatchObject({ figure: 95, figureUnit: 'ms' });
+    expect(read('maximum').figureUnit).toBe('ms');
+    const percent: MeasureValueDefinition = {
+      key: 'score',
+      name: 'Up',
+      type: 'percent',
+      path: '/s',
+    };
+    expect(read('average', percent).figureUnit).toBe('%');
+  });
+});

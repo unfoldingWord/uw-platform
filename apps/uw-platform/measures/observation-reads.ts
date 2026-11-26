@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, inArray, ne, type SQL } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, inArray, lte, ne, sql, type SQL } from 'drizzle-orm';
 import {
   measureRunKindSchema,
   observationOutcomeSchema,
@@ -30,6 +30,8 @@ export type ObservationQuery = {
 };
 
 const MOST_SERIES_ROWS = 20_000;
+const MOST_TREND_POINTS = 400;
+const LEAST_PER_RESOURCE = 2;
 
 const columns = {
   observationId: observationRecords.id,
@@ -67,6 +69,11 @@ function rowOf(raw: Raw): ObservationRow {
   };
 }
 
+function perResource(resources: number): number {
+  const share = Math.floor(MOST_SERIES_ROWS / Math.max(resources, 1));
+  return Math.min(MOST_TREND_POINTS, Math.max(LEAST_PER_RESOURCE, share));
+}
+
 export async function seriesOf(
   db: Executor,
   measureId: string,
@@ -74,8 +81,13 @@ export async function seriesOf(
 ): Promise<ReadonlyMap<string, readonly ObservationRow[]>> {
   if (request.resourceIds.length === 0) return new Map();
   const kinds = request.trials ? undefined : ne(measureRuns.kind, 'trial');
-  const rows = await db
-    .select(columns)
+  const ranked = db
+    .select({
+      ...columns,
+      rank: sql<number>`row_number() over (partition by ${observationRecords.resourcePageId} order by ${observationRecords.observedAt} desc, ${observationRecords.id} desc)`.as(
+        'rank',
+      ),
+    })
     .from(observationRecords)
     .innerJoin(measureRuns, eq(measureRuns.id, observationRecords.runId))
     .where(
@@ -85,10 +97,25 @@ export async function seriesOf(
         kinds,
       ),
     )
-    .orderBy(desc(observationRecords.observedAt), desc(observationRecords.id))
-    .limit(MOST_SERIES_ROWS);
+    .as('ranked');
+  const rows = await db
+    .select({
+      observationId: ranked.observationId,
+      runId: ranked.runId,
+      runKind: ranked.runKind,
+      resourceId: ranked.resourceId,
+      measureVersion: ranked.measureVersion,
+      observedAt: ranked.observedAt,
+      toolVersion: ranked.toolVersion,
+      outcome: ranked.outcome,
+      reason: ranked.reason,
+      values: ranked.values,
+    })
+    .from(ranked)
+    .where(lte(ranked.rank, perResource(request.resourceIds.length)))
+    .orderBy(asc(ranked.observedAt), asc(ranked.observationId));
   const series = new Map<string, ObservationRow[]>();
-  for (const row of rows.map(rowOf).reverse()) {
+  for (const row of rows.map(rowOf)) {
     const list = series.get(row.resourceId) ?? [];
     list.push(row);
     series.set(row.resourceId, list);

@@ -10,7 +10,7 @@ import { sha256Hex } from '../pdf/provenance.ts';
 import { authorityOfRun, type RunAuthority } from './authority-of-run.ts';
 import type { MeasurePage } from './measure-pages.ts';
 import { observationsOfRun, observedIn, recordObservation } from './observation-records.ts';
-import { resourcesOfView, type MeasuredResource } from './resources.ts';
+import { readableResource, resourceIdsOfView, type MeasuredResource } from './resources.ts';
 import {
   addRefusedHosts,
   finishRun,
@@ -25,7 +25,7 @@ import {
   type MeasureResult,
   type MeasureSandbox,
 } from './sandbox.ts';
-import { filledCommand, measurableAddress } from './tool.ts';
+import { measurableAddress } from './tool.ts';
 import { valueReading } from './values.ts';
 
 export type RunDeps = {
@@ -35,16 +35,21 @@ export type RunDeps = {
   readonly now: () => Date;
 };
 
-export type Prepared = { readonly resources: readonly MeasuredResource[] };
+export type Prepared = { readonly resourceIds: readonly string[] };
 export type Observed = 'ok' | 'failed' | 'kept' | 'skipped' | 'stopped';
 export type RunInstall =
   | { readonly state: 'installed' | 'stopped' }
   | { readonly state: 'failed'; readonly result: MeasureResult };
 
 type Authorized = Extract<RunAuthority, { ok: true }>;
+type Opened = {
+  readonly run: RunRecord;
+  readonly authority: Authorized;
+  readonly resource: MeasuredResource;
+};
 
 const TRIAL_RESOURCES = 3;
-const MOST_RESOURCES = 500;
+export const MOST_MEASURED_RESOURCES = 500;
 const RAW_TYPE = 'text/plain; charset=utf-8';
 
 type Outcome = {
@@ -59,16 +64,16 @@ export function rawKeyOf(runId: string, resourceId: string): string {
 export async function prepareRun(deps: RunDeps, runId: string): Promise<Prepared> {
   const run = await runById(deps.db, runId);
   if (run === null || (run.state !== 'queued' && run.state !== 'running')) {
-    return { resources: [] };
+    return { resourceIds: [] };
   }
   const at = deps.now();
   const authority = await authorityOfRun(deps.db, run, at);
-  if (!authority.ok) return { resources: [] };
-  const most = run.kind === 'trial' ? TRIAL_RESOURCES : MOST_RESOURCES;
+  if (!authority.ok) return { resourceIds: [] };
+  const most = run.kind === 'trial' ? TRIAL_RESOURCES : MOST_MEASURED_RESOURCES;
   const viewId = authority.measure.measure.resources.view;
-  const resources = await resourcesOfView(deps.db, authority.actor, { viewId, most }, at);
+  const resourceIds = await resourceIdsOfView(deps.db, authority.actor, { viewId, most }, at);
   await markRunning(deps.db, runId, at);
-  return { resources: resources ?? [] };
+  return { resourceIds };
 }
 
 function failed(reason: ObservationReason): Outcome {
@@ -115,7 +120,7 @@ function measured(
     runtime: measure.runtime,
     packageSpec: measure.package,
     lock: authority.lock,
-    command: filledCommand(measure.command, address),
+    command: measure.command,
     address,
     timeoutMs: MEASURE_TIMEOUT_MS,
     outputLimitBytes: MEASURE_OUTPUT_LIMIT_BYTES,
@@ -137,7 +142,7 @@ function resultFor(
 async function keptRaw(deps: RunDeps, key: string, text: string) {
   const bytes = new TextEncoder().encode(text);
   await deps.files.put(key, { bytes, contentType: RAW_TYPE });
-  return { key, sha256: await sha256Hex(bytes) };
+  return { key, sha256: await sha256Hex(bytes), length: text.length };
 }
 
 async function keepLock(deps: RunDeps, run: RunRecord, result: MeasureResult): Promise<void> {
@@ -190,36 +195,46 @@ export async function installRun(deps: RunDeps, runId: string): Promise<RunInsta
   return { state: 'installed' };
 }
 
+async function opened(
+  deps: RunDeps,
+  runId: string,
+  resourceId: string,
+): Promise<Opened | Observed> {
+  const run = await runById(deps.db, runId);
+  if (run === null || run.state !== 'running') return 'skipped';
+  if (await observedIn(deps.db, runId, resourceId)) return 'kept';
+  const at = deps.now();
+  const authority = await authorityOfRun(deps.db, run, at);
+  if (!authority.ok) return 'stopped';
+  const resource = await readableResource(deps.db, authority.actor, resourceId, at);
+  return resource === null ? 'skipped' : { run, authority, resource };
+}
+
 export async function observeResource(
   deps: RunDeps,
   runId: string,
-  resource: MeasuredResource,
+  resourceId: string,
   install: RunInstall,
 ): Promise<Observed> {
   if (install.state === 'stopped') return 'stopped';
-  const run = await runById(deps.db, runId);
-  if (run === null || run.state !== 'running') return 'skipped';
-  if (await observedIn(deps.db, runId, resource.resourceId)) return 'kept';
-  const authority = await authorityOfRun(deps.db, run, deps.now());
-  if (!authority.ok) return 'stopped';
-  return observe(deps, run, authority, resource, install);
+  const open = await opened(deps, runId, resourceId);
+  if (typeof open === 'string') return open;
+  return observe(deps, open.run, open.authority, open.resource, install);
 }
 
 export async function failedStep(
   deps: RunDeps,
   runId: string,
-  resource: MeasuredResource,
+  resourceId: string,
 ): Promise<Observed> {
-  const run = await runById(deps.db, runId);
-  if (run === null || run.state !== 'running') return 'skipped';
-  if (await observedIn(deps.db, runId, resource.resourceId)) return 'kept';
-  const authority = await authorityOfRun(deps.db, run, deps.now());
-  if (!authority.ok) return 'stopped';
+  const open = await opened(deps, runId, resourceId);
+  if (typeof open === 'string') return open;
+  const { run, authority } = open;
   await recordObservation(deps.db, {
     runId,
     measurePageId: run.measurePageId,
     measureVersion: authority.measure.version,
-    resourcePageId: resource.resourceId,
+    resourcePageId: resourceId,
     observedAt: deps.now(),
     toolVersion: null,
     values: null,
@@ -242,11 +257,12 @@ export async function releaseRun(deps: RunDeps, runId: string): Promise<boolean>
 export async function finishMeasureRun(
   db: Executor,
   runId: string,
+  planned: number,
   at: Date,
 ): Promise<MeasureRunState> {
   const observed = await observationsOfRun(db, runId);
   const ok = observed.filter((each) => each.outcome === 'ok').length;
-  const state: MeasureRunState = ok === 0 ? 'failed' : ok === observed.length ? 'ok' : 'partial';
+  const state: MeasureRunState = ok === 0 ? 'failed' : ok >= planned ? 'ok' : 'partial';
   await finishRun(db, runId, state, at);
   return (await runById(db, runId))?.state ?? state;
 }

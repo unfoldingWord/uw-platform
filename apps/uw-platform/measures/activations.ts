@@ -1,4 +1,4 @@
-import { and, asc, eq, isNull, lte } from 'drizzle-orm';
+import { and, asc, eq, isNull, lt, lte } from 'drizzle-orm';
 import {
   measurePausedReasonSchema,
   type MeasurePausedReason,
@@ -82,10 +82,29 @@ export async function pauseActivation(
     );
 }
 
+async function pauseActivationBefore(
+  tx: Transaction,
+  measureId: string,
+  version: number,
+  reason: MeasurePausedReason,
+): Promise<void> {
+  await tx
+    .update(measureActivations)
+    .set({ pausedReason: reason, nextRunAt: null })
+    .where(
+      and(
+        eq(measureActivations.measurePageId, measureId),
+        isNull(measureActivations.pausedReason),
+        lt(measureActivations.version, version),
+      ),
+    );
+}
+
 export const measurePauses: PageEffects = {
   leftActive: async (tx, page) => {
     if (page.type !== 'measure') return;
-    await pauseActivation(tx, page.id, page.status === 'retired' ? 'retired' : 'changed');
+    const reason = page.status === 'retired' ? 'retired' : 'changed';
+    await pauseActivationBefore(tx, page.id, page.version, reason);
   },
 };
 

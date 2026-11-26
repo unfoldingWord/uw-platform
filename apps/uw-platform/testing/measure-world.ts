@@ -182,8 +182,9 @@ async function probeTrial(world: MeasureWorld, measure: MeasurePage): Promise<vo
     values: { kind: 'mobile_app', address: 'https://probe.example.org/' },
   });
   const runId = randomUUID();
-  const bytes = new TextEncoder().encode(geoOutput(70).stdout);
-  const raw = { key: rawKeyOf(runId, probe), sha256: await sha256Hex(bytes) };
+  const text = geoOutput(70).stdout;
+  const bytes = new TextEncoder().encode(text);
+  const raw = { key: rawKeyOf(runId, probe), sha256: await sha256Hex(bytes), length: text.length };
   await world.files.put(raw.key, { bytes, contentType: 'text/plain; charset=utf-8' });
   const read = readValues(geoOutput(70).stdout, measure.measure);
   await insertRun(world.db, {

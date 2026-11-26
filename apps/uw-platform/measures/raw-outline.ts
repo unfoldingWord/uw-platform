@@ -12,6 +12,7 @@ export type Outline = { readonly leaves: readonly OutlineLeaf[]; readonly more: 
 
 const SAMPLE_LENGTH = 80;
 const MOST_PATH = 300;
+const ELLIPSIS = '…';
 
 function parsedJson(text: string): { readonly value: unknown } | null {
   try {
@@ -26,9 +27,13 @@ function escaped(key: string): string {
 }
 
 function shortened(text: string): string {
-  const characters = [...text];
-  if (characters.length <= SAMPLE_LENGTH) return text;
-  return `${characters.slice(0, SAMPLE_LENGTH - 1).join('')}…`;
+  if (text.length <= SAMPLE_LENGTH) return text;
+  let kept = '';
+  for (const character of text) {
+    if (kept.length + character.length + ELLIPSIS.length > SAMPLE_LENGTH) break;
+    kept += character;
+  }
+  return `${kept}${ELLIPSIS}`;
 }
 
 function leafOf(path: string, value: unknown): OutlineLeaf | null {

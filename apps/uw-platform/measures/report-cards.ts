@@ -35,6 +35,30 @@ async function measuresOf(db: Executor, resourceIds: readonly string[]): Promise
   return rows.map((row) => row.measureId);
 }
 
+async function observedAmong(
+  db: Executor,
+  measureId: string,
+  resources: readonly ContextResource[],
+): Promise<boolean> {
+  if (resources.length === 0) return false;
+  const rows = await db
+    .select({ id: observationRecords.id })
+    .from(observationRecords)
+    .innerJoin(measureRuns, eq(measureRuns.id, observationRecords.runId))
+    .where(
+      and(
+        eq(observationRecords.measurePageId, measureId),
+        inArray(
+          observationRecords.resourcePageId,
+          resources.map((resource) => resource.resourceId),
+        ),
+        ne(measureRuns.kind, 'trial'),
+      ),
+    )
+    .limit(1);
+  return rows.length > 0;
+}
+
 async function cardOf(reader: Reader, measureId: string, pageId: string) {
   const measure = await readableMeasure(reader.db, reader.actor, measureId, reader.at);
   const cardId = measure?.measure.report_card ?? null;
@@ -47,7 +71,8 @@ async function cardOf(reader: Reader, measureId: string, pageId: string) {
     descendants: dashboard.context.descendants,
   } as const;
   const readable = await resourcesInContext(reader.db, reader.actor, context, reader.at);
-  return readable.length === 0 ? null : { measure, dashboard, hostPageId: pageId };
+  const observed = await observedAmong(reader.db, measureId, readable);
+  return observed ? { measure, dashboard, hostPageId: pageId } : null;
 }
 
 export async function readableServing(reader: Reader, pageId: string): Promise<Serving> {

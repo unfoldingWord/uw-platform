@@ -16,8 +16,10 @@ function figuresOf(measure: MeasurePage, measured: readonly Measured[]): EntityM
     const value = measure.measure.values.find((each) => each.key === metric.value);
     if (value === undefined) return [];
     const figures = metricFigures({ metric, value }, measured);
-    const { name, rule, unit, target, asOf, figure, coverage } = figures;
-    return [{ metric: figures.metric, name, rule, unit, target, asOf, figure, coverage }];
+    const { name, rule, unit, figureUnit, target, asOf, figure, coverage } = figures;
+    return [
+      { metric: figures.metric, name, rule, unit, figureUnit, target, asOf, figure, coverage },
+    ];
   });
 }
 

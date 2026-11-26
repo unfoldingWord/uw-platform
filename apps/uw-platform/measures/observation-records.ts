@@ -20,7 +20,11 @@ export type NewObservation = {
   readonly toolVersion: string | null;
   readonly values: ObservedValues | null;
   readonly reason: ObservationReason | null;
-  readonly raw: { readonly key: string; readonly sha256: string } | null;
+  readonly raw: {
+    readonly key: string;
+    readonly sha256: string;
+    readonly length: number;
+  } | null;
   readonly area: string;
 };
 
@@ -33,6 +37,7 @@ export type RunObservation = {
   readonly toolVersion: string | null;
   readonly values: ObservedValues | null;
   readonly rawKey: string | null;
+  readonly rawLength: number;
 };
 
 export async function recordObservation(db: Executor, made: NewObservation): Promise<void> {
@@ -47,6 +52,7 @@ export async function recordObservation(db: Executor, made: NewObservation): Pro
       values: reason === null ? values : null,
       rawKey: raw?.key ?? null,
       rawSha256: raw?.sha256 ?? null,
+      rawLength: raw?.length ?? null,
     })
     .onConflictDoNothing({ target: [observationRecords.runId, observationRecords.resourcePageId] });
 }
@@ -80,6 +86,7 @@ export async function observationsOfRun(
       toolVersion: observationRecords.toolVersion,
       values: observationRecords.values,
       rawKey: observationRecords.rawKey,
+      rawLength: observationRecords.rawLength,
     })
     .from(observationRecords)
     .innerJoin(pages, eq(pages.id, observationRecords.resourcePageId))
@@ -87,6 +94,7 @@ export async function observationsOfRun(
     .orderBy(asc(pages.title), asc(observationRecords.resourcePageId));
   return rows.map((row) => ({
     ...row,
+    rawLength: row.rawLength ?? 0,
     outcome: observationOutcomeSchema.parse(row.outcome),
     reason: row.reason === null ? null : observationReasonSchema.parse(row.reason),
     values: row.values === null ? null : observedValuesSchema.parse(row.values),
@@ -109,7 +117,7 @@ export async function expireRawOutput(
     if (row.rawKey !== null) await files.remove(row.rawKey);
     await db
       .update(observationRecords)
-      .set({ rawKey: null, rawSha256: null })
+      .set({ rawKey: null, rawSha256: null, rawLength: null })
       .where(eq(observationRecords.id, row.id));
   }
   return rows.length;

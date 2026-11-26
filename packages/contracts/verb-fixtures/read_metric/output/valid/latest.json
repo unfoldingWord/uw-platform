@@ -4,6 +4,7 @@
   "name": "GEO score",
   "rule": "latest",
   "unit": "points",
+  "figureUnit": "points",
   "target": 90,
   "asOf": "2026-11-25T09:00:00.000Z",
   "figure": null,

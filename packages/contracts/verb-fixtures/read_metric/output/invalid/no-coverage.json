@@ -4,6 +4,7 @@
   "name": "GEO score",
   "rule": "latest",
   "unit": null,
+  "figureUnit": null,
   "target": null,
   "asOf": null,
   "figure": null,
