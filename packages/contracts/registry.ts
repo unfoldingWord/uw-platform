@@ -25,9 +25,11 @@ import {
   assistantRequestInputSchema,
   assistantSettingFieldSchema,
   assistantSettingsSchema,
+  assistantTurnOutcomeSchema,
   assistantTurnRefusalSchema,
   untrustedPartSchema,
 } from './assistants.ts';
+import { setAssistantBudgetCommandSchema } from './assistant-commands.ts';
 import {
   bindCredentialCommandSchema,
   confirmRevealCommandSchema,
@@ -479,4 +481,6 @@ export const schemaRegistry: Record<string, ZodType> = {
   'assistant-reminder-refusal': assistantReminderRefusalSchema,
   'assistant-pairing-via': assistantPairingViaSchema,
   'assistant-pairing-refusal': assistantPairingRefusalSchema,
+  'assistant-turn-outcome': assistantTurnOutcomeSchema,
+  'set-assistant-budget-command': setAssistantBudgetCommandSchema,
 };

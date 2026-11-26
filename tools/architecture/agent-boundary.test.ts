@@ -401,6 +401,13 @@ const shorthand = [
   'export const hidden = { kind, name, run };',
 ].join('\n');
 
+function turnHandled(name: string, call: string): string {
+  return [
+    "import { turnHandler } from '../handler.ts';",
+    `export const raw = turnHandler({ name: '${name}', run: async (context, input) => ${call} });`,
+  ].join('\n');
+}
+
 describe('AB-3 every MCP handler goes through can()', () => {
   it('finds every real verb handler, the builders and the dispatcher going through can()', () => {
     expect(handlersSkippingCan(real)).toEqual([]);
@@ -456,6 +463,26 @@ describe('AB-3 every MCP handler goes through can()', () => {
     const file = `apps/uw-platform/mcp/${name}.ts`;
     const text = real.read(file).replaceAll(/\bcan\(/g, 'allow(');
     expect(skippingWith({ [file]: text })).toEqual([file]);
+  });
+});
+
+describe('PA-17 an assistant turn handler passes only for an assistant verb that reaches kernel.assistants', () => {
+  it('PA-17 passes a planted turn handler for an assistant verb that reaches kernel.assistants', () => {
+    const text = turnHandled(
+      'set_reminder',
+      'context.kernel.assistants.setReminder(caller, input)',
+    );
+    expect(skippingWith({ [rawVerb]: text })).toEqual([]);
+  });
+
+  it('PA-17 flags a planted turn handler for a verb outside the assistant group', () => {
+    const text = turnHandled('read_page', 'context.kernel.assistants.setReminder(caller, input)');
+    expect(skippingWith({ [rawVerb]: text })).toEqual([rawVerb]);
+  });
+
+  it('PA-17 flags a planted turn handler that never reaches kernel.assistants', () => {
+    const text = turnHandled('set_reminder', 'context.kernel.pages.write(caller, input)');
+    expect(skippingWith({ [rawVerb]: text })).toEqual([rawVerb]);
   });
 });
 

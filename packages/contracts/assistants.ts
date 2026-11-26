@@ -42,6 +42,14 @@ export const assistantTurnRefusalSchema = z.enum([
   'assistant_budget_spent',
   'turn_taken',
   'harness_paused',
+  'assistants_capped',
+]);
+export const assistantTurnOutcomeSchema = z.enum([
+  'ended',
+  'turn_limit',
+  'refused',
+  'failed',
+  'abandoned',
 ]);
 export const assistantEffectFailureSchema = z.enum([
   'not_paired',
@@ -103,6 +111,7 @@ export type AssistantChannel = z.infer<typeof assistantChannelSchema>;
 export type AssistantDirectEffect = z.infer<typeof assistantDirectEffectSchema>;
 export type AssistantEffectKind = z.infer<typeof assistantEffectKindSchema>;
 export type AssistantTurnRefusal = z.infer<typeof assistantTurnRefusalSchema>;
+export type AssistantTurnOutcome = z.infer<typeof assistantTurnOutcomeSchema>;
 export type AssistantEffectFailure = z.infer<typeof assistantEffectFailureSchema>;
 export type AssistantReminderStatus = z.infer<typeof assistantReminderStatusSchema>;
 export type AssistantReminderRefusal = z.infer<typeof assistantReminderRefusalSchema>;

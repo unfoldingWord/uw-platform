@@ -7,11 +7,16 @@ import {
   type VerbDefinition,
 } from '@uw/contracts';
 import { actionForVerbRole, can } from '@uw/core/acl';
+import type { McpHost } from './context.ts';
 
 type ObjectSchema = Record<string, unknown> & { readonly type: 'object' };
 
-function offered(principal: Principal, at: Date, verb: VerbDefinition): boolean {
-  if (!verb.servedInV1 || isForbiddenVerbName(verb.name)) return false;
+function servedOn(host: McpHost, verb: VerbDefinition): boolean {
+  return verb.group === 'assistant' ? host === 'assistant' : verb.servedInV1;
+}
+
+function offered(principal: Principal, at: Date, verb: VerbDefinition, host: McpHost): boolean {
+  if (!servedOn(host, verb) || isForbiddenVerbName(verb.name)) return false;
   const grant = verb.grant;
   if (grant?.scope !== 'fixed_area') return true;
   return can(principal, actionForVerbRole(grant.role), { kind: 'area', area: grant.area }, at);
@@ -36,8 +41,9 @@ export function toolsFor(
   principal: Principal,
   at: Date,
   registry: readonly VerbDefinition[] = verbRegistry,
+  host: McpHost = 'external',
 ): Tool[] {
-  return registry.filter((verb) => offered(principal, at, verb)).map(toolOf);
+  return registry.filter((verb) => offered(principal, at, verb, host)).map(toolOf);
 }
 
 const indexes = new WeakMap<readonly VerbDefinition[], ReadonlyMap<string, VerbDefinition>>();
@@ -55,7 +61,8 @@ export function servedVerb(
   principal: Principal,
   at: Date,
   registry: readonly VerbDefinition[] = verbRegistry,
+  host: McpHost = 'external',
 ): VerbDefinition | null {
   const verb = indexOf(registry).get(name);
-  return verb !== undefined && offered(principal, at, verb) ? verb : null;
+  return verb !== undefined && offered(principal, at, verb, host) ? verb : null;
 }

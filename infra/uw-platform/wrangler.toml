@@ -107,6 +107,11 @@ name = "pdf-export-staging"
 binding = "PDF_EXPORT"
 class_name = "PdfExportRun"
 
+[[env.staging.workflows]]
+name = "assistant-turn-staging"
+binding = "ASSISTANT_TURN"
+class_name = "AssistantTurn"
+
 [[env.staging.containers]]
 class_name = "ClaudeCodeSandbox"
 image = "../containers/claude-code/Dockerfile"
@@ -202,6 +207,11 @@ class_name = "HarnessRun"
 name = "pdf-export-production"
 binding = "PDF_EXPORT"
 class_name = "PdfExportRun"
+
+[[env.production.workflows]]
+name = "assistant-turn-production"
+binding = "ASSISTANT_TURN"
+class_name = "AssistantTurn"
 
 [[env.production.containers]]
 class_name = "ClaudeCodeSandbox"

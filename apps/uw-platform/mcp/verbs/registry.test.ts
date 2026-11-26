@@ -2,11 +2,18 @@ import { describe, expect, it } from 'vitest';
 import { findVerb, verbRegistry } from '@uw/contracts';
 import { verbHandlers } from './index.ts';
 
-const served = verbRegistry.filter((verb) => verb.servedInV1).map((verb) => verb.name);
+const served = verbRegistry
+  .filter((verb) => verb.servedInV1 || verb.group === 'assistant')
+  .map((verb) => verb.name);
 
 describe('every served verb has exactly one handler and nothing else has one', () => {
-  it('has a handler for each served verb and for nothing else', () => {
+  it('has a handler for each served verb, and each assistant verb, and for nothing else', () => {
     expect([...verbHandlers.keys()].sort()).toEqual([...served].sort());
+  });
+
+  it('PA-17 gives a handler to an unserved verb only when it belongs to the assistant group', () => {
+    const unserved = [...verbHandlers.keys()].filter((name) => findVerb(name)?.servedInV1 !== true);
+    expect(unserved.sort()).toEqual(['cancel_reminder', 'list_reminders', 'set_reminder']);
   });
 
   it('registers each handler under its own name', () => {

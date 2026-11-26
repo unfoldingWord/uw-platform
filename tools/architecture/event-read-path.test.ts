@@ -5,6 +5,9 @@ import { repoFiles } from '../repo-files.ts';
 const theReadPath = 'packages/db/store/events.ts';
 const mayNameTheTable = new Set([
   theReadPath,
+  'packages/db/store/assistant-pool.ts',
+  'packages/db/store/assistant-spend-sql.ts',
+  'packages/db/store/assistant-unstarted.ts',
   'packages/db/schema.ts',
   'packages/db/store/rows.ts',
   'packages/db/test-seed.ts',

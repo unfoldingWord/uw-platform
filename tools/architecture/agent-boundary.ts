@@ -53,7 +53,9 @@ const personSurfaceCalls = [
   /\bkernel\s*\??\.\s*personas\s*\??\.\s*activate\s*\(/g,
 ];
 
-const handlerBuilder = /\b(?:gatedHandler|rowFilteredHandler)\s*\(/;
+const handlerBuilder = /\b(?:gatedHandler|rowFilteredHandler|turnHandler)\s*\(/;
+const turnBuilder = /\bturnHandler\s*\(/;
+const assistantKernel = /\bkernel\s*\.\s*assistants\s*\./;
 const rowsBuilder = /\browFilteredHandler\s*\(/;
 const rowsReply = /\breply\s*:/;
 const returnedArrows = [
@@ -199,9 +201,16 @@ function rowsHandlerSkips(text: string): boolean {
   return granted || !mapsEveryRow(text) || moduleLets.some((pattern) => pattern.test(text));
 }
 
+function turnHandlerSkips(text: string): boolean {
+  if (!turnBuilder.test(text)) return false;
+  const outside = namesIn(text).some((name) => findVerb(name)?.group !== 'assistant');
+  return outside || !assistantKernel.test(text);
+}
+
 function handlerSkips(text: string): boolean {
   if (!handlerBuilder.test(text)) return false;
-  return rowsHandlerSkips(text) || namesIn(text).some(isForbiddenVerbName);
+  const skips = rowsHandlerSkips(text) || turnHandlerSkips(text);
+  return skips || namesIn(text).some(isForbiddenVerbName);
 }
 
 export function handlersSkippingCan(sources: SourceFiles): string[] {

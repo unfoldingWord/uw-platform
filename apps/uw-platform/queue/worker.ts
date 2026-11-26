@@ -10,6 +10,7 @@ import { hubWiring, platformKernel } from '../kernel.ts';
 import { systemClock } from '../ports/clock.ts';
 import { hubOf } from '../ports/hub.ts';
 import { directMessagesOf } from '../assistants/direct-messages.ts';
+import { turnStarterOf } from '../assistants/turn/start.ts';
 import { assistantDmHandler } from '../assistants/zulip/inbound.ts';
 import { notifierOf } from '../ports/notifier.ts';
 import { zulipConfigOf } from '../notify/zulip/config.ts';
@@ -47,7 +48,15 @@ function handlersFor(database: DatabaseHandle | null, env: Bindings, host: Handl
   return new Map<IngestSource, IngestHandler>([
     ['github', githubIngestHandler({ db: database.db, kernel, client, now })],
     ['zulip', zulipIngestHandler({ db: database.db, kernel, config: zulipConfigOf(env), now })],
-    ['zulip-assistant', assistantDmHandler({ db: database.db, kernel, now })],
+    [
+      'zulip-assistant',
+      assistantDmHandler({
+        db: database.db,
+        kernel,
+        now,
+        startTurn: turnStarterOf(env.ASSISTANT_TURN),
+      }),
+    ],
   ]);
 }
 

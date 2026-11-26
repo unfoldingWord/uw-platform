@@ -1,4 +1,5 @@
 import type { VerbHandler } from '../handler.ts';
+import { cancelReminderVerb, listRemindersVerb, setReminderVerb } from './assistant-reminders.ts';
 import { attachFileVerb } from './attach-file.ts';
 import { claimItem } from './claim-item.ts';
 import { createRowVerb, readCollectionVerb, readViewVerb, setPropertyVerb } from './collections.ts';
@@ -32,6 +33,9 @@ const handlers: readonly VerbHandler[] = [
   readViewVerb,
   createRowVerb,
   setPropertyVerb,
+  setReminderVerb,
+  cancelReminderVerb,
+  listRemindersVerb,
 ];
 
 export const verbHandlers: ReadonlyMap<string, VerbHandler> = new Map(

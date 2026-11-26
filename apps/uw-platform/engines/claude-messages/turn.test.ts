@@ -149,7 +149,17 @@ async function noKey(): Promise<void> {
   }
 }
 
+async function refusesZeroRetention(): Promise<void> {
+  const { gateway, turn } = gatewayWith({});
+  await expect(turn({ ...request, zeroRetention: true })).rejects.toMatchObject({
+    name: 'ZeroRetentionUnavailableError',
+  });
+  expect(gateway.requests).toEqual([]);
+}
+
 describe('claude-messages', () => {
+  it('PA-17 refuses a zero-retention request before sending anything', refusesZeroRetention);
+
   it("HE-3 calls go to AI Gateway's anthropic path with the organization key", gatewayPath);
 
   it(

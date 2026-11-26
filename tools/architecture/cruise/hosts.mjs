@@ -37,11 +37,11 @@ export const hostRules = [
   {
     name: 'verb-server-only-in-the-hosts',
     comment:
-      'The verb server is built only by the HTTP route and the in-process host (and the test helpers), so no third site serves verbs under a principal of its choosing.',
+      "The verb server is built only by the HTTP route, the in-process host and the assistant turn's host (and the test helpers), so no other site serves verbs under a principal of its choosing.",
     severity: 'error',
     from: {
       pathNot: [
-        '^apps/uw-platform/mcp/(routes|in-process|server)\\.ts$',
+        '^apps/uw-platform/mcp/(routes|in-process|assistant-host|server)\\.ts$',
         '^apps/uw-platform/testing/',
         testFile,
       ],

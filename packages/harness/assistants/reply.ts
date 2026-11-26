@@ -1,4 +1,4 @@
-import type { VerbName } from '@uw/contracts';
+import type { AssistantTurnOutcome, VerbName } from '@uw/contracts';
 import { draft, type EventDraft } from '../items/record.ts';
 import type { LoopResult } from '../runs/tool-loop.ts';
 
@@ -6,6 +6,10 @@ export const REPLY_LIMIT = 8_000;
 export const NO_ANSWER =
   'I could not finish an answer to this request. Please ask again, or ask in a different way.';
 export const REFUSED_ANSWER = 'I cannot help with this request.';
+
+export type SettledLoop = Omit<LoopResult, 'outcome'> & {
+  readonly outcome: AssistantTurnOutcome;
+};
 
 const TOOLS_MOST = 100;
 
@@ -17,7 +21,7 @@ function bounded(text: string): string {
   return ENDS_IN_HIGH_SURROGATE.test(cut) ? cut.slice(0, -1) : cut;
 }
 
-export function replyTextOf(result: LoopResult): string {
+export function replyTextOf(result: SettledLoop): string {
   if (result.outcome === 'refused') return REFUSED_ANSWER;
   const text = result.outcome === 'ended' ? (result.text ?? '').trim() : '';
   return text === '' ? NO_ANSWER : bounded(text);
@@ -38,7 +42,7 @@ function distinctTools(tools: readonly VerbName[]): VerbName[] {
 export function finishedDraft(input: {
   readonly requestId: string;
   readonly turnId: string;
-  readonly result: LoopResult;
+  readonly result: SettledLoop;
 }): EventDraft {
   const { result } = input;
   return draft('assistant_turn_finished', {

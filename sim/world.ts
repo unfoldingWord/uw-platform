@@ -24,7 +24,10 @@ const worldStart = new Date('2026-10-01T09:00:00.000Z');
 
 export const simAssistantsArea: JdArea = '90-99';
 
-const simSettings: KernelSettings = { assistantsArea: simAssistantsArea };
+const simSettings: KernelSettings = {
+  assistantsArea: simAssistantsArea,
+  assistantSpendCapMinor: null,
+};
 
 type SimAdapters = {
   readonly clock: SimClock;
@@ -64,13 +67,16 @@ function simAdapters(database: EmbeddedDatabase, start: Date): SimAdapters {
   };
 }
 
-export async function createWorld(start: Date = worldStart): Promise<World> {
+export async function createWorld(
+  start: Date = worldStart,
+  settings: Partial<KernelSettings> = {},
+): Promise<World> {
   const database = await createEmbeddedDatabase();
   const adapters = simAdapters(database, start);
   return {
     adapters,
     database,
-    kernel: createKernel(adapters, simSettings),
+    kernel: createKernel(adapters, { ...simSettings, ...settings }),
     close: () => database.close(),
   };
 }

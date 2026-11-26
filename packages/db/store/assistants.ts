@@ -7,6 +7,7 @@ import {
 import { and, asc, desc, eq, gte, inArray, sql } from 'drizzle-orm';
 import type { AnyExecutor } from '../any-database.ts';
 import { assistantEffects, assistantRequests, assistantSettings } from '../schema.ts';
+import { unstartedRequests } from './assistant-unstarted.ts';
 import { deliveredReplyFor } from './events.ts';
 import { refusing } from './refusal.ts';
 import type {
@@ -159,6 +160,7 @@ export function bindAssistantRequests(executor: AnyExecutor): AssistantRequestsG
       },
       deliveredInThread: (query) => deliveredInThread(executor, query),
       countSince: (harnessId, since) => requestsSince(executor, harnessId, since),
+      unstarted: (query) => unstartedRequests(executor, query),
     },
     write: {
       insert: (row) =>

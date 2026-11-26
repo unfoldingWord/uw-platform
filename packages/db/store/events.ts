@@ -23,7 +23,7 @@ import {
   type HarnessEvent,
   type NewHarnessEvent,
 } from '@uw/contracts';
-import { alias, type AnyPgColumn, type PgTable } from 'drizzle-orm/pg-core';
+import type { AnyPgColumn, PgTable } from 'drizzle-orm/pg-core';
 import type { AnyExecutor } from '../any-database.ts';
 import {
   assistantFinishedEventName,
@@ -31,6 +31,8 @@ import {
   evidenceField,
 } from '../assistant-event-indexes.ts';
 import { oneOf } from '../checks.ts';
+import { assistantPoolSpend, assistantStaleTurns } from './assistant-pool.ts';
+import { costMicros, knownCost, sameTurnFinished } from './assistant-spend-sql.ts';
 import { harnessEvents } from '../schema.ts';
 import { refusing } from './refusal.ts';
 import { toEvent } from './rows.ts';
@@ -63,6 +65,8 @@ export function bindEvents(executor: AnyExecutor): HarnessEventsGateway {
       recent: (query) => recent(executor, query),
       assistantLedger: (query) => assistantLedger(executor, query),
       assistantSpend: (query) => assistantSpend(executor, query),
+      assistantPoolSpend: (since) => assistantPoolSpend(executor, since),
+      assistantStaleTurns: (query) => assistantStaleTurns(executor, query),
       lastPosition: (harnessId) => lastPosition(executor, harnessId),
       lastPositions: (harnessIds) => lastPositions(executor, harnessIds),
       latestForItems: (itemIds, names) => latestForItems(executor, itemIds, names),
@@ -390,16 +394,6 @@ async function assistantLedger(
   if (query.names.length === 0) return [];
   return (await rows).map(toEvent);
 }
-
-const costMicros = sql`${harnessEvents.evidence} -> 'costMicros'`;
-const finishedTurn = alias(harnessEvents, 'finished_turn');
-const knownCost = sql`jsonb_typeof(${costMicros}) = 'number'`;
-const sameTurnFinished = sql`EXISTS (
-  SELECT 1 FROM ${harnessEvents} AS ${finishedTurn}
-  WHERE ${finishedTurn.harnessId} = ${harnessEvents.harnessId}
-    AND ${finishedTurn.name} = ${assistantFinishedEventName}
-    AND ${evidenceField(finishedTurn.evidence, 'requestId')} = ${evidenceField(harnessEvents.evidence, 'requestId')}
-    AND ${evidenceField(finishedTurn.evidence, 'turnId')} = ${evidenceField(harnessEvents.evidence, 'turnId')})`;
 
 export function assistantSpendQuery(executor: AnyExecutor, query: AssistantMonthQuery) {
   return executor

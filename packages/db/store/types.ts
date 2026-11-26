@@ -25,6 +25,9 @@ import type {
 } from '@uw/contracts';
 import type {
   AssistantBindingsGateway,
+  AssistantBudgetsGateway,
+  AssistantStaleTurn,
+  AssistantStaleTurnQuery,
   AssistantLedgerQuery,
   AssistantMonthQuery,
   AssistantMonthSpend,
@@ -228,6 +231,8 @@ export type HarnessEventsGateway = {
     recent(query: RecentEvents): Promise<readonly HarnessEvent[]>;
     assistantLedger(query: AssistantLedgerQuery): Promise<readonly HarnessEvent[]>;
     assistantSpend(query: AssistantMonthQuery): Promise<AssistantMonthSpend>;
+    assistantPoolSpend(since: Date): Promise<AssistantMonthSpend>;
+    assistantStaleTurns(query: AssistantStaleTurnQuery): Promise<readonly AssistantStaleTurn[]>;
     lastPosition(harnessId: string): Promise<number>;
     lastPositions(harnessIds: readonly string[]): Promise<readonly HarnessPosition[]>;
     latestForItems(
@@ -419,4 +424,5 @@ export type DrizzleTransaction = {
   readonly assistantReminders: AssistantRemindersGateway;
   readonly assistantBindings: AssistantBindingsGateway;
   readonly assistantPairingCodes: AssistantPairingCodesGateway;
+  readonly assistantBudgets: AssistantBudgetsGateway;
 };

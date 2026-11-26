@@ -8,6 +8,7 @@ import type { Logger } from '@uw/core/log';
 import type { Executor } from '@uw/db/client';
 import type { Caller, Kernel } from '@uw/harness';
 import type { IngestHandler } from '../../queue/consumer.ts';
+import type { TurnStarter } from '../turn/start.ts';
 import { botByEmail, deliveryTarget, type BotRow } from './bots.ts';
 import { codeDigestOf, pairingCodeIn } from './pairing-code.ts';
 import { fenceQuotes } from './quotes.ts';
@@ -16,6 +17,7 @@ export type AssistantDmDeps = {
   readonly db: Executor;
   readonly kernel: Kernel;
   readonly now: () => Date;
+  readonly startTurn: TurnStarter;
 };
 
 type Message = ZulipMessage['message'];
@@ -70,10 +72,11 @@ async function recordFrom(deps: AssistantDmDeps, direct: Direct): Promise<void> 
   });
   const fields = { delivery_id: envelope.deliveryId, harness_id: bot.harnessId };
   if (recorded.status === 'accepted') {
-    const outcome = recorded.value.created
-      ? 'assistant_request_recorded'
-      : 'assistant_request_replayed';
-    logger.info('assistant request', { outcome, ...fields, request_id: recorded.value.requestId });
+    const { requestId, created } = recorded.value;
+    const outcome = created ? 'assistant_request_recorded' : 'assistant_request_replayed';
+    logger.info('assistant request', { outcome, ...fields, request_id: requestId });
+    const started = await deps.startTurn({ requestId, traceId: envelope.traceId });
+    logger.info('assistant turn', { outcome: `assistant_turn_${started}`, ...fields });
     return;
   }
   logger.warn('assistant request refused', {

@@ -5,4 +5,5 @@ export const owns = [
   'assistant_reminders',
   'assistant_bindings',
   'assistant_pairing_codes',
+  'assistant_budgets',
 ] as const;

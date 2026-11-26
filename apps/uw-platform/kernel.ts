@@ -4,6 +4,7 @@ import {
   type DirectMessages,
   type Hub,
   type Kernel,
+  type KernelSettings,
   type ModelEngine,
   type Notifier,
   type Ports,
@@ -93,10 +94,13 @@ export function platformPorts(
   };
 }
 
+const unset: KernelSettings = { assistantsArea: null, assistantSpendCapMinor: null };
+
 export function platformKernel(
   database: DatabaseHandle | null,
   clock: Clock = systemClock,
   wiring: KernelWiring = idle,
+  settings: KernelSettings = unset,
 ): Kernel {
-  return createKernel(platformPorts(database, clock, wiring));
+  return createKernel(platformPorts(database, clock, wiring), settings);
 }

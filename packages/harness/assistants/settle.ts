@@ -1,11 +1,10 @@
 import { assistantEffectFailureSchema, type HarnessEvent } from '@uw/contracts';
 import { draft, recordHarnessEvents, type RecordContext } from '../items/record.ts';
 import type { AssistantEffectRow, AssistantRequestRow, StoreTransaction } from '../ports.ts';
-import type { LoopResult } from '../runs/tool-loop.ts';
 import type { Delivered } from './deliver.ts';
 import { replyKeyOf } from './history.ts';
 import { effectEvents } from './ledger.ts';
-import { finishedDraft } from './reply.ts';
+import { finishedDraft, type SettledLoop } from './reply.ts';
 
 const SEND_WINDOW_MS = 5 * 60_000;
 const DELIVERY_LEASE_MS = 2 * SEND_WINDOW_MS;
@@ -13,7 +12,7 @@ const DELIVERY_LEASE_MS = 2 * SEND_WINDOW_MS;
 export type FinishInput = {
   readonly requestId: string;
   readonly turnId: string;
-  readonly result: LoopResult;
+  readonly result: SettledLoop;
 };
 export type Finished = {
   readonly requestId: string;

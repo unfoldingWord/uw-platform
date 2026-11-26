@@ -20,7 +20,8 @@
     "testing/credentials-world.ts",
     "testing/credentials-app.ts",
     "testing/credentials-scene.ts",
-    "testing/context-rig.ts"
+    "testing/context-rig.ts",
+    "testing/turn-rig.ts"
   ],
   "exclude": ["node_modules"]
 }

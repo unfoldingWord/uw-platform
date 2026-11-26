@@ -23,6 +23,7 @@
     "testing/credentials-app.ts",
     "testing/credentials-scene.ts",
     "testing/context-rig.ts",
+    "testing/turn-rig.ts",
     "islands/browser/**",
     "islands/editor/**",
     "islands/worker/**"

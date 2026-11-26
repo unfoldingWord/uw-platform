@@ -108,6 +108,8 @@ function eventsGateway(appended: HarnessEvent[]): HarnessEventsGateway {
       countForPersona: unused,
       assistantLedger: unused,
       assistantSpend: unused,
+      assistantPoolSpend: unused,
+      assistantStaleTurns: unused,
     },
     write: {
       append: async (events: readonly NewHarnessEvent[]) => {

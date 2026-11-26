@@ -4,7 +4,7 @@ import type { RunPersona } from '../runs/types.ts';
 import { renderUntrusted, untrusted } from '../untrusted.ts';
 import { HISTORY_PAIRS, HISTORY_WINDOW_MS, historyOf } from './history.ts';
 import { instructionsOf } from './instructions.ts';
-import { ASSISTANT_TOOLSET, ASSISTANT_TURN_LIMIT } from './role.ts';
+import { ASSISTANT_TOOLSET, ASSISTANT_TURN_LIMIT, ASSISTANT_VERBS } from './role.ts';
 
 export type AssistantLoop = {
   readonly engine: Engine;
@@ -17,6 +17,7 @@ export type AssistantLoop = {
   readonly turnLimit: number;
   readonly history: readonly TurnMessage[];
   readonly prompt: string;
+  readonly zeroRetention: true;
 };
 
 export type LoopScene = {
@@ -37,6 +38,10 @@ export function promptOf(request: AssistantRequestRow): string {
 
 export function toolsOf(persona: Pick<RunPersona, 'toolset'>): readonly VerbName[] {
   return persona.toolset.filter((verb) => roleTools.has(verb));
+}
+
+export function turnToolsOf(persona: Pick<RunPersona, 'toolset'>): readonly VerbName[] {
+  return [...toolsOf(persona), ...ASSISTANT_VERBS];
 }
 
 async function threadHistory(
@@ -69,10 +74,11 @@ export async function loopOf(tx: StoreTransaction, scene: LoopScene): Promise<As
       now: at,
       channel: request.channel,
     }),
-    tools: toolsOf(persona),
+    tools: turnToolsOf(persona),
     traceId: scene.traceId,
     turnLimit: ASSISTANT_TURN_LIMIT,
     history: await threadHistory(tx, request),
     prompt: promptOf(request),
+    zeroRetention: true,
   };
 }

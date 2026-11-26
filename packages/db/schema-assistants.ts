@@ -105,6 +105,7 @@ export const assistantRequests = declareTable(
     uniqueIndex('assistant_requests_external_once').on(t.channel, t.externalId),
     unique('assistant_requests_id_harness').on(t.id, t.harnessId),
     index('assistant_requests_thread').on(t.harnessId, t.channel, t.threadKey, t.recordedAt, t.id),
+    index('assistant_requests_recorded').on(t.recordedAt, t.id),
   ],
 );
 
@@ -298,5 +299,26 @@ export const assistantZulipSends = declareTable(
       'assistant_zulip_sends_sent_has_message',
       sql`(${t.status} = 'sent') = (${t.zulipMessageId} IS NOT NULL AND ${t.sentAt} IS NOT NULL)`,
     ),
+  ],
+);
+
+export const assistantBudgets = declareTable(
+  'assistant_budgets',
+  {
+    harnessId: uuid('harness_id').primaryKey(),
+    personId: uuid('person_id').notNull(),
+    monthlyMinor: integer('monthly_minor').notNull(),
+    setBy: uuid('set_by').notNull(),
+    setAt: instant('set_at').notNull(),
+  },
+  { classification: 'internal', offlineEligibility: 'never' },
+  (t) => [
+    personalHarnessOf('assistant_budgets_personal_harness_fk', t.harnessId, t.personId),
+    foreignKey({
+      name: 'assistant_budgets_set_by_fk',
+      columns: [t.setBy],
+      foreignColumns: [people.id],
+    }),
+    check('assistant_budgets_monthly_bounded', sql`${t.monthlyMinor} BETWEEN 0 AND 1000000`),
   ],
 );

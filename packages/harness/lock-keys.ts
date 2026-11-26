@@ -10,4 +10,5 @@ export const lockKeys = {
   zulipTopics: (harnessId: string) => `zulip-topics:${harnessId}`,
   assistantRequest: (requestId: string) => `assistant-request:${requestId}`,
   assistantHarness: (harnessId: string) => `assistant-harness:${harnessId}`,
+  assistantPool: () => 'assistant-pool',
 };

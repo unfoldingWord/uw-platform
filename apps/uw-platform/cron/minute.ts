@@ -11,6 +11,7 @@ import { notifierOf } from '../ports/notifier.ts';
 import { spendOnlyEngine } from '../ports/model-engine.ts';
 import { runsOf } from '../ports/runs.ts';
 import { unitHub } from '../unit-hub.ts';
+import { turnStarterOf, type TurnStarter } from '../assistants/turn/start.ts';
 import { runDelegatedExits } from './delegated-exits.ts';
 import { cronLogger, type CronDeps, type CronJob } from './job.ts';
 
@@ -19,12 +20,15 @@ const BEAT_LIMIT = 10;
 const EXPIRY_LIMIT = 200;
 const SILENCE_LIMIT = 200;
 const REMINDER_LIMIT = 50;
+const STALE_TURN_LIMIT = 50;
+const START_LIMIT = 20;
 
 type Minute = {
   readonly kernel: Kernel;
   readonly caller: Caller;
   readonly deps: CronDeps;
   readonly logger: Logger;
+  readonly startTurn: TurnStarter;
 };
 
 function monthStart(now: Date): Date {
@@ -116,6 +120,44 @@ async function remind({ kernel, caller, logger }: Minute): Promise<void> {
   });
 }
 
+async function closeStale({ kernel, caller, logger }: Minute): Promise<void> {
+  const swept = await kernel.assistants.closeStaleTurns(caller, { limit: STALE_TURN_LIMIT });
+  if (swept.status !== 'accepted') {
+    logger.warn('stale assistant turns refused', {
+      step: 'assistant-turns',
+      outcome: swept.reason,
+    });
+    return;
+  }
+  logger.info('stale assistant turns closed', {
+    step: 'assistant-turns',
+    outcome: 'assistant_turns_swept',
+    abandoned: swept.value.abandoned.length,
+    settled: swept.value.settled.length,
+  });
+}
+
+async function startWaiting(minute: Minute): Promise<void> {
+  const { kernel, caller, logger, startTurn } = minute;
+  const waiting = await kernel.assistants.unstartedRequests(caller, { limit: START_LIMIT });
+  if (waiting.status !== 'accepted') {
+    logger.warn('unstarted assistant turns refused', {
+      step: 'assistant-starts',
+      outcome: waiting.reason,
+    });
+    return;
+  }
+  const counts = { started: 0, already_started: 0, not_wired: 0 };
+  for (const requestId of waiting.value.requestIds) {
+    counts[await startTurn({ requestId, traceId: caller.traceId })] += 1;
+  }
+  logger.info('unstarted assistant turns', {
+    step: 'assistant-starts',
+    outcome: 'assistant_turns_started',
+    ...counts,
+  });
+}
+
 function failureOf(step: string, error: unknown): string {
   if (step === 'breaker' && error instanceof PortNotWiredError) return 'breaker_not_configured';
   if (step === 'breaker') return 'breaker_unreadable';
@@ -154,13 +196,15 @@ async function minuteWith(
     hubWiring(unit.hub, { modelEngine, runs: runsOf(env), notifier, directMessages }),
   );
   const caller: Caller = { actor: systemPrincipal(), traceId: deps.newId(), requestId: null };
-  const minute = { kernel, caller, deps, logger };
+  const minute = { kernel, caller, deps, logger, startTurn: turnStarterOf(env.ASSISTANT_TURN) };
   try {
     await guarded(minute, 'sweep', sweep);
     await guarded(minute, 'expiry', expire);
     await guarded(minute, 'breaker', checkBreaker);
     await guarded(minute, 'beat', beat);
     await guarded(minute, 'reminders', remind);
+    await guarded(minute, 'assistant-turns', closeStale);
+    await guarded(minute, 'assistant-starts', startWaiting);
     await guarded(minute, 'silence', silence);
     await runDelegatedExits({
       database,

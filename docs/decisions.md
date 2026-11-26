@@ -96,7 +96,7 @@ Why the unfoldingWord Platform is shaped the way it is, and what was rejected on
 
 ## 0006 Two first-class hosts, one verb registry, an engine seam, and billing by host
 
-*2026-09-29, confirmed 2026-11-17.*
+*2026-09-29, confirmed 2026-11-17. Changed by 0038.*
 
 **Decision.** A persona runs on either of two hosts with the same verbs and the same gates: a Cloudflare Workflow inside the platform, or a staff member's own Claude Code or Codex on their own machine over remote MCP. Neither is a special mode. The model vendor sits behind one seam, with each engine in its own directory under `apps/uw-platform/engines/` (the registry there is the list); a vendor SDK is imported in exactly one directory. Billing is a property of the host, not the persona. A platform-hosted run is metered on the organization's API keys through AI Gateway under one spend cap. An external run is the person's own subscription, with tokens self-reported, labelled as contributed time and never counted against the API budget. Hosted Builder is off by default; the always-on tier (scout passes, Iterate, intake, validators, and Reviewer by default) runs on `openrouter-messages` on a cheap open model, which makes that engine the platform's baseline model service. `high`-tier items add a second reviewer identity on another model provider.
 
@@ -709,7 +709,7 @@ A policy's page and the Policies screen show its level, target, enforcement, dat
 
 ## 0036 A person's assistant is a persona on their own harness, lent authority by that person, acting directly only within a closed low-risk set
 
-*2026-11-26. Changes 0002, 0003, 0005, 0015 and 0020. Changed by 0037.*
+*2026-11-26. Changes 0002, 0003, 0005, 0015 and 0020. Changed by 0037 and 0038.*
 
 **Decision.**
 
@@ -767,6 +767,31 @@ A policy's page and the Policies screen show its level, target, enforcement, dat
 - Storing bot keys in the Secrets Store or the credentials vault rows. The store is capped, and the vault's rows are area-scoped credentials a person reveals, not platform keys.
 
 **Changes / changed by.** Changes 0020 (its envelope also seals assistant bot keys, under their own context) and 0036 (item 9: the pairing is by email at provisioning or by a one-time code, and each assistant has its own bot).
+
+## 0038 An assistant's turn is a Cloudflare Workflow named by its request, on zero-retention OpenRouter, inside its own spend pool
+
+*2026-11-26. Changes 0006 and 0036.*
+
+**Decision.**
+
+1. **One Workflow per request.** A recorded request starts the `AssistantTurn` Workflow (`apps/uw-platform/assistants/turn/`) with the request id as its instance id, so a redelivered message cannot start a second one. A request whose start was lost (the queue gave up) is started by the minute cron two minutes after it was recorded, for up to a day. Its steps are `attempt` (one `attemptId` per instance, kept by the Workflow), `begin`, `loop` and `finish`. Every retry and restart of an instance replays the same turn (0036 item 10); a second instance for the same request is refused `turn_taken` and sends nothing. The `loop` step has no retries, so a model loop is never paid twice by a retry; a loop that fails is finished as outcome `failed`, its cost unknown and counted at the per-turn ceiling, and the person is told once. Delivery runs inside `finish`, through `finishTurn`, which claims, sends and settles the reply under its delivery lease; the step retries while another attempt's send holds the lease.
+2. **A host that serves only the assistant.** The loop reaches the platform through an in-process MCP server under the turn's clamped assistant principal (host `assistant`), offered only the role's read verbs and the `assistant` verb group. The `assistant` group is served on no other host. Its verbs take the turn's request and turn id from the host, never from the model.
+3. **Zero-retention OpenRouter only.** Assistant turns run on the platform's OpenRouter engine, pinned to the role's provider with no fallback, and every assistant request asks OpenRouter to route only to zero-data-retention endpoints (`provider.zdr`, `data_collection: deny`) on top of the account's ZDR lock. An engine that cannot honour that refuses the turn. Running on a person's own Claude subscription stays rejected (0006): the owner offered it only if the platform already supported it, and it does not.
+4. **A separate assistants pool.** Assistants do not spend the platform's AI cap. Their pool for the month is the sum of the budgets of every assistant with a live `assist` delegation, each USD 20 unless an org admin set that person's (`set_assistant_budget`, the `assistant_budgets` table, `assistant_budget_set`), held under `ASSISTANT_SPEND_CAP_MINOR` when that is set. A turn is refused `assistants_capped` once the pool's month, counted like one assistant's, reaches it. The breaker subtracts the assistants' known spend from the gateway's reading. Every turn still respects the breaker's level and freshness, as 0036 says.
+5. **Stale turns are closed.** A turn left open by a dead host is closed by the minute cron an hour after it started: as `abandoned` with no usage when no reply was claimed, releasing its reservation, or with the reply settled `outcome_unknown` once its lease has passed. A late finish for an abandoned turn is refused and sends nothing.
+
+**Why.** The owner asked that a direct message to a person's bot produce a model-written reply end to end, on the platform's ZDR-locked OpenRouter account, with assistants in their own monthly pool of USD 20 each outside the platform cap (issue #123, decisions 7, 12 and 13), and that a crash never leave a turn reserved (review R11). A Workflow gives checkpointed steps that survive a Worker restart, and the request id as instance id makes the start idempotent without a table.
+
+**Rejected.**
+- Running the turn inside the queue consumer. A turn can take minutes, longer than a queue batch should hold, and a crash would redeliver the whole batch.
+- Retrying the loop step. A retry calls the model again for the same turn and pays twice; failing closed and telling the person is cheaper.
+- A fifth of the platform cap as the assistants' share (the build plan). Replaced by the owner's separate pool.
+- Leaving assistant spend inside the breaker's reading. Assistants would then pause the platform's own agents.
+- Releasing an abandoned turn's reservation at its ceiling cost. The owner asked that the reservation be released; the turn's real cost, if any, still reaches the gateway.
+
+**Consequences.** `ASSISTANT_TURN` is bound in staging and production, in `wrangler.toml` and `wrangler.go-live.toml`. Preview has no Workflows, so a direct message there is recorded and its turn is not started (`not_wired` in the log). An abandoned turn counts no cost in the pool, so a dead host's model calls are spent but uncounted for that month. Whether assistants should keep running while the platform breaker pauses the platform's agents is open for the owner.
+
+**Changes / changed by.** Changes 0006 (a third hosted shape, the assistant turn, billed to the platform's OpenRouter account) and 0036 (item 10: the cap on all assistants together is the pool above, outside the platform cap).
 
 # Part 2. Workflow design decisions
 

@@ -7,7 +7,9 @@ import type { SpendCap } from '../health/spend-cap.ts';
 import type { FileStore } from '../pages/file-store.ts';
 import type { PdfRenderer } from '../pdf/renderer.ts';
 
-export type McpHost = 'external' | 'workflow';
+export type McpHost = 'external' | 'workflow' | 'assistant';
+
+export type AssistantTurnAddress = { readonly requestId: string; readonly turnId: string };
 
 export type VerbContext = {
   readonly principal: Principal;
@@ -23,6 +25,7 @@ export type VerbContext = {
   readonly pdf?: PdfRenderer | null;
   readonly pdfExport?: PdfExportBinding | null;
   readonly origin?: string;
+  readonly turn?: AssistantTurnAddress | null;
 };
 
 export function callerOf(context: VerbContext): Caller {

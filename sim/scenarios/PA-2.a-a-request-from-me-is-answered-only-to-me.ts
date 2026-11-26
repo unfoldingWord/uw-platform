@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { assistantIdentityOf } from '@uw/contracts';
-import { assistantRole } from '@uw/harness';
+import { ASSISTANT_VERBS, assistantRole } from '@uw/harness';
 import {
   assistantLog,
   assistantNames,
@@ -34,7 +34,7 @@ async function firstTurn(scene: AssistantScene, id: string) {
   assert.equal(turn.principal.identity, assistantIdentityOf(personOf(scene.person)));
   assert.ok(turn.principal.grants.length > 0);
   assert.ok(turn.principal.grants.every((grant) => grant.role === 'viewer'));
-  assert.deepEqual(turn.loop.tools, assistantRole.toolset);
+  assert.deepEqual(turn.loop.tools, [...assistantRole.toolset, ...ASSISTANT_VERBS]);
   assert.ok(turn.loop.prompt.includes(firstNote));
   assert.deepEqual(turn.loop.history, []);
   return turn;

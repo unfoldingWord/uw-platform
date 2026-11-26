@@ -43,8 +43,14 @@ export type ThreadQuery = {
   readonly since: Date;
   readonly limit: number;
 };
+export type UnstartedQuery = {
+  readonly recordedBefore: Date;
+  readonly since: Date;
+  readonly limit: number;
+};
 export type AssistantRequestsGateway = {
   readonly read: {
+    unstarted(query: UnstartedQuery): Promise<readonly string[]>;
     byId(requestId: string): Promise<AssistantRequestRow | null>;
     byExternal(channel: AssistantChannel, externalId: string): Promise<AssistantRequestRow | null>;
     deliveredInThread(query: ThreadQuery): Promise<readonly AssistantRequestRow[]>;
@@ -150,4 +156,39 @@ export type AssistantMonthSpend = {
   readonly knownMicros: number;
   readonly unknownTurns: number;
   readonly openTurns: number;
+};
+
+export type AssistantStaleTurnQuery = {
+  readonly startedBefore: Date;
+  readonly since: Date;
+  readonly limit: number;
+};
+export type AssistantStaleTurn = {
+  readonly harnessId: string;
+  readonly requestId: string;
+  readonly turnId: string;
+  readonly startedAt: Date;
+};
+
+export type AssistantBudgetRow = {
+  readonly harnessId: string;
+  readonly personId: string;
+  readonly monthlyMinor: number;
+  readonly setBy: string;
+  readonly setAt: Date;
+};
+export type AssistantPoolBudgets = {
+  readonly enabled: number;
+  readonly overridden: number;
+  readonly overriddenMinor: number;
+};
+export type AssistantBudgetsGateway = {
+  readonly read: {
+    of(harnessId: string): Promise<AssistantBudgetRow | null>;
+    pool(at: Date): Promise<AssistantPoolBudgets>;
+  };
+  readonly write: {
+    put(row: AssistantBudgetRow): Promise<void>;
+    remove(harnessId: string): Promise<void>;
+  };
 };

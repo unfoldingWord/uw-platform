@@ -72,7 +72,7 @@ function kernelOn(db: Database): Kernel {
   const handle = { db, ping: async () => undefined, release: async () => undefined };
   return createKernel(
     { ...platformPorts(handle), clock: { now: () => start }, modelEngine: quietEngine },
-    { assistantsArea: '90-99' },
+    { assistantsArea: '90-99', assistantSpendCapMinor: null },
   );
 }
 

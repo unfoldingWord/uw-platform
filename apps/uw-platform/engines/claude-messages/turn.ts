@@ -3,6 +3,7 @@ import type { VerbName } from '@uw/contracts';
 import {
   notWiredCall,
   ProviderMismatchError,
+  ZeroRetentionUnavailableError,
   ToolOutsideToolsetError,
   type ModelEngine,
   type StopReason,
@@ -129,6 +130,7 @@ export function claudeMessagesTurn(config: EngineConfig): ModelEngine['turn'] {
   const client = clientOf(config);
   if (client === null) return () => notWiredCall('modelEngine', 'turn');
   return async (request) => {
+    if (request.zeroRetention === true) throw new ZeroRetentionUnavailableError('claude-messages');
     const pinned = request.pinnedProvider;
     if (pinned !== null && pinned !== PROVIDER) throw new ProviderMismatchError(pinned, PROVIDER);
     const messages = historyOf(request.messages);

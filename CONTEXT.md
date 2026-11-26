@@ -765,8 +765,12 @@ One instruction from an assistant's person, by Zulip direct message or email. Th
 _Avoid_: command (that is a person's action on a harness), message (alone), ticket, conversation
 
 **Assistant turn**:
-One model loop answering one request. Not a **run**: it has no item and no stage.
+One model loop answering one request, hosted by the `AssistantTurn` Workflow named by that request. Not a **run**: it has no item and no stage. A turn whose host died is **abandoned** when the minute cron closes it.
 _Avoid_: run, session, job
+
+**Assistants pool**:
+The month's spend allowance all assistants share, outside the platform's AI spend cap: the sum of the budgets of every assistant with a live `assist` delegation, under an optional ceiling. A turn is refused once it is spent.
+_Avoid_: sub-cap, assistant cap (say "the assistants pool"), quota
 
 **Direct effect**:
 An effect in the closed low-risk set (ADR 0036), done at the end of a turn with no person deciding.

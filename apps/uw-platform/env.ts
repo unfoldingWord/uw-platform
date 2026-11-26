@@ -77,6 +77,11 @@ export type PdfExportBinding = {
   create(options: { readonly id: string; readonly params: PdfExportStart }): Promise<unknown>;
 };
 
+export type AssistantTurnStart = { readonly requestId: string; readonly traceId: string };
+export type AssistantTurnBinding = {
+  create(options: { readonly id: string; readonly params: AssistantTurnStart }): Promise<unknown>;
+};
+
 type DraftStub = { fetch(input: string, init?: RequestInit): Promise<Response> };
 export type DraftNamespace = { idFromName(name: string): unknown; get(id: unknown): DraftStub };
 
@@ -96,6 +101,8 @@ export type Bindings = {
   ALWAYS_ON_PROVIDER?: string;
   ANTHROPIC_API_KEY?: string;
   APP_ORIGIN?: string;
+  ASSISTANT_SPEND_CAP_MINOR?: string;
+  ASSISTANT_TURN?: AssistantTurnBinding;
   ASSISTANT_WEBHOOK_BASE?: string;
   COMMIT_SHA?: string;
   ENVIRONMENT?: string;

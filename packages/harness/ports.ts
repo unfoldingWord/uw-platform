@@ -203,6 +203,7 @@ export type TurnRequest = {
   readonly tools: readonly VerbName[];
   readonly messages: readonly TurnMessage[];
   readonly traceId: string;
+  readonly zeroRetention?: boolean;
 };
 export type StopReason = 'end_turn' | 'tool_use' | 'max_tokens' | 'refused';
 export type TurnResult = {

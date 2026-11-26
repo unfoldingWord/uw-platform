@@ -26,6 +26,7 @@ const refusingTransaction: StoreTransaction = {
   assistantReminders: untouched(),
   assistantBindings: untouched(),
   assistantPairingCodes: untouched(),
+  assistantBudgets: untouched(),
 };
 
 const lockRefused: Store = {

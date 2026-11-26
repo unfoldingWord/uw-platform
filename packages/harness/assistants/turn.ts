@@ -10,6 +10,7 @@ import {
 } from '@uw/contracts';
 import { isSystemPrincipal } from '../access.ts';
 import type { Caller } from '../caller.ts';
+import type { KernelSettings } from '../kernel-settings.ts';
 import { draft, recordContext, recordHarnessEvents, type RecordContext } from '../items/record.ts';
 import { lockKeys } from '../lock-keys.ts';
 import { accepted, refused, type KernelOutcome, type Refused } from '../outcome.ts';
@@ -24,6 +25,7 @@ import { anyNamed, requestEvents, startedTurn, type StartedTurn } from './ledger
 import { assistantPrincipal } from './principal.ts';
 import { finishedDraft } from './reply.ts';
 import { assistantRole } from './role.ts';
+import { monthlyMinorOf, poolSpent } from './pool.ts';
 import { budgetSpent, spendThisMonth } from './spend.ts';
 import { loopOf, type AssistantLoop } from './loop.ts';
 
@@ -44,6 +46,7 @@ type Admitted = { readonly persona: Persona; readonly assist: LiveAssist };
 type Scene = {
   readonly tx: StoreTransaction;
   readonly ports: TurnPorts;
+  readonly settings: KernelSettings;
   readonly context: RecordContext;
   readonly request: AssistantRequestRow;
   readonly harness: Harness;
@@ -60,6 +63,7 @@ const reasons: ReadonlyMap<AssistantTurnRefusal, ErrorReason> = new Map<
   ['assistant_budget_spent', 'spend_held'],
   ['turn_taken', 'stale_version'],
   ['harness_paused', 'not_permitted'],
+  ['assistants_capped', 'spend_held'],
 ]);
 
 const unspent: LoopResult = {
@@ -105,7 +109,14 @@ async function activePersona(scene: Scene, identity: Identity): Promise<Persona 
 async function monthSpent(scene: Scene, persona: Persona): Promise<boolean> {
   const { tx, harness, context } = scene;
   const spend = await spendThisMonth(tx, harness.id, context.at);
-  return budgetSpent(spend, assistantRole.turnCeilingMinor, persona.monthlyMinor);
+  const monthlyMinor = await monthlyMinorOf(tx, harness.id, persona.monthlyMinor);
+  return budgetSpent(spend, assistantRole.turnCeilingMinor, monthlyMinor);
+}
+
+async function budgetRefusal(scene: Scene, persona: Persona): Promise<AssistantTurnRefusal | null> {
+  if (await monthSpent(scene, persona)) return 'assistant_budget_spent';
+  const { tx, settings, context } = scene;
+  return (await poolSpent(tx, settings, context.at)) ? 'assistants_capped' : null;
 }
 
 async function openTurn(scene: Scene): Promise<StartedTurn | 'finished' | null> {
@@ -177,8 +188,8 @@ async function admittedOn(
   const persona = await activePersona(scene, identity);
   if (persona === null) return 'persona_inactive';
   if ((await spendRefusal(tx, context.at)) !== null) return 'spend_held';
-  if (open === null && (await monthSpent(scene, persona))) return 'assistant_budget_spent';
-  return { persona, assist };
+  const spent = open === null ? await budgetRefusal(scene, persona) : null;
+  return spent ?? { persona, assist };
 }
 
 async function beginIn(
@@ -199,6 +210,7 @@ async function beginIn(
 
 async function sceneOf(
   ports: TurnPorts,
+  settings: KernelSettings,
   tx: StoreTransaction,
   context: RecordContext,
   requestId: string,
@@ -211,11 +223,12 @@ async function sceneOf(
   if (harness === null || harness.personId !== request.personId) {
     return refused('harness_not_found', { harnessId: request.harnessId });
   }
-  return { tx, ports, context, request, harness };
+  return { tx, ports, settings, context, request, harness };
 }
 
 export async function beginTurn(
   ports: TurnPorts,
+  settings: KernelSettings,
   caller: Caller,
   input: BeginInput,
 ): Promise<KernelOutcome<Turn>> {
@@ -227,7 +240,7 @@ export async function beginTurn(
   }
   const context = recordContext(ports, caller, ports.clock.now());
   return ports.store.transaction(async (tx) => {
-    const scene = await sceneOf(ports, tx, context, input.requestId);
+    const scene = await sceneOf(ports, settings, tx, context, input.requestId);
     if ('status' in scene) return scene;
     const identity = identitySchema.parse(assistantIdentityOf(scene.request.personId));
     return beginIn(scene, identity, input.attemptId);

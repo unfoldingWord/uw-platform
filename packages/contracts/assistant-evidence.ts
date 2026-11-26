@@ -6,8 +6,10 @@ import {
   assistantPairingRefusalSchema,
   assistantPairingViaSchema,
   assistantSettingFieldSchema,
+  assistantTurnOutcomeSchema,
   assistantTurnRefusalSchema,
 } from './assistants.ts';
+import { ASSISTANT_BUDGET_MOST_MINOR } from './assistant-commands.ts';
 import { verbNameSchema } from './verb-names.ts';
 
 const id = z.uuid();
@@ -35,7 +37,7 @@ export const assistantEvidence = {
   assistant_turn_finished: z.strictObject({
     requestId: id,
     turnId: id,
-    outcome: z.enum(['ended', 'turn_limit', 'refused']),
+    outcome: assistantTurnOutcomeSchema,
     turns: count,
     inputTokens: count,
     outputTokens: count,
@@ -62,6 +64,9 @@ export const assistantEvidence = {
   assistant_reminder_undelivered: z.strictObject({
     reminderId: id,
     why: assistantEffectFailureSchema,
+  }),
+  assistant_budget_set: z.strictObject({
+    monthlyMinor: z.number().int().min(0).max(ASSISTANT_BUDGET_MOST_MINOR).nullable(),
   }),
   assistant_pairing_started: z.strictObject({ channel: assistantChannelSchema }),
   assistant_paired: z.strictObject({

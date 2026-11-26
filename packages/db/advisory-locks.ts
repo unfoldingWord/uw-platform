@@ -19,6 +19,7 @@ export const lockKeyPrefixes: readonly string[] = [
   'zulip-topics:',
   'assistant-request:',
   'assistant-harness:',
+  'assistant-pool',
 ];
 
 export function githubRepoKey(repoId: number): string {

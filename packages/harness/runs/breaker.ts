@@ -16,6 +16,7 @@ const BREAKER_REFRESH_MS = 5 * 60 * 1000;
 export const DEFAULT_SPEND_CAP = { capMinor: 125_000, currency: 'USD' } as const;
 
 const PERCENT_LIMIT = 100_000;
+const MICROS_PER_MINOR = 10_000;
 const CURRENCY = /^[A-Z]{3}$/;
 
 export type BreakerReading = {
@@ -131,15 +132,21 @@ async function settleRuns(ports: BreakerPorts, level: BreakerLevel): Promise<Set
   return { hibernated: [], resumed: await resumeRunsWhere(ports, breakerHibernated, 'breaker') };
 }
 
+async function assistantsMinor(ports: BreakerPorts, since: Date): Promise<number> {
+  const pool = await readOnly(ports.store, (tx) => tx.harnessEvents.read.assistantPoolSpend(since));
+  return Math.floor(pool.knownMicros / MICROS_PER_MINOR);
+}
+
 async function readingOf(
   ports: BreakerPorts,
   input: BreakerCheckInput,
 ): Promise<BreakerReading | Refused> {
   const spend = await ports.modelEngine.spend(input.since);
   if (spend.currency !== input.currency) return refused('malformed_command', { why: 'currency' });
-  const { level, percent } = levelOf(spend.spentMinor, input.capMinor);
+  const platformMinor = Math.max(0, spend.spentMinor - (await assistantsMinor(ports, input.since)));
+  const { level, percent } = levelOf(platformMinor, input.capMinor);
   const { capMinor, currency } = input;
-  return { level, spentMinor: spend.spentMinor, capMinor, currency, percent };
+  return { level, spentMinor: platformMinor, capMinor, currency, percent };
 }
 
 async function check(

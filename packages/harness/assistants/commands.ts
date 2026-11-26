@@ -3,6 +3,7 @@ import type { KernelOutcome } from '../outcome.ts';
 import type { KernelSettings } from '../kernel-settings.ts';
 import type { AssistantSettingsRow, Ports } from '../ports.ts';
 import type { Activated } from '../stages/activate.ts';
+import { setBudget, type BudgetSet, type SetBudgetInput } from './budget.ts';
 import { finishTurn, type FinishInput, type Finished } from './finish.ts';
 import {
   bindAddress,
@@ -27,6 +28,8 @@ import type { TurnAddress } from './reminder-turn.ts';
 import { listReminders, type ListedReminders } from './reminders.ts';
 import { recordRequest, type RecordedRequest, type RequestInput } from './requests.ts';
 import { customise, type CustomiseInput } from './settings.ts';
+import { closeStaleTurns, type SweepInput, type Swept } from './stale.ts';
+import { unstartedRequests, type Unstarted, type UnstartedInput } from './unstarted.ts';
 import { beginTurn, type BeginInput, type Turn } from './turn.ts';
 
 export type AssistantCommands = {
@@ -42,6 +45,9 @@ export type AssistantCommands = {
   startPairing(caller: Caller, input: StartPairingInput): Promise<KernelOutcome<StartedPairing>>;
   completePairing(caller: Caller, input: CompletePairingInput): Promise<KernelOutcome<Paired>>;
   bindAddress(caller: Caller, input: BindAddressInput): Promise<KernelOutcome<Paired>>;
+  setBudget(caller: Caller, input: SetBudgetInput): Promise<KernelOutcome<BudgetSet>>;
+  closeStaleTurns(caller: Caller, input: SweepInput): Promise<KernelOutcome<Swept>>;
+  unstartedRequests(caller: Caller, input: UnstartedInput): Promise<KernelOutcome<Unstarted>>;
 };
 
 type AssistantPorts = Pick<Ports, 'clock' | 'grants' | 'ids' | 'store' | 'directMessages'>;
@@ -54,7 +60,7 @@ export function createAssistantCommands(
     provision: (caller, input) => provision(ports, settings, caller, input),
     customise: (caller, input) => customise(ports, caller, input),
     recordRequest: (caller, input) => recordRequest(ports, caller, input),
-    beginTurn: (caller, input) => beginTurn(ports, caller, input),
+    beginTurn: (caller, input) => beginTurn(ports, settings, caller, input),
     finishTurn: (caller, input) => finishTurn(ports, caller, input),
     setReminder: (caller, input) => setReminder(ports, caller, input),
     cancelReminder: (caller, input) => cancelReminder(ports, caller, input),
@@ -63,5 +69,8 @@ export function createAssistantCommands(
     startPairing: (caller, input) => startPairing(ports, caller, input),
     completePairing: (caller, input) => completePairing(ports, caller, input),
     bindAddress: (caller, input) => bindAddress(ports, caller, input),
+    setBudget: (caller, input) => setBudget(ports, caller, input),
+    closeStaleTurns: (caller, input) => closeStaleTurns(ports, caller, input),
+    unstartedRequests: (caller, input) => unstartedRequests(ports, caller, input),
   };
 }

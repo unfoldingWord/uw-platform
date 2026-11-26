@@ -5,12 +5,14 @@ import {
   grantRoleCommandSchema,
   revokeRoleCommandSchema,
   saveProfileBodyCommandSchema,
+  setAssistantBudgetCommandSchema,
   type GrantRoleCommand,
   type RevokeRoleCommand,
 } from '@uw/contracts';
 import type { Database } from '@uw/db/client';
 import type { Principal } from '@uw/core/principal';
 import type { AppEnv } from '../deps.ts';
+import { setAssistantBudget } from '../assistants/budget-command.ts';
 import { malformed, readJson, toOutcome, type CommandResult } from '../http/commands.ts';
 import { refuse, reply } from '../http/outcomes.ts';
 import { approvePerson, declinePerson } from '../people/approval.ts';
@@ -71,6 +73,15 @@ const handlers = new Map<string, Run>([
       const parsed = saveProfileBodyCommandSchema.safeParse(body);
       if (!parsed.success) return null;
       const result = await saveProfileBody(db, actor, parsed.data, traceId, at);
+      return { requestId: parsed.data.requestId, result };
+    },
+  ],
+  [
+    'set_assistant_budget',
+    async (db, actor, body, traceId, at) => {
+      const parsed = setAssistantBudgetCommandSchema.safeParse(body);
+      if (!parsed.success) return null;
+      const result = await setAssistantBudget(db, actor, parsed.data, traceId, at);
       return { requestId: parsed.data.requestId, result };
     },
   ],

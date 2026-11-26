@@ -50,6 +50,7 @@ export {
   notWiredCall,
   PortNotWiredError,
   ProviderMismatchError,
+  ZeroRetentionUnavailableError,
   RunTransitionError,
   storeRefusalOf,
   ToolOutsideToolsetError,
@@ -178,6 +179,7 @@ export type { ActivationCheck, ActivationCheckKey } from './personas/checks.ts';
 export {
   ASSISTANT_TOOLSET,
   ASSISTANT_TURN_LIMIT,
+  ASSISTANT_VERBS,
   assistantPersonaDraft,
   assistantRole,
   assistantTemplate,
@@ -186,6 +188,11 @@ export {
 export type {
   AssistantCommands,
   AssistantLoop,
+  BudgetSet,
+  SetBudgetInput,
+  SettledLoop,
+  SweepInput,
+  Swept,
   AssistantRole,
   BeginInput,
   CustomiseInput,

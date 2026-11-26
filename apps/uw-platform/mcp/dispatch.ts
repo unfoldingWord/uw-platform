@@ -4,6 +4,7 @@ import {
   delegationIdOf,
   findVerb,
   verbIo,
+  verbRegistry,
   type VerbDefinition,
   type VerbName,
 } from '@uw/contracts';
@@ -172,7 +173,7 @@ export async function callVerb(
   args: unknown,
   handlers: ReadonlyMap<string, VerbHandler>,
 ): Promise<CallToolResult> {
-  const definition = servedVerb(name, context.principal, context.at);
+  const definition = servedVerb(name, context.principal, context.at, verbRegistry, context.host);
   if (definition === null) {
     logCall(context, name, 'unknown_tool');
     throw new McpError(ErrorCode.InvalidParams, `Unknown tool: ${name}`);
