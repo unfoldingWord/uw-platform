@@ -26,6 +26,18 @@ describe('PA-2 the reply is the turn text, bounded, or a fixed sentence', () => 
     expect(replyTextOf({ ...result, text: 'a'.repeat(REPLY_LIMIT + 5) })).toHaveLength(REPLY_LIMIT);
   });
 
+  it('caps a long reply without splitting a character outside the basic plane', () => {
+    const text = `${'a'.repeat(REPLY_LIMIT - 1)}\u{1F600}`;
+    const reply = replyTextOf({ ...result, text });
+    expect(reply).toBe('a'.repeat(REPLY_LIMIT - 1));
+    expect(/\p{Surrogate}/u.test(reply)).toBe(false);
+  });
+
+  it('keeps a character outside the basic plane that fits within the cap', () => {
+    const text = `${'a'.repeat(REPLY_LIMIT - 2)}\u{1F600}b`;
+    expect(replyTextOf({ ...result, text })).toBe(`${'a'.repeat(REPLY_LIMIT - 2)}\u{1F600}`);
+  });
+
   it('answers a fixed sentence for a refusal, a turn limit or an empty text', () => {
     expect(replyTextOf({ ...result, outcome: 'refused' })).toBe(REFUSED_ANSWER);
     expect(replyTextOf({ ...result, outcome: 'turn_limit', text: null })).toBe(NO_ANSWER);

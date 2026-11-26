@@ -5,6 +5,8 @@ import {
   templateKeySchema,
 } from '@uw/contracts';
 import { describe, expect, it } from 'vitest';
+import { dryRun } from '../personas/dry-run.ts';
+import { parseAgentSkillHeader } from '../personas/instructions.ts';
 import { templates } from '../templates.ts';
 import { walk } from '../walk.ts';
 import {
@@ -27,6 +29,15 @@ describe('PA-1 the assistant role seeds one persona per person', () => {
     expect(frontmatter.capability).toBe('assist');
     expect(frontmatter.toolset).toEqual([...ASSISTANT_TOOLSET]);
     expect(draft.slug).toBe(`persona-assistant-${personId}`);
+  });
+
+  it('names its skill header for the per-person slug, so the activation dry run passes', async () => {
+    const draft = assistantPersonaDraft(harness, owner);
+    const frontmatter = personaFrontmatterSchema.parse(draft.frontmatter);
+    expect(parseAgentSkillHeader(draft.bodyMd)).toMatchObject({ name: `assistant-${personId}` });
+    expect(
+      await dryRun({ identity: frontmatter.identity, frontmatter, body: draft.bodyMd }),
+    ).toBeNull();
   });
 
   it('refuses to draft for a harness that belongs to nobody', () => {

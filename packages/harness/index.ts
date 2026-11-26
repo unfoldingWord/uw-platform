@@ -6,6 +6,7 @@ export { chooseInWindow, POSTING_REASONS, wakeRank } from './notify/rank.ts';
 export type { CooldownWindow } from './notify/rank.ts';
 export { createKernel } from './kernel.ts';
 export type { Kernel, KernelHealth } from './kernel.ts';
+export type { KernelSettings } from './kernel-settings.ts';
 export type { ViewReads } from './views/index.ts';
 export type {
   BoardCard,

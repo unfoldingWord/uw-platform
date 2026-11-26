@@ -24,6 +24,7 @@ describe('every advisory lock goes through one string key space, with try, share
       lockKeys.runPersona(''),
       lockKeys.zulipTopics(''),
       lockKeys.assistantRequest(''),
+      lockKeys.assistantHarness(''),
       lockKeys.githubIssue(9100000001).replace(/9100000001$/, ''),
     ];
     expect(kernel.filter((prefix) => !lockKeyPrefixes.includes(prefix))).toEqual([]);

@@ -1,4 +1,3 @@
-import type { AssistantEffectFailure } from '@uw/contracts';
 import { isSystemPrincipal } from '../access.ts';
 import type { Caller } from '../caller.ts';
 import { draft, recordContext, recordHarnessEvents, type RecordContext } from '../items/record.ts';
@@ -11,85 +10,82 @@ import type {
   Ports,
   StoreTransaction,
 } from '../ports.ts';
-import type { LoopResult } from '../runs/tool-loop.ts';
+import { boundAssist } from './delegation.ts';
 import { deliver, type Delivered } from './deliver.ts';
 import { replyKeyOf } from './history.ts';
-import { anyNamed, eventsSince, evidenceNamed, startedTurn } from './ledger.ts';
-import { finishedDraft, replyTextOf } from './reply.ts';
+import { anyNamed, requestEvents, startedTurn } from './ledger.ts';
+import { replyTextOf } from './reply.ts';
+import {
+  claimOf,
+  finishedOf,
+  leaseHeld,
+  sendByOf,
+  settle,
+  type Claim,
+  type FinishInput,
+  type Finished,
+} from './settle.ts';
 
-export type FinishInput = {
-  readonly requestId: string;
-  readonly turnId: string;
-  readonly result: LoopResult;
-};
-export type Finished = {
-  readonly requestId: string;
-  readonly turnId: string;
-  readonly effectId: string;
-  readonly delivery: Delivered;
-};
+export type { FinishInput, Finished } from './settle.ts';
 
-type FinishPorts = Pick<Ports, 'clock' | 'ids' | 'store' | 'directMessages'>;
-type Planned = {
+type FinishPorts = Pick<Ports, 'clock' | 'grants' | 'ids' | 'store' | 'directMessages'>;
+type Scene = {
+  readonly tx: StoreTransaction;
+  readonly ports: FinishPorts;
+  readonly context: RecordContext;
+  readonly input: FinishInput;
+};
+type OpenTurn = {
   readonly request: AssistantRequestRow;
-  readonly effect: AssistantEffectRow;
-  readonly send: boolean;
+  readonly delegationId: string;
+  readonly finished: boolean;
 };
+type Plan =
+  | {
+      readonly send: true;
+      readonly request: AssistantRequestRow;
+      readonly effect: AssistantEffectRow;
+    }
+  | { readonly send: false; readonly finished: Finished };
 
 const REPLY = 'reply_to_requester';
 
-async function requestIn(
-  tx: StoreTransaction,
-  input: FinishInput,
-): Promise<AssistantRequestRow | Refused> {
+async function turnIn(tx: StoreTransaction, input: FinishInput): Promise<OpenTurn | Refused> {
   await tx.lock(lockKeys.assistantRequest(input.requestId));
   const request = await tx.assistantRequests.read.byId(input.requestId);
   if (request === null) return refused('malformed_command', { why: 'request_not_found' });
-  const events = evidenceNamed(
-    await eventsSince(tx, request, ['assistant_turn_started', 'assistant_turn_finished']),
-    'requestId',
-    request.id,
-  );
-  if (!startedTurn(events, input.turnId)) {
+  await tx.lock(lockKeys.assistantHarness(request.harnessId));
+  const events = await requestEvents(tx, request, [
+    'assistant_turn_started',
+    'assistant_turn_finished',
+  ]);
+  const started = startedTurn(events, input.turnId);
+  if (started === null) {
     return refused('not_permitted', { why: 'turn_not_started', turnId: input.turnId });
   }
-  if (anyNamed(events, 'assistant_turn_finished')) {
-    return refused('stale_version', { why: 'turn_finished', requestId: request.id });
+  const finished = anyNamed(events, 'assistant_turn_finished');
+  return { request, delegationId: started.delegationId, finished };
+}
+
+async function resumed(scene: Scene, turn: OpenTurn, claim: Claim): Promise<Plan | Refused> {
+  const { tx, context, input } = scene;
+  if (claim.delivery !== null) {
+    return { send: false, finished: finishedOf(input, claim.effect, claim.delivery) };
   }
-  return request;
-}
-
-async function settled(tx: StoreTransaction, request: AssistantRequestRow, effectId: string) {
-  const names = ['assistant_effect_done', 'assistant_effect_failed'] as const;
-  return evidenceNamed(await eventsSince(tx, request, names), 'effectId', effectId).length > 0;
-}
-
-async function reuse(
-  tx: StoreTransaction,
-  context: RecordContext,
-  request: AssistantRequestRow,
-): Promise<AssistantEffectRow> {
-  const effect = await tx.assistantEffects.read.byKey(request.harnessId, replyKeyOf(request.id));
-  if (effect === null) throw new Error('the reply effect key conflicted but cannot be read');
-  if (!(await settled(tx, request, effect.id))) {
-    await recordHarnessEvents(tx, context, request.harnessId, [
-      draft('assistant_effect_failed', {
-        effectId: effect.id,
-        kind: effect.kind,
-        why: 'outcome_unknown',
-      }),
-    ]);
+  if (leaseHeld(claim, context.at)) {
+    return refused('request_in_flight', {
+      why: 'delivery_in_progress',
+      requestId: turn.request.id,
+    });
   }
-  return effect;
+  return {
+    send: false,
+    finished: await settle(tx, context, input, claim.effect, 'outcome_unknown'),
+  };
 }
 
-async function planIn(
-  tx: StoreTransaction,
-  context: RecordContext,
-  input: FinishInput,
-): Promise<Planned | Refused> {
-  const request = await requestIn(tx, input);
-  if ('status' in request) return request;
+async function claimed(scene: Scene, request: AssistantRequestRow): Promise<AssistantEffectRow> {
+  const { tx, context, input } = scene;
   const effect: AssistantEffectRow = {
     id: context.ids.next(),
     harnessId: request.harnessId,
@@ -100,56 +96,58 @@ async function planIn(
     createdAt: context.at,
   };
   if (!(await tx.assistantEffects.write.insert(effect))) {
-    return { request, effect: await reuse(tx, context, request), send: false };
+    throw new Error('the reply effect key is taken although no claim could be read');
   }
   await recordHarnessEvents(tx, context, request.harnessId, [
     draft('assistant_effect_started', { effectId: effect.id, requestId: request.id, kind: REPLY }),
   ]);
-  return { request, effect, send: true };
+  return effect;
 }
 
-function messageOf(planned: Planned, traceId: string): DirectMessage {
-  const { request, effect } = planned;
+async function planIn(scene: Scene): Promise<Plan | Refused> {
+  const { tx, ports, context, input } = scene;
+  const turn = await turnIn(tx, input);
+  if ('status' in turn) return turn;
+  const claim = await claimOf(tx, turn.request);
+  if (claim !== null) return resumed(scene, turn, claim);
+  if (turn.finished) {
+    return refused('stale_version', { why: 'turn_finished', requestId: turn.request.id });
+  }
+  const assist = await boundAssist(tx, ports, context, turn.delegationId);
+  const effect = await claimed(scene, turn.request);
+  if (assist !== null) return { send: true, request: turn.request, effect };
+  return { send: false, finished: await settle(tx, context, input, effect, 'delegation_lapsed') };
+}
+
+function messageOf(request: AssistantRequestRow, effect: AssistantEffectRow, traceId: string) {
   const text = effect.payload['text'];
-  return {
+  const message: DirectMessage = {
     requestId: request.id,
     effectId: effect.id,
+    personId: request.personId,
     channel: request.channel,
     replyAddress: request.replyAddress,
     threadKey: request.threadKey,
     text: typeof text === 'string' ? text : '',
     traceId,
+    sendBy: sendByOf(effect),
   };
-}
-
-function deliveryDraft(planned: Planned, delivery: Delivered) {
-  const { effect } = planned;
-  if (delivery === 'sent')
-    return [draft('assistant_effect_done', { effectId: effect.id, kind: effect.kind })];
-  if (delivery === 'not_sent') return [];
-  const why: AssistantEffectFailure = delivery;
-  return [draft('assistant_effect_failed', { effectId: effect.id, kind: effect.kind, why })];
+  return message;
 }
 
 async function closeIn(
-  tx: StoreTransaction,
-  context: RecordContext,
-  input: FinishInput,
-  planned: Planned,
+  scene: Scene,
+  effect: AssistantEffectRow,
   delivery: Delivered,
 ): Promise<KernelOutcome<Finished>> {
-  const request = await requestIn(tx, input);
-  if ('status' in request) return request;
-  await recordHarnessEvents(tx, context, request.harnessId, [
-    ...deliveryDraft(planned, delivery),
-    finishedDraft(input),
-  ]);
-  return accepted({
-    requestId: request.id,
-    turnId: input.turnId,
-    effectId: planned.effect.id,
-    delivery,
-  });
+  const { tx, context, input } = scene;
+  const turn = await turnIn(tx, input);
+  if ('status' in turn) return turn;
+  const claim = await claimOf(tx, turn.request);
+  if (claim !== null && claim.delivery !== null) {
+    return accepted(finishedOf(input, claim.effect, claim.delivery));
+  }
+  return accepted(await settle(tx, context, input, effect, delivery));
 }
 
 export async function finishTurn(
@@ -161,11 +159,15 @@ export async function finishTurn(
     return refused('not_permitted', { actor: caller.actor.identity });
   }
   const context = recordContext(ports, caller, ports.clock.now());
-  const planned = await ports.store.transaction((tx) => planIn(tx, context, input));
-  if ('status' in planned) return planned;
-  const delivery = planned.send
-    ? await deliver(ports.directMessages, messageOf(planned, caller.traceId))
-    : 'not_sent';
+  const plan = await ports.store.transaction((tx) => planIn({ tx, ports, context, input }));
+  if ('status' in plan) return plan;
+  if (!plan.send) return accepted(plan.finished);
+  const delivery = await deliver(
+    ports.directMessages,
+    messageOf(plan.request, plan.effect, caller.traceId),
+  );
   const closing = recordContext(ports, caller, ports.clock.now());
-  return ports.store.transaction((tx) => closeIn(tx, closing, input, planned, delivery));
+  return ports.store.transaction((tx) =>
+    closeIn({ tx, ports, context: closing, input }, plan.effect, delivery),
+  );
 }

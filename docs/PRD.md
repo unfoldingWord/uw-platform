@@ -1221,7 +1221,7 @@ Issue: #153, #154, #155; the quarterly access review under #203. Rules: ADR 0015
 |---|---|---|
 | PA-1 | A person's assistant is a persona on their own harness, and only that person can lend it authority. | Must |
 | PA-2 | A request from the person is answered only to that person, and its text never enters the event log. | Must |
-| PA-3 | Without a live delegation, or over its monthly budget, an assistant makes no model call. | Must |
+| PA-3 | Without a live delegation, while its harness is paused, or over its monthly budget (turns in flight included), an assistant makes no model call. | Must |
 | PA-4 | Forwarded or quoted text is fenced as untrusted, and no effect outside the closed low-risk set can be recorded. | Must |
 
 Issue: #123 (assistants); #98 and #99 for agents working the software workflow; the rest under #244. Rules: ADR 0002, ADR 0005, ADR 0006, ADR 0036.

@@ -64,9 +64,17 @@ export function formatMonth(month: string): string {
   return `${MONTH_NAMES[first.getUTCMonth()] ?? ''} ${first.getUTCFullYear()}`;
 }
 
+const FIXED_OFFSET_ZONE = /^(?:[+\-\u2212]|(?:etc\/)?(?:gmt|utc)[+\-\u2212])/i;
+
+function fixedOffset(name: string): boolean {
+  return FIXED_OFFSET_ZONE.test(name.trim());
+}
+
 export function knownTimeZone(name: string): boolean {
+  if (fixedOffset(name)) return false;
   try {
-    return new Intl.DateTimeFormat('en', { timeZone: name }).resolvedOptions().timeZone !== '';
+    const resolved = new Intl.DateTimeFormat('en', { timeZone: name }).resolvedOptions().timeZone;
+    return resolved !== '' && !fixedOffset(resolved);
   } catch {
     return false;
   }

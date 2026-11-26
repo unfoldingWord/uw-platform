@@ -83,6 +83,11 @@ function finished(tally: Tally, outcome: LoopResult['outcome'], text: string | n
   };
 }
 
+function limitOf(turnLimit: number | undefined): number {
+  const valid = turnLimit !== undefined && Number.isSafeInteger(turnLimit) && turnLimit > 0;
+  return valid ? Math.min(turnLimit, TURN_LIMIT) : TURN_LIMIT;
+}
+
 export async function runToolLoop(
   turn: ModelEngine['turn'],
   tools: ToolCaller,
@@ -90,7 +95,7 @@ export async function runToolLoop(
   onTurn: () => Promise<void>,
 ): Promise<LoopResult> {
   const { prompt, history, turnLimit, ...rest } = request;
-  const limit = Math.min(turnLimit ?? TURN_LIMIT, TURN_LIMIT);
+  const limit = limitOf(turnLimit);
   const messages: TurnMessage[] = [...(history ?? []), { role: 'user', text: prompt }];
   const usage = { inputTokens: 0, outputTokens: 0, costMicros: 0 };
   const tally: Tally = { usage, provider: null, model: request.model, tools: [], turns: 0 };

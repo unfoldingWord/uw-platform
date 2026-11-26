@@ -6,6 +6,7 @@ import {
   integer,
   jsonb,
   text,
+  unique,
   uniqueIndex,
   uuid,
   type AnyPgColumn,
@@ -85,14 +86,18 @@ export const assistantRequests = declareTable(
       'assistant_requests_external_id_length',
       sql`char_length(${t.externalId}) BETWEEN 1 AND 200`,
     ),
-    check('assistant_requests_thread_key_length', lengthAtMost(t.threadKey, 200)),
+    check(
+      'assistant_requests_thread_key_length',
+      sql`char_length(${t.threadKey}) BETWEEN 1 AND 200`,
+    ),
     check(
       'assistant_requests_reply_address_length',
       sql`char_length(${t.replyAddress}) BETWEEN 1 AND 254`,
     ),
     check('assistant_requests_note_length', lengthAtMost(t.note, 20000)),
     uniqueIndex('assistant_requests_external_once').on(t.channel, t.externalId),
-    index('assistant_requests_thread').on(t.harnessId, t.threadKey, t.recordedAt),
+    unique('assistant_requests_id_harness').on(t.id, t.harnessId),
+    index('assistant_requests_thread').on(t.harnessId, t.channel, t.threadKey, t.recordedAt, t.id),
   ],
 );
 
@@ -103,9 +108,7 @@ export const assistantEffects = declareTable(
     harnessId: uuid('harness_id')
       .notNull()
       .references(() => harnesses.id),
-    requestId: uuid('request_id')
-      .notNull()
-      .references(() => assistantRequests.id),
+    requestId: uuid('request_id').notNull(),
     kind: text('kind').notNull(),
     idempotencyKey: text('idempotency_key').notNull(),
     payload: jsonb('payload').notNull(),
@@ -113,6 +116,11 @@ export const assistantEffects = declareTable(
   },
   restrictedNever,
   (t) => [
+    foreignKey({
+      name: 'assistant_effects_request_harness_fk',
+      columns: [t.requestId, t.harnessId],
+      foreignColumns: [assistantRequests.id, assistantRequests.harnessId],
+    }),
     check('assistant_effects_direct_only', oneOf(t.kind, assistantDirectEffectSchema.options)),
     check('assistant_effects_payload_object', sql`jsonb_typeof(${t.payload}) = 'object'`),
     check(

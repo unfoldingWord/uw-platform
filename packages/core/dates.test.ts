@@ -93,11 +93,28 @@ describe('#206 formatMonth names a calendar month', () => {
 });
 
 describe('knownTimeZone accepts only an IANA time zone', () => {
-  it.each(['UTC', 'Africa/Nairobi', 'America/Chicago'])('accepts %s', (name) => {
-    expect(knownTimeZone(name)).toBe(true);
-  });
+  it.each(['UTC', 'Etc/UTC', 'GMT', 'Africa/Nairobi', 'America/Chicago', 'US/Eastern'])(
+    'accepts %s',
+    (name) => {
+      expect(knownTimeZone(name)).toBe(true);
+    },
+  );
 
   it.each(['Mars/Olympus', 'not a zone', ''])('refuses %j', (name) => {
+    expect(knownTimeZone(name)).toBe(false);
+  });
+
+  it.each([
+    '+01:00',
+    '-0500',
+    '+01',
+    '\u221201:00',
+    'UTC+1',
+    'GMT+2',
+    'utc-03:30',
+    'Etc/GMT+2',
+    'Etc/GMT-14',
+  ])('refuses the fixed offset %j, which keeps no daylight saving', (name) => {
     expect(knownTimeZone(name)).toBe(false);
   });
 });

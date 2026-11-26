@@ -4,6 +4,7 @@ import {
   defaultBotAuthors,
   harnessSchema,
   repositorySchema,
+  templateStageCountFits,
   type Harness,
   type JdArea,
   type RequiredCheck,
@@ -44,7 +45,10 @@ export type ActivateInput = {
 
 export type Activated = { readonly harness: Harness; readonly stages: readonly Stage[] };
 
-function templateRefusal(stages: readonly Stage[]): Refused | null {
+function templateRefusal(template: Template, stages: readonly Stage[]): Refused | null {
+  if (!templateStageCountFits(template.key, stages.length)) {
+    return refused('malformed_command', { why: 'template_stages' });
+  }
   return stageProblems(stages) ?? bypassRefusal(stages);
 }
 
@@ -156,7 +160,7 @@ export async function activateTemplate(
   const stages = input.template.stages.map((stage) =>
     stageFromTemplate(stage, harness.id, ports.ids.next()),
   );
-  const refusal = templateRefusal(stages);
+  const refusal = templateRefusal(input.template, stages);
   if (refusal !== null) return refusal;
   try {
     return await insertAll(ports, caller, at, { harness, stages }, input.template);

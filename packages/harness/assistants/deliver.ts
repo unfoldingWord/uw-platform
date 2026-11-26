@@ -1,7 +1,7 @@
 import type { AssistantEffectFailure } from '@uw/contracts';
 import type { DirectMessage, DirectMessages } from '../ports.ts';
 
-export type Delivered = 'sent' | 'not_sent' | AssistantEffectFailure;
+export type Delivered = 'sent' | AssistantEffectFailure;
 
 function failureOf(error: unknown): AssistantEffectFailure {
   return error instanceof Error && error.name === 'PortNotWiredError'

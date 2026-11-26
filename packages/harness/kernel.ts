@@ -5,6 +5,7 @@ import { createGateCommands, type GateCommands } from './gates/commands.ts';
 import { wakingGrants, wakingStore } from './hub-wakes.ts';
 import { createEventReads, type EventReads } from './items/events.ts';
 import { createItemCommands, type ItemCommands } from './items/commands.ts';
+import { unsetKernelSettings, type KernelSettings } from './kernel-settings.ts';
 import { replay } from './items/fold.ts';
 import { createRepairCommands, type RepairCommands } from './items/repair.ts';
 import { createMeasurementCommands, type MeasurementCommands } from './measurements/commands.ts';
@@ -53,7 +54,7 @@ export function livePorts(ports: Ports): Ports {
   return live;
 }
 
-export function createKernel(ports: Ports): Kernel {
+export function createKernel(ports: Ports, settings: KernelSettings = unsetKernelSettings): Kernel {
   const live = livePorts(ports);
   return {
     walk,
@@ -72,7 +73,7 @@ export function createKernel(ports: Ports): Kernel {
     runs: createRunCommands(live),
     breaker: createBreakerCommands(live),
     alarms: createAlarmCommands(live),
-    assistants: createAssistantCommands(live),
+    assistants: createAssistantCommands(live, settings),
     health: async () => ({
       now: live.clock.now(),
       appliedMigrations: await live.store.appliedMigrations(),

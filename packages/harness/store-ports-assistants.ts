@@ -1,4 +1,9 @@
-import type { AssistantChannel, AssistantEffectKind, UntrustedPart } from '@uw/contracts';
+import type {
+  AssistantChannel,
+  AssistantEffectKind,
+  EventName,
+  UntrustedPart,
+} from '@uw/contracts';
 
 export type AssistantSettingsRow = {
   readonly harnessId: string;
@@ -27,9 +32,12 @@ export type AssistantRequestRow = {
   readonly receivedAt: Date;
   readonly recordedAt: Date;
 };
+export type RequestPlace = { readonly recordedAt: Date; readonly id: string };
 export type ThreadQuery = {
   readonly harnessId: string;
+  readonly channel: AssistantChannel;
   readonly threadKey: string;
+  readonly before: RequestPlace;
   readonly since: Date;
   readonly limit: number;
 };
@@ -37,7 +45,7 @@ export type AssistantRequestsGateway = {
   readonly read: {
     byId(requestId: string): Promise<AssistantRequestRow | null>;
     byExternal(channel: AssistantChannel, externalId: string): Promise<AssistantRequestRow | null>;
-    recentInThread(query: ThreadQuery): Promise<readonly AssistantRequestRow[]>;
+    deliveredInThread(query: ThreadQuery): Promise<readonly AssistantRequestRow[]>;
   };
   readonly write: { insert(row: AssistantRequestRow): Promise<void> };
 };
@@ -58,4 +66,18 @@ export type AssistantEffectsGateway = {
     forRequests(requestIds: readonly string[]): Promise<readonly AssistantEffectRow[]>;
   };
   readonly write: { insert(row: AssistantEffectRow): Promise<boolean> };
+};
+
+export type AssistantLedgerSubject = { readonly requestId: string } | { readonly effectId: string };
+export type AssistantLedgerQuery = {
+  readonly harnessId: string;
+  readonly names: readonly EventName[];
+  readonly about: AssistantLedgerSubject;
+  readonly limit: number;
+};
+export type AssistantMonthQuery = { readonly harnessId: string; readonly since: Date };
+export type AssistantMonthSpend = {
+  readonly knownMicros: number;
+  readonly unknownTurns: number;
+  readonly openTurns: number;
 };

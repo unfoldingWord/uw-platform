@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { assistantEvidence } from './assistant-evidence.ts';
+import { templateStageCountFits } from './assistants.ts';
 import {
   capabilityWordSchema,
   connectorSchema,
@@ -361,12 +362,17 @@ const harnessEvidence = {
       (handed) => (handed.why === 'review_rounds_exhausted') === (handed.rounds !== null),
       'only review rounds name a round count',
     ),
-  template_activated: z.strictObject({
-    template: slugSchema,
-    stages: z.array(stage),
-    repository: repositorySchema.nullable(),
-    shadow: z.boolean().default(false),
-  }),
+  template_activated: z
+    .strictObject({
+      template: slugSchema,
+      stages: z.array(stage),
+      repository: repositorySchema.nullable(),
+      shadow: z.boolean().default(false),
+    })
+    .refine(
+      (activated) => templateStageCountFits(activated.template, activated.stages.length),
+      'only the assistant template activates without stages, and it activates with none',
+    ),
   shadow_lifted: z.strictObject({}),
   shadow_turned_on: z.strictObject({}),
   epic_enqueued: z.strictObject({

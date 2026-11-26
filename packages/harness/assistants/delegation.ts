@@ -62,3 +62,13 @@ export async function liveAssist(
   }
   return null;
 }
+
+export async function boundAssist(
+  tx: StoreTransaction,
+  ports: LivenessPorts,
+  context: RecordContext,
+  delegationId: string,
+): Promise<LiveAssist | null> {
+  const delegation = await tx.delegations.read.byId(delegationId);
+  return delegation === null ? null : lapsedUnlessLive(tx, ports, context, delegation);
+}

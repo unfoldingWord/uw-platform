@@ -1,48 +1,38 @@
-import { eventSchema, type HarnessEvent } from '@uw/contracts';
 import { describe, expect, it } from 'vitest';
-import { minorOf, monthStart, spentOf } from './spend.ts';
+import { budgetSpent, monthStart, spentMicros } from './spend.ts';
 
 const ceiling = 50;
+const known = (knownMicros: number, unknownTurns = 0, openTurns = 0) => ({
+  knownMicros,
+  unknownTurns,
+  openTurns,
+});
 
-function finished(costMicros: number | null): HarnessEvent {
-  return eventSchema.parse({
-    eventId: '00000000-0000-4000-8000-0000000000f1',
-    harnessId: '00000000-0000-4000-8000-0000000000a1',
-    itemId: null,
-    position: 1,
-    name: 'assistant_turn_finished',
-    at: '2026-10-02T09:00:00.000Z',
-    actor: 'agent:ingest',
-    evidence: {
-      requestId: '00000000-0000-4000-8000-0000000000b1',
-      turnId: '00000000-0000-4000-8000-0000000000c1',
-      outcome: 'ended',
-      turns: 1,
-      inputTokens: 10,
-      outputTokens: 5,
-      costMicros,
-      tools: [],
-    },
-    traceId: '00000000-0000-4000-8000-0000000000e1',
-    requestId: null,
-  });
-}
-
-describe('PA-3 an assistant month is summed in minor units as the run steps convert them', () => {
-  it('converts ten thousand micro-units to one minor unit, rounding half up', () => {
-    expect(minorOf(20_000_000, ceiling)).toBe(2000);
-    expect(minorOf(4_999, ceiling)).toBe(0);
-    expect(minorOf(5_000, ceiling)).toBe(1);
-    expect(minorOf(0, ceiling)).toBe(0);
+describe('PA-3 an assistant month is summed in micros before it meets the budget', () => {
+  it('counts 4,000 turns of 4,000 micros as 16 units, which a 16-unit month has spent', () => {
+    const month = known(4_000 * 4_000);
+    expect(spentMicros(month, ceiling)).toBe(16_000_000);
+    expect(budgetSpent(month, ceiling, 1_600)).toBe(true);
+    expect(budgetSpent(month, ceiling, 1_601)).toBe(false);
   });
 
-  it('counts a turn of unknown cost at the role ceiling', () => {
-    expect(minorOf(null, ceiling)).toBe(ceiling);
+  it('adds a turn of unknown cost at the role ceiling, in micros', () => {
+    expect(spentMicros(known(1, 2), ceiling)).toBe(1 + 2 * ceiling * 10_000);
+    expect(budgetSpent(known(0, 2), ceiling, 2 * ceiling)).toBe(true);
+    expect(budgetSpent(known(0, 1), ceiling, 2 * ceiling)).toBe(false);
   });
 
-  it('sums the finished turns and ignores any other event', () => {
-    const other: HarnessEvent = { ...finished(30_000), name: 'assistant_turn_started' };
-    expect(spentOf([finished(20_000), finished(null), other], ceiling)).toBe(2 + ceiling);
+  it('reserves each admitted, unfinished turn at the role ceiling until it finishes', () => {
+    expect(spentMicros(known(1, 1, 2), ceiling)).toBe(1 + 3 * ceiling * 10_000);
+    expect(budgetSpent(known(0, 0, 1), ceiling, ceiling)).toBe(true);
+    expect(budgetSpent(known(0, 0, 1), ceiling, ceiling + 1)).toBe(false);
+  });
+
+  it('cuts off neither early nor late at the rounding boundary', () => {
+    expect(budgetSpent(known(2 * 5_000), ceiling, 2)).toBe(false);
+    expect(budgetSpent(known(19_999), ceiling, 2)).toBe(false);
+    expect(budgetSpent(known(20_000), ceiling, 2)).toBe(true);
+    expect(budgetSpent(known(4_999 * 4_999), ceiling, 2_000)).toBe(true);
   });
 
   it('starts the month at midnight UTC on its first day', () => {

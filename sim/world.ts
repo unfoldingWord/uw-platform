@@ -1,5 +1,13 @@
+import type { JdArea } from '@uw/contracts';
 import { createEmbeddedDatabase, type EmbeddedDatabase } from '@uw/db/embedded';
-import { createKernel, type Grants, type Kernel, type Runs, type Store } from '@uw/harness';
+import {
+  createKernel,
+  type Grants,
+  type Kernel,
+  type KernelSettings,
+  type Runs,
+  type Store,
+} from '@uw/harness';
 import { createSimClock, type SimClock } from './adapters/clock.ts';
 import { createSimConnectors, type SimConnectors } from './adapters/connectors.ts';
 import { createSimDirectMessages, type SimDirectMessages } from './adapters/direct-messages.ts';
@@ -13,6 +21,10 @@ import { createSimRuns } from './adapters/runs.ts';
 import { createSimStore } from './adapters/store.ts';
 
 const worldStart = new Date('2026-10-01T09:00:00.000Z');
+
+export const simAssistantsArea: JdArea = '90-99';
+
+const simSettings: KernelSettings = { assistantsArea: simAssistantsArea };
 
 type SimAdapters = {
   readonly clock: SimClock;
@@ -48,12 +60,17 @@ function simAdapters(database: EmbeddedDatabase, start: Date): SimAdapters {
     hub: createSimHub(),
     notifier: createSimNotifier(),
     runs: createSimRuns(),
-    directMessages: createSimDirectMessages(),
+    directMessages: createSimDirectMessages(clock),
   };
 }
 
 export async function createWorld(start: Date = worldStart): Promise<World> {
   const database = await createEmbeddedDatabase();
   const adapters = simAdapters(database, start);
-  return { adapters, database, kernel: createKernel(adapters), close: () => database.close() };
+  return {
+    adapters,
+    database,
+    kernel: createKernel(adapters, simSettings),
+    close: () => database.close(),
+  };
 }

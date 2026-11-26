@@ -16671,7 +16671,14 @@
           "calendar_hold_changed",
           "calendar_hold_removed"
         ],
-        "assistant-effect-failure": ["not_paired", "dropped", "not_wired", "outcome_unknown"],
+        "assistant-effect-failure": [
+          "not_paired",
+          "dropped",
+          "not_wired",
+          "outcome_unknown",
+          "delegation_lapsed",
+          "deadline_passed"
+        ],
         "assistant-effect-kind": [
           "reply_to_requester",
           "reminder_set",
@@ -16686,7 +16693,8 @@
           "persona_inactive",
           "spend_held",
           "assistant_budget_spent",
-          "turn_taken"
+          "turn_taken",
+          "harness_paused"
         ],
         "branch-state": ["none", "active", "abandoned"],
         "breaker-level": ["open", "holding", "pausing"],

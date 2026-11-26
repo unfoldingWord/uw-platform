@@ -3,7 +3,14 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { AnyExecutor } from '../any-database.ts';
 import { closeEmbeddedTemplate } from '../embedded.ts';
 import { databaseTargets, type DatabaseTarget, type OpenedDatabase } from '../test-targets.ts';
-import { latestNamedQuery, recentQuery } from './events.ts';
+import { deliveredInThreadQuery } from './assistants.ts';
+import {
+  assistantLedgerQuery,
+  assistantOpenTurnsQuery,
+  assistantSpendQuery,
+  latestNamedQuery,
+  recentQuery,
+} from './events.ts';
 import { failedForQuery, liveRuns, recentRunsQuery, runsQuery, startedSinceQuery } from './runs.ts';
 
 afterAll(closeEmbeddedTemplate);
@@ -80,6 +87,59 @@ function describeTarget(target: DatabaseTarget): void {
   it('reads the recent runs of one harness through the harness and start index', async () => {
     const recentRuns = (tx: AnyExecutor) => recentRunsQuery(tx, harness, 50);
     expect(await planOf(db(), recentRuns)).toContain('harness_runs_harness_started');
+  });
+
+  describeAssistantReads(db);
+}
+
+function describeAssistantReads(db: () => AnyExecutor): void {
+  const names = ['assistant_turn_started', 'assistant_turn_finished'] as const;
+
+  it('reads one assistant request or effect lifecycle through its evidence index', async () => {
+    const byRequest = (tx: AnyExecutor) =>
+      assistantLedgerQuery(tx, {
+        harnessId: harness,
+        names,
+        about: { requestId: item },
+        limit: 100,
+      });
+    expect(await planOf(db(), byRequest)).toContain('harness_events_assistant_request');
+    const doneNames = ['assistant_effect_done', 'assistant_effect_failed'] as const;
+    const byEffect = (tx: AnyExecutor) =>
+      assistantLedgerQuery(tx, {
+        harnessId: harness,
+        names: doneNames,
+        about: { effectId: item },
+        limit: 100,
+      });
+    expect(await planOf(db(), byEffect)).toContain('harness_events_assistant_effect');
+  });
+
+  it('sums an assistant month through the spend index and counts open turns without a table scan', async () => {
+    const spend = (tx: AnyExecutor) => assistantSpendQuery(tx, { harnessId: harness, since });
+    expect(await planOf(db(), spend)).toContain('harness_events_assistant_spend');
+    const open = (tx: AnyExecutor) => assistantOpenTurnsQuery(tx, { harnessId: harness, since });
+    const plan = await planOf(db(), open);
+    expect(plan).not.toContain('Seq Scan');
+    expect(plan).toMatch(/Index Scan using harness_events_assistant_\w+ on harness_events /);
+    expect(plan).toMatch(
+      /Index Scan using harness_events_assistant_\w+ on harness_events finished_turn/,
+    );
+  });
+
+  it('reads delivered thread history through the thread and effect indexes', async () => {
+    const thread = (tx: AnyExecutor) =>
+      deliveredInThreadQuery(tx, {
+        harnessId: harness,
+        channel: 'zulip_dm',
+        threadKey: 'dm',
+        before: { recordedAt: since, id: item },
+        since,
+        limit: 6,
+      });
+    const plan = await planOf(db(), thread);
+    expect(plan).toContain('assistant_requests_thread');
+    expect(plan).toContain('harness_events_assistant_effect');
   });
 }
 

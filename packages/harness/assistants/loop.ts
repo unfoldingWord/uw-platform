@@ -45,14 +45,15 @@ async function threadHistory(
 ): Promise<readonly TurnMessage[]> {
   const { threadKey } = request;
   if (threadKey === null) return [];
-  const requests = await tx.assistantRequests.read.recentInThread({
+  const requests = await tx.assistantRequests.read.deliveredInThread({
     harnessId: request.harnessId,
+    channel: request.channel,
     threadKey,
+    before: { recordedAt: request.recordedAt, id: request.id },
     since: new Date(request.recordedAt.getTime() - HISTORY_WINDOW_MS),
-    limit: 2 * HISTORY_PAIRS,
+    limit: HISTORY_PAIRS,
   });
-  const ids = requests.filter((row) => row.id !== request.id).map((row) => row.id);
-  const effects = await tx.assistantEffects.read.forRequests(ids);
+  const effects = await tx.assistantEffects.read.forRequests(requests.map((row) => row.id));
   return historyOf(request, requests, effects);
 }
 

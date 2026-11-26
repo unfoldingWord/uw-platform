@@ -20,10 +20,24 @@ function replyTexts(effects: readonly AssistantEffectRow[]): ReadonlyMap<string,
   return texts;
 }
 
-function inWindow(request: AssistantRequestRow, current: AssistantRequestRow): boolean {
-  if (request.id === current.id || request.threadKey !== current.threadKey) return false;
+function sameThread(request: AssistantRequestRow, current: AssistantRequestRow): boolean {
+  return request.channel === current.channel && request.threadKey === current.threadKey;
+}
+
+function precedes(request: AssistantRequestRow, current: AssistantRequestRow): boolean {
   const age = current.recordedAt.getTime() - request.recordedAt.getTime();
-  return age >= 0 && age <= HISTORY_WINDOW_MS;
+  return age > 0 || (age === 0 && request.id < current.id);
+}
+
+function inWindow(request: AssistantRequestRow, current: AssistantRequestRow): boolean {
+  const age = current.recordedAt.getTime() - request.recordedAt.getTime();
+  return sameThread(request, current) && precedes(request, current) && age <= HISTORY_WINDOW_MS;
+}
+
+function byPlace(a: AssistantRequestRow, b: AssistantRequestRow): number {
+  const age = a.recordedAt.getTime() - b.recordedAt.getTime();
+  if (age !== 0) return age;
+  return a.id < b.id ? -1 : 1;
 }
 
 export function historyOf(
@@ -35,7 +49,7 @@ export function historyOf(
   const texts = replyTexts(effects);
   const pairs = [...requests]
     .filter((request) => inWindow(request, current) && texts.has(request.id))
-    .sort((a, b) => a.recordedAt.getTime() - b.recordedAt.getTime())
+    .sort(byPlace)
     .slice(-HISTORY_PAIRS);
   return pairs.flatMap((request): TurnMessage[] => [
     { role: 'user', text: request.note },

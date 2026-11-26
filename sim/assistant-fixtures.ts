@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import {
   assistantIdentityOf,
+  type AssistantChannel,
   type Harness,
   type HarnessEvent,
   type JdArea,
@@ -21,9 +22,9 @@ import {
 import { readSpend, simCaller, simIngest, simPerson, simRowan, simSystem } from './fixtures.ts';
 import { value } from './runs.ts';
 import { personOf } from './wakes.ts';
-import type { World } from './world.ts';
+import { simAssistantsArea, type World } from './world.ts';
 
-export const ASSISTANTS_AREA: JdArea = '90-99';
+export const ASSISTANTS_AREA: JdArea = simAssistantsArea;
 
 const assistantPageId = '00000000-0000-4000-8000-000000012001';
 
@@ -42,6 +43,7 @@ export type AssistantScene = {
 export type RequestChange = {
   readonly externalId: string;
   readonly note: string;
+  readonly channel?: AssistantChannel;
   readonly threadKey?: string | null;
   readonly replyAddress?: string;
   readonly untrustedParts?: readonly { readonly source: UntrustedSource; readonly text: string }[];
@@ -55,7 +57,6 @@ export function provisionFor(world: World, admin: Principal, person: Principal) 
   return world.kernel.assistants.provision(simCaller(world, admin), {
     harnessId: world.adapters.ids.next(),
     personId: personOf(person),
-    jdArea: ASSISTANTS_AREA,
   });
 }
 
@@ -100,6 +101,8 @@ export async function assistantScene(world: World): Promise<AssistantScene> {
   ]);
   const { harness } = value(await provisionFor(world, rowan, person));
   await seedAssistantPersona(world, harness, rowan);
+  world.adapters.directMessages.bind(personOf(person), 'zulip_dm', 'zulip:5005');
+  world.adapters.directMessages.bind(personOf(person), 'email', 'p5@example.org');
   return { world, rowan, person, harness, pageId: assistantPageId };
 }
 
@@ -113,7 +116,7 @@ export async function grantedScene(world: World): Promise<AssistantScene> {
 export function recordRequest(scene: AssistantScene, change: RequestChange) {
   return scene.world.kernel.assistants.recordRequest(simCaller(scene.world, simIngest()), {
     personId: personOf(scene.person),
-    channel: 'zulip_dm',
+    channel: change.channel ?? 'zulip_dm',
     externalId: change.externalId,
     threadKey: change.threadKey === undefined ? 'dm' : change.threadKey,
     replyAddress: change.replyAddress ?? 'zulip:5005',
@@ -127,9 +130,14 @@ export async function requestId(scene: AssistantScene, change: RequestChange): P
   return value(await recordRequest(scene, change)).requestId;
 }
 
-export function beginTurn(scene: AssistantScene, id: string): Promise<Begun> {
+export function beginTurn(
+  scene: AssistantScene,
+  id: string,
+  attemptId: string = scene.world.adapters.ids.next(),
+): Promise<Begun> {
   return scene.world.kernel.assistants.beginTurn(simCaller(scene.world, simSystem()), {
     requestId: id,
+    attemptId,
   });
 }
 

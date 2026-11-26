@@ -7,6 +7,10 @@ const ASSISTANT_PREFIX = 'assistant-';
 const ASSISTANT_IDENTITY_PREFIX = `agent:${ASSISTANT_PREFIX}`;
 const UNTRUSTED_TOTAL_LIMIT = 100_000;
 
+export function templateStageCountFits(template: string, stageCount: number): boolean {
+  return (template === ASSISTANT_TEMPLATE_KEY) === (stageCount === 0);
+}
+
 export function assistantHarnessKey(personId: string): string {
   return `${ASSISTANT_PREFIX}${personId}`;
 }
@@ -37,12 +41,15 @@ export const assistantTurnRefusalSchema = z.enum([
   'spend_held',
   'assistant_budget_spent',
   'turn_taken',
+  'harness_paused',
 ]);
 export const assistantEffectFailureSchema = z.enum([
   'not_paired',
   'dropped',
   'not_wired',
   'outcome_unknown',
+  'delegation_lapsed',
+  'deadline_passed',
 ]);
 export const assistantSettingFieldSchema = z.enum(['display_name', 'instructions', 'timezone']);
 
@@ -56,7 +63,7 @@ export const assistantRequestInputSchema = z
     personId: z.uuid(),
     channel: assistantChannelSchema,
     externalId: z.string().min(1).max(200),
-    threadKey: z.string().max(200).nullable(),
+    threadKey: z.string().min(1).max(200).nullable(),
     replyAddress: z.string().min(1).max(254),
     receivedAt: z.iso.datetime(),
     note: z.string().max(20_000),

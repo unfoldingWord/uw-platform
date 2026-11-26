@@ -1,5 +1,5 @@
 {
-  "id": "235bbc1d-26ab-4eed-9c61-af6cf5d59e7c",
+  "id": "7f782076-7a8d-46b4-9544-97d8221a9bfe",
   "prevId": "d14b1444-5167-4e9b-86b2-ead7327a146c",
   "version": "7",
   "dialect": "postgresql",
@@ -620,6 +620,94 @@
           ],
           "isUnique": false,
           "where": "\"harness_events\".\"name\" IN ('breaker_open', 'breaker_holding', 'breaker_pausing')",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "harness_events_assistant_request": {
+          "name": "harness_events_assistant_request",
+          "columns": [
+            {
+              "expression": "harness_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "(\"evidence\" ->> 'requestId')",
+              "asc": true,
+              "isExpression": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "where": "\"harness_events\".\"name\" IN ('assistant_request_recorded', 'assistant_turn_started', 'assistant_turn_refused', 'assistant_turn_finished', 'assistant_effect_started')",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "harness_events_assistant_effect": {
+          "name": "harness_events_assistant_effect",
+          "columns": [
+            {
+              "expression": "harness_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "(\"evidence\" ->> 'effectId')",
+              "asc": true,
+              "isExpression": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "where": "\"harness_events\".\"name\" IN ('assistant_effect_started', 'assistant_effect_done', 'assistant_effect_failed')",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "harness_events_assistant_spend": {
+          "name": "harness_events_assistant_spend",
+          "columns": [
+            {
+              "expression": "harness_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "where": "\"harness_events\".\"name\" IN ('assistant_turn_finished')",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "harness_events_assistant_open": {
+          "name": "harness_events_assistant_open",
+          "columns": [
+            {
+              "expression": "harness_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "where": "\"harness_events\".\"name\" IN ('assistant_turn_started')",
           "concurrently": false,
           "method": "btree",
           "with": {}
@@ -7952,12 +8040,12 @@
           "onDelete": "no action",
           "onUpdate": "no action"
         },
-        "assistant_effects_request_id_assistant_requests_id_fk": {
-          "name": "assistant_effects_request_id_assistant_requests_id_fk",
+        "assistant_effects_request_harness_fk": {
+          "name": "assistant_effects_request_harness_fk",
           "tableFrom": "assistant_effects",
           "tableTo": "assistant_requests",
-          "columnsFrom": ["request_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": ["request_id", "harness_id"],
+          "columnsTo": ["id", "harness_id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -8084,6 +8172,12 @@
               "nulls": "last"
             },
             {
+              "expression": "channel",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
               "expression": "thread_key",
               "isExpression": false,
               "asc": true,
@@ -8091,6 +8185,12 @@
             },
             {
               "expression": "recorded_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -8132,7 +8232,13 @@
         }
       },
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
+      "uniqueConstraints": {
+        "assistant_requests_id_harness": {
+          "name": "assistant_requests_id_harness",
+          "nullsNotDistinct": false,
+          "columns": ["id", "harness_id"]
+        }
+      },
       "policies": {},
       "checkConstraints": {
         "assistant_requests_channel_known": {
@@ -8149,7 +8255,7 @@
         },
         "assistant_requests_thread_key_length": {
           "name": "assistant_requests_thread_key_length",
-          "value": "char_length(\"assistant_requests\".\"thread_key\") <= 200"
+          "value": "char_length(\"assistant_requests\".\"thread_key\") BETWEEN 1 AND 200"
         },
         "assistant_requests_reply_address_length": {
           "name": "assistant_requests_reply_address_length",

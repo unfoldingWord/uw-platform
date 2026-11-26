@@ -45,6 +45,7 @@ async function repliedOnlyToThePerson(scene: AssistantScene, id: string): Promis
   assert.equal(sent.length, 1);
   const [message] = sent;
   assert.equal(message?.requestId, id);
+  assert.equal(message?.personId, personOf(scene.person));
   assert.equal(message?.channel, 'zulip_dm');
   assert.equal(message?.replyAddress, 'zulip:5005');
   assert.equal(message?.text, firstReply);
@@ -79,6 +80,27 @@ async function noWorkflowRows(scene: AssistantScene): Promise<void> {
   assert.deepEqual(rows, { items: [], runs: [], decisions: [] });
 }
 
+async function strangerAddressGetsNothing(scene: AssistantScene): Promise<void> {
+  const change = {
+    externalId: '103',
+    note: secondNote,
+    threadKey: 'elsewhere',
+    replyAddress: 'zulip:6006',
+  };
+  const id = await requestId(scene, change);
+  const turn = value(await beginTurn(scene, id));
+  scene.world.adapters.modelEngine.respondNextWith(replyWith(firstReply, 20_000));
+  await finishTurn(scene, id, turn);
+  assert.equal(scene.world.adapters.directMessages.sent().length, 1);
+  const failed = (await assistantLog(scene)).filter(
+    (event) => event.name === 'assistant_effect_failed',
+  );
+  assert.deepEqual(
+    failed.map((event) => event.evidence['why']),
+    ['not_paired'],
+  );
+}
+
 async function threadCarriesHistory(scene: AssistantScene): Promise<void> {
   const id = await requestId(scene, { externalId: '102', note: secondNote });
   const turn = value(await beginTurn(scene, id));
@@ -93,7 +115,7 @@ async function threadCarriesHistory(scene: AssistantScene): Promise<void> {
 export const scenario = defineScenario({
   id: 'PA-2',
   title:
-    "a person's direct message is recorded once, answered by one turn under viewer-clamped grants with the assistant toolset, and the reply goes only to the address the request came from; the log carries neither the note nor the reply, no item, run or gate decision is made, and the next request in the thread carries the earlier exchange",
+    "a person's direct message is recorded once, answered by one turn under viewer-clamped grants with the assistant toolset, and the reply goes only to the owner's verified binding, never to an address that is not it; the log carries neither the note nor the reply, no item, run or gate decision is made, and the next request in the thread carries the earlier exchange",
   run: async (world) => {
     const scene = await grantedScene(world);
     const id = await recordsOnce(scene);
@@ -103,6 +125,7 @@ export const scenario = defineScenario({
     await repliedOnlyToThePerson(scene, id);
     const names = await contentFreeLog(scene);
     await noWorkflowRows(scene);
+    await strangerAddressGetsNothing(scene);
     await threadCarriesHistory(scene);
     return { state: { events: names, sent: world.adapters.directMessages.sent().length } };
   },

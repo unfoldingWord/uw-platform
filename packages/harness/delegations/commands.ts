@@ -1,4 +1,5 @@
 import {
+  assistantIdentityOf,
   capabilityWordSchema,
   delegableTierSchema,
   personaIdentitySchema,
@@ -144,6 +145,11 @@ async function grantorRefusal(
   return adminRefusal(ports, tx, caller, harness, at);
 }
 
+function personaRefusal(harness: Harness, persona: string): Refused | null {
+  if (harness.personId === null || persona === assistantIdentityOf(harness.personId)) return null;
+  return refused('not_permitted', { why: 'persona_not_for_harness' });
+}
+
 async function grantIn(
   ports: DelegationPorts,
   tx: StoreTransaction,
@@ -161,6 +167,8 @@ async function grantIn(
     at,
   );
   if (denied !== null) return denied;
+  const misbound = personaRefusal(harness, input.persona);
+  if (misbound !== null) return misbound;
   const tier = tierOf(input);
   if ('status' in tier) return tier;
   const next = draftOf(ports, caller, harness, { ...input, maxTier: tier.maxTier }, at);

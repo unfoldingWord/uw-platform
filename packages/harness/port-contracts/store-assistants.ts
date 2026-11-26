@@ -1,39 +1,20 @@
 import { describe, expect, it } from 'vitest';
-import { assistantHarnessKey, harnessSchema, type Harness } from '@uw/contracts';
+import { assistantIdentityOf, identitySchema } from '@uw/contracts';
 import type {
   AssistantEffectRow,
   AssistantRequestRow,
   AssistantSettingsRow,
-  Store,
   StoreTransaction,
 } from '../ports.ts';
+import {
+  assistantsBase as base,
+  ensurePersonal,
+  person,
+  personalHarness,
+  type AssistantsSubject,
+} from './store-assistant-fixtures.ts';
+import { describeStoreAssistantReads } from './store-assistant-reads.ts';
 import { at, hour, refusedBy, uid } from './store-gateway-fixtures.ts';
-
-type AssistantsSubject = () => { readonly store: Store };
-
-const base = 0x9a00;
-const person = '00000000-0000-4000-8000-000000000001';
-
-function personalHarness(): Harness {
-  return harnessSchema.parse({
-    id: uid(base),
-    key: assistantHarnessKey(person),
-    title: 'Assistant',
-    template: 'assistant',
-    jdArea: '90-99',
-    repository: null,
-    hostedBuilderEnabled: false,
-    paused: false,
-    personId: person,
-  });
-}
-
-async function ensurePersonal(tx: StoreTransaction): Promise<Harness> {
-  const found = await tx.harnesses.read.byPerson(person);
-  if (found !== null) return found;
-  await tx.harnesses.write.insert(personalHarness(), at);
-  return personalHarness();
-}
 
 function requestOf(n: number, threadKey: string | null, recorded: number): AssistantRequestRow {
   return {
@@ -51,7 +32,24 @@ function requestOf(n: number, threadKey: string | null, recorded: number): Assis
   };
 }
 
-function effectOf(n: number, requestId: string, key: string): AssistantEffectRow {
+async function delivered(tx: StoreTransaction, effect: AssistantEffectRow): Promise<void> {
+  await tx.assistantEffects.write.insert(effect);
+  await tx.harnessEvents.write.append([
+    {
+      eventId: uid(base + 0x400 + Number.parseInt(effect.id.slice(-4), 16)),
+      harnessId: effect.harnessId,
+      itemId: null,
+      name: 'assistant_effect_done',
+      at: effect.createdAt.toISOString(),
+      actor: identitySchema.parse(assistantIdentityOf(person)),
+      evidence: { effectId: effect.id, kind: effect.kind },
+      traceId: uid(base + 0x3ff),
+      requestId: null,
+    },
+  ]);
+}
+
+function effectOf(n: number, requestId: string, key = `reply:${requestId}`): AssistantEffectRow {
   return {
     id: uid(base + 0x80 + n),
     harnessId: uid(base),
@@ -147,18 +145,29 @@ function describeRequests(subject: AssistantsSubject): void {
     }, subject().store);
     expect(refusal?.code).toBe('23505');
   });
+}
 
-  it('reads the recent requests of one thread oldest first, within the window and the limit', async () => {
+function describeThread(subject: AssistantsSubject): void {
+  it('reads the delivered requests of one thread oldest first, within the window and the limit', async () => {
     const rows = [requestOf(2, 'thread', 1), requestOf(3, 'thread', 2), requestOf(4, 'thread', 3)];
+    const current = requestOf(7, 'thread', 4);
     const read = await subject().store.transaction(async (tx) => {
       await ensurePersonal(tx);
-      for (const row of [...rows, requestOf(5, 'elsewhere', 4)]) {
+      for (const row of [...rows, requestOf(5, 'elsewhere', 4), current]) {
         await tx.assistantRequests.write.insert(row);
       }
-      const query = { harnessId: uid(base), threadKey: 'thread', since: at, limit: 2 };
+      for (const [n, row] of rows.entries()) await delivered(tx, effectOf(0x10 + n, row.id));
+      const query = {
+        harnessId: uid(base),
+        channel: 'zulip_dm' as const,
+        threadKey: 'thread',
+        before: { recordedAt: current.recordedAt, id: current.id },
+        since: at,
+        limit: 2,
+      };
       return {
-        two: await tx.assistantRequests.read.recentInThread(query),
-        windowed: await tx.assistantRequests.read.recentInThread({
+        two: await tx.assistantRequests.read.deliveredInThread(query),
+        windowed: await tx.assistantRequests.read.deliveredInThread({
           ...query,
           since: new Date(at.getTime() + 2 * hour),
           limit: 12,
@@ -172,9 +181,16 @@ function describeRequests(subject: AssistantsSubject): void {
 
 function describeThreadBound(subject: AssistantsSubject): void {
   it('refuses a thread read of more than twelve requests', async () => {
-    const query = { harnessId: uid(base), threadKey: 'thread', since: at, limit: 13 };
+    const query = {
+      harnessId: uid(base),
+      channel: 'zulip_dm' as const,
+      threadKey: 'thread',
+      before: { recordedAt: at, id: uid(base) },
+      since: at,
+      limit: 13,
+    };
     await expect(
-      subject().store.transaction((tx) => tx.assistantRequests.read.recentInThread(query)),
+      subject().store.transaction((tx) => tx.assistantRequests.read.deliveredInThread(query)),
     ).rejects.toThrow(RangeError);
   });
 }
@@ -207,7 +223,9 @@ export function describeStoreAssistants(adapter: string, subject: AssistantsSubj
   describe(`PA-2 store assistant gateways on ${adapter}`, () => {
     describeHarnessAndSettings(adapter, subject);
     describeRequests(subject);
+    describeThread(subject);
     describeThreadBound(subject);
     describeEffects(subject);
+    describeStoreAssistantReads(subject);
   });
 }

@@ -47,6 +47,7 @@ import {
   oneOf,
   subsetOf,
 } from './checks.ts';
+import { assistantEventIndexes } from './assistant-event-indexes.ts';
 import { instant } from './columns.ts';
 import { declareTable } from './declarations.ts';
 import { harnesses } from './schema-harnesses.ts';
@@ -491,5 +492,6 @@ export const harnessEvents = declareTable(
     index('harness_events_breaker_latest')
       .on(t.harnessId, t.at, t.position)
       .where(oneOf(t.name, breakerEventNames)),
+    ...assistantEventIndexes(t),
   ],
 );

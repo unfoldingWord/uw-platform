@@ -250,14 +250,16 @@ export type Notifier = { notify(wake: Wake): Promise<WakeDelivery> };
 export type DirectMessage = {
   readonly requestId: string;
   readonly effectId: string;
+  readonly personId: string;
   readonly channel: AssistantChannel;
   readonly replyAddress: string;
   readonly threadKey: string | null;
   readonly text: string;
   readonly traceId: string;
+  readonly sendBy: Date;
 };
 export type DirectDelivery =
-  { readonly outcome: 'sent' } | { readonly outcome: 'not_paired' | 'dropped' };
+  { readonly outcome: 'sent' } | { readonly outcome: 'not_paired' | 'dropped' | 'deadline_passed' };
 export type DirectMessages = { send(message: DirectMessage): Promise<DirectDelivery> };
 
 export type RunState = 'running' | 'hibernated' | 'stopped' | 'completed' | 'failed';

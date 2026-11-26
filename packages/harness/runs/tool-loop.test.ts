@@ -240,12 +240,25 @@ async function turnLimitClamped(): Promise<void> {
   expect(await turnsUntil(1000)).toBe(TURN_LIMIT);
 }
 
+async function invalidTurnLimitHeld(): Promise<void> {
+  for (const limit of [Number.NaN, 0, -3, 2.5, Number.POSITIVE_INFINITY, 2 ** 53]) {
+    expect(await turnsUntil(limit)).toBe(TURN_LIMIT);
+  }
+  expect(await turnsUntil(TURN_LIMIT + 1)).toBe(TURN_LIMIT);
+  expect(await turnsUntil(1)).toBe(1);
+}
+
 describe('PA-2 the tool loop for an assistant turn', () => {
   it('prepends the thread history in order before the prompt', historyPrepended);
 
   it('sends exactly the request it sent before when no history is given', noHistoryUnchanged);
 
   it('stops at a lower turn limit and clamps a higher one to 40', turnLimitClamped);
+
+  it(
+    'holds the hard cap of 40 for a turn limit that is not a positive safe integer',
+    invalidTurnLimitHeld,
+  );
 });
 
 describe('the tool loop', () => {

@@ -3,9 +3,10 @@ import {
   assistantEffectKindSchema,
   untrustedPartSchema,
 } from '@uw/contracts';
-import { and, asc, desc, eq, gte, inArray } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, inArray, sql } from 'drizzle-orm';
 import type { AnyExecutor } from '../any-database.ts';
 import { assistantEffects, assistantRequests, assistantSettings } from '../schema.ts';
+import { deliveredReplyFor } from './events.ts';
 import { refusing } from './refusal.ts';
 import type {
   AssistantEffectPayload,
@@ -100,22 +101,36 @@ export function bindAssistantSettings(executor: AnyExecutor): AssistantSettingsG
   };
 }
 
-async function recentInThread(
-  executor: AnyExecutor,
-  query: ThreadQuery,
-): Promise<readonly AssistantRequestRow[]> {
-  const rows = await executor
+export function deliveredInThreadQuery(executor: AnyExecutor, query: ThreadQuery) {
+  const { before } = query;
+  return executor
     .select()
     .from(assistantRequests)
     .where(
       and(
         eq(assistantRequests.harnessId, query.harnessId),
+        eq(assistantRequests.channel, query.channel),
         eq(assistantRequests.threadKey, query.threadKey),
         gte(assistantRequests.recordedAt, query.since),
+        sql`(${assistantRequests.recordedAt}, ${assistantRequests.id}) < (${before.recordedAt.toISOString()}::timestamptz, ${before.id}::uuid)`,
+        deliveredReplyFor(assistantRequests.id, assistantRequests.harnessId, {
+          table: assistantEffects,
+          id: assistantEffects.id,
+          harnessId: assistantEffects.harnessId,
+          requestId: assistantEffects.requestId,
+          kind: assistantEffects.kind,
+        }),
       ),
     )
     .orderBy(desc(assistantRequests.recordedAt), desc(assistantRequests.id))
     .limit(threadLimit(query.limit));
+}
+
+async function deliveredInThread(
+  executor: AnyExecutor,
+  query: ThreadQuery,
+): Promise<readonly AssistantRequestRow[]> {
+  const rows = await deliveredInThreadQuery(executor, query);
   return rows.map(toRequest).reverse();
 }
 
@@ -141,7 +156,7 @@ export function bindAssistantRequests(executor: AnyExecutor): AssistantRequestsG
           );
         return rows[0] ? toRequest(rows[0]) : null;
       },
-      recentInThread: (query) => recentInThread(executor, query),
+      deliveredInThread: (query) => deliveredInThread(executor, query),
     },
     write: {
       insert: (row) =>

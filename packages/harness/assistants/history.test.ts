@@ -77,3 +77,27 @@ describe('PA-2 a thread carries its earlier exchanges', () => {
     );
   });
 });
+
+describe('PA-2 a thread is one channel and only what came before', () => {
+  it('leaves out an exchange on another channel with the same literal thread key', () => {
+    const zulip = request(1, start);
+    const email = { ...request(2, start), channel: 'email' as const };
+    const current = { ...request(3, start + hour), channel: 'email' as const };
+    const notes = historyOf(current, [zulip, email], [reply(zulip), reply(email)])
+      .filter((message) => message.role === 'user')
+      .map((message) => message.text);
+    expect(notes).toEqual(['note 2']);
+  });
+
+  it('takes only exchanges strictly before the current request, ties broken by id', () => {
+    const current = request(5, start + hour);
+    const tiedBefore = request(4, start + hour);
+    const tiedAfter = request(6, start + hour);
+    const later = request(7, start + 2 * hour);
+    const rows = [tiedAfter, later, tiedBefore];
+    const notes = historyOf(current, rows, rows.map(reply))
+      .filter((message) => message.role === 'user')
+      .map((message) => message.text);
+    expect(notes).toEqual(['note 4']);
+  });
+});

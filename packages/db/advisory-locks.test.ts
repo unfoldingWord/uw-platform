@@ -31,6 +31,7 @@ describe('FD-8 FD-9 advisory lock keys live in one registry, in one key space', 
       'harness-run-persona:',
       'zulip-topics:',
       'assistant-request:',
+      'assistant-harness:',
     ]);
   });
 

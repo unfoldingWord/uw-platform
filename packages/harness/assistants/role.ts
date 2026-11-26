@@ -34,10 +34,10 @@ const roleSections = [
   'When the person asks for something outside these limits, say plainly that you cannot do it and what they can do instead.',
 ];
 
-function skillBody(): string {
+function skillBody(slug: string): string {
   return [
     '---',
-    'name: assistant',
+    `name: ${slug}`,
     'description: An assistant answers its one person, reading only what that person can read.',
     '---',
     '',
@@ -59,7 +59,7 @@ export const assistantRole: AssistantRole = {
   approveAt: null,
   budget: { monthly_minor: 2000, currency: 'USD' },
   turnCeilingMinor: 50,
-  bodyMd: skillBody(),
+  bodyMd: skillBody('assistant'),
 };
 
 export const assistantTemplate: Template = {
@@ -76,6 +76,7 @@ export function assistantPersonaDraft(
   const { personId } = harness;
   if (personId === null) throw new RangeError('an assistant persona needs a personal harness');
   const identity = assistantIdentityOf(personId);
-  const fixture = { ...assistantRole, slug: identity.slice('agent:'.length) };
+  const slug = identity.slice('agent:'.length);
+  const fixture = { ...assistantRole, slug, bodyMd: skillBody(slug) };
   return personaPageDraft(fixture, harness, owner);
 }

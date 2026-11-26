@@ -22,6 +22,8 @@ export const assistantEvidence = {
   assistant_turn_started: z.strictObject({
     requestId: id,
     turnId: id,
+    attemptId: id,
+    delegationId: id,
     personaVersion: z.number().int().min(1),
   }),
   assistant_turn_refused: z.strictObject({

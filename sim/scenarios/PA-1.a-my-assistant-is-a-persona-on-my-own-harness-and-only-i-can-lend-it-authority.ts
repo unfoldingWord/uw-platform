@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { assistantHarnessKey, assistantIdentityOf, type Principal } from '@uw/contracts';
-import { software, type Delegation } from '@uw/harness';
+import { createKernel, software, type Delegation } from '@uw/harness';
 import {
   ASSISTANTS_AREA,
   assistantLog,
@@ -10,7 +10,7 @@ import {
   seedAssistantPersona,
   type AssistantScene,
 } from '../assistant-fixtures.ts';
-import { createSimHarness, simCaller, simPerson, simSystem } from '../fixtures.ts';
+import { createSimHarness, simCaller, simPerson, simPersonId, simSystem } from '../fixtures.ts';
 import { activatePersona } from '../persona-fixtures.ts';
 import { detailOf, reasonOf, value } from '../runs.ts';
 import { defineScenario } from '../scenario.ts';
@@ -34,8 +34,51 @@ async function provisioned(scene: AssistantScene): Promise<void> {
   assert.equal(reasonOf(await provisionFor(world, scene.rowan, person)), 'harness_exists');
 }
 
+async function onlyTheConfiguredArea(scene: AssistantScene): Promise<void> {
+  const { world, rowan } = scene;
+  const otherAdmin = await simPerson(world, 7, [
+    { role: 'admin', scopeKind: 'jd_area', scopeArea: '10-19' },
+  ]);
+  const target = await simPerson(world, 8, [
+    { role: 'editor', scopeKind: 'jd_area', scopeArea: '10-19' },
+  ]);
+  const attempt = {
+    harnessId: world.adapters.ids.next(),
+    personId: personOf(target),
+    jdArea: '10-19',
+  };
+  const elsewhere = await world.kernel.assistants.provision(simCaller(world, otherAdmin), attempt);
+  assert.equal(reasonOf(elsewhere), 'not_permitted');
+  const { harness } = value(await provisionFor(world, rowan, target));
+  assert.equal(harness.jdArea, ASSISTANTS_AREA);
+  const unconfigured = createKernel(world.adapters).assistants.provision(simCaller(world, rowan), {
+    harnessId: world.adapters.ids.next(),
+    personId: personOf(await simPerson(world, 9, [])),
+  });
+  assert.equal(reasonOf(await unconfigured), 'not_wired');
+}
+
+async function onlyItsOwnPersona(scene: AssistantScene): Promise<void> {
+  const { world, person, harness } = scene;
+  for (const persona of ['agent:iterate', assistantIdentityOf(simPersonId(9))]) {
+    const outcome = await world.kernel.delegations.grant(simCaller(world, person), {
+      harnessId: harness.id,
+      persona,
+      capability: 'assist',
+      maxTier: null,
+      expiresAt: null,
+      supersedes: null,
+    });
+    assert.equal(reasonOf(outcome), 'not_permitted');
+    assert.deepEqual(detailOf(outcome), { why: 'persona_not_for_harness' });
+  }
+  const names = (await assistantLog(scene)).map((event) => event.name);
+  assert.ok(!names.includes('delegation_granted'));
+}
+
 async function onlyThePersonLends(scene: AssistantScene, areaAdmin: Principal) {
   const { world, person, harness } = scene;
+  await onlyItsOwnPersona(scene);
   const granted = value(await grantAssist(world, person, harness.id));
   assert.equal(granted.persona, assistantIdentityOf(personOf(person)));
   const names = (await assistantLog(scene)).map((event) => event.name);
@@ -103,13 +146,14 @@ async function lapseWakesOnlyThePerson(scene: AssistantScene, delegation: Delega
 export const scenario = defineScenario({
   id: 'PA-1',
   title:
-    'an admin provisions one assistant harness per person with no stages; only that person can lend it authority, only with assist, and only there; no other persona or item can live on it; the run beat leaves it alone; and its lapse wakes only its person',
+    'an admin of the configured assistants area provisions one assistant harness per person there, with no stages, and nothing provisions without that setting; only that person can lend it authority, only with assist, only to their own assistant, and only there; no other persona or item can live on it; the run beat leaves it alone; and its lapse wakes only its person',
   run: async (world) => {
     const scene = await assistantScene(world);
     const areaAdmin = await simPerson(world, 6, [
       { role: 'admin', scopeKind: 'jd_area', scopeArea: ASSISTANTS_AREA },
     ]);
     await provisioned(scene);
+    await onlyTheConfiguredArea(scene);
     const delegation = await onlyThePersonLends(scene, areaAdmin);
     await nothingElseLivesThere(scene, areaAdmin);
     await beatLeavesItAlone(scene, delegation);

@@ -13,7 +13,9 @@ afterAll(closeEmbeddedTemplate);
 const person = '00000000-0000-4000-8000-000000071a01';
 const other = '00000000-0000-4000-8000-000000071a02';
 const personal = '00000000-0000-4000-8000-000000071b01';
+const otherPersonal = '00000000-0000-4000-8000-000000071b02';
 const request = '00000000-0000-4000-8000-000000071c01';
+const otherRequest = '00000000-0000-4000-8000-000000071c02';
 const trace = '00000000-0000-4000-8000-000000071e01';
 const atText = '2026-11-20T09:00:00.000Z';
 
@@ -44,22 +46,35 @@ type RequestRow = {
   readonly externalId: string;
   readonly channel?: string;
   readonly parts?: string;
+  readonly threadKey?: string | null;
+  readonly harnessId?: string;
+  readonly personId?: string;
 };
 
 function addRequest(db: AnyDatabase, row: RequestRow) {
+  const threadKey = row.threadKey === undefined ? 'dm' : row.threadKey;
   return db.execute(sql`INSERT INTO assistant_requests
       (id, harness_id, person_id, channel, external_id, thread_key, reply_address, note,
        untrusted_parts, received_at, recorded_at)
-    VALUES (${row.id}, ${personal}, ${person}, ${row.channel ?? 'zulip_dm'}, ${row.externalId},
-      'dm', 'zulip:5005', 'What is on my schedule today?', ${row.parts ?? '[]'}::jsonb,
+    VALUES (${row.id}, ${row.harnessId ?? personal}, ${row.personId ?? person},
+      ${row.channel ?? 'zulip_dm'}, ${row.externalId}, ${threadKey}, 'zulip:5005',
+      'What is on my schedule today?', ${row.parts ?? '[]'}::jsonb,
       ${atText}::timestamptz, ${atText}::timestamptz)`);
 }
 
-function addEffect(db: AnyDatabase, id: string, kind: string, key: string) {
+type EffectRow = {
+  readonly id: string;
+  readonly kind: string;
+  readonly key: string;
+  readonly harnessId?: string;
+  readonly requestId?: string;
+};
+
+function addEffect(db: AnyDatabase, row: EffectRow) {
   return db.execute(sql`INSERT INTO assistant_effects
       (id, harness_id, request_id, kind, idempotency_key, payload, created_at)
-    VALUES (${id}, ${personal}, ${request}, ${kind}, ${key}, '{"text":"Done."}'::jsonb,
-      ${atText}::timestamptz)`);
+    VALUES (${row.id}, ${row.harnessId ?? personal}, ${row.requestId ?? request}, ${row.kind},
+      ${row.key}, '{"text":"Done."}'::jsonb, ${atText}::timestamptz)`);
 }
 
 function addSettings(db: AnyDatabase, personId: string) {
@@ -80,7 +95,19 @@ function openDatabase(target: DatabaseTarget): () => AnyDatabase {
       template: 'assistant',
       personId: person,
     });
+    await addHarness(opened.db, {
+      id: otherPersonal,
+      key: `assistant-${other}`,
+      template: 'assistant',
+      personId: other,
+    });
     await addRequest(opened.db, { id: request, externalId: '101' });
+    await addRequest(opened.db, {
+      id: otherRequest,
+      externalId: '201',
+      harnessId: otherPersonal,
+      personId: other,
+    });
   }, 60_000);
   afterAll(() => opened?.close());
   return () => {
@@ -148,21 +175,45 @@ function requestRules(db: () => AnyDatabase): void {
       constraint: 'assistant_requests_untrusted_parts_bounded',
     });
   });
+
+  it('refuses an empty thread key and keeps an unthreaded request as null', async () => {
+    expect(
+      await refusal(addRequest(db(), { id: uid(14), externalId: '104', threadKey: '' })),
+    ).toEqual({ code: '23514', constraint: 'assistant_requests_thread_key_length' });
+    await addRequest(db(), { id: uid(15), externalId: '105', threadKey: null });
+  });
 }
 
 function effectRules(db: () => AnyDatabase): void {
   it('records a reply once per key', async () => {
-    await addEffect(db(), uid(20), 'reply_to_requester', `reply:${request}`);
-    expect(
-      await refusal(addEffect(db(), uid(21), 'reply_to_requester', `reply:${request}`)),
-    ).toEqual({ code: '23505', constraint: 'assistant_effects_key_once' });
+    const reply = { kind: 'reply_to_requester', key: `reply:${request}` };
+    await addEffect(db(), { id: uid(20), ...reply });
+    expect(await refusal(addEffect(db(), { id: uid(21), ...reply }))).toEqual({
+      code: '23505',
+      constraint: 'assistant_effects_key_once',
+    });
   });
 
   it('refuses an effect outside the closed low-risk set', async () => {
-    expect(await refusal(addEffect(db(), uid(22), 'email_to_others', 'email:1'))).toEqual({
+    const effect = { id: uid(22), kind: 'email_to_others', key: 'email:1' };
+    expect(await refusal(addEffect(db(), effect))).toEqual({
       code: '23514',
       constraint: 'assistant_effects_direct_only',
     });
+  });
+
+  it("refuses an effect on one personal harness for another personal harness's request", async () => {
+    const crossed = {
+      id: uid(23),
+      kind: 'reply_to_requester',
+      key: `reply:${otherRequest}`,
+      requestId: otherRequest,
+    };
+    expect(await refusal(addEffect(db(), crossed))).toEqual({
+      code: '23503',
+      constraint: 'assistant_effects_request_harness_fk',
+    });
+    await addEffect(db(), { ...crossed, harnessId: otherPersonal });
   });
 }
 

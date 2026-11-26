@@ -24,6 +24,9 @@ import type {
   Stage,
 } from '@uw/contracts';
 import type {
+  AssistantLedgerQuery,
+  AssistantMonthQuery,
+  AssistantMonthSpend,
   AssistantEffectsGateway,
   AssistantRequestsGateway,
   AssistantSettingsGateway,
@@ -220,6 +223,8 @@ export type HarnessEventsGateway = {
     enteredStage(harnessId: string, itemIds: readonly string[]): Promise<readonly StageEntry[]>;
     enteredStages(itemIds: readonly string[]): Promise<readonly StageEntry[]>;
     recent(query: RecentEvents): Promise<readonly HarnessEvent[]>;
+    assistantLedger(query: AssistantLedgerQuery): Promise<readonly HarnessEvent[]>;
+    assistantSpend(query: AssistantMonthQuery): Promise<AssistantMonthSpend>;
     lastPosition(harnessId: string): Promise<number>;
     lastPositions(harnessIds: readonly string[]): Promise<readonly HarnessPosition[]>;
     latestForItems(

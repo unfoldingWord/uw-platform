@@ -1,5 +1,6 @@
 import type { Caller } from '../caller.ts';
 import type { KernelOutcome } from '../outcome.ts';
+import type { KernelSettings } from '../kernel-settings.ts';
 import type { AssistantSettingsRow, Ports } from '../ports.ts';
 import type { Activated } from '../stages/activate.ts';
 import { finishTurn, type FinishInput, type Finished } from './finish.ts';
@@ -18,9 +19,12 @@ export type AssistantCommands = {
 
 type AssistantPorts = Pick<Ports, 'clock' | 'grants' | 'ids' | 'store' | 'directMessages'>;
 
-export function createAssistantCommands(ports: AssistantPorts): AssistantCommands {
+export function createAssistantCommands(
+  ports: AssistantPorts,
+  settings: KernelSettings,
+): AssistantCommands {
   return {
-    provision: (caller, input) => provision(ports, caller, input),
+    provision: (caller, input) => provision(ports, settings, caller, input),
     customise: (caller, input) => customise(ports, caller, input),
     recordRequest: (caller, input) => recordRequest(ports, caller, input),
     beginTurn: (caller, input) => beginTurn(ports, caller, input),

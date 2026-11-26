@@ -9,10 +9,18 @@ export const REFUSED_ANSWER = 'I cannot help with this request.';
 
 const TOOLS_MOST = 100;
 
+const ENDS_IN_HIGH_SURROGATE = /[\uD800-\uDBFF]$/;
+
+function bounded(text: string): string {
+  if (text.length <= REPLY_LIMIT) return text;
+  const cut = text.slice(0, REPLY_LIMIT);
+  return ENDS_IN_HIGH_SURROGATE.test(cut) ? cut.slice(0, -1) : cut;
+}
+
 export function replyTextOf(result: LoopResult): string {
   if (result.outcome === 'refused') return REFUSED_ANSWER;
   const text = result.outcome === 'ended' ? (result.text ?? '').trim() : '';
-  return text === '' ? NO_ANSWER : text.slice(0, REPLY_LIMIT);
+  return text === '' ? NO_ANSWER : bounded(text);
 }
 
 function count(value: number): number {
