@@ -139,6 +139,7 @@ export const errorReasonSchema = z.enum([
   'applies_to_not_found',
   'suggestion_not_found',
   'suggestion_decided',
+  'suggestion_changed',
 ]);
 
 export const refusalSchema = z.object({

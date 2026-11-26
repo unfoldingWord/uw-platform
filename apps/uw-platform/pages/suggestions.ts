@@ -1,9 +1,10 @@
-import { and, asc, eq } from 'drizzle-orm';
+import { and, asc, eq, sql } from 'drizzle-orm';
 import type { ErrorReason, Page, UpdatePageCommand } from '@uw/contracts';
 import { can } from '@uw/core/acl';
 import type { Principal } from '@uw/core/principal';
 import type { Executor, Transaction } from '@uw/db/client';
 import { pageSuggestionSets } from '@uw/db/schema';
+import { embedsItself, resolveBody } from './links.ts';
 import { readPage, type PageRefusal, type PageResult } from './store.ts';
 
 type SetRow = typeof pageSuggestionSets.$inferSelect;
@@ -37,11 +38,13 @@ export async function proposeIn(
 ): Promise<Done> {
   const fields = moved(stored, full);
   if (fields.length > 0) return refused('malformed_command', { fields });
+  const bodyMd = await resolveBody(tx, actor, { bodyMd: full.bodyMd, area: stored.jdArea }, at);
+  if (await embedsItself(tx, stored.id, bodyMd)) return refused('embed_cycle');
   const change = {
     baseVersion: stored.version,
     title: full.title,
     frontmatter: full.frontmatter,
-    bodyMd: full.bodyMd,
+    bodyMd,
     proposedAt: at,
   };
   const mine = and(
@@ -51,7 +54,10 @@ export async function proposeIn(
   );
   const [open] = await tx.select().from(pageSuggestionSets).where(mine).for('update');
   if (open !== undefined) {
-    await tx.update(pageSuggestionSets).set(change).where(eq(pageSuggestionSets.id, open.id));
+    await tx
+      .update(pageSuggestionSets)
+      .set({ ...change, revision: sql`${pageSuggestionSets.revision} + 1` })
+      .where(eq(pageSuggestionSets.id, open.id));
     return { ok: true, page: stored, suggestionId: open.id };
   }
   const id = crypto.randomUUID();

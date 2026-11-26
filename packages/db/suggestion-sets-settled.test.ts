@@ -14,6 +14,7 @@ const pending = '00000000-0000-4000-8000-0000000000d2';
 const decided = '00000000-0000-4000-8000-0000000000d3';
 const guard = { code: '23514', constraint: 'page_suggestion_sets_settled' };
 const person = 'human:00000000-0000-4000-8000-0000000000d9';
+const decisionRequest = '00000000-0000-4000-8000-0000000000d8';
 
 function insertSet(db: Db, id: string, proposer: string) {
   return db.execute(sql`INSERT INTO page_suggestion_sets (id, page_id, base_version, title,
@@ -40,7 +41,8 @@ function openDatabase(target: DatabaseTarget): () => Db {
     await insertSet(opened.db, pending, 'agent:builder');
     await insertSet(opened.db, decided, 'agent:reviewer');
     await opened.db.execute(sql`UPDATE page_suggestion_sets
-      SET status = 'rejected', decided_by = ${person}, decided_at = now() WHERE id = ${decided}`);
+      SET status = 'rejected', decided_by = ${person}, decided_at = now(),
+        decision_request_id = ${decisionRequest} WHERE id = ${decided}`);
   }, 60_000);
   afterAll(() => opened?.close());
   return () => {
@@ -52,7 +54,7 @@ function openDatabase(target: DatabaseTarget): () => Db {
 function settledRules(db: () => Db): void {
   it('refuses changing or deleting a decided set', async () => {
     const reopen = sql`UPDATE page_suggestion_sets SET status = 'pending', decided_by = NULL,
-      decided_at = NULL WHERE id = ${decided}`;
+      decided_at = NULL, decision_request_id = NULL WHERE id = ${decided}`;
     expect(await refusal(db().execute(reopen))).toEqual(guard);
     const drop = sql`DELETE FROM page_suggestion_sets WHERE id = ${decided}`;
     expect(await refusal(db().execute(drop))).toEqual(guard);

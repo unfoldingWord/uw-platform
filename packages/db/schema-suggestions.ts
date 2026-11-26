@@ -23,11 +23,18 @@ export const pageSuggestionSets = declareTable(
     decidedBy: text('decided_by'),
     decidedAt: instant('decided_at'),
     acceptedVersion: integer('accepted_version'),
+    revision: integer('revision').notNull().default(1),
+    decisionRequestId: uuid('decision_request_id'),
   },
   { classification: 'internal', offlineEligibility: 'sync' },
   (t) => [
     check('page_suggestion_sets_status_known', oneOf(t.status, suggestionSetStatusSchema.options)),
     check('page_suggestion_sets_base_positive', sql`${t.baseVersion} >= 1`),
+    check('page_suggestion_sets_revision_positive', sql`${t.revision} >= 1`),
+    check(
+      'page_suggestion_sets_decision_request_when_decided',
+      sql`(${t.status} = 'pending') = (${t.decisionRequestId} IS NULL)`,
+    ),
     check('page_suggestion_sets_proposed_by_identity', matches(t.proposedBy, IDENTITY_PATTERN)),
     check(
       'page_suggestion_sets_decided_by_human',

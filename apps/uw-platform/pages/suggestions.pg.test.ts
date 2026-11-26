@@ -75,9 +75,10 @@ async function suggestionOf(db: Database, agent: Principal, bodyMd: string): Pro
   return held.suggestionId;
 }
 
-const decide = (suggestionId: string) => ({
+const decide = (suggestionId: string, revision = 1) => ({
   requestId: crypto.randomUUID(),
   suggestionId,
+  revision,
 });
 
 async function heldThenAccepted(db: Database): Promise<void> {
@@ -89,11 +90,16 @@ async function heldThenAccepted(db: Database): Promise<void> {
   const page = await readPage(db, person, POLICY, ON);
   if (page === null) throw new Error('the policy is missing');
   expect((await pendingSuggestions(db, person, page, ON)).map((open) => open.id)).toEqual([first]);
-  const command = { command: 'accept_suggestion' as const, ...decide(first) };
+  const seenFirst = { command: 'accept_suggestion' as const, ...decide(first, 1) };
+  const changed = await acceptSuggestion(db, person, seenFirst, crypto.randomUUID(), ON);
+  expect(changed).toMatchObject({ ok: false, reason: 'suggestion_changed' });
+  const command = { command: 'accept_suggestion' as const, ...decide(first, 2) };
   const accepted = await acceptSuggestion(db, person, command, crypto.randomUUID(), ON);
   expect(accepted).toMatchObject({ ok: true, page: { version: 2, status: 'active' } });
   expect((await readPage(db, person, POLICY, ON))?.bodyMd).toBe('Two named adults are present.');
   expect(await pendingSuggestions(db, person, page, ON)).toEqual([]);
+  const replay = await acceptSuggestion(db, person, command, crypto.randomUUID(), ON);
+  expect(replay).toMatchObject({ ok: true, page: { version: 2 } });
   const twice = await acceptSuggestion(
     db,
     person,
@@ -139,7 +145,7 @@ async function staleOnceThePageMoves(db: Database): Promise<void> {
 }
 
 describe.skipIf(!testServer)('PO-7 an agent suggests a change to an active policy', () => {
-  it('holds the change as one pending set per agent, and a person accepts it as one new version', () =>
+  it('holds the change as one pending set per agent, refuses a decision on a revision the person did not see, and accepts it once as one new version', () =>
     withAppDatabase(heldThenAccepted));
 
   it('lets a person reject it, leaves the page alone, and refuses an agent deciding', () =>

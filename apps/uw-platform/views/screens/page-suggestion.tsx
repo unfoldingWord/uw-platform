@@ -33,7 +33,18 @@ type Review = {
   readonly found: Found;
   readonly baseBody: string;
   readonly baseTitle: string;
+  readonly baseFrontmatter: unknown;
 };
+
+const refusalWords: Readonly<Record<string, string>> = {
+  suggestion_changed:
+    'The agent changed this suggestion after you opened it. Read the change below again before you decide.',
+  stale_version: 'The page has changed since this was suggested, so it can only be rejected.',
+};
+
+function refusalText(reason: string): string {
+  return new Map(Object.entries(refusalWords)).get(reason) ?? `Not decided: ${reasonText(reason)}.`;
+}
 
 const statusWords: Readonly<Record<string, string>> = {
   accepted: 'This suggested change was accepted.',
@@ -61,6 +72,7 @@ function Decide(props: { readonly review: Review }) {
         class="flex flex-wrap gap-3"
       >
         <input type="hidden" name="requestId" value={crypto.randomUUID()} />
+        <input type="hidden" name="revision" value={String(found.set.revision)} />
         {stale ? null : (
           <Button type="submit" variant="human" name="intent" value="accept_suggestion">
             Accept the change
@@ -75,7 +87,7 @@ function Decide(props: { readonly review: Review }) {
 }
 
 function Changes(props: { readonly review: Review }) {
-  const { found, baseBody, baseTitle } = props.review;
+  const { found, baseBody, baseTitle, baseFrontmatter } = props.review;
   const { set } = found;
   return (
     <>
@@ -85,9 +97,9 @@ function Changes(props: { readonly review: Review }) {
       <Section title="Text" sub={`Against version ${String(set.baseVersion)}`}>
         <LineChanges before={baseBody} after={set.bodyMd} same="The text does not change." />
       </Section>
-      <Section title="Properties" sub="The page's settings as stored">
+      <Section title="Properties" sub={`Against version ${String(set.baseVersion)}`}>
         <LineChanges
-          before={frontmatterText(found.page.frontmatter)}
+          before={frontmatterText(baseFrontmatter)}
           after={frontmatterText(set.frontmatter)}
           same="The properties do not change."
         />
@@ -127,7 +139,7 @@ async function render(c: Context<AppEnv>, review: Review, refused: string | null
         lede: 'An agent proposed this change. Nothing reaches readers until a person accepts it.',
       }}
     >
-      {refused === null ? null : <Note>{`Not decided: ${reasonText(refused)}.`}</Note>}
+      {refused === null ? null : <Note>{refusalText(refused)}</Note>}
       {decided === null ? null : <Note>{decided}</Note>}
       <Changes review={review} />
       {decided === null && shown.canEdit ? <Decide review={review} /> : null}
@@ -151,7 +163,14 @@ async function reviewOf(c: Context<AppEnv>): Promise<Review | null> {
   const at = { pageId, version: found.set.baseVersion };
   const base = await pageVersion(database.db, actor, at, screen.at);
   const page = base?.page ?? shown.page;
-  return { screen, shown, found, baseBody: page.bodyMd, baseTitle: page.title };
+  return {
+    screen,
+    shown,
+    found,
+    baseBody: page.bodyMd,
+    baseTitle: page.title,
+    baseFrontmatter: page.frontmatter,
+  };
 }
 
 export async function pageSuggestionScreen(c: Context<AppEnv>): Promise<Response> {
@@ -175,10 +194,10 @@ function decide(
   review: Review,
   db: Parameters<typeof acceptSuggestion>[0],
   intent: Intent,
-  requestId: string,
+  { requestId, revision }: { readonly requestId: string; readonly revision: number },
 ) {
   const { actor, traceId } = review.screen.caller;
-  const command = { requestId, suggestionId: review.found.set.id };
+  const command = { requestId, suggestionId: review.found.set.id, revision };
   return intent === 'accept_suggestion'
     ? deciders.accept_suggestion(
         db,
@@ -196,16 +215,23 @@ function decide(
       );
 }
 
+function formOf(posted: Readonly<Record<string, unknown>>) {
+  const requestId = idParam(String(posted['requestId'] ?? ''));
+  const intent = intentOf(posted['intent']);
+  const revision = Number(posted['revision']);
+  if (requestId === null || intent === null || !Number.isInteger(revision)) return null;
+  return { requestId, intent, revision };
+}
+
 export async function decideSuggestion(c: Context<AppEnv>): Promise<Response> {
   if (screenKernel(c) === null) return screenRefusal(c);
   const review = await reviewOf(c);
   const database = c.get('database');
   if (review === null || database === null || !review.shown.canEdit) return notFound(c);
-  const posted = await c.req.parseBody();
-  const requestId = idParam(String(posted['requestId'] ?? ''));
-  const intent = intentOf(posted['intent']);
-  if (requestId === null || intent === null) return render(c, review, 'malformed_command');
-  const decided = await decide(review, database.db, intent, requestId);
+  const form = formOf(await c.req.parseBody());
+  if (form === null) return render(c, review, 'malformed_command');
+  const { intent } = form;
+  const decided = await decide(review, database.db, intent, form);
   if (!decided.ok) return render(c, review, decided.reason);
   const saved = intent === 'accept_suggestion' ? `?saved=${String(decided.page.version)}` : '';
   return c.redirect(`${pagePath(review.shown.page.id)}${saved}`, 303);

@@ -16313,7 +16313,8 @@
           "sections_missing",
           "applies_to_not_found",
           "suggestion_not_found",
-          "suggestion_decided"
+          "suggestion_decided",
+          "suggestion_changed"
         ],
         "event-name": [
           "item_created",

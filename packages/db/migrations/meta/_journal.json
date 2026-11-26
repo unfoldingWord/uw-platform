@@ -498,6 +498,13 @@
       "when": 1795641289450,
       "tag": "0072_page_suggestion_sets_settled",
       "breakpoints": true
+    },
+    {
+      "idx": 73,
+      "version": "7",
+      "when": 1795645513934,
+      "tag": "0073_suggestion_revisions",
+      "breakpoints": true
     }
   ]
 }

@@ -14,6 +14,27 @@ function Line(props: { readonly change: LineChange }) {
   return <span class={looks.same}>{change.text}</span>;
 }
 
+const whole =
+  'm-0 overflow-x-auto rounded-md bg-raised p-3 font-mono text-xs whitespace-pre-wrap text-text';
+
+function Whole(props: { readonly before: string; readonly after: string }) {
+  return (
+    <div data-whole-texts="" class="flex flex-col gap-3">
+      <p class="m-0 text-sm text-text-2">
+        These texts are too long to compare line by line, so both are shown in full.
+      </p>
+      <p class="m-0 text-xs font-semibold text-text-3">Before</p>
+      <pre data-before="" class={whole}>
+        {props.before}
+      </pre>
+      <p class="m-0 text-xs font-semibold text-text-3">After</p>
+      <pre data-after="" class={whole}>
+        {props.after}
+      </pre>
+    </div>
+  );
+}
+
 export function LineChanges(props: {
   readonly before: string;
   readonly after: string;
@@ -21,9 +42,7 @@ export function LineChanges(props: {
 }) {
   const changes = lineChanges(props.before, props.after);
   const differs = changes?.some((change) => change.kind !== 'same') ?? true;
-  if (changes === null) {
-    return <p class="m-0 text-sm text-text-2">These texts are too long to compare line by line.</p>;
-  }
+  if (changes === null) return <Whole before={props.before} after={props.after} />;
   if (!differs) return <p class="m-0 text-sm text-text-2">{props.same}</p>;
   return (
     <div data-changes="" class="-mx-3 flex flex-col">
