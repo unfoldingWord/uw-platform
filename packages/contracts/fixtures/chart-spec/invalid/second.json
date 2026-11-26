@@ -1,0 +1,20 @@
+{
+  "title": "Runs per day",
+  "type": "bar",
+  "query": {
+    "key": "daily_runs_and_waits",
+    "params": {
+      "harnessId": "00000000-0000-4000-8000-0000000019a1"
+    }
+  },
+  "encodings": {
+    "x": "day",
+    "y": ["runs"],
+    "series": null
+  },
+  "format": {
+    "x": "date",
+    "y": "money",
+    "currency": null
+  }
+}

@@ -262,3 +262,18 @@ export function panelCsvPath(
   const host = hostPageId === null ? '' : `?host=${segment(hostPageId)}`;
   return `/api/measures/dashboards/${segment(dashboardId)}/panels/${String(index)}${host}`;
 }
+
+export type ChartFileFormat = 'svg' | 'png' | 'csv' | 'json';
+
+export function chartsPath(): string {
+  return '/charts';
+}
+
+export function chartPath(key: string, harnessId: string | null = null): string {
+  const query = harnessId === null ? '' : `?harnessId=${segment(harnessId)}`;
+  return `/charts/${segment(key)}${query}`;
+}
+
+export function chartFilePath(key: string, harnessId: string, format: ChartFileFormat): string {
+  return `/api/charts/${segment(key)}?harnessId=${segment(harnessId)}&format=${format}`;
+}

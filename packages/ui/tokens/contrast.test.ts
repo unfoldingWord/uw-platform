@@ -45,3 +45,37 @@ describe('UI-1 the lowest pair is the one the design names', () => {
     expect(contrast('light', 'text-3', 'lane')).toBeCloseTo(4.54, 2);
   });
 });
+
+const seriesRoles = ['series-1', 'series-2', 'series-3', 'series-4', 'series-5', 'series-6'];
+const chartGrounds = ['surface', 'card'] as const;
+
+function lightness(theme: ThemeName, role: string): number {
+  const colour = new Color(resolveToken(`--uw-${role}`, themeTokens(theme)));
+  return colour.to('oklch').coords[0] ?? 0;
+}
+
+describe.each(themes)('#199 the %s chart series are a colour-blind-safe order', (theme) => {
+  it.each(seriesRoles.flatMap((role) => chartGrounds.map((ground) => [role, ground] as const)))(
+    '#199 %s on %s is at least 3:1, as a graphic must be',
+    (role, ground) => {
+      expect(contrast(theme, role, ground)).toBeGreaterThanOrEqual(3);
+    },
+  );
+
+  it('#199 each series differs in lightness from the one before it, so order never rests on hue alone', () => {
+    const steps = seriesRoles
+      .slice(1)
+      .map((role, index) =>
+        Math.abs(lightness(theme, role) - lightness(theme, seriesRoles[index] ?? role)),
+      );
+    expect(Math.min(...steps)).toBeGreaterThanOrEqual(0.1);
+  });
+
+  it('#199 no series is Kindle, which marks a human action and nothing else', () => {
+    const kindle = new Color(resolveToken('--uw-kindle-400', themeTokens(theme)));
+    for (const role of seriesRoles) {
+      const colour = new Color(resolveToken(`--uw-${role}`, themeTokens(theme)));
+      expect(colour.deltaE(kindle, '2000')).toBeGreaterThan(10);
+    }
+  });
+});

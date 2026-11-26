@@ -206,7 +206,7 @@ Why the unfoldingWord Platform is shaped the way it is, and what was rejected on
 
 **Consequences.** One runtime dependency, imported only by the chart component and tree-shaken to the series and parts it uses.
 
-**Changes / changed by.** 0028 prints the same server-drawn SVG.
+**Changes / changed by.** 0028 prints the same server-drawn SVG. 0038 draws charts from a spec over a whitelisted query, with series tokens beside the four roles.
 
 ## 0013 Icons are Font Awesome Pro, installed with a token and never committed
 
@@ -739,7 +739,7 @@ A policy's page and the Policies screen show its level, target, enforcement, dat
 
 **Consequences.** A measure that needs a key waits until a measure can use a credential by reference (ADR 0020), which is an open question. Tools that print only text cannot be measures until a text runtime is reviewed. A run is done under the activating person's authority, a trial under that of the person who pressed Run trial, re-read at each step since no request outlives the press (recorded in `docs/exceptions.md`), each resource read again under that authority in its own step and skipped when it is no longer readable, and a measure pauses when its activator loses `admin` on the area. A paused measure, unless retired, is activated again by an admin pressing Activate, who becomes its activator. A person's edit or restore of an active measure or dashboard, or an agent's save of one, returns it to `suggested` and pauses the measure in the same transaction. A run belongs to the activated version it was asked under and stops, without pausing the measure, once a later version is activated. At most four runs hold a sandbox at once, trials and requested runs included; a run that finds no free slot waits queued and the minute job starts it when one frees, and a scheduled run whose job cannot be created is retried each minute for up to an hour after its slot. A resource step that fails past its retries is recorded failed and the run goes on, and every run closes from what it observed against what it planned, so a run that leaves a resource unmeasured is never ok. A started run with no progress for an hour is closed as stalled. A stored export records the areas of every dashboard, measure and resource its panels drew from, so downloading it later needs read on each of them. Activation judges only the trial observations the activating admin may read, and needs at least one ok among them. A resource serves portfolios, programs and projects only; serving a product page waits for a collection that lists products. Raw output is deleted after 13 months by the nightly job, not by a bucket lifecycle rule. Panels move onto the chart spec when #199 is built.
 
-**Changes / changed by.** None.
+**Changes / changed by.** Changed by 0038: the chart spec is built, and panels stay on their own chart parts until a chart query reads observations.
 
 ---
 
@@ -775,6 +775,41 @@ A policy's page and the Policies screen show its level, target, enforcement, dat
 **Consequences.** Offsets count UTF-16 code units, so a client counting code points must convert. A page whose own text contains CriticMarkup delimiters reads back wrongly from a marked export; nothing escapes them. A review set leaves slug, parent and status alone. Suggestion sets pending before this change stay decidable on their screen, and nothing makes new ones. PDF redline and appendix modes, DOCX tracked changes and their import, and marks shown inline in the read view remain #197's.
 
 **Changes / changed by.** Changes 0035: an agent's save to an active policy or charter is now a review set.
+
+---
+
+## 0038 A chart is a spec over a whitelisted query, drawn with its lineage and the rows it drew
+
+*2026-11-26. Builds on 0012. Changes 0036. Part of #199.*
+
+**Decision.** Six rulings.
+- **A spec, not code per screen.** A chart is a Zod-validated spec in `packages/contracts`: a type from a closed set, one query by key with typed parameters, encodings and formatting. Screens, exports and the `render_chart` verb all draw through one function, and the standard charts are specs defined once by key.
+- **A whitelist, refused by name.** A spec may name only a query on the platform's whitelist. The key stays a free word in the schema so that one off the whitelist is refused with `chart_query_not_allowed`, parameters that do not fit with `malformed_command` naming the fields, and a column the query lacks with `chart_encoding_unknown`. A query runs under the reader's access; `render_chart` is gated `viewer` on the workflow's area.
+- **One set of rows.** The picture, the table on the screen, the CSV and the JSON are drawn from the same rows the query answered, unchanged, and every figure drawn is in the SVG as text.
+- **Lineage and staleness in the picture.** Every chart carries its source, query, as-of time, filters, rows left out by closed-set reason, and staleness. A harness chart's source is stale when a GitHub delivery has waited more than five minutes to be consumed, or when that cannot be read; the note is drawn into the SVG and shown on the screen, and the series is not cut.
+- **History is a kernel fold.** Cumulative flow, cycle time and burndown are pure folds over `item_created`, `stage_advanced` and `loop_edge_taken`, read through the Store port as a kernel view, capped at the newest 5,000 events; an item whose creation was not read is left out and counted.
+- **A colour-blind-safe palette without Kindle; PNG through Browser Run.** Six series tokens from Inspire, Ocean, Cultivate and Tech alternate light and dark, each at least 3:1 on its ground, with a dash and a marker per series. Kindle is not a series colour, since it marks a human action and nothing else (ADR 0007, ADR 0011), although PRD 4.4 allowed it "sparingly". PNG is a screenshot of the SVG in one self-contained document through the existing `BROWSER` binding, behind a `ChartRasteriser` seam with a recording adapter.
+
+**Why.**
+- **Nine definitions of "actual spend" (PRD 4.4).** One spec and one whitelist make each chart's definition a reviewed key, and a key an agent invents is refused rather than run.
+- **A chart nobody can check is a claim.** Drawing the CSV and the table from the very rows drawn makes the export the evidence, and a staleness note in the picture survives being copied into a memo.
+- **The kernel already owns item history.** Folding events where replay and record are proven keeps the charts module free of tables and of Drizzle.
+- **Browser Run is already bound and draws the app's own CSS.** The SVG's colours are token classes; a rasteriser that does not run the stylesheet would draw them black.
+
+**Rejected.**
+- A free query or a query language in the spec. It would make every chart a new definition and every agent a query author.
+- A closed enum for the query key in the spec schema. A key off the whitelist would fail as a malformed call, not with a reason that says why.
+- `@resvg/resvg-wasm` for PNG. It does not apply a stylesheet, so token classes would have to be resolved to literal colours, which the content security policy and the token rules forbid in the page's SVG; it would also add a megabyte-scale wasm module to the Worker.
+- Inline `style` or `<style>` in the exported SVG. The SVG served from the platform's origin is under the same policy as the page; the export names the app stylesheet with an `xml-stylesheet` instruction instead.
+- Cutting the series at the stale point. The rows before and after are what was recorded; the note says which days may be short, and the CSV still equals what was drawn.
+- Kindle as a fifth series colour, and a red or amber for a stale chart.
+- Moving the measures panels onto the spec now. No chart query reads observations yet, and the panels already show their source time and rows; they move when one does.
+
+**Consequences.** A chart query is code, reviewed like a validator: budget and revenue charts arrive as queries. Every whitelisted query today is scoped to one workflow, so `render_chart` resolves its grant from that workflow; a query over another area will need its own resource. Staleness for harness charts reads the GitHub ingest queue only. The PNG path is proven against a fake binding; the `screenshot` quick action's option names follow the Browser Run REST API and are not yet run on staging. A downloaded SVG opened away from the platform's origin has no stylesheet and draws its classes in the viewer's defaults. Workflows with more than 5,000 item events show their older items as left out.
+
+**Changes / changed by.** Builds on 0012. Changes 0036: the measures panels do not move onto the spec yet.
+
+---
 
 # Part 2. Workflow design decisions
 

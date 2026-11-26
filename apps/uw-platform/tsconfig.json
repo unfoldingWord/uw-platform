@@ -26,6 +26,7 @@
     "testing/measure-app.ts",
     "testing/measure-scene.ts",
     "testing/context-rig.ts",
+    "testing/chart-app.ts",
     "islands/browser/**",
     "islands/editor/**",
     "islands/worker/**"

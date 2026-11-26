@@ -1,0 +1,22 @@
+{
+  "columns": [
+    {
+      "key": "day",
+      "label": "Day"
+    },
+    {
+      "key": "runs",
+      "label": "Runs"
+    }
+  ],
+  "rows": [
+    {
+      "day": "2026-11-25",
+      "runs": 3
+    },
+    {
+      "day": "2026-11-26",
+      "runs": 0
+    }
+  ]
+}

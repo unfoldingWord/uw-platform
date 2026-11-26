@@ -1,0 +1,13 @@
+{
+  "source": "harness_runs",
+  "query": "daily_runs_and_waits",
+  "asOf": "2026-11-26T09:00:00.000Z",
+  "filters": {
+    "harnessId": "00000000-0000-4000-8000-0000000019a1"
+  },
+  "excluded": {
+    "count": 1,
+    "reasons": []
+  },
+  "stale": null
+}

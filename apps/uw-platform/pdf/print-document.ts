@@ -44,7 +44,7 @@ export type BinderCover = {
 
 let inlined: string | null = null;
 
-function stylesheet(): string {
+export function stylesheet(): string {
   inlined ??= fontFiles.reduce(
     (css, font) =>
       css.replaceAll(`url(${font.path})`, `url(data:font/woff2;base64,${font.base64})`),

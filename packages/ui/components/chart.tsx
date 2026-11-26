@@ -11,12 +11,28 @@ const tokenClasses: Readonly<Record<string, { readonly fill: string; readonly st
   'token-text-2': { fill: 'fill-text-2', stroke: 'stroke-text-2' },
   'token-text-3': { fill: 'fill-text-3', stroke: 'stroke-text-3' },
   'token-line': { fill: 'fill-line', stroke: 'stroke-line' },
+  'token-series-1': { fill: 'fill-series-1', stroke: 'stroke-series-1' },
+  'token-series-2': { fill: 'fill-series-2', stroke: 'stroke-series-2' },
+  'token-series-3': { fill: 'fill-series-3', stroke: 'stroke-series-3' },
+  'token-series-4': { fill: 'fill-series-4', stroke: 'stroke-series-4' },
+  'token-series-5': { fill: 'fill-series-5', stroke: 'stroke-series-5' },
+  'token-series-6': { fill: 'fill-series-6', stroke: 'stroke-series-6' },
 };
 
 const tokenClassFor = new Map(Object.entries(tokenClasses));
 
-export const tokenColour = (role: 'accent' | 'text-2' | 'text-3' | 'line'): string =>
-  `token-${role}`;
+export const seriesRoles = [
+  'series-1',
+  'series-2',
+  'series-3',
+  'series-4',
+  'series-5',
+  'series-6',
+] as const;
+
+export type ColourRole = 'accent' | 'text-2' | 'text-3' | 'line' | (typeof seriesRoles)[number];
+
+export const tokenColour = (role: ColourRole): string => `token-${role}`;
 
 const styleElement = /<style\b[^>]*>[\s\S]*?<\/style>/g;
 const tag = /<([a-zA-Z]+)\b([^>]*?)(\/?)>/g;

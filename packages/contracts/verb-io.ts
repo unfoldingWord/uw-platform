@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { jdAreaSchema } from './areas.ts';
+import { renderChartInputSchema, renderedChartSchema } from './chart-spec.ts';
 import { costBasisSchema, evidenceLabelSchema } from './closed-sets.ts';
 import { healthReportSchema } from './health.ts';
 import { entityMeasureSchema, measureVerbIo } from './measure-verb-io.ts';
@@ -252,4 +253,5 @@ export const verbIo = {
     output: healthReportSchema,
   },
   ...measureVerbIo,
+  render_chart: { input: renderChartInputSchema, output: renderedChartSchema },
 } as const satisfies Record<VerbName, { input: z.ZodType; output: z.ZodType }>;

@@ -27,6 +27,7 @@ export const verbNames = [
   'read_metric',
   'read_observations',
   'preview_dashboard',
+  'render_chart',
 ] as const;
 
 export const FORBIDDEN_VERBS = ['approve', 'merge', 'deploy', 'publish', 'advance'] as const;

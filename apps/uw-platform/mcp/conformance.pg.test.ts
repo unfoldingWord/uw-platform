@@ -329,7 +329,7 @@ function sceneCalls(host: McpHost, scene: Scene): Call[] {
       verb: 'create_task',
       args: { title: `task from ${host}`, jdArea: '80-89', pageId: null, due: null },
     },
-    ...collections.collectionCalls(host),
+    ...collections.collectionCalls(host, scene.harnessId),
   ];
 }
 

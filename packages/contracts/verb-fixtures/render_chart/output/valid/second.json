@@ -1,0 +1,46 @@
+{
+  "svg": "<svg role=\"img\"><title>Runs per day</title></svg>",
+  "table": {
+    "columns": [
+      {
+        "key": "day",
+        "label": "Day"
+      },
+      {
+        "key": "runs",
+        "label": "Runs"
+      }
+    ],
+    "rows": [
+      {
+        "day": "2026-11-25",
+        "runs": 3
+      },
+      {
+        "day": "2026-11-26",
+        "runs": 0
+      }
+    ]
+  },
+  "lineage": {
+    "source": "harness_runs",
+    "query": "daily_runs_and_waits",
+    "asOf": "2026-11-26T09:00:00.000Z",
+    "filters": {
+      "harnessId": "00000000-0000-4000-8000-0000000019a1"
+    },
+    "excluded": {
+      "count": 2,
+      "reasons": [
+        {
+          "reason": "creation_not_read",
+          "count": 2
+        }
+      ]
+    },
+    "stale": {
+      "since": "2026-11-26T08:00:00.000Z",
+      "reason": "source_behind"
+    }
+  }
+}

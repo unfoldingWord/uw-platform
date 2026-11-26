@@ -146,6 +146,9 @@ export const errorReasonSchema = z.enum([
   'trial_unreadable',
   'run_too_soon',
   'measure_paused',
+  'chart_query_not_allowed',
+  'chart_encoding_unknown',
+  'chart_png_failed',
 ]);
 
 export const refusalSchema = z.object({

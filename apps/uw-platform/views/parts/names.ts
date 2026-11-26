@@ -44,6 +44,7 @@ export const pageNames = {
   crosswalk: 'JD Crosswalk',
   person: 'Person',
   measures: 'Measures & Dashboards',
+  charts: 'Charts',
 } as const;
 
 const smallWord = /^[a-z]/;

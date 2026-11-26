@@ -96,6 +96,15 @@ const measureVerbs: readonly VerbDefinition[] = [
   ),
 ];
 
+const chartVerbs: readonly VerbDefinition[] = [
+  verb(
+    'render_chart',
+    'records',
+    onResource('viewer'),
+    'Draw a standard chart, or a chart spec over a whitelisted query, for a workflow you may read: the SVG, the table of exactly the rows it drew, and its lineage with any rows left out and any staleness.',
+  ),
+];
+
 export const verbRegistry: readonly VerbDefinition[] = [
   verb(
     'search_pages',
@@ -209,6 +218,7 @@ export const verbRegistry: readonly VerbDefinition[] = [
     'Get the agent-plane health of one harness you may see.',
   ),
   ...measureVerbs,
+  ...chartVerbs,
 ];
 
 const byName = new Map<string, VerbDefinition>(verbRegistry.map((entry) => [entry.name, entry]));

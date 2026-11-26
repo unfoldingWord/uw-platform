@@ -6,6 +6,7 @@ import { assetRoutes } from './assets/routes.ts';
 import { meRoutes } from './auth/me.ts';
 import { withPrincipal } from './auth/principal-middleware.ts';
 import { platformPersonDeps, type PersonDeps } from './commands/person-deps.ts';
+import { chartRoutes, chartScreenRoutes } from './charts/routes.ts';
 import { harnessRoutes } from './commands/routes.ts';
 import { credentialRoutes, credentialScreenRoutes } from './credentials/routes.ts';
 import { mountCrosswalk } from './crosswalk/routes.ts';
@@ -32,6 +33,8 @@ function mountContent(app: Hono<AppEnv>): void {
   mountExports(app);
   app.route('/api/measures', measureRoutes());
   app.route('/measures', measureScreenRoutes());
+  app.route('/api/charts', chartRoutes());
+  app.route('/charts', chartScreenRoutes());
 }
 
 export function createApp(

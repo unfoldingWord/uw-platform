@@ -54,6 +54,7 @@ import {
   policyFrontmatterSchema,
   policyLevelSchema,
 } from './policies.ts';
+import { chartSchemaRegistry } from './chart-registry.ts';
 import * as closedSets from './closed-sets.ts';
 import { collectionSchemaRegistry } from './collection-registry.ts';
 import { measureSchemaRegistry } from './measure-registry.ts';
@@ -227,6 +228,7 @@ import { zulipMessageSchema, zulipOutgoingSchema, zulipTopicSchema } from './zul
 export const schemaRegistry: Record<string, ZodType> = {
   ...collectionSchemaRegistry,
   ...measureSchemaRegistry,
+  ...chartSchemaRegistry,
   command: commandSchema,
   'command-name': commandNameSchema,
   'override-command': overrideCommandSchema,

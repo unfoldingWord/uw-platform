@@ -61,7 +61,7 @@ describe('the module registry claims every page type and verb once', () => {
     ).toEqual(Object.keys(pageTypeRegistry));
   });
 
-  it('declares the measure verbs under charts and every other registered verb under agents', () => {
+  it('declares the measure verbs and render_chart under charts and every other registered verb under agents', () => {
     expect(moduleOf('charts').mcp_tools).toEqual([
       'save_measure',
       'save_dashboard',
@@ -70,6 +70,7 @@ describe('the module registry claims every page type and verb once', () => {
       'read_metric',
       'read_observations',
       'preview_dashboard',
+      'render_chart',
     ]);
     expect([...moduleOf('agents').mcp_tools, ...moduleOf('charts').mcp_tools]).toEqual(
       verbRegistry.map((entry) => entry.name),

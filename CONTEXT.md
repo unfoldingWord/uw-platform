@@ -630,6 +630,20 @@ _Avoid_: suggestion set (that is the older whole-page set), change request, chan
 A page's markdown export in `marked` mode: the current version's text with the suggested changes of its pending review sets written in CriticMarkup (`{++ ++}`, `{-- --}`, `{~~ ~> ~~}`, `{== ==}{>> <<}`), which reads back into the same suggested changes. The other modes are `accepted`, the clean current text and the default, and `original`, the stored text the marks are over. Every export is stamped with `source` (`slug@version`), `exported`, `sha256` (of the stored version, as in a provenance footer) and `mode`, and `verifyExport` checks a file against the stored version.
 _Avoid_: redline (that is the PDF mode, not built), tracked changes, diff
 
+## Charts
+
+**Chart spec**:
+What a chart is, declared rather than drawn by hand: a type from a closed set (bar, line, stacked area), one **chart query** with its typed parameters, its encodings (the column on x, the columns on y, and an optional column that splits the series) and its formatting (`YYYY-MM-DD` dates, counts, days, or money in minor units with its currency). Validated by Zod in `packages/contracts/chart-spec.ts` and drawn on the server to SVG. A **standard chart** is a chart spec defined once by key, such as `cumulative_flow`.
+_Avoid_: chart config, widget, panel (that is a dashboard's), view (that is a collection's)
+
+**Chart query**:
+One entry of the whitelist a chart spec may name, by key: its parameters' schema, its columns and its source, run under the reader's access. A spec naming any other key is refused with `chart_query_not_allowed`; there is no free query.
+_Avoid_: data source (that is a Package page), report query, SQL
+
+**Lineage**:
+What every drawn chart says about its rows: the source, the chart query, the as-of time, the filters, the rows left out with a count per closed-set reason, and, when its source is behind or unreadable, since when. A stale source is drawn with a note, never as a short series passed off as whole.
+_Avoid_: provenance (that is a page export's footer), metadata, audit trail
+
 ## Measures and dashboards
 
 **Resource**:

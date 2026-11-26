@@ -73,6 +73,7 @@ export { personaPageDraft, personasOf, templatePersonas } from './templates/pers
 export { bypassesShip } from './templates/fixtures/bypasses-ship.ts';
 export type { Caller } from './caller.ts';
 export type { Accepted, Detail, KernelOutcome, Refused } from './outcome.ts';
+export { accepted, refused } from './outcome.ts';
 export { readAllEvents } from './items/record.ts';
 export { foldItem, replay, ReplayError } from './items/fold.ts';
 export type { FoldableEvent } from './items/fold.ts';
@@ -118,7 +119,22 @@ export type { DelegatedExits } from './gates/delegated-exits.ts';
 export type { RefuteInput, Refuted } from './gates/refute.ts';
 export type { RefuteTally } from './views/refutes.ts';
 export type { FrameCounts, FrameHarness } from './views/frame.ts';
-export { DAILY_DAYS } from './views/look.ts';
+export { DAILY_DAYS, daysEnding } from './views/look.ts';
+export {
+  HISTORY_EVENT_LIMIT,
+  burndown,
+  cumulativeFlow,
+  cycleTimes,
+  foldHistories,
+} from './views/item-history.ts';
+export type {
+  BurnDay,
+  CycleDay,
+  FlowCount,
+  ItemHistory,
+  ItemHistoryRead,
+  StageStep,
+} from './views/item-history.ts';
 export type { DailyPoint, HeldItem, MyItems } from './views/look.ts';
 export { AGENT_HOLD_MS, PERSON_HOLD_MS, heldTooLong, holderOf } from './views/holder.ts';
 export type { Holder, HolderRole } from './views/holder.ts';

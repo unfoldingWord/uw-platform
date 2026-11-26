@@ -17,7 +17,7 @@ const ALL_TASKS = 'c0110000-0000-4000-8000-000000000103';
 
 type Call = { readonly verb: string; readonly args: Readonly<Record<string, unknown>> };
 
-export function collectionCalls(host: McpHost): Call[] {
+export function collectionCalls(host: McpHost, harnessId: string): Call[] {
   const rowId = crypto.randomUUID();
   const row = { collection: 'tasks', rowId, jdArea: '80-89', values: {}, template: null };
   return [
@@ -29,10 +29,12 @@ export function collectionCalls(host: McpHost): Call[] {
       args: { collection: 'tasks', rowId, property: 'priority', value: 'high' },
     },
     ...measureCalls(host),
+    { verb: 'render_chart', args: { chart: 'cumulative_flow', params: { harnessId }, spec: null } },
   ];
 }
 
 const collectionOutcomes = new Map<string, 'accepted'>([
+  ['render_chart', 'accepted'],
   ['read_collection', 'accepted'],
   ['read_view', 'accepted'],
   ['create_row', 'accepted'],

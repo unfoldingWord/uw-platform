@@ -153,6 +153,10 @@ function argumentsOf(): Readonly<Record<VerbName, readonly unknown[]>> {
     read_metric: [{ measureId: credentialId, metric: 'score' }],
     read_observations: [{ measureId: credentialId }],
     preview_dashboard: [{ dashboardId: credentialId, hostPageId: null }],
+    render_chart: [
+      { chart: 'burndown', params: { harnessId }, spec: null },
+      { chart: 'cumulative_flow', params: { harnessId: credentialId }, spec: null },
+    ],
   };
 }
 

@@ -36,6 +36,8 @@ const measureVerbs = [
   'preview_dashboard',
 ];
 
+const measureAndChartVerbs = [...measureVerbs, 'render_chart'];
+
 function names(): string[] {
   return verbRegistry.map((entry) => entry.name);
 }
@@ -45,7 +47,7 @@ function groupOf(name: string): string | undefined {
 }
 
 describe('CT-2 the verb registry', () => {
-  it('registers the thirteen verbs of PRD section 8.2, attach_file, render_pdf, the four collection verbs and the seven measure verbs', () => {
+  it('registers the thirteen verbs of PRD section 8.2, attach_file, render_pdf, the four collection verbs, the seven measure verbs and render_chart', () => {
     expect(names()).toEqual([
       'search_pages',
       'read_page',
@@ -66,7 +68,7 @@ describe('CT-2 the verb registry', () => {
       'submit_to_gate',
       'record_run_step',
       'get_health',
-      ...measureVerbs,
+      ...measureAndChartVerbs,
     ]);
     expect(names()).toEqual([...verbNames]);
   });
@@ -152,11 +154,22 @@ describe('ADR 0036 the measure verbs in the verb registry', () => {
   });
 });
 
+describe('#199 render_chart in the verb registry', () => {
+  it('#199 lets a viewer draw a chart, under the read of the workflow its query reads', () => {
+    expect(findVerb('render_chart')?.group).toBe('records');
+    expect(findVerb('render_chart')?.grant).toEqual({ scope: 'resource_area', role: 'viewer' });
+  });
+
+  it('#199 offers the agent a typed object, so its tool schema is an object', () => {
+    expect(z.toJSONSchema(verbIo.render_chart.input)).toMatchObject({ type: 'object' });
+  });
+});
+
 describe('CT-2 the verb manifest is contract data', () => {
   it('is plain JSON-serialisable contract data', () => {
     const manifest = verbManifest();
     expect(JSON.parse(JSON.stringify(manifest))).toEqual(manifest);
-    expect(manifest).toHaveLength(26);
+    expect(manifest).toHaveLength(27);
   });
 
   it('serialises the registry with its Zod schemas stripped', () => {

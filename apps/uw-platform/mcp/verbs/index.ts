@@ -12,6 +12,7 @@ import { readMetricVerb } from './read-metric.ts';
 import { readObservationsVerb } from './read-observations.ts';
 import { readPageVerb } from './read-page.ts';
 import { recordRunStep } from './record-run-step.ts';
+import { renderChartVerb } from './render-chart.ts';
 import { renderPdfVerb } from './render-pdf.ts';
 import { resolveContext } from './resolve-context.ts';
 import { runMeasureVerb } from './run-measure.ts';
@@ -46,6 +47,7 @@ const handlers: readonly VerbHandler[] = [
   readMetricVerb,
   readObservationsVerb,
   previewDashboardVerb,
+  renderChartVerb,
 ];
 
 export const verbHandlers: ReadonlyMap<string, VerbHandler> = new Map(

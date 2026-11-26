@@ -57,6 +57,7 @@ const statusByReason = new Map<ErrorReason, ContentfulStatusCode>([
   ['file_type_not_allowed', 415],
   ['internal_error', 500],
   ['pdf_render_failed', 502],
+  ['chart_png_failed', 502],
   ['access_not_configured', 503],
   ['database_not_configured', 503],
 ]);

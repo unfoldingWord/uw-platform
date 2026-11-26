@@ -831,6 +831,16 @@ Each id is stable and names its proof: scenarios in `sim/scenarios/` and tests a
 | SC-6 | Any two versions of a page can be compared word by word on screen. | Must |
 | SC-7 | PDF redline and revision-appendix modes, and DOCX tracked changes in and out. | Should |
 
+**Charts (CH)**
+
+| ID | Requirement | Priority |
+|---|---|---|
+| CH-1 | A chart spec (type, a whitelisted query, encodings and formatting) is drawn on the server to SVG with no style, script or colour literal, a title, axes from zero, and its own figures as text (ADR 0038). | Must |
+| CH-2 | Cumulative flow, cycle time and burndown are folds over item history from the event log, read only by a reader of the workflow; an item whose creation was not read is left out and counted. | Must |
+| CH-3 | Every chart states its lineage: source, query, as-of time, filters, rows left out by reason, and a staleness note drawn in place when its source is behind. | Must |
+| CH-4 | Every chart downloads as SVG, PNG, CSV and JSON, its CSV equal to the rows it drew, and its screen shows those rows as a table. | Must |
+| CH-5 | `render_chart` answers the SVG, the table and the lineage, and refuses a query off the whitelist with `chart_query_not_allowed`. | Must |
+
 #### Open questions
 
 A person still has to decide each of these.
@@ -1086,7 +1096,7 @@ An agent writes a measure with `save_measure`, which takes these as typed fields
 | List | A text or list value per resource, collapsed by resource |
 | Status | The last and next run, coverage, and each failure with its reason |
 
-Every panel is drawn on the server with the platform's chart part and its figure, table and badge parts, offers its data as a table and as CSV, and states its source time. A trend's table and CSV hold every point it plots, with its resource, time, value and tool version. In the first version panels do not wait for the full chart spec of section 4.4 (#199); a trend is drawn as one small line per resource rather than many lines on one chart. A dashboard is an Overview page. A value under its target or threshold is marked by a shape and words from the tokens, not by red, and a target line is never Kindle. In the first version every panel is native; a dashboard holds no custom HTML or script.
+Every panel is drawn on the server with the platform's chart part and its figure, table and badge parts, offers its data as a table and as CSV, and states its source time. A trend's table and CSV hold every point it plots, with its resource, time, value and tool version. Panels are not yet drawn from the chart spec of section 4.4, which is now built (#199); they move onto it when a chart query reads observations, and until then a trend is drawn as one small line per resource rather than many lines on one chart. A dashboard is an Overview page. A value under its target or threshold is marked by a shape and words from the tokens, not by red, and a target line is never Kindle. In the first version every panel is native; a dashboard holds no custom HTML or script.
 
 **Context.** A dashboard's context is saved configuration, one of four: the organization (every resource of a kind the reader may read), a page (the resources that serve it, optionally with its descendants, so a program shows its projects' sites), a named set of resources, or the page it is shown on, which a report card must have. A context holds at most 500 resources. A read never guesses context from a title, an address or where the dashboard is filed. A resource that serves two programs appears in each program's view and once in the organization's; program figures are never added to make an organization figure.
 
@@ -1309,7 +1319,9 @@ A chart is declared, not hand-built per screen, which is how a system ends up wi
 
 The organization's existing budget, revenue-projection and team-chart dashboards are re-hosted as platform views with their patterns kept: a print style for hand-offs, cached data shown at once and refreshed behind, confidence-tiered callouts, and a data-quality report beside every chart.
 
-Issue: #199, #200. Measures and dashboards: section 3, Charts. Rules: ADR 0012.
+**As built (#199).** A chart spec names a type (bar, line or stacked area), one query from a whitelist with its typed parameters, its encodings (x, the y columns, and an optional column that splits the series) and its formatting (`YYYY-MM-DD`, counts, days, or money in minor units through the shared helper). A spec naming a query off the whitelist, parameters that do not fit, or a column the query does not have is refused with a closed-set reason, never drawn. The whitelist reads a workflow's runs and gate waits by day and its item history, under the reader's access to that workflow; the standard set built on it is runs over time, gate waits over time, cumulative flow, cycle time and burndown, each defined once. Item history is folded from the item's events (created, advanced, looped back); an item whose creation was not in the history read is left out and counted, never guessed. The source counts as stale when a GitHub delivery has waited more than five minutes to be read, or when that cannot be checked; the chart is then drawn with a note saying since when, in the picture and on the screen. The series palette is Inspire, Ocean, Cultivate and Tech in an order that alternates light and dark, with each line also dashed and marked differently, so no series rests on hue alone; Kindle stays the human action's and is not a series colour. Each standard chart has a screen in the Overview shape, under Measures & Dashboards, with the picture, the table of exactly the rows drawn, its lineage and downloads as SVG, PNG, CSV and JSON. PNG is drawn by the browser binding that prints PDFs; without it, PNG answers not wired. Budget, revenue and the rest of the standard library arrive as chart queries on the same spec.
+
+Issue: #199, #200. Measures and dashboards: section 3, Charts. Rules: ADR 0012, ADR 0038.
 
 ### 4.5 Observability
 

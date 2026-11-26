@@ -198,10 +198,11 @@ export const modules = [
       'read_metric',
       'read_observations',
       'preview_dashboard',
+      'render_chart',
     ],
     name: 'Charts',
     summary:
-      'Resources and the pages they serve, measures run on a schedule in a sandbox, their observations and metrics, and dashboards of native panels.',
+      'Chart specs over whitelisted queries with their lineage and exports, the standard charts, resources and the pages they serve, measures run on a schedule in a sandbox, their observations and metrics, and dashboards of native panels.',
     depends_on: ['core', 'strategy'],
     data_classification: 'internal',
     offline_eligibility: 'never',

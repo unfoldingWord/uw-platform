@@ -189,6 +189,7 @@ function pathOf(entry: ScreenEntry, world: Seeded, email: string): string {
     .replace(':category', '81')
     .replace(':area', '80-89')
     .replace(':version', '1')
+    .replace(':chart', 'cumulative_flow')
     .replace(':key', 'program')
     .replace(':viewId', 'c0110000-0000-4000-8000-000000000401')
     .replace(':tier', 'program')
