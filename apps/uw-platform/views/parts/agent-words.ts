@@ -44,7 +44,7 @@ export const actionGroups: readonly ActionGroup[] = [
       action(
         'resolve_context',
         "Load an item's context",
-        "The stage's instructions, the item's pages and the learnings that apply.",
+        "The stage's instructions, the item's pages, and the learnings, policies and decisions that apply.",
       ),
     ],
   },

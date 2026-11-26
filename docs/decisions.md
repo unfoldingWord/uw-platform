@@ -37,7 +37,7 @@ Why the unfoldingWord Platform is shaped the way it is, and what was rejected on
 
 *2026-09-29.*
 
-**Decision.** A persona touches the platform through one remote MCP server that serves exactly the verb registry published by `packages/contracts`. There is no verb for approving, merging, deploying, publishing or advancing past a human gate, for any agent identity, on any host. The one effect an agent causes with no person deciding is an assistant's direct effect, inside the closed set of 0034, run at the end of a turn and never by a verb. A persona is configuration over the verb registry and the run-shape registry; it selects from both and adds to neither. A new verb, run shape or engine is reviewed code.
+**Decision.** A persona touches the platform through one remote MCP server that serves exactly the verb registry published by `packages/contracts`. There is no verb for approving, merging, deploying, publishing or advancing past a human gate, for any agent identity, on any host. The one effect an agent causes with no person deciding is an assistant's direct effect, inside the closed set of 0036, run at the end of a turn and never by a verb. A persona is configuration over the verb registry and the run-shape registry; it selects from both and adds to neither. A new verb, run shape or engine is reviewed code.
 
 **Why.** The gate is enforced by the absence of a route, not by a prompt or a permission check a prompt could talk around. A verb that does not exist cannot be granted.
 
@@ -45,7 +45,7 @@ Why the unfoldingWord Platform is shaped the way it is, and what was rejected on
 
 **Consequences.** The served tool list is tested equal to the registry and free of the forbidden names (`FORBIDDEN_VERBS` in `packages/contracts/verb-names.ts`). Activating a persona whose `requires_tools` names an absent verb fails visibly and opens a card on the software workflow. Both hosts see the same tools, asserted in CI.
 
-**Changes / changed by.** 0010 adds no verb but changes what the kernel does with `submit_to_gate` at a merge Ship stage when the claim carries a live merge delegation. 0020 and 0028 each confirm the rule for a new capability (no verb takes a credential reference; `render_pdf` makes a file and cannot send it). 0034 lets the registry hold assistant verbs that draft effects which take effect without a person, only within its closed low-risk set; no gate verb is added.
+**Changes / changed by.** 0010 adds no verb but changes what the kernel does with `submit_to_gate` at a merge Ship stage when the claim carries a live merge delegation. 0020 and 0028 each confirm the rule for a new capability (no verb takes a credential reference; `render_pdf` makes a file and cannot send it). 0036 lets the registry hold assistant verbs that draft effects which take effect without a person, only within its closed low-risk set; no gate verb is added.
 
 ## 0003 The Ship gate is a Postgres invariant, and the ship rule is a pure function over facts
 
@@ -62,7 +62,7 @@ Why the unfoldingWord Platform is shaped the way it is, and what was rejected on
 
 **Consequences.** Stage rows are edited only by an admin command, never through a page. A property test walks every template's paths, loop edges included, and fails if any reaches an external effect without a human gate. Two tests stay on real Postgres: the migration test that tries to insert an effect stage with a `checks` exit, and the race test in both orders.
 
-**Changes / changed by.** 0010 adds the delegated Ship exit: the "approver is a human" check is unchanged, new checks bind an agent actor to a merge delegation, and the rule's input gains the delegation's tier and the protected paths. 0034 leaves the Ship constraint untouched and adds a twin: a check constraint on `assistant_effects` holds an assistant's effects done with no person deciding to its closed low-risk set.
+**Changes / changed by.** 0010 adds the delegated Ship exit: the "approver is a human" check is unchanged, new checks bind an agent actor to a merge delegation, and the rule's input gains the delegation's tier and the protected paths. 0036 leaves the Ship constraint untouched and adds a twin: a check constraint on `assistant_effects` holds an assistant's effects done with no person deciding to its closed low-risk set.
 
 ## 0004 Events are the source of truth; item state is a fold, and replay equals record
 
@@ -82,7 +82,7 @@ Why the unfoldingWord Platform is shaped the way it is, and what was rejected on
 
 *2026-09-29.*
 
-**Decision.** An unattended beat (a scheduled Cloudflare Workflow, or a person's routine on their own machine) carries no one's authority. It carries a delegation: a row in which a person holding `admin` on the workflow's area grants a persona one capability word for a bounded time, revocable, with a required expiry that defaults to ninety days. The one other grantor is a personal harness's own person, who alone grants `assist` there (0034). Every unattended claim, on either host, presents a live delegation or is refused `delegation_required`. At every beat the kernel checks that the delegation is unexpired, unrevoked and that the grantor still holds `admin` (for `assist`, that the grantor is still the harness's person and still holds a live grant); any failing stops the loop and writes `delegation_lapsed`. The identity on every event names the host and the delegation. A routine is bound to one delegation: its machine login presents that delegation or is refused, a paused routine is refused, and revoking the routine deletes its Cloudflare service token.
+**Decision.** An unattended beat (a scheduled Cloudflare Workflow, or a person's routine on their own machine) carries no one's authority. It carries a delegation: a row in which a person holding `admin` on the workflow's area grants a persona one capability word for a bounded time, revocable, with a required expiry that defaults to ninety days. The one other grantor is a personal harness's own person, who alone grants `assist` there (0036). Every unattended claim, on either host, presents a live delegation or is refused `delegation_required`. At every beat the kernel checks that the delegation is unexpired, unrevoked and that the grantor still holds `admin` (for `assist`, that the grantor is still the harness's person and still holds a live grant); any failing stops the loop and writes `delegation_lapsed`. The identity on every event names the host and the delegation. A routine is bound to one delegation: its machine login presents that delegation or is refused, a paused routine is refused, and revoking the routine deletes its Cloudflare service token.
 
 **Why.** The platform requires a principal on every request, and an unattended beat has no live human session to mint one from. The authority must be the approver's, must end when the person leaves or loses their grant, and needs an explicit record.
 
@@ -92,7 +92,7 @@ Why the unfoldingWord Platform is shaped the way it is, and what was rejected on
 
 **Consequences.** A non-interactive principal cannot claim without a delegation id. Delegations appear on the person's page, the persona's dashboard and the access review, as time-boxed grants do.
 
-**Changes / changed by.** 0010 gives the capability word `merge` a maximum tier and makes it alone able to lend the Ship exit. 0034 adds the capability word `assist`, granted on a personal harness by that harness's person rather than an area admin, and live while that person still holds a live grant.
+**Changes / changed by.** 0010 gives the capability word `merge` a maximum tier and makes it alone able to lend the Ship exit. 0036 adds the capability word `assist`, granted on a personal harness by that harness's person rather than an area admin, and live while that person still holds a live grant.
 
 ## 0006 Two first-class hosts, one verb registry, an engine seam, and billing by host
 
@@ -249,7 +249,7 @@ Why the unfoldingWord Platform is shaped the way it is, and what was rejected on
 
 *2026-11-19.*
 
-**Decision.** A grant on a Johnny.Decimal area, of any role, reads that area and no other. Only an `org`-scope grant, of any role, reads every area. Write and admin are unchanged: they need a grant on the area itself or at `org` scope. Everything that filters by `can(read)` or `readableAreas` (`packages/core/acl.ts`) narrows with it: page search and reads, agent context, the untrusted-content clearance key and the notification holders of an area. An agent's MCP session runs with its bound person's grants, so an agent reads only the areas its person holds grants in. A person's assistant holds its person's grants clamped to `viewer` (0034). To keep the open culture for someone, an org admin grants them `viewer` at `org` scope.
+**Decision.** A grant on a Johnny.Decimal area, of any role, reads that area and no other. Only an `org`-scope grant, of any role, reads every area. Write and admin are unchanged: they need a grant on the area itself or at `org` scope. Everything that filters by `can(read)` or `readableAreas` (`packages/core/acl.ts`) narrows with it: page search and reads, agent context, the untrusted-content clearance key and the notification holders of an area. An agent's MCP session runs with its bound person's grants, so an agent reads only the areas its person holds grants in. A person's assistant holds its person's grants clamped to `viewer` (0036). To keep the open culture for someone, an org admin grants them `viewer` at `org` scope.
 
 **Why.** The first design let an `editor` or `admin` on one area read every other, to stay as open as the Notion workspace the platform replaces. That meant an editor on 80-89 could read Finance (20-29), and the credentials store, gifts and the ledger would have been readable the same way. Narrowing the default means a new table is closed until someone grants access, and openness becomes a visible, audited grant, not a side effect of being an editor somewhere.
 
@@ -260,7 +260,7 @@ Why the unfoldingWord Platform is shaped the way it is, and what was rejected on
 
 **Consequences.** Workflow lists, search and agent context are scoped to a person's grants. A hosted run reads its persona's instructions only if the run's principal may read the persona page's area, and is otherwise answered `page_not_found`, so a persona page in another area cannot run and its existence is not confirmed. Any runbook that lists who belongs in an area's private channel follows this rule: people with a grant on that area or at `org` scope.
 
-**Changes / changed by.** Overturns the first design's "an `editor` anywhere reads org-wide". 0017 closes the gap this left for `org` grants on restricted rows. 0031 gives every approved person `viewer` on 00-09. 0034 gives the principal under an `assist` delegation its person's grants clamped to `viewer`, in every area the person reads, not only the personal harness's area.
+**Changes / changed by.** Overturns the first design's "an `editor` anywhere reads org-wide". 0017 closes the gap this left for `org` grants on restricted rows. 0031 gives every approved person `viewer` on 00-09. 0036 gives the principal under an `assist` delegation its person's grants clamped to `viewer`, in every area the person reads, not only the personal harness's area.
 
 ## 0016 Withdrawn
 
@@ -340,7 +340,7 @@ This number was used and withdrawn. It is not reused.
 
 **Consequences.** Build rules hold the boundary: only the store imports the files that open a sealed value; only the store and `apps/uw-platform/ports/connectors.ts` import `use.ts` and `secret.ts`; nothing under `mcp/`, `engines/`, `runs/` or `agents/` imports the store. A JavaScript string cannot be zeroed, so the exposed text lives until garbage collection. The outcome search is a net, not a proof: the build rules are the proof. `manage` on the credential is enough to bind; a use still needs `editor` on the credential's own area. The binding, which names the workflow, is what keeps a delegated run to the credentials meant for it.
 
-**Changes / changed by.** Builds on 0002, 0017, 0018 and 0019. 0021 adds the one file that opens a value for a person. 0034 rules that an assistant's effect is not a connector: it runs at the end of an assistant turn through its own port, never from a stage exit.
+**Changes / changed by.** Builds on 0002, 0017, 0018 and 0019. 0021 adds the one file that opens a value for a person. 0036 rules that an assistant's effect is not a connector: it runs at the end of an assistant turn through its own port, never from a stage exit.
 
 ## 0021 A value is revealed in one uncached answer, and a break-glass reveal needs a second person
 
@@ -645,7 +645,69 @@ This number was used and withdrawn. It is not reused.
 
 **Consequences.** The per-file exceptions for Rule 2 and Postgres are removed from `docs/exceptions.md`. If the offline app is built on a store other than Postgres, the modules that work offline need a port then, and this decision is reopened for those modules.
 
-## 0034 A person's assistant is a persona on their own harness, lent authority by that person, acting directly only within a closed low-risk set
+---
+
+## 0034 Policies, charters and decision pages are gated page types; policies resolve by a pure function over a policy chain
+
+*2026-11-25. Builds on 0027. Changed by 0035.*
+
+**Decision.** A policy is a page of type `policy` (Core), a charter a page of type `charter` (Strategy) and a decision page a page of type `decision` (Agents). All three are gated: an agent's new page lands `suggested` and only a person confirms it; an agent's save to an active policy or charter is held as a suggestion set (0035). A policy's frontmatter holds its enforcement (`required`, `default` or `template`), `applies_to` (a cascade node or product page, or none for the whole organization), `supersedes` (policy ids), `effective_from`, `effective_until`, and `copied_from` (the template page and version a copy was made from). Its level is the type of the page it applies to, or `organization` when it applies to none; it is never stored on its own. A save is refused with `applies_to_not_found` when that page is not a live node or product the writer can read. Charters and decision pages name what they apply to the same way.
+
+The policies for an item are worked out by `resolvePolicies` in `packages/harness/policies/`, a pure function over a **policy chain**: the item's product (its page or the nearest product above it), the item's own placement or else the product's, that node's parents through the program and portfolio relations, then the organization. Most specific first; an uncopied `template` takes no part; a `default` drops when a policy further down supersedes it; a `required` one stays and the attempt is recorded as a conflict; a supersession from the same level or above has no effect and is recorded too. Resolution runs over every active policy on the chain, read in full, then the answer keeps only the policies the reader may read. A conflict shown to a person is judged on the chain that holds both policies. A decision page replaces only one decided before it. `resolve_context` returns them beside the learnings, with the decision pages on the same chain.
+
+A copy of a template policy keeps its own text. `templateDrift` (kernel) reports a copy whose template has a newer version, or is retired or gone; adopting the update is a person's save of the template's current text and version.
+
+A charter's NISO sections are level-two headings in its body, Need, Idea, Strategy, Outcomes, Risks and Roadmap, in that order; a decision page's are Context, Decision and Consequences. A save without them is refused with `sections_missing`, naming the missing ones.
+
+A policy's page and the Policies screen show its level, target, enforcement, dates, template and every conflict it is part of.
+
+**Why.**
+- **One fact, one place.** Storing a level beside `applies_to` would let the two disagree; reading it from the page's type cannot.
+- **Supersession is judged when it is read.** Whether one policy is below another, and whether the replaced one is `required`, can change after a save: a node is moved, a policy is confirmed or retired. Refusing on save would let a later change make a saved page wrong without anyone touching it. Showing the conflicts where people read policies makes that judgment visible instead of silent.
+- **The kernel can prove precedence and drift.** Pure functions run in the sim and in unit tests without a database, the way the ship rule does (0001, 0003).
+- **The organization needs no node.** 0027 keeps the tiers above a portfolio off the cascade; an empty `applies_to` says "everywhere" without reopening it.
+- **People edit bodies, not frontmatter.** The page editor shows the body; sections as headings keep a charter or decision page editable in place and still readable by a machine.
+- **Obligations never change silently.** A copy records the version it took; a newer template is a report and a deliberate save, not a live link.
+- **Agents suggest; people decide.** 0002 keeps agents short of decisions.
+
+**Rejected.**
+- A `level` field beside `applies_to`. Two facts that can disagree.
+- Refusing on save a policy that supersedes a `required` one. It can become true later without a save; recording the conflict at resolution is always current.
+- A `policies` table. A policy is a document with versions, links, search and suggestions, which pages already are.
+- NISO sections as frontmatter fields. The editor does not edit frontmatter, so charters would be writable only through the API.
+- A separate `resolve_policies` verb. `resolve_context` is what every agent session reads first, and the verb registry stays small (0002).
+- Leaving out policies the reader cannot read before resolving. A readable default would then look in force when an unreadable descendant has replaced it.
+- A copy that follows its template live. A template edit would change every obligation made from it without anyone deciding.
+
+**Consequences.** An agent reads policies and decision pages through `resolve_context`; a person reads them on their pages and on the Policies screen. A policy in an area the reader cannot read still takes part in resolution, so a readable default may be absent from the answer; its page names the conflict only when the reader can read both policies. Working out a policy's conflicts reads each policy that names it, so the Policies screen does work in proportion to the policies it lists. Not built here, each its own piece of work: attestation (#203) and the lean default policies (#255).
+
+**Changes / changed by.** 0035 replaces the refusal of an agent's save to an active policy or charter with a suggestion set.
+
+---
+
+## 0035 An agent's save to an active policy or charter is a whole-document suggestion set a person decides
+
+*2026-11-25. Builds on 0002 and 0034. Part of #197.*
+
+**Decision.** `page_suggestion_sets`, owned by the pages module, holds a proposed title, frontmatter and body for one page over a base version. An agent's `write_page` to an active page whose type declares `agentSuggests` (policy and charter) runs every check a save runs and is then held as a set instead of written; `write_page` answers the set's id. Each agent holds at most one pending set per page, and a later save replaces it. `accept_suggestion` saves the set through the ordinary save path as exactly one new version and records who accepted it and the version made; `reject_suggestion` records the decision and changes nothing. Both are person-only, only the page routes and the review screen import them (a dependency rule holds this), and a database trigger keeps a decided set as it was decided. A set whose base version is no longer the page's version is refused as stale and can only be rejected. A set carries a revision that each save by its agent bumps; a decision names the revision shown and is refused with `suggestion_changed` if it moved. A decision locks the page before the set, as a save does, and records its request id so the same request is answered once.
+
+**Why.**
+- **The PRD says the in-place write does not exist** for these types (PRD, Suggested changes); before this, the only alternative was to refuse the agent outright.
+- **A whole document is enough to decide on.** The review screen shows text and properties as a line diff against the base version, which is all a person needs to accept or reject the set as a whole.
+- **Accepting is a save.** Going through the save path keeps every check (frontmatter, sections, `applies_to`, links) and the one-version-per-save history, so a suggestion can never write something a person's save could not.
+- **One writer per table.** The pages module owns the set, as it owns versions.
+
+**Rejected.**
+- Anchored suggestions per passage now. They need anchors that survive edits and an export format; the PRD's whole-set accept does not need them. They stay in #197.
+- A pending row in `page_versions`. Versions are immutable history; a pending change is not part of it.
+- Rebasing a stale set automatically. A person would accept text written against a page that has since changed.
+- Holding agents' saves to every gated type. Learnings, skills and personas keep their own confirmation and activation rules; the PRD names policies, charters, contracts and work orders.
+
+**Consequences.** Contract and work order pages, when they exist, declare `agentSuggests` and get the same path. Anchored suggestions, named review sets and revision marks in markdown, PDF and DOCX remain #197's.
+
+---
+
+## 0036 A person's assistant is a persona on their own harness, lent authority by that person, acting directly only within a closed low-risk set
 
 *2026-11-26. Changes 0002, 0003, 0005, 0015 and 0020.*
 

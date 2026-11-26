@@ -22,6 +22,17 @@ function PageStatusBadge(props: { readonly status: PageStatus }) {
   );
 }
 
+const statusWords: Readonly<Record<PageStatus, string>> = {
+  draft: 'Draft',
+  suggested: 'Not live yet',
+  active: 'Live',
+  retired: 'Retired',
+};
+
+export function pageStatusWords(status: PageStatus): string {
+  return new Map(Object.entries(statusWords)).get(status) ?? status;
+}
+
 export function PageStatusLine(props: { readonly page: Page }) {
   const { page } = props;
   return (

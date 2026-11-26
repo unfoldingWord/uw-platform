@@ -177,6 +177,39 @@ describe('confirmation is reached only from the page routes', () => {
   });
 });
 
+describe('a decision on a suggested change is reached only from the page routes and its screen', () => {
+  const decisions = { 'apps/uw-platform/pages/suggestion-decisions.ts': leaf };
+
+  it.each([
+    [
+      'the MCP verbs',
+      'apps/uw-platform/mcp/verbs/write-page.ts',
+      "import '../../pages/suggestion-decisions.ts';",
+    ],
+    [
+      'the agent page writer',
+      'apps/uw-platform/pages/agent-write.ts',
+      "import './suggestion-decisions.ts';",
+    ],
+  ])('refuses %s importing it', async (_name, path, source) => {
+    const found = await violations({ ...decisions, [path]: source });
+    expect(found.map((violation) => violation.rule)).toContain(
+      'suggestion-decisions-only-from-page-routes',
+    );
+  });
+
+  it('allows the page routes, the review screen and a test', async () => {
+    const found = await violations({
+      ...decisions,
+      'apps/uw-platform/pages/routes.ts': "import './suggestion-decisions.ts';",
+      'apps/uw-platform/views/screens/page-suggestion.tsx':
+        "import '../../pages/suggestion-decisions.ts';",
+      'apps/uw-platform/pages/suggestions.pg.test.ts': "import './suggestion-decisions.ts';",
+    });
+    expect(found).toEqual([]);
+  });
+});
+
 const appActivation = 'apps/uw-platform/commands/person/persona-activation.ts';
 const activationFiles = {
   [appActivation]: leaf,

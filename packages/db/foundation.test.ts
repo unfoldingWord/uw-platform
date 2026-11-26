@@ -112,7 +112,7 @@ const auditActorIsIdentity: Check = async (sql) => {
 };
 
 const pageRefusals: Check = async (sql) => {
-  expect(await attempt(sql, page('20000000-0000-4000-8000-000000000001', { type: 'policy' }))).toBe(
+  expect(await attempt(sql, page('20000000-0000-4000-8000-000000000001', { type: 'memo' }))).toBe(
     '23514',
   );
   expect(
@@ -159,7 +159,7 @@ const snapshotsPerVersion: Check = async (sql) => {
 
 const snapshotRefusals: Check = async (sql) => {
   await sql.unsafe(page(pageA, { slug: 'shared' }));
-  expect(await attempt(sql, snapshot({ type: 'policy' }))).toBe('23514');
+  expect(await attempt(sql, snapshot({ type: 'memo' }))).toBe('23514');
   expect(await attempt(sql, snapshot({ status: 'published' }))).toBe('23514');
   expect(await attempt(sql, snapshot({ jd_area: '8-9' }))).toBe('23514');
   expect(await attempt(sql, snapshot({ jd_area: '80-19' }))).toBe('23514');

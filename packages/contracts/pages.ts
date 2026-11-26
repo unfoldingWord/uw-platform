@@ -11,13 +11,16 @@ export const pageTypes = [
   'data_sources',
   'issue',
   'platform',
+  'decision',
   'knowledge',
   'entry',
   'profile',
+  'policy',
   'portfolio',
   'program',
   'project',
   'okr',
+  'charter',
 ] as const;
 
 export const collectionPageTypes = ['entry', 'portfolio', 'program', 'project', 'okr'] as const;

@@ -1,5 +1,5 @@
 {
-  "id": "f3429ab4-a68e-4d63-a231-26710c5053b1",
+  "id": "d2054d66-c66b-4b8f-bb55-dbff2690c2ce",
   "prevId": "01a11ab1-1f49-41b7-912b-27102e8f5ff3",
   "version": "7",
   "dialect": "postgresql",
@@ -234,7 +234,7 @@
       "checkConstraints": {
         "delegations_capability_known": {
           "name": "delegations_capability_known",
-          "value": "\"delegations\".\"capability\" IN ('none', 'iterate', 'build', 'review', 'merge', 'fix', 'assist')"
+          "value": "\"delegations\".\"capability\" IN ('none', 'iterate', 'build', 'review', 'merge', 'fix')"
         },
         "delegations_persona_form": {
           "name": "delegations_persona_form",
@@ -651,7 +651,7 @@
       "checkConstraints": {
         "harness_events_name_known": {
           "name": "harness_events_name_known",
-          "value": "\"harness_events\".\"name\" IN ('item_created', 'item_claimed', 'item_released', 'item_reordered', 'lease_renewed', 'lease_expired', 'branch_abandoned', 'branch_adopted', 'stage_advanced', 'loop_edge_taken', 'premise_held', 'risk_derived', 'label_removed', 'run_started', 'run_step_recorded', 'run_failed', 'run_hibernated', 'run_resumed', 'run_stopped', 'run_completed', 'run_prompted', 'submitted_to_gate', 'checks_passed', 'checks_failed', 'gate_approved', 'gate_rejected', 'gate_taken_over', 'gate_overridden', 'gate_refused_to_agent', 'ship_refused', 'connector_succeeded', 'connector_refused', 'delegation_granted', 'delegation_revoked', 'delegation_lapsed', 'delegation_required', 'stage_edit_refused', 'stage_edited', 'stage_removed', 'workflow_draft_opened', 'workflow_draft_saved', 'workflow_draft_taken_over', 'workflow_draft_discarded', 'workflow_published', 'template_activated', 'harness_paused', 'harness_resumed', 'hosted_builder_set', 'learning_attached', 'nothing_learned', 'comment_recorded', 'zulip_topic_linked', 'breaker_holding', 'breaker_pausing', 'breaker_open', 'persona_activation_failed', 'persona_activated', 'measurement_recorded', 'handed_to_person', 'review_verdict_recorded', 'shadow_verdict', 'shadow_lifted', 'shadow_turned_on', 'freeze_changed', 'finding_refuted', 'delegated_merge', 'delegated_exit_claimed', 'fix_claimed', 'fix_claim_set', 'title_set', 'epic_enqueued', 'done_when_missing', 'silence_alarm', 'template_changed', 'assistant_customised', 'assistant_request_recorded', 'assistant_turn_started', 'assistant_turn_refused', 'assistant_turn_finished', 'assistant_effect_started', 'assistant_effect_done', 'assistant_effect_failed')"
+          "value": "\"harness_events\".\"name\" IN ('item_created', 'item_claimed', 'item_released', 'item_reordered', 'lease_renewed', 'lease_expired', 'branch_abandoned', 'branch_adopted', 'stage_advanced', 'loop_edge_taken', 'premise_held', 'risk_derived', 'label_removed', 'run_started', 'run_step_recorded', 'run_failed', 'run_hibernated', 'run_resumed', 'run_stopped', 'run_completed', 'run_prompted', 'submitted_to_gate', 'checks_passed', 'checks_failed', 'gate_approved', 'gate_rejected', 'gate_taken_over', 'gate_overridden', 'gate_refused_to_agent', 'ship_refused', 'connector_succeeded', 'connector_refused', 'delegation_granted', 'delegation_revoked', 'delegation_lapsed', 'delegation_required', 'stage_edit_refused', 'stage_edited', 'stage_removed', 'workflow_draft_opened', 'workflow_draft_saved', 'workflow_draft_taken_over', 'workflow_draft_discarded', 'workflow_published', 'template_activated', 'harness_paused', 'harness_resumed', 'hosted_builder_set', 'learning_attached', 'nothing_learned', 'comment_recorded', 'zulip_topic_linked', 'breaker_holding', 'breaker_pausing', 'breaker_open', 'persona_activation_failed', 'persona_activated', 'measurement_recorded', 'handed_to_person', 'review_verdict_recorded', 'shadow_verdict', 'shadow_lifted', 'shadow_turned_on', 'freeze_changed', 'finding_refuted', 'delegated_merge', 'delegated_exit_claimed', 'fix_claimed', 'fix_claim_set', 'title_set', 'epic_enqueued', 'done_when_missing', 'silence_alarm', 'template_changed')"
         },
         "harness_events_actor_is_identity": {
           "name": "harness_events_actor_is_identity",
@@ -1965,12 +1965,6 @@
           "primaryKey": false,
           "notNull": true,
           "default": "'{dependabot[bot]}'::text[]"
-        },
-        "person_id": {
-          "name": "person_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
         }
       },
       "indexes": {
@@ -1989,46 +1983,15 @@
           "concurrently": false,
           "method": "btree",
           "with": {}
-        },
-        "harnesses_one_assistant_per_person": {
-          "name": "harnesses_one_assistant_per_person",
-          "columns": [
-            {
-              "expression": "person_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "where": "\"harnesses\".\"person_id\" IS NOT NULL",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
         }
       },
-      "foreignKeys": {
-        "harnesses_person_id_people_id_fk": {
-          "name": "harnesses_person_id_people_id_fk",
-          "tableFrom": "harnesses",
-          "tableTo": "people",
-          "columnsFrom": ["person_id"],
-          "columnsTo": ["id"],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
+      "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
         "harnesses_key_unique": {
           "name": "harnesses_key_unique",
           "nullsNotDistinct": false,
           "columns": ["key"]
-        },
-        "harnesses_id_person": {
-          "name": "harnesses_id_person",
-          "nullsNotDistinct": false,
-          "columns": ["id", "person_id"]
         }
       },
       "policies": {},
@@ -2068,10 +2031,6 @@
         "harnesses_repository_form": {
           "name": "harnesses_repository_form",
           "value": "\"harnesses\".\"repository\" ~ '^(?!-)(?![A-Za-z0-9-]*-/)[A-Za-z0-9-]{1,39}/(?!\\.\\.?$)[A-Za-z0-9._-]{1,100}$'"
-        },
-        "harnesses_personal_template": {
-          "name": "harnesses_personal_template",
-          "value": "(\"harnesses\".\"template\" IN ('assistant')) = (\"harnesses\".\"person_id\" IS NOT NULL)"
         }
       },
       "isRLSEnabled": false
@@ -3131,7 +3090,7 @@
       "checkConstraints": {
         "page_versions_type_known": {
           "name": "page_versions_type_known",
-          "value": "\"page_versions\".\"type\" IN ('skill', 'learning', 'persona', 'product', 'system_goal', 'product_strategy', 'data_sources', 'issue', 'platform', 'knowledge', 'entry', 'profile', 'portfolio', 'program', 'project', 'okr')"
+          "value": "\"page_versions\".\"type\" IN ('skill', 'learning', 'persona', 'product', 'system_goal', 'product_strategy', 'data_sources', 'issue', 'platform', 'decision', 'knowledge', 'entry', 'profile', 'policy', 'portfolio', 'program', 'project', 'okr', 'charter')"
         },
         "page_versions_status_known": {
           "name": "page_versions_status_known",
@@ -3537,7 +3496,7 @@
       "checkConstraints": {
         "pages_type_known": {
           "name": "pages_type_known",
-          "value": "\"pages\".\"type\" IN ('skill', 'learning', 'persona', 'product', 'system_goal', 'product_strategy', 'data_sources', 'issue', 'platform', 'knowledge', 'entry', 'profile', 'portfolio', 'program', 'project', 'okr')"
+          "value": "\"pages\".\"type\" IN ('skill', 'learning', 'persona', 'product', 'system_goal', 'product_strategy', 'data_sources', 'issue', 'platform', 'decision', 'knowledge', 'entry', 'profile', 'policy', 'portfolio', 'program', 'project', 'okr', 'charter')"
         },
         "pages_status_known": {
           "name": "pages_status_known",
@@ -7666,8 +7625,8 @@
       },
       "isRLSEnabled": false
     },
-    "public.assistant_effects": {
-      "name": "assistant_effects",
+    "public.page_suggestion_sets": {
+      "name": "page_suggestion_sets",
       "schema": "",
       "columns": {
         "id": {
@@ -7676,365 +7635,131 @@
           "primaryKey": true,
           "notNull": true
         },
-        "harness_id": {
-          "name": "harness_id",
+        "page_id": {
+          "name": "page_id",
           "type": "uuid",
           "primaryKey": false,
           "notNull": true
         },
-        "request_id": {
-          "name": "request_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "kind": {
-          "name": "kind",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "idempotency_key": {
-          "name": "idempotency_key",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "payload": {
-          "name": "payload",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true
-        }
-      },
-      "indexes": {
-        "assistant_effects_key_once": {
-          "name": "assistant_effects_key_once",
-          "columns": [
-            {
-              "expression": "harness_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "idempotency_key",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "assistant_effects_request": {
-          "name": "assistant_effects_request",
-          "columns": [
-            {
-              "expression": "request_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "assistant_effects_harness_id_harnesses_id_fk": {
-          "name": "assistant_effects_harness_id_harnesses_id_fk",
-          "tableFrom": "assistant_effects",
-          "tableTo": "harnesses",
-          "columnsFrom": ["harness_id"],
-          "columnsTo": ["id"],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "assistant_effects_request_id_assistant_requests_id_fk": {
-          "name": "assistant_effects_request_id_assistant_requests_id_fk",
-          "tableFrom": "assistant_effects",
-          "tableTo": "assistant_requests",
-          "columnsFrom": ["request_id"],
-          "columnsTo": ["id"],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "assistant_effects_direct_only": {
-          "name": "assistant_effects_direct_only",
-          "value": "\"assistant_effects\".\"kind\" IN ('reply_to_requester', 'reminder_set', 'reminder_cancelled', 'calendar_hold_added', 'calendar_hold_changed', 'calendar_hold_removed')"
-        },
-        "assistant_effects_payload_object": {
-          "name": "assistant_effects_payload_object",
-          "value": "jsonb_typeof(\"assistant_effects\".\"payload\") = 'object'"
-        },
-        "assistant_effects_idempotency_key_length": {
-          "name": "assistant_effects_idempotency_key_length",
-          "value": "char_length(\"assistant_effects\".\"idempotency_key\") BETWEEN 1 AND 200"
-        }
-      },
-      "isRLSEnabled": false
-    },
-    "public.assistant_requests": {
-      "name": "assistant_requests",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "harness_id": {
-          "name": "harness_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "person_id": {
-          "name": "person_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "channel": {
-          "name": "channel",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "external_id": {
-          "name": "external_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "thread_key": {
-          "name": "thread_key",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "reply_address": {
-          "name": "reply_address",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "note": {
-          "name": "note",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "untrusted_parts": {
-          "name": "untrusted_parts",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "received_at": {
-          "name": "received_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "recorded_at": {
-          "name": "recorded_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true
-        }
-      },
-      "indexes": {
-        "assistant_requests_external_once": {
-          "name": "assistant_requests_external_once",
-          "columns": [
-            {
-              "expression": "channel",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "external_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "assistant_requests_thread": {
-          "name": "assistant_requests_thread",
-          "columns": [
-            {
-              "expression": "harness_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "thread_key",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "recorded_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "assistant_requests_harness_id_harnesses_id_fk": {
-          "name": "assistant_requests_harness_id_harnesses_id_fk",
-          "tableFrom": "assistant_requests",
-          "tableTo": "harnesses",
-          "columnsFrom": ["harness_id"],
-          "columnsTo": ["id"],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "assistant_requests_person_id_people_id_fk": {
-          "name": "assistant_requests_person_id_people_id_fk",
-          "tableFrom": "assistant_requests",
-          "tableTo": "people",
-          "columnsFrom": ["person_id"],
-          "columnsTo": ["id"],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "assistant_requests_personal_harness_fk": {
-          "name": "assistant_requests_personal_harness_fk",
-          "tableFrom": "assistant_requests",
-          "tableTo": "harnesses",
-          "columnsFrom": ["harness_id", "person_id"],
-          "columnsTo": ["id", "person_id"],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "assistant_requests_channel_known": {
-          "name": "assistant_requests_channel_known",
-          "value": "\"assistant_requests\".\"channel\" IN ('zulip_dm', 'email')"
-        },
-        "assistant_requests_untrusted_parts_bounded": {
-          "name": "assistant_requests_untrusted_parts_bounded",
-          "value": "jsonb_typeof(\"assistant_requests\".\"untrusted_parts\") = 'array' AND jsonb_array_length(\"assistant_requests\".\"untrusted_parts\") <= 20"
-        },
-        "assistant_requests_external_id_length": {
-          "name": "assistant_requests_external_id_length",
-          "value": "char_length(\"assistant_requests\".\"external_id\") BETWEEN 1 AND 200"
-        },
-        "assistant_requests_thread_key_length": {
-          "name": "assistant_requests_thread_key_length",
-          "value": "char_length(\"assistant_requests\".\"thread_key\") <= 200"
-        },
-        "assistant_requests_reply_address_length": {
-          "name": "assistant_requests_reply_address_length",
-          "value": "char_length(\"assistant_requests\".\"reply_address\") BETWEEN 1 AND 254"
-        },
-        "assistant_requests_note_length": {
-          "name": "assistant_requests_note_length",
-          "value": "char_length(\"assistant_requests\".\"note\") <= 20000"
-        }
-      },
-      "isRLSEnabled": false
-    },
-    "public.assistant_settings": {
-      "name": "assistant_settings",
-      "schema": "",
-      "columns": {
-        "harness_id": {
-          "name": "harness_id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "person_id": {
-          "name": "person_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "display_name": {
-          "name": "display_name",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "instructions_md": {
-          "name": "instructions_md",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "timezone": {
-          "name": "timezone",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "version": {
-          "name": "version",
+        "base_version": {
+          "name": "base_version",
           "type": "integer",
           "primaryKey": false,
           "notNull": true
         },
-        "updated_at": {
-          "name": "updated_at",
+        "title": {
+          "name": "title",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "frontmatter": {
+          "name": "frontmatter",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "body_md": {
+          "name": "body_md",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "proposed_by": {
+          "name": "proposed_by",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "proposed_at": {
+          "name": "proposed_at",
           "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "decided_by": {
+          "name": "decided_by",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "decided_at": {
+          "name": "decided_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "accepted_version": {
+          "name": "accepted_version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
         }
       },
-      "indexes": {},
-      "foreignKeys": {
-        "assistant_settings_person_id_people_id_fk": {
-          "name": "assistant_settings_person_id_people_id_fk",
-          "tableFrom": "assistant_settings",
-          "tableTo": "people",
-          "columnsFrom": ["person_id"],
-          "columnsTo": ["id"],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+      "indexes": {
+        "page_suggestion_sets_one_pending_per_proposer": {
+          "name": "page_suggestion_sets_one_pending_per_proposer",
+          "columns": [
+            {
+              "expression": "page_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "proposed_by",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"page_suggestion_sets\".\"status\" = 'pending'",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         },
-        "assistant_settings_personal_harness_fk": {
-          "name": "assistant_settings_personal_harness_fk",
-          "tableFrom": "assistant_settings",
-          "tableTo": "harnesses",
-          "columnsFrom": ["harness_id", "person_id"],
-          "columnsTo": ["id", "person_id"],
+        "page_suggestion_sets_page": {
+          "name": "page_suggestion_sets_page",
+          "columns": [
+            {
+              "expression": "page_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "status",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "proposed_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "page_suggestion_sets_page_id_pages_id_fk": {
+          "name": "page_suggestion_sets_page_id_pages_id_fk",
+          "tableFrom": "page_suggestion_sets",
+          "tableTo": "pages",
+          "columnsFrom": ["page_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -8043,21 +7768,29 @@
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {
-        "assistant_settings_version_positive": {
-          "name": "assistant_settings_version_positive",
-          "value": "\"assistant_settings\".\"version\" >= 1"
+        "page_suggestion_sets_status_known": {
+          "name": "page_suggestion_sets_status_known",
+          "value": "\"page_suggestion_sets\".\"status\" IN ('pending', 'accepted', 'rejected')"
         },
-        "assistant_settings_display_name_length": {
-          "name": "assistant_settings_display_name_length",
-          "value": "char_length(\"assistant_settings\".\"display_name\") BETWEEN 1 AND 60"
+        "page_suggestion_sets_base_positive": {
+          "name": "page_suggestion_sets_base_positive",
+          "value": "\"page_suggestion_sets\".\"base_version\" >= 1"
         },
-        "assistant_settings_instructions_length": {
-          "name": "assistant_settings_instructions_length",
-          "value": "char_length(\"assistant_settings\".\"instructions_md\") <= 8000"
+        "page_suggestion_sets_proposed_by_identity": {
+          "name": "page_suggestion_sets_proposed_by_identity",
+          "value": "\"page_suggestion_sets\".\"proposed_by\" ~ '^(?:human:[A-Za-z0-9][A-Za-z0-9_-]*|agent:[a-z0-9][a-z0-9_-]*|agent:[A-Za-z0-9][A-Za-z0-9_-]*/[a-z0-9][a-z0-9-]{0,31}|agent:[A-Za-z0-9][A-Za-z0-9_-]*/[a-z0-9][a-z0-9-]{0,31} as [a-z0-9][a-z0-9_-]* via delegation:[A-Za-z0-9][A-Za-z0-9_-]*)$'"
         },
-        "assistant_settings_timezone_length": {
-          "name": "assistant_settings_timezone_length",
-          "value": "char_length(\"assistant_settings\".\"timezone\") BETWEEN 1 AND 64"
+        "page_suggestion_sets_decided_by_human": {
+          "name": "page_suggestion_sets_decided_by_human",
+          "value": "\"page_suggestion_sets\".\"decided_by\" IS NULL OR \"page_suggestion_sets\".\"decided_by\" ~ '^human:[A-Za-z0-9][A-Za-z0-9_-]*$'"
+        },
+        "page_suggestion_sets_decided_together": {
+          "name": "page_suggestion_sets_decided_together",
+          "value": "(\"page_suggestion_sets\".\"status\" = 'pending') = (\"page_suggestion_sets\".\"decided_by\" IS NULL) AND (\"page_suggestion_sets\".\"decided_by\" IS NULL) = (\"page_suggestion_sets\".\"decided_at\" IS NULL)"
+        },
+        "page_suggestion_sets_accepted_has_version": {
+          "name": "page_suggestion_sets_accepted_has_version",
+          "value": "(\"page_suggestion_sets\".\"status\" = 'accepted') = (\"page_suggestion_sets\".\"accepted_version\" IS NOT NULL) AND (\"page_suggestion_sets\".\"accepted_version\" IS NULL OR \"page_suggestion_sets\".\"accepted_version\" > \"page_suggestion_sets\".\"base_version\")"
         }
       },
       "isRLSEnabled": false

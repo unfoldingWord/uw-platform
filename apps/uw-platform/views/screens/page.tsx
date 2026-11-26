@@ -17,7 +17,17 @@ import type { PageVersion } from '../../pages/history.ts';
 import { openComments } from '../../pages/comments.ts';
 import { isFavourite } from '../../pages/favourites.ts';
 import { recordView } from '../../pages/recent.ts';
+import {
+  policyReading,
+  policyTargets,
+  type PolicyReading,
+  type PolicyTarget,
+} from '../../pages/policy-reading.ts';
+import { ConfirmControl, confirmable } from '../parts/confirm-control.tsx';
+import { PolicyFormsSection } from '../parts/policy-forms.tsx';
+import { pendingSuggestions, type PendingSuggestion } from '../../pages/suggestions.ts';
 import { verificationOf } from '../../pages/verification.ts';
+import { PolicyConflicts, SuggestionsWaiting, policyFacts } from '../parts/policy-facts.tsx';
 import { personOfProfilePage } from '../../people/profile-body.ts';
 import { renderScreen, screenKernel, screenRefusal, type ScreenKernel } from '../parts/frame.tsx';
 import {
@@ -125,6 +135,10 @@ type Extras = {
   readonly favourite: boolean;
   readonly filed: readonly PageEntry[];
   readonly owner: PersonName | null;
+  readonly policy: PolicyReading | null;
+  readonly suggestions: readonly PendingSuggestion[];
+  readonly targets: readonly PolicyTarget[];
+  readonly refused: string | null;
 };
 
 function Notices(props: { readonly shown: ShownPage; readonly extras: Extras }) {
@@ -144,6 +158,8 @@ function Notices(props: { readonly shown: ShownPage; readonly extras: Extras }) 
         <Note>This page is retired. It is hidden from lists and search.</Note>
       ) : null}
       <Lapsed shown={shown} at={extras.at} />
+      <SuggestionsWaiting pageId={shown.page.id} suggestions={extras.suggestions} />
+      {extras.policy === null ? null : <PolicyConflicts conflicts={extras.policy.conflicts} />}
       {extras.drafted ? (
         <Note>There is an unsaved draft of this page. You are reading it as last saved.</Note>
       ) : null}
@@ -167,6 +183,7 @@ function facts(shown: ShownPage, extras: Extras): readonly Fact[] {
     shownFacts.push({ label: 'Verification', value: `Verified until ${verification.until}` });
   }
   shownFacts.push(...pageFacts(page));
+  if (extras.policy !== null) shownFacts.push(...policyFacts(extras.policy));
   shownFacts.push({
     label: 'Comments',
     value: (
@@ -234,6 +251,27 @@ function body(shown: ShownPage, extras: Extras) {
         <div data-page-body="">{raw(extras.rendered.html)}</div>
       </div>
       {category === null ? null : <Pager category={category} previous={previous} next={next} />}
+      <ConfirmControl
+        page={page}
+        shown={confirmable(page, shown.canEdit, extras.reader.kind === 'person')}
+        refused={extras.refused}
+      />
+      <PolicyFormsSection
+        forms={
+          extras.policy === null
+            ? null
+            : {
+                page,
+                reading: extras.policy,
+                canEdit: shown.canEdit,
+                targets: extras.targets,
+                at: extras.at,
+              }
+        }
+        refused={
+          confirmable(page, shown.canEdit, extras.reader.kind === 'person') ? null : extras.refused
+        }
+      />
       <History
         pageId={page.id}
         versions={shown.versions}
@@ -243,7 +281,17 @@ function body(shown: ShownPage, extras: Extras) {
   );
 }
 
-type Stored = Pick<Extras, 'rendered' | 'openComments' | 'favourite' | 'filed' | 'owner'>;
+type Stored = Pick<
+  Extras,
+  | 'rendered'
+  | 'openComments'
+  | 'favourite'
+  | 'filed'
+  | 'owner'
+  | 'policy'
+  | 'suggestions'
+  | 'targets'
+>;
 
 const nothingStored: Stored = {
   rendered: { html: '', headings: [] },
@@ -251,6 +299,9 @@ const nothingStored: Stored = {
   favourite: false,
   filed: [],
   owner: null,
+  policy: null,
+  suggestions: [],
+  targets: [],
 };
 
 async function ownerOf(db: Executor, page: ShownPage['page']): Promise<PersonName | null> {
@@ -259,6 +310,16 @@ async function ownerOf(db: Executor, page: ShownPage['page']): Promise<PersonNam
   const names = await namesOf(db, [filed.data.owner]);
   const shown = shownIdentity(filed.data.owner, names, () => '');
   return shown.kind === 'person' ? shown.person : null;
+}
+
+async function policyExtras(
+  db: Executor,
+  reader: { readonly actor: Principal; readonly at: Date },
+  shown: ShownPage,
+): Promise<Pick<Stored, 'policy' | 'targets'>> {
+  const policy = await policyReading(db, reader, shown.page);
+  const copies = policy?.enforcement === 'template' && shown.canEdit;
+  return { policy, targets: copies ? await policyTargets(db, reader) : [] };
 }
 
 async function storedExtras(
@@ -285,6 +346,8 @@ async function storedExtras(
         ? []
         : ((await pagesInCategory(database.db, actor, category, screen.at)) ?? []),
     owner: await ownerOf(database.db, page),
+    ...(await policyExtras(database.db, { actor, at: screen.at }, shown)),
+    suggestions: await pendingSuggestions(database.db, actor, page, screen.at),
   };
 }
 
@@ -293,6 +356,10 @@ async function profileOf(c: Context<AppEnv>, page: ShownPage['page']): Promise<s
   if (page.type !== 'profile' || database === null) return null;
   const personId = await personOfProfilePage(database.db, page.id);
   return personId === null ? null : personPath(personId);
+}
+
+function reasonParam(raw: string | undefined): string | null {
+  return raw !== undefined && /^[a-z_]{1,60}$/.test(raw) ? raw : null;
 }
 
 export async function pageScreen(c: Context<AppEnv>): Promise<Response> {
@@ -315,6 +382,7 @@ export async function pageScreen(c: Context<AppEnv>): Promise<Response> {
     reader: screen.caller.actor,
     back: backOf(c.req.query('back')),
     saved: savedVersion(c.req.query('saved')),
+    refused: reasonParam(c.req.query('refused')),
   };
   const spec = await pageScreenSpec(c, screen, shown, null, extras.filed);
   const printed = await printedPage(c, shown.page);

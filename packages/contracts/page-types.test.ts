@@ -44,7 +44,7 @@ describe('FD-9 the page-type registry', () => {
   );
 
   it('knows no type outside the registry', () => {
-    expect(pageTypeDefinition('policy')).toBeUndefined();
+    expect(pageTypeDefinition('memo')).toBeUndefined();
     expect(pageTypeDefinition('constructor')).toBeUndefined();
   });
 });

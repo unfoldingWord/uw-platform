@@ -63,7 +63,7 @@ export const verbRegistry: readonly VerbDefinition[] = [
     'write_page',
     'pages_and_context',
     onResource('editor'),
-    'Create a page or save a new version of one; learning, skill and persona pages land as suggested for a person to confirm.',
+    'Create or save a page; gated pages land as suggested, and a save to an active policy or charter is held as a suggested change for a person.',
   ),
   verb(
     'attach_file',
@@ -81,7 +81,7 @@ export const verbRegistry: readonly VerbDefinition[] = [
     'resolve_context',
     'pages_and_context',
     onResource('viewer'),
-    "For an item, get its stage's instructions page, its package pages and the confirmed learnings that apply, most specific first.",
+    "For an item, get its stage's instructions page, its package pages, its learnings, and the policies and decisions that apply from its product up to the organization, most specific first.",
   ),
   verb(
     'query_entities',

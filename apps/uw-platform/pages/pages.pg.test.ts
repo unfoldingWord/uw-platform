@@ -10,6 +10,7 @@ import {
   pageFiles,
   pageLinks,
   pageRenders,
+  pageSuggestionSets,
   pageVersions,
   pageViews,
   pages,
@@ -182,7 +183,7 @@ const learningFrontmatter = {
 };
 
 describe('FD-9 the pages module is the only writer of pages and page versions', () => {
-  it('declares exactly the ten page tables as owned', () => {
+  it('declares exactly the eleven page tables as owned', () => {
     expect(owns).toEqual([
       getTableName(pages),
       getTableName(pageVersions),
@@ -194,6 +195,7 @@ describe('FD-9 the pages module is the only writer of pages and page versions', 
       getTableName(pageComments),
       getTableName(areaHomes),
       getTableName(pageRenders),
+      getTableName(pageSuggestionSets),
     ]);
   });
 });
@@ -235,7 +237,7 @@ describe.skipIf(!testServer)('FD-9 create_page refusals', () => {
   it('refuses an unknown type and an invalid frontmatter, writing nothing', () =>
     withAppDatabase(async (db) => {
       await seedPeople(db);
-      const unknown = await create(db, ED, { type: 'policy' });
+      const unknown = await create(db, ED, { type: 'memo' });
       const invalid = await create(db, ED, {
         type: 'persona',
         frontmatter: { ...personaFrontmatter, toolset: ['Approve'] },
