@@ -142,6 +142,22 @@ export const hostRules = [
     to: { path: '^apps/uw-platform/pages/confirm\\.ts$' },
   },
   {
+    name: 'measure-activation-only-from-measure-routes',
+    comment:
+      'Only a person runs the trial of a measure or makes a measure or a dashboard active, so only the measure command routes, the app test helpers and tests import the trial and the activation, and no agent host, cron or Workflow reaches them.',
+    severity: 'error',
+    from: { pathNot: ['^apps/uw-platform/measures/routes\\.ts$', appTesting, testFile] },
+    to: { path: '^apps/uw-platform/measures/(trial|activation)\\.ts$' },
+  },
+  {
+    name: 'gated-flip-only-from-measure-activation',
+    comment:
+      'The flip that turns a suggested measure or dashboard active is reached only from the measure activation and tests, so no verb or agent page writer makes a gated page active.',
+    severity: 'error',
+    from: { pathNot: ['^apps/uw-platform/measures/activation\\.ts$', testFile] },
+    to: { path: '^apps/uw-platform/pages/gated-flip\\.ts$' },
+  },
+  {
     name: 'suggestion-decisions-only-from-page-routes',
     comment:
       'Accepting or rejecting a suggested change is a person deciding, so only the page routes, the review screen and tests import it and no agent host reaches it.',

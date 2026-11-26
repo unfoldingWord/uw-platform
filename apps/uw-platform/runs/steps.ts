@@ -80,6 +80,7 @@ export async function openStep(
     files: deps.files,
     pdf: deps.pdf ?? null,
     pdfExport: deps.pdfExport ?? null,
+    measureRun: deps.measureRun ?? null,
     origin: deps.origin ?? '',
     within,
   });

@@ -53,6 +53,20 @@ const frontmatterByType = new Map<PageType, Page['frontmatter']>([
     },
   ],
   ['product', { owner: `human:${EDITOR.id}`, summary: 'A product page.' }],
+  [
+    'measure',
+    {
+      runtime: 'uvx',
+      package: 'geo-optimizer-skill==4.19.10',
+      command: ['geo', 'audit', '--url', '{address}'],
+      resources: { view: 'c0110000-0000-4000-8000-000000000701' },
+      schedule: { every: 'day' },
+      values: [],
+      metrics: [],
+      report_card: null,
+    },
+  ],
+  ['dashboard', { context: { kind: 'host', descendants: false } }],
 ]);
 
 async function editor(db: Database): Promise<Principal> {
@@ -236,6 +250,19 @@ async function personaIsActivatedNotConfirmed(db: Database): Promise<void> {
   expect(await stored(db, persona)).toMatchObject({ status: 'suggested', version: 1 });
 }
 
+async function measuresAreActivatedNotConfirmed(db: Database): Promise<void> {
+  const person = await editor(db);
+  for (const type of ['measure', 'dashboard'] as const) {
+    const pageId = await seeded(db, type);
+    expect(await confirm(db, person, pageId)).toEqual({
+      ok: false,
+      reason: 'not_permitted',
+      detail: { why: `${type}_needs_activation` },
+    });
+    expect(await stored(db, pageId)).toMatchObject({ status: 'suggested', version: 1 });
+  }
+}
+
 describe.skipIf(!testServer)('a person confirms a learning or a skill', () => {
   it('PE-8 a person confirms a suggested learning at the version they read', () =>
     withAppDatabase(personConfirms));
@@ -251,4 +278,7 @@ describe.skipIf(!testServer)('a person confirms a learning or a skill', () => {
 
   it('PE-8 a persona is not confirmed but activated', () =>
     withAppDatabase(personaIsActivatedNotConfirmed));
+
+  it('ADR 0036 a measure or a dashboard is not confirmed but activated by its own command', () =>
+    withAppDatabase(measuresAreActivatedNotConfirmed));
 });

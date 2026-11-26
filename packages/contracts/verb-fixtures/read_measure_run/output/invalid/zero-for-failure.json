@@ -1,0 +1,34 @@
+{
+  "runId": "00000000-0000-4000-8000-0000000034e1",
+  "measureId": "00000000-0000-4000-8000-0000000034a1",
+  "measureVersion": 2,
+  "kind": "trial",
+  "state": "partial",
+  "toolHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "lockSha256": null,
+  "requestedBy": "human:x",
+  "createdAt": "2026-11-25T09:00:00.000Z",
+  "startedAt": null,
+  "finishedAt": null,
+  "refusedHosts": [],
+  "refusedHostsMore": false,
+  "detailLimited": false,
+  "observations": [
+    {
+      "resourceId": "00000000-0000-4000-8000-0000000034f1",
+      "title": "door43.org",
+      "outcome": "failed",
+      "reason": "no_reason",
+      "toolVersion": null,
+      "values": {
+        "score": 0
+      },
+      "raw": null,
+      "rawTruncated": false,
+      "rawLength": 0,
+      "outline": null,
+      "outlineMore": false,
+      "problems": []
+    }
+  ]
+}

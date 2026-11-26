@@ -1,4 +1,5 @@
 import type { Context } from 'hono';
+import type { Child } from 'hono/jsx';
 import { raw } from 'hono/html';
 import { formatInstant } from '@uw/core/dates';
 import { knowledgeFrontmatterSchema, type PageEntry } from '@uw/contracts';
@@ -7,6 +8,7 @@ import type { PersonName } from '../../people/directory.ts';
 import { FavouriteToggle } from '@uw/ui/components/chip.tsx';
 import { ButtonLink } from '@uw/ui/components/button.tsx';
 import { DocumentShape } from '@uw/ui/shapes/document.tsx';
+import { OverviewShape } from '@uw/ui/shapes/overview.tsx';
 import { Note } from '@uw/ui/components/note.tsx';
 import { Table } from '@uw/ui/components/table.tsx';
 import type { AppEnv } from '../../deps.ts';
@@ -57,6 +59,7 @@ import { pagesInCategory } from '../../pages/categories.ts';
 import { namesOf, shownIdentity } from '../parts/person-names.ts';
 import { idParam } from '../parts/params.ts';
 import {
+  dashboardJsonPath,
   pageCommentsPath,
   pageEditPath,
   pageVersionPath,
@@ -65,6 +68,8 @@ import {
 } from '../parts/paths.ts';
 import { notFound } from './not-found.tsx';
 import { withViews } from '../parts/view-embed.tsx';
+import { withPanels } from '../parts/dashboard-panels.tsx';
+import { measureParts } from '../parts/measure-section.tsx';
 import type { Principal } from '@uw/core/principal';
 import { shownPerson, shownText, Who, type Reading } from '../parts/person.tsx';
 import { commitOf } from '../../env.ts';
@@ -135,6 +140,7 @@ type Extras = {
   readonly favourite: boolean;
   readonly filed: readonly PageEntry[];
   readonly owner: PersonName | null;
+  readonly measures: Child;
   readonly policy: PolicyReading | null;
   readonly suggestions: readonly PendingSuggestion[];
   readonly targets: readonly PolicyTarget[];
@@ -231,6 +237,40 @@ function Rail(props: { readonly shown: ShownPage; readonly extras: Extras }) {
   );
 }
 
+function dashboardBody(shown: ShownPage, extras: Extras) {
+  const { page } = shown;
+  return (
+    <OverviewShape
+      head={{
+        eyebrow: markOf(page),
+        title: page.title,
+        actions: <Actions shown={shown} extras={extras} />,
+      }}
+    >
+      <PageStatusLine page={page} />
+      <Notices shown={shown} extras={extras} />
+      {extras.measures}
+      <div data-page-sheet="">
+        <div data-page-body="">{raw(extras.rendered.html)}</div>
+      </div>
+      <p data-pdf-hidden="" class="m-0 text-sm">
+        <a href={dashboardJsonPath(page.id)} class={pageLink}>
+          The figures of this dashboard as JSON
+        </a>
+      </p>
+      <History
+        pageId={page.id}
+        versions={shown.versions}
+        reading={{ reader: extras.reader, at: extras.at }}
+      />
+    </OverviewShape>
+  );
+}
+
+const bodies: ReadonlyMap<string, (shown: ShownPage, extras: Extras) => Child> = new Map([
+  ['dashboard', dashboardBody],
+]);
+
 function body(shown: ShownPage, extras: Extras) {
   const { page } = shown;
   const category = categoryOf(page);
@@ -250,6 +290,7 @@ function body(shown: ShownPage, extras: Extras) {
       <div data-page-sheet="">
         <div data-page-body="">{raw(extras.rendered.html)}</div>
       </div>
+      {extras.measures}
       {category === null ? null : <Pager category={category} previous={previous} next={next} />}
       <ConfirmControl
         page={page}
@@ -288,6 +329,7 @@ type Stored = Pick<
   | 'favourite'
   | 'filed'
   | 'owner'
+  | 'measures'
   | 'policy'
   | 'suggestions'
   | 'targets'
@@ -299,6 +341,7 @@ const nothingStored: Stored = {
   favourite: false,
   filed: [],
   owner: null,
+  measures: null,
   policy: null,
   suggestions: [],
   targets: [],
@@ -333,12 +376,14 @@ async function storedExtras(
   const { page } = shown;
   const category = categoryOf(page);
   await recordView(database.db, actor, page.id, screen.at);
+  const rendered = await withViews(
+    database.db,
+    screen,
+    await renderPage(database.db, actor, page, screen.at, commitOf(c.env)),
+  );
   return {
-    rendered: await withViews(
-      database.db,
-      screen,
-      await renderPage(database.db, actor, page, screen.at, commitOf(c.env)),
-    ),
+    rendered: await withPanels(database.db, screen, page, rendered),
+    measures: await measureParts(database.db, screen, page),
     openComments: await openComments(database.db, page.id),
     favourite: await isFavourite(database.db, actor, page.id),
     filed:
@@ -386,5 +431,6 @@ export async function pageScreen(c: Context<AppEnv>): Promise<Response> {
   };
   const spec = await pageScreenSpec(c, screen, shown, null, extras.filed);
   const printed = await printedPage(c, shown.page);
-  return renderScreen(c, { ...spec, ...printed }, body(shown, extras));
+  const draw = bodies.get(shown.page.type) ?? body;
+  return renderScreen(c, { ...spec, ...printed }, draw(shown, extras));
 }

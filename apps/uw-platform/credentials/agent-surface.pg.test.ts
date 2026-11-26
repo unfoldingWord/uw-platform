@@ -146,6 +146,13 @@ function argumentsOf(): Readonly<Record<VerbName, readonly unknown[]>> {
     ],
     record_run_step: [ids],
     get_health: [{ harnessId }],
+    save_measure: [{ measureId: credentialId }],
+    save_dashboard: [{ dashboardId: credentialId }],
+    run_measure: [{ measureId: credentialId }],
+    read_measure_run: [{ measureId: credentialId, runId: null }],
+    read_metric: [{ measureId: credentialId, metric: 'score' }],
+    read_observations: [{ measureId: credentialId }],
+    preview_dashboard: [{ dashboardId: credentialId, hostPageId: null }],
   };
 }
 

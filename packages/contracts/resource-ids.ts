@@ -1,0 +1,2 @@
+export const RESOURCES_COLLECTION_KEY = 'resource';
+export const WEBSITES_VIEW_ID = 'c0110000-0000-4000-8000-000000000701';

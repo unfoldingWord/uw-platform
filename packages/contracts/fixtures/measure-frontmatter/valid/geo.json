@@ -1,0 +1,47 @@
+{
+  "runtime": "uvx",
+  "package": "geo-optimizer-skill==4.19.10",
+  "command": ["geo", "audit", "--url", "{address}", "--format", "json"],
+  "resources": {
+    "view": "c0110000-0000-4000-8000-000000000701"
+  },
+  "schedule": {
+    "every": "month",
+    "day": 1
+  },
+  "values": [
+    {
+      "key": "score",
+      "name": "GEO score",
+      "type": "number",
+      "unit": "points",
+      "path": "/score"
+    },
+    {
+      "key": "fixes",
+      "name": "Suggested fixes",
+      "type": "text_list",
+      "path": "/recommendations"
+    }
+  ],
+  "metrics": [
+    {
+      "key": "latest_score",
+      "name": "GEO score",
+      "value": "score",
+      "rule": "latest",
+      "target": 90
+    },
+    {
+      "key": "meeting_target",
+      "name": "Sites meeting the target",
+      "value": "score",
+      "rule": "count_meeting",
+      "condition": {
+        "op": "at_least",
+        "threshold": 90
+      }
+    }
+  ],
+  "report_card": "00000000-0000-4000-8000-0000000034b1"
+}

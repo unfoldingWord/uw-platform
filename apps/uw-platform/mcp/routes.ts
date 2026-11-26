@@ -41,6 +41,7 @@ async function serve(c: Context<AppEnv>, deps: McpDeps): Promise<Response> {
     files: c.env.FILES === undefined ? null : bucketFiles(c.env.FILES),
     pdf: pdfRendererOf(c.env, logger),
     pdfExport: c.env.PDF_EXPORT ?? null,
+    measureRun: c.env.MEASURE_RUN ?? null,
     origin: c.env.APP_ORIGIN ?? new URL(c.req.url).origin,
   });
   const transport = new WebStandardStreamableHTTPServerTransport({

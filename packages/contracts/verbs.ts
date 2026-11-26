@@ -51,6 +51,51 @@ function verb(
   return { name, group, grant, servedInV1, summary, input: io.input, output: io.output };
 }
 
+const measureVerbs: readonly VerbDefinition[] = [
+  verb(
+    'save_measure',
+    'pages_and_context',
+    onResource('editor'),
+    'Save a measure from typed fields: a pinned tool and its command, a saved view of resources, a schedule, values and metrics. It lands suggested; a person runs its trial and activates it.',
+  ),
+  verb(
+    'save_dashboard',
+    'pages_and_context',
+    onResource('editor'),
+    "Save a dashboard from typed fields: its context and its panels over a measure's metrics and values. It lands suggested for a person to make active.",
+  ),
+  verb(
+    'run_measure',
+    'records',
+    onResource('editor'),
+    "Ask for a run of an active measure now, at most once an hour, shared with a person's Run now. It cannot start a trial or activate a measure.",
+  ),
+  verb(
+    'read_measure_run',
+    'records',
+    onResource('viewer'),
+    "Read one run of a measure, or its latest, trial included: its state, the hosts it refused and each resource's outcome, values and raw output.",
+  ),
+  verb(
+    'read_metric',
+    'records',
+    onResource('viewer'),
+    "Read one metric of a measure for a context: the figure, each resource's value and the coverage, over the resources you may read.",
+  ),
+  verb(
+    'read_observations',
+    'records',
+    onResource('viewer'),
+    'Read the observations of a measure, newest first, for the resources you may read; a failed observation carries its reason and no value.',
+  ),
+  verb(
+    'preview_dashboard',
+    'records',
+    onResource('viewer'),
+    "Check a dashboard's panels against their measures, drawn from the trial's output where no run has landed, and return every problem.",
+  ),
+];
+
 export const verbRegistry: readonly VerbDefinition[] = [
   verb(
     'search_pages',
@@ -163,6 +208,7 @@ export const verbRegistry: readonly VerbDefinition[] = [
     onResource('viewer'),
     'Get the agent-plane health of one harness you may see.',
   ),
+  ...measureVerbs,
 ];
 
 const byName = new Map<string, VerbDefinition>(verbRegistry.map((entry) => [entry.name, entry]));

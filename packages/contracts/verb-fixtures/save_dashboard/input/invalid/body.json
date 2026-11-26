@@ -1,0 +1,19 @@
+{
+  "dashboardId": "00000000-0000-4000-8000-0000000034d1",
+  "expectedVersion": null,
+  "jdArea": "30-39",
+  "title": "Raw",
+  "slug": "raw",
+  "intro": "",
+  "bodyMd": "```panel\nkind: status\n```",
+  "context": {
+    "kind": "host",
+    "descendants": true
+  },
+  "panels": [
+    {
+      "kind": "status",
+      "measure": "00000000-0000-4000-8000-0000000034a1"
+    }
+  ]
+}

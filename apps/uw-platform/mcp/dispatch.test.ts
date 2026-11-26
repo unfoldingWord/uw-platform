@@ -129,12 +129,12 @@ describe('every verb call is recorded in the request log', () => {
 });
 
 describe('malformed arguments name their fields', () => {
-  it('names a root-level failure (root)', async () => {
+  it('names a root-level failure (root), with the message the schema gives', async () => {
     const result = await callVerb(testContext(editor()), 'claim_item', [], claimGated(true));
     expect(result.content).toEqual([
       {
         type: 'text',
-        text: '{"status":"error","reason":"malformed_command","detail":{"fields":["(root)"]}}',
+        text: '{"status":"error","reason":"malformed_command","detail":{"fields":["(root)"],"issues":["(root): Invalid input: expected object, received array"]}}',
       },
     ]);
   });

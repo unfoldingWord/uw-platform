@@ -34,7 +34,7 @@ describe('#98 the hosted agents read their settings from config, their keys from
   it.each(files)('%s runs each sandbox on the basic instance its rate is priced for', (file) => {
     for (const env of deployed) {
       const containers = load(file).env[env]?.containers ?? [];
-      expect(containers.map((entry) => entry.instance_type)).toEqual(['basic', 'basic']);
+      expect(containers.map((entry) => entry.instance_type)).toEqual(['basic', 'basic', 'basic']);
     }
   });
 

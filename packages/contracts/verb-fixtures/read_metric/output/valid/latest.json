@@ -1,0 +1,47 @@
+{
+  "measureId": "00000000-0000-4000-8000-0000000034a1",
+  "metric": "latest_score",
+  "name": "GEO score",
+  "rule": "latest",
+  "unit": "points",
+  "figureUnit": "points",
+  "target": 90,
+  "asOf": "2026-11-25T09:00:00.000Z",
+  "figure": null,
+  "resources": [
+    {
+      "resourceId": "00000000-0000-4000-8000-0000000034f1",
+      "title": "unfoldingword.org",
+      "value": 84,
+      "observedAt": "2026-11-25T09:00:00.000Z",
+      "reason": null,
+      "meetsTarget": false,
+      "points": [
+        {
+          "at": "2026-11-25T09:00:00.000Z",
+          "value": 84,
+          "toolVersion": "4.19.10"
+        }
+      ]
+    },
+    {
+      "resourceId": "00000000-0000-4000-8000-0000000034d1",
+      "title": "door43.org",
+      "value": null,
+      "observedAt": "2026-11-25T09:00:00.000Z",
+      "reason": "timed_out",
+      "meetsTarget": null,
+      "points": []
+    }
+  ],
+  "coverage": {
+    "scored": 8,
+    "total": 9,
+    "failed": [
+      {
+        "reason": "timed_out",
+        "count": 1
+      }
+    ]
+  }
+}

@@ -12,6 +12,7 @@ import { spendOnlyEngine } from '../ports/model-engine.ts';
 import { runsOf } from '../ports/runs.ts';
 import { unitHub } from '../unit-hub.ts';
 import { runDelegatedExits } from './delegated-exits.ts';
+import { startDueMeasures } from './measures.ts';
 import { cronLogger, type CronDeps, type CronJob } from './job.ts';
 
 const SWEEP_LIMIT = 200;
@@ -145,6 +146,9 @@ async function minuteWith(
     await guarded(minute, 'breaker', checkBreaker);
     await guarded(minute, 'beat', beat);
     await guarded(minute, 'silence', silence);
+    await guarded(minute, 'measures', (each) =>
+      startDueMeasures(database, env, each.deps, each.logger),
+    );
     await runDelegatedExits({
       database,
       env,

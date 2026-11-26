@@ -4,6 +4,7 @@ import { toString } from 'hast-util-to-string';
 import { SKIP, visit } from 'unist-util-visit';
 import { pageAddress, wikiParts, type Resolved } from './wiki-syntax.ts';
 import type { FileKind } from './file-video.ts';
+import { claimPanels } from './panel-embeds.ts';
 
 export type EmbedSource =
   | { readonly kind: 'page'; readonly title: string; readonly bodyMd: string }
@@ -120,7 +121,9 @@ function embedded(image: Element, embedding: Embedding): Element | null {
   if (source.kind === 'missing') return notice('This section no longer exists.');
   const origin = element('p', { dataEmbedSource: '' }, [pageLink(address.id, source.title)]);
   if (embedding.depth >= DEEPEST_EMBED) return origin;
-  const section = sectionOf(embedding.nested(source.bodyMd, embedding.depth + 1), address.fragment);
+  const tree = embedding.nested(source.bodyMd, embedding.depth + 1);
+  claimPanels(tree, address.id);
+  const section = sectionOf(tree, address.fragment);
   if (section === null) return notice('This section no longer exists.');
   const body = section.filter((node): node is ElementContent => node.type !== 'doctype');
   return element('section', { dataEmbed: address.id }, [origin, ...body]);

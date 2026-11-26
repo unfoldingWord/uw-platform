@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { jdAreaSchema } from './areas.ts';
 import { costBasisSchema, evidenceLabelSchema } from './closed-sets.ts';
 import { healthReportSchema } from './health.ts';
+import { entityMeasureSchema, measureVerbIo } from './measure-verb-io.ts';
 import { fileContentTypes, fileSchema, MAX_AGENT_FILE_BASE64_LENGTH } from './page-reads.ts';
 import { pdfExportReplySchema, pdfTargetSchema } from './pdf-exports.ts';
 import { pullRequestRefSchema, stageKeySchema } from './harness.ts';
@@ -107,6 +108,7 @@ export const verbIo = {
       decisions: z.array(
         z.object({ page: pageSummary, level: policyLevelSchema, decidedOn: z.iso.date() }),
       ),
+      measures: z.array(entityMeasureSchema).max(20),
     }),
   },
   query_entities: {
@@ -249,4 +251,5 @@ export const verbIo = {
     input: z.object({ harnessId: z.uuid() }),
     output: healthReportSchema,
   },
+  ...measureVerbIo,
 } as const satisfies Record<VerbName, { input: z.ZodType; output: z.ZodType }>;

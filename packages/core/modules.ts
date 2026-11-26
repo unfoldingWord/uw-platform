@@ -179,6 +179,28 @@ export const modules = [
     offline_eligibility: 'cache_readonly',
     status: 'standard',
   },
+  {
+    ...unclaimed,
+    key: 'charts',
+    tables: ['measure_activations', 'measure_runs', 'observations'],
+    page_types: ['resource', 'measure', 'dashboard'],
+    mcp_tools: [
+      'save_measure',
+      'save_dashboard',
+      'run_measure',
+      'read_measure_run',
+      'read_metric',
+      'read_observations',
+      'preview_dashboard',
+    ],
+    name: 'Charts',
+    summary:
+      'Resources and the pages they serve, measures run on a schedule in a sandbox, their observations and metrics, and dashboards of native panels.',
+    depends_on: ['core', 'strategy'],
+    data_classification: 'internal',
+    offline_eligibility: 'never',
+    status: 'standard',
+  },
 ] as const satisfies readonly Module[];
 
 export type ModuleKey = (typeof modules)[number]['key'];

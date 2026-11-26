@@ -1,0 +1,6 @@
+{
+  "key": "score",
+  "name": "GEO score",
+  "type": "number",
+  "path": "score.total"
+}

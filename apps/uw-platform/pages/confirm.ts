@@ -23,6 +23,12 @@ const CONFIRMABLE: ReadonlySet<string> = new Set([
   'decision',
 ]);
 
+const ACTIVATED_BY_COMMAND: ReadonlyMap<string, string> = new Map([
+  ['persona', 'persona_needs_activation'],
+  ['measure', 'measure_needs_activation'],
+  ['dashboard', 'dashboard_needs_activation'],
+]);
+
 function refused(reason: ErrorReason, detail: PageRefusal['detail'] = {}): PageRefusal {
   return { ok: false, reason, detail };
 }
@@ -34,8 +40,8 @@ async function confirmIn(
   const { actor, command, traceId, at } = confirmation;
   const stored = await lockedPage(tx, actor, command.pageId, at);
   if (stored === null) return refused('page_not_found', { pageId: command.pageId });
-  if (stored.type === 'persona')
-    return refused('not_permitted', { why: 'persona_needs_activation' });
+  const activatedBy = ACTIVATED_BY_COMMAND.get(stored.type);
+  if (activatedBy !== undefined) return refused('not_permitted', { why: activatedBy });
   if (!CONFIRMABLE.has(stored.type))
     return refused('malformed_command', { why: 'not_confirmable' });
   if (!can(actor, 'write', { kind: 'area', area: stored.jdArea }, at))

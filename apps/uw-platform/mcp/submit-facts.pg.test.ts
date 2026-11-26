@@ -147,7 +147,10 @@ describe.skipIf(!testServer)(
         expect(await submitted(r, args)).toEqual({
           status: 'error',
           reason: 'malformed_command',
-          detail: { fields: ['(root)'] },
+          detail: {
+            fields: ['(root)'],
+            issues: [expect.stringMatching(/^\(root\): Unrecognized key: "(paths|declaration)"$/)],
+          },
         });
       }
       expect(await eventsOf(r, itemId)).toEqual(before);
@@ -170,7 +173,7 @@ describe.skipIf(!testServer)(
       expect(await submitted(r, args)).toEqual({
         status: 'error',
         reason: 'malformed_command',
-        detail: { fields: ['head'] },
+        detail: { fields: ['head'], issues: [expect.stringMatching(/^head: /)] },
       });
     });
   },

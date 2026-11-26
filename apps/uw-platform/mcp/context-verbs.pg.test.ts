@@ -54,6 +54,7 @@ describe.skipIf(!testServer)(
         learnings: [itemLearning, ...laterTiers],
         policies: [],
         decisions: [],
+        measures: [],
       });
     });
 
@@ -113,6 +114,7 @@ describe.skipIf(!testServer)(
         learnings: areaOnly,
         policies: [],
         decisions: [],
+        measures: [],
       });
     });
 
@@ -125,6 +127,7 @@ describe.skipIf(!testServer)(
         learnings: [itemLearning, laterTiers[1], laterTiers[0]],
         policies: [],
         decisions: [],
+        measures: [],
       });
     });
 

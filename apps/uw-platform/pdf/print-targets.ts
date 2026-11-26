@@ -5,6 +5,7 @@ import type { Database } from '@uw/db/client';
 import { listPages } from '../pages/listing.ts';
 import { renderPage } from '../pages/render-page.ts';
 import { readPage } from '../pages/store.ts';
+import { withPanels } from '../views/parts/dashboard-panels.tsx';
 import { withViews } from '../views/parts/view-embed.tsx';
 import { binderBody, type BinderSection, type SourceHash } from './print-document.ts';
 import { screenOf, titled, type Printable } from './print-kernel.ts';
@@ -24,15 +25,18 @@ export type BinderPlan = {
 };
 
 type Reader = { readonly db: Database; readonly actor: Principal; readonly at: Date };
-type Section = BinderSection & SourceHash;
+type Section = BinderSection & SourceHash & { readonly areas: readonly string[] };
+type PageDrawn = { readonly html: string; readonly areas: readonly string[] };
 
 const DEEPEST = 20;
 const CHILDREN = 200;
 
-async function pageHtml(reader: Reader, page: Page, commit: string): Promise<string> {
+async function pageDrawn(reader: Reader, page: Page, commit: string): Promise<PageDrawn> {
   const { db, actor, at } = reader;
-  const rendered = await renderPage(db, actor, page, at, commit);
-  return (await withViews(db, screenOf(db, actor, at), rendered)).html;
+  const screen = screenOf(db, actor, at);
+  const viewed = await withViews(db, screen, await renderPage(db, actor, page, at, commit));
+  const { html, areas } = await withPanels(db, screen, page, viewed);
+  return { html, areas: [...new Set([page.jdArea, ...areas])] };
 }
 
 export async function printPage(
@@ -45,11 +49,12 @@ export async function printPage(
   const reader = { db, actor, at };
   const page = await readPage(db, actor, pageId, at);
   if (page === null) return null;
+  const drawn = await pageDrawn(reader, page, commit);
   return {
     title: page.title,
-    bodyHtml: titled(page.title, await pageHtml(reader, page, commit)),
+    bodyHtml: titled(page.title, drawn.html),
     printed: await pagePrinted(reader, page),
-    areas: [page.jdArea],
+    areas: drawn.areas,
   };
 }
 
@@ -105,10 +110,11 @@ export async function binderPlan(
 async function sectionsOf(reader: Reader, plan: BinderPlan, commit: string): Promise<Section[]> {
   const sections: Section[] = [];
   for (const page of plan.pages) {
+    const drawn = await pageDrawn(reader, page, commit);
     sections.push({
       title: page.title,
       reference: pageReference(page),
-      html: await pageHtml(reader, page, commit),
+      ...drawn,
       ...(await pageSourceHash(reader, page)),
     });
   }
@@ -142,7 +148,7 @@ export async function printPlannedBinder(
       filters: sections.map((section) => `page=${section.reference}`),
       hashInput: { kind: 'hash', sourceSha256: await sha256Hex(canonicalJson(hashed)), withheld },
     },
-    areas: plan.areas,
+    areas: [...new Set([...plan.areas, ...sections.flatMap((section) => section.areas)])],
   };
 }
 

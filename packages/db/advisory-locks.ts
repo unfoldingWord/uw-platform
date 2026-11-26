@@ -4,6 +4,7 @@ export const advisoryLocks = {
   grantCommands: 'acl-grant-commands',
   pageReparenting: 'pages-reparenting',
   builtInCollections: 'collections-built-in',
+  measureRunSlots: 'measure-run-slots',
 } as const;
 
 export const lockKeyPrefixes: readonly string[] = [

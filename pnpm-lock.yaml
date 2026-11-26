@@ -78,6 +78,37 @@ importers:
         specifier: ^2.9.1
         version: 2.9.1
 
+  apps/uw-ingest:
+    dependencies:
+      '@octokit/webhooks-methods':
+        specifier: ^6.0.0
+        version: 6.0.0
+      '@uw/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@uw/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      '@uw/db':
+        specifier: workspace:*
+        version: link:../../packages/db
+      drizzle-orm:
+        specifier: ^0.45.3
+        version: 0.45.3(@cloudflare/workers-types@5.20260930.1)(@electric-sql/pglite@0.5.8)(postgres@3.4.9)
+      hono:
+        specifier: ^4.13.16
+        version: 4.13.16
+    devDependencies:
+      '@cloudflare/workers-types':
+        specifier: ^5.20260930.1
+        version: 5.20260930.1
+      '@types/node':
+        specifier: ^22.20.4
+        version: 22.20.4
+      wrangler:
+        specifier: ^4.144.0
+        version: 4.144.0(@cloudflare/workers-types@5.20260930.1)(@types/node@22.20.4)
+
   apps/uw-platform:
     dependencies:
       '@anthropic-ai/sdk':
@@ -236,6 +267,9 @@ importers:
       y-protocols:
         specifier: ^1.0.7
         version: 1.0.7(yjs@13.6.33)
+      yaml:
+        specifier: ^2.9.1
+        version: 2.9.1
       yjs:
         specifier: ^13.6.33
         version: 13.6.33
@@ -264,37 +298,6 @@ importers:
       jsdom:
         specifier: ^30.1.1
         version: 30.1.1
-      wrangler:
-        specifier: ^4.144.0
-        version: 4.144.0(@cloudflare/workers-types@5.20260930.1)(@types/node@22.20.4)
-
-  apps/uw-ingest:
-    dependencies:
-      '@octokit/webhooks-methods':
-        specifier: ^6.0.0
-        version: 6.0.0
-      '@uw/contracts':
-        specifier: workspace:*
-        version: link:../../packages/contracts
-      '@uw/core':
-        specifier: workspace:*
-        version: link:../../packages/core
-      '@uw/db':
-        specifier: workspace:*
-        version: link:../../packages/db
-      drizzle-orm:
-        specifier: ^0.45.3
-        version: 0.45.3(@cloudflare/workers-types@5.20260930.1)(@electric-sql/pglite@0.5.8)(postgres@3.4.9)
-      hono:
-        specifier: ^4.13.16
-        version: 4.13.16
-    devDependencies:
-      '@cloudflare/workers-types':
-        specifier: ^5.20260930.1
-        version: 5.20260930.1
-      '@types/node':
-        specifier: ^22.20.4
-        version: 22.20.4
       wrangler:
         specifier: ^4.144.0
         version: 4.144.0(@cloudflare/workers-types@5.20260930.1)(@types/node@22.20.4)

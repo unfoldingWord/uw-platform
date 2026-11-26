@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { parse } from 'smol-toml';
 import { describe, expect, it } from 'vitest';
+import { MEASURE_RUN_SLOTS } from '../../apps/uw-platform/measures/sandbox.ts';
 import { goLiveSwitchedOn } from './switch.ts';
 
 type Block = Record<string, unknown>;
@@ -216,13 +217,15 @@ function strayWorkflows(config: Block): string[] {
   );
 }
 
-describe('HE-1 the HarnessRun and PdfExportRun Workflows are declared for go-live only, in staging and production', () => {
-  it('#198 binds HARNESS_RUN and PDF_EXPORT to their classes under staging and production only', () => {
+describe('HE-1 the HarnessRun, PdfExportRun and MeasureRun Workflows are declared for go-live only, in staging and production', () => {
+  it('#198 binds HARNESS_RUN, PDF_EXPORT and MEASURE_RUN to their classes under staging and production only', () => {
     expect(workflowSites(load(`infra/uw-platform/${goLive}`))).toEqual([
       'staging: HARNESS_RUN harness-run-staging HarnessRun',
       'staging: PDF_EXPORT pdf-export-staging PdfExportRun',
+      'staging: MEASURE_RUN measure-run-staging MeasureRun',
       'production: HARNESS_RUN harness-run-production HarnessRun',
       'production: PDF_EXPORT pdf-export-production PdfExportRun',
+      'production: MEASURE_RUN measure-run-production MeasureRun',
     ]);
   });
 
@@ -283,7 +286,7 @@ describe('#198 the Browser Run binding is declared in every deployed environment
 type ContainerBlock = { class_name?: string; image?: string; max_instances?: number };
 
 const sandboxClasses = ['ClaudeCodeSandbox', 'CodexSandbox'];
-const sandboxBindings = ['CLAUDE_CODE_SANDBOX', 'CODEX_SANDBOX'];
+const sandboxBindings = ['CLAUDE_CODE_SANDBOX', 'CODEX_SANDBOX', 'MEASURE_SANDBOX'];
 
 function sandboxSites(config: Block): string[] {
   const blocks: [string, Block][] = [
@@ -307,12 +310,14 @@ function straySandboxes(config: Block): string[] {
 }
 
 describe('the sandbox containers are declared for go-live only, in staging and production', () => {
-  it('binds both sandbox classes and their images under staging and production only', () => {
+  it('binds every sandbox class and its image under staging and production only', () => {
     const sites = deployedEnvironments.flatMap((name) => [
       `${name}: container ClaudeCodeSandbox ../containers/claude-code/Dockerfile`,
       `${name}: container CodexSandbox ../containers/codex/Dockerfile`,
+      `${name}: container MeasureSandbox ../containers/measure/Dockerfile`,
       `${name}: binding CLAUDE_CODE_SANDBOX ClaudeCodeSandbox`,
       `${name}: binding CODEX_SANDBOX CodexSandbox`,
+      `${name}: binding MEASURE_SANDBOX MeasureSandbox`,
     ]);
     expect(sandboxSites(load(`infra/uw-platform/${goLive}`)).sort()).toEqual(sites.sort());
     const config = load(`infra/uw-platform/${goLive}`);
@@ -321,6 +326,36 @@ describe('the sandbox containers are declared for go-live only, in staging and p
       new_sqlite_classes: sandboxClasses,
     });
   });
+});
+
+const MEASURE_HEADROOM = 2;
+
+function measureInstances(path: string): (number | undefined)[] {
+  return Object.values(environments(load(path))).flatMap((block) =>
+    ((block['containers'] ?? []) as ContainerBlock[])
+      .filter((box) => box.class_name === 'MeasureSandbox')
+      .map((box) => box.max_instances),
+  );
+}
+
+describe('the measure sandbox has room for every run the scheduler starts', () => {
+  it('allows more containers than scheduled runs, leaving room for trials and Run now', () => {
+    const wanted = MEASURE_RUN_SLOTS + MEASURE_HEADROOM;
+    expect(measureInstances(`infra/uw-platform/${goLive}`)).toEqual([wanted, wanted]);
+    const deployed = measureInstances(`infra/uw-platform/${live}`);
+    expect(deployed).toEqual(goLiveSwitchedOn() ? [wanted, wanted] : []);
+  });
+});
+
+describe('the measure sandbox class migration', () => {
+  it.each(deployedEnvironments)(
+    '%s adds the measure sandbox class in its own migration after the recreate step',
+    (name) => {
+      const steps = (environment('uw-platform', name, goLive)['migrations'] ?? []) as Migration[];
+      expect(steps.map((step) => step.tag)).toEqual(['v1', 'v2', 'v3', 'v4', 'v5', 'v6']);
+      expect(steps.at(-1)).toEqual({ tag: 'v6', new_sqlite_classes: ['MeasureSandbox'] });
+    },
+  );
 
   it('declares a container, sandbox binding or migration in the live file only once the switch is on', () => {
     const config = load(`infra/uw-platform/${live}`);

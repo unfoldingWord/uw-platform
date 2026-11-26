@@ -1,0 +1,13 @@
+{
+  "measureId": "00000000-0000-4000-8000-0000000034a1",
+  "version": 1,
+  "status": "suggested",
+  "toolHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "awaiting": "trial",
+  "problems": [
+    {
+      "path": "measure.resources.view",
+      "message": "the view lists no website yet"
+    }
+  ]
+}
