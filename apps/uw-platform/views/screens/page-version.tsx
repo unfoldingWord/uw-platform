@@ -8,7 +8,6 @@ import { Section } from '@uw/ui/components/section.tsx';
 import { DocumentShape } from '@uw/ui/shapes/document.tsx';
 import { reasonText } from '@uw/ui/components/text.ts';
 import type { AppEnv } from '../../deps.ts';
-import { lineChanges, type LineChange } from '../../pages/diff.ts';
 import { pageVersion, type PageSnapshot } from '../../pages/history.ts';
 import { renderPage } from '../../pages/render-page.ts';
 import { updatePage } from '../../pages/store.ts';
@@ -22,6 +21,7 @@ import {
   type ShownPage,
 } from '../parts/page-shown.ts';
 import { printedPage } from '../parts/page-printed.ts';
+import { LineChanges } from '../parts/line-changes.tsx';
 import { PageBand } from '../parts/page-read.tsx';
 import { idParam } from '../parts/params.ts';
 import { pagePath, pageVersionPath } from '../parts/paths.ts';
@@ -39,40 +39,18 @@ type Old = {
   readonly snapshot: Kept;
 };
 
-const line = 'block rounded-sm px-3 py-1 font-mono text-xs whitespace-pre-wrap no-underline';
-const looks: Readonly<Record<LineChange['kind'], string>> = {
-  same: `${line} text-text-3`,
-  added: `${line} bg-ok-soft text-ok-text`,
-  removed: `${line} bg-raised text-text-3 line-through`,
-};
-
-function Line(props: { readonly change: LineChange }) {
-  const { change } = props;
-  if (change.kind === 'added') return <ins class={looks.added}>{change.text}</ins>;
-  if (change.kind === 'removed') return <del class={looks.removed}>{change.text}</del>;
-  return <span class={looks.same}>{change.text}</span>;
-}
-
 function Changes(props: { readonly old: Old }) {
   const { shown, snapshot } = props.old;
-  const changes = lineChanges(snapshot.page.bodyMd, shown.page.bodyMd);
-  const differs = changes?.some((change) => change.kind !== 'same') ?? true;
   return (
     <Section
       title="Changed since"
       sub={`From version ${String(snapshot.page.version)} to version ${String(shown.page.version)}`}
     >
-      {changes === null ? (
-        <p class="m-0 text-sm text-text-2">These versions are too long to compare line by line.</p>
-      ) : differs ? (
-        <div data-changes="" class="-mx-3 flex flex-col">
-          {changes.map((change) => (
-            <Line change={change} />
-          ))}
-        </div>
-      ) : (
-        <p class="m-0 text-sm text-text-2">The text is the same as the current version.</p>
-      )}
+      <LineChanges
+        before={snapshot.page.bodyMd}
+        after={shown.page.bodyMd}
+        same="The text is the same as the current version."
+      />
     </Section>
   );
 }

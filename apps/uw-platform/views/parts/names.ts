@@ -31,6 +31,8 @@ export const pageNames = {
   pageVersion: 'Version',
   wikiNew: 'New Page',
   wikiReview: 'Needs Review',
+  wikiPolicies: 'Policies',
+  pageSuggestion: 'Suggested Change',
   logOut: 'Log Out',
   collections: 'Collections',
   collectionSettings: 'Settings',

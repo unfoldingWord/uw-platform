@@ -45,6 +45,7 @@ describe('ADR 0026 the page tree shows where a reader is and nothing they may no
       ['Bravo', 3, false],
       ['Charlie', 3, false],
       ['Field Programs', 1, false],
+      ['Policies', 1, false],
     ]);
   });
 
@@ -60,7 +61,8 @@ describe('ADR 0026 the page tree shows where a reader is and nothing they may no
     const branch = branchOf(groupsOf(categories), { category: '61', pages: many });
     const labels = branch.items.map((item) => item.label);
     expect(labels).toContain('61');
-    expect(labels.at(-1)).toBe('More in 61');
+    expect(labels.at(-2)).toBe('More in 61');
+    expect(labels.at(-1)).toBe('Policies');
     expect(branch.items.filter((item) => item.depth === 3)).toHaveLength(PAGES_SHOWN + 1);
   });
 

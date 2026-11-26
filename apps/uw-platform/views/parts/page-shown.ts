@@ -14,7 +14,7 @@ import { readPage } from '../../pages/store.ts';
 import { ancestorsOf, type Ancestor } from '../../pages/tree.ts';
 import type { ScreenKernel } from './frame.tsx';
 import { moduleCodes, pageNames } from './names.ts';
-import { agentQueuesPath, pagePath, wikiPath } from './paths.ts';
+import { agentQueuesPath, pagePath, wikiPath, wikiPoliciesPath } from './paths.ts';
 import { wikiBranch } from './wiki-tree.ts';
 
 export const pageLink =
@@ -26,6 +26,9 @@ export const typeWords: Readonly<Record<string, string>> = {
   learning: 'Learning',
   knowledge: 'Knowledge page',
   profile: 'Profile',
+  policy: 'Policy',
+  charter: 'Charter',
+  decision: 'Decision',
 };
 
 const BACK = /^\/harnesses\/[0-9a-f-]{36}\/controls$/;
@@ -78,12 +81,27 @@ function knowledgeCrumbs(shown: ShownPage) {
   return [{ label: pageNames.wiki, href: wikiPath() }, ...category, ...parents];
 }
 
+const wikiCrumb = { label: pageNames.wiki, href: wikiPath() };
+
+const governanceCrumbs: ReadonlyMap<string, readonly { label: string; href: string }[]> = new Map([
+  ['policy', [wikiCrumb, { label: pageNames.wikiPolicies, href: wikiPoliciesPath() }]],
+  ['charter', [wikiCrumb]],
+  ['decision', [wikiCrumb]],
+]);
+
+function leadOf(shown: ShownPage) {
+  if (shown.page.type === 'knowledge') return knowledgeCrumbs(shown);
+  return (
+    governanceCrumbs.get(shown.page.type) ?? [
+      { label: pageNames.agentQueues, href: agentQueuesPath() },
+    ]
+  );
+}
+
 export function pageSpec(shown: ShownPage, last: string | null) {
   const { page } = shown;
-  const wiki = page.type === 'knowledge';
-  const lead = wiki
-    ? knowledgeCrumbs(shown)
-    : [{ label: pageNames.agentQueues, href: agentQueuesPath() }];
+  const wiki = page.type === 'knowledge' || governanceCrumbs.has(page.type);
+  const lead = leadOf(shown);
   const here =
     last === null
       ? [{ label: page.title }]

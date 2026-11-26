@@ -27,6 +27,23 @@ import {
   unbindCredentialCommandSchema,
 } from './credential-commands.ts';
 import { draftCheckSchema, draftStageSchema } from './drafts.ts';
+import {
+  acceptSuggestionCommandSchema,
+  rejectSuggestionCommandSchema,
+  suggestionSetStatusSchema,
+} from './suggestions.ts';
+import {
+  adoptTemplateUpdateCommandSchema,
+  charterFrontmatterSchema,
+  charterSectionSchema,
+  copyTemplatePolicyCommandSchema,
+  templateSourceSchema,
+  decisionFrontmatterSchema,
+  decisionSectionSchema,
+  policyEnforcementSchema,
+  policyFrontmatterSchema,
+  policyLevelSchema,
+} from './policies.ts';
 import * as closedSets from './closed-sets.ts';
 import { collectionSchemaRegistry } from './collection-registry.ts';
 import {
@@ -131,6 +148,7 @@ import {
   pageCategoriesReplySchema,
   pageCategorySchema,
   pageCommandAcceptedSchema,
+  pageCommandRefusedSchema,
   pageEntrySchema,
   pageHeadingSchema,
   pageIndexEntrySchema,
@@ -279,6 +297,7 @@ export const schemaRegistry: Record<string, ZodType> = {
   'page-versions-reply': pageVersionsReplySchema,
   'page-version-reply': pageVersionReplySchema,
   'page-command-accepted': pageCommandAcceptedSchema,
+  'page-command-refused': pageCommandRefusedSchema,
   file: fileSchema,
   'file-reply': fileReplySchema,
   'page-files-reply': pageFilesReplySchema,
@@ -320,6 +339,19 @@ export const schemaRegistry: Record<string, ZodType> = {
   'data-sources-frontmatter': dataSourcesFrontmatterSchema,
   'issue-frontmatter': issueFrontmatterSchema,
   'knowledge-frontmatter': knowledgeFrontmatterSchema,
+  'policy-level': policyLevelSchema,
+  'policy-enforcement': policyEnforcementSchema,
+  'policy-frontmatter': policyFrontmatterSchema,
+  'charter-frontmatter': charterFrontmatterSchema,
+  'charter-section': charterSectionSchema,
+  'suggestion-set-status': suggestionSetStatusSchema,
+  'accept-suggestion-command': acceptSuggestionCommandSchema,
+  'reject-suggestion-command': rejectSuggestionCommandSchema,
+  'template-source': templateSourceSchema,
+  'copy-template-policy-command': copyTemplatePolicyCommandSchema,
+  'adopt-template-update-command': adoptTemplateUpdateCommandSchema,
+  'decision-frontmatter': decisionFrontmatterSchema,
+  'decision-section': decisionSectionSchema,
   'data-source-kind': dataSourceKindSchema,
   'ingest-source': ingestSourceSchema,
   'ingest-refusal': ingestRefusalSchema,

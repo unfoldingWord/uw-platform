@@ -31,7 +31,12 @@ export const writePageVerb = gatedHandler({
     const { page } = written;
     return {
       status: 'accepted',
-      output: { pageId: page.id, version: page.version, status: page.status },
+      output: {
+        pageId: page.id,
+        version: page.version,
+        status: page.status,
+        suggestionId: written.suggestionId ?? null,
+      },
     };
   },
 });
