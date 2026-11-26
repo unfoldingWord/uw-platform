@@ -7,6 +7,7 @@ import type { Logger } from '@uw/core/log';
 import type { Database } from '@uw/db/client';
 import type { Caller, Kernel, KernelOutcome, RunScene } from '@uw/harness';
 import type { PdfExportBinding } from '../env.ts';
+import type { MeasureRunBinding } from '../measures/sandbox.ts';
 import type { SpendCap } from '../health/spend-cap.ts';
 import type { FileStore } from '../pages/file-store.ts';
 import type { PdfRenderer } from '../pdf/renderer.ts';
@@ -29,6 +30,7 @@ export type RunStepConnection = {
   readonly files?: FileStore | null;
   readonly pdf?: PdfRenderer | null;
   readonly pdfExport?: PdfExportBinding | null;
+  readonly measureRun?: MeasureRunBinding | null;
   readonly origin?: string;
   readonly within: ReadonlySet<VerbName> | null;
 };
@@ -120,6 +122,7 @@ export async function connectInProcess(
     files: connection.files ?? null,
     pdf: connection.pdf ?? null,
     pdfExport: connection.pdfExport ?? null,
+    measureRun: connection.measureRun ?? null,
     origin: connection.origin ?? '',
   };
   const verbs = modelVerbs(scene, connection.within);

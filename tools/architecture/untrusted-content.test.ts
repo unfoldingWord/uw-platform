@@ -52,6 +52,8 @@ const unwrapped = [
   'export const p = workPrompt({ ...source, related: await db.select().from(ghReviews) });',
   "export const p = scoutPrompt({ ...source, context: await callCore(core, 'read_page', { pageId }) });",
   "export const p = workPrompt({ ...source, prompts: page.bodyMd.split(' ') });",
+  "export const p = scoutPrompt({ ...source, context: await callCore(core, 'read_observations', { measureId }) });",
+  "export const p = scoutPrompt({ ...source, context: await callCore(core, 'read_measure_run', { measureId }) });",
   'export const p = workPrompt({ ...source, prompts: review.findings });',
   'export const p = workPrompt({ ...source, prompts: await sql`select title from gh_issues` });',
 ];

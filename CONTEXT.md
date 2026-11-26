@@ -167,7 +167,7 @@ A job an agent does, defined as configuration: an identity, a harness subscripti
 _Avoid_: agent (an agent is the identity a persona runs as), bot, worker, role
 
 **Activation**:
-A person with `admin` on the harness's area turning a `suggested` persona page `active`, at the version they saw, after the tool check and the **dry run**. The only way a persona runs. It flips the page's status, writes the `personas` projection and records `persona_activated` in one transaction.
+A person with `admin` on the area turning a `suggested` persona or measure page `active`, at the version they saw: a persona after the tool check and the **dry run**, a measure after its **trial run**, or a measure paused for any reason but retirement, when the person activating it becomes its activator. The only way a persona or a measure runs. For a persona it flips the page's status, writes the `personas` projection and records `persona_activated` in one transaction.
 _Avoid_: enable, publish, deploy (those are gate words), confirm (that is for learnings and skills)
 
 **Dry run**:
@@ -477,7 +477,7 @@ _Avoid_: print theme, PDF CSS
 ## Collections
 
 **Collection**:
-A stored definition that lists pages or typed records as rows and lets them be queried and shown in saved views: a row of `collections` with its properties. A **page collection** lists pages (each page names its collection in `pages.collection_id`); a **record collection** lists the rows of a typed table (`tasks`, `people`). Built-in collections (tasks, directory, portfolio, program, project, OKR) are seeded through the same path an area admin uses (ADR 0023).
+A stored definition that lists pages or typed records as rows and lets them be queried and shown in saved views: a row of `collections` with its properties. A **page collection** lists pages (each page names its collection in `pages.collection_id`); a **record collection** lists the rows of a typed table (`tasks`, `people`). Built-in collections (tasks, directory, portfolio, program, project, OKR, resources) are seeded through the same path an area admin uses (ADR 0023).
 _Avoid_: database (Notion's word, and Postgres is the database), table (that is a layout, or a Postgres table), list (that is a layout), category (that is where a knowledge page is filed)
 
 **Row**:
@@ -581,6 +581,60 @@ _Avoid_: mapping table, link, crosswalk (that is the screen)
 **Crosswalk**:
 The screen at `/crosswalk` that shows both axes at once: areas down, cascade tiers across. Each cell counts the pages, tasks and items in that area placed at that tier, and lists the JD map relations between the area and that tier's nodes. A cell opens the entities it counts; a node opens every area it touches. It counts only areas the reader can read.
 _Avoid_: matrix, pivot, JD/cascade report
+
+## Measures and dashboards
+
+**Resource**:
+A measured thing with a stable address, such as a website or a mobile app: a page of type `resource`, a row of the built-in Resources collection.
+_Avoid_: asset, property (that is a collection's typed field), site (alone; a site is one kind of resource)
+
+**Serves**:
+The relation from a resource to the portfolio, program and project pages it belongs to, kept as three properties of the Resources collection (`serves_portfolio`, `serves_program`, `serves_project`) and read from the other side as a backlink. It is how a report card finds the pages it is shown on. Product pages are not served in the first version.
+_Avoid_: belongs to, linked project, owner (that is a person)
+
+**Measure**:
+A page of type `measure` that says how to measure a set of resources: a pinned tool and its command, a saved view of resources, a schedule, the values kept, an optional **failure path** and the metrics worked out from them. An agent saves one with `save_measure`. It runs only once **activated** (ADR 0034).
+_Avoid_: collector, probe, job, check (that is a validator's), data source (that is a Package page)
+
+**Failure path**:
+The JSON pointer in a measure where its tool reports a failure while still exiting 0, such as `/error` for `geo audit`. Anything there but null, false or empty text makes the observation failed, with no values.
+_Avoid_: error field, status path
+
+**Trial run**:
+A measure's tool run once on up to three of its resources, started by a person with `admin` on its area with Run trial, keeping only the trial's own record, its observations and the dependency lock. It runs the tool for real, unlike a **dry run**.
+_Avoid_: dry run (that is a persona's, and runs nothing), test run, preview (that is `preview_dashboard`)
+
+**Tool hash**:
+The SHA-256 of a measure's runtime, package, command and resources. A trial counts for activation only at the current tool hash, so changing any of them needs a new trial.
+_Avoid_: version (that is the page's), lock (that is the resolved dependencies)
+
+**Measure run**:
+One scheduled or requested run of an active measure over its resources, done as its activator, a row of `measure_runs`. It starts only into one of the four sandbox slots, as a trial does, and waits `queued` until one is free; once started, one that makes no progress for an hour is closed as `stalled`.
+_Avoid_: run (alone, that is a hosted agent run), job, sync
+
+**Observation**:
+What one measure run recorded about one resource: the values, the raw output and its hash, and an outcome, a row of `observations` read through the measures module. A failed observation keeps its reason and is never counted as zero.
+_Avoid_: data point, sample, result, row (that is a collection's)
+
+**Metric**:
+A named figure read from observations by a rule from a closed set (latest, previous, change, average, minimum, maximum, count or share meeting a condition, value over time), with a unit and an optional target.
+_Avoid_: KPI, formula, computed property (that is a collection's), indicator (that is health's)
+
+**Dashboard**:
+A page of type `dashboard`: panels over metrics for one context, saved by an agent with `save_dashboard` and made active by a person. Home, Agent Queues, the persona view and the Measures screen are screens, not dashboards; the seeded area home "00 Dashboard for unfoldingWord" is a knowledge page, not a dashboard.
+_Avoid_: report (that is an export or a compliance artifact), board (that is a layout)
+
+**Dashboard context**:
+The saved set of resources a dashboard describes: the organization, a page with or without its descendants, a named set, or the page it is shown on. It selects; it never grants access.
+_Avoid_: scope (that is a grant's), filter (that is a saved view's)
+
+**Panel**:
+One fenced `panel` block of YAML on a dashboard, written by the platform, of a kind from a closed set: figure, bars, table, trend, list or status.
+_Avoid_: widget, tile, chart (a chart is drawn by a panel), card (that is the Queue's)
+
+**Report card**:
+The dashboard a measure names to be shown, with the host page as its context, in the Measures section of every page its resources serve.
+_Avoid_: scorecard, summary, embed (alone, that is another page's text)
 
 ## What GitHub says
 

@@ -135,3 +135,15 @@ jobs:
           docker build --platform linux/amd64 --tag sandbox-codex infra/containers/codex
           docker run --rm --platform linux/amd64 sandbox-claude-code sh -c 'git --version && claude --version'
           docker run --rm --platform linux/amd64 sandbox-codex sh -c 'git --version && codex --version'
+      - name: Build the measure sandbox image and lock, install and run a pinned tool in it
+        run: |
+          docker build --platform linux/amd64 --tag sandbox-measure infra/containers/measure
+          docker run --rm --platform linux/amd64 sandbox-measure sh -c '
+            set -eu
+            uv --version
+            python3 /opt/measure/runner.py lock 120000 cowsay==6.1 | grep -q "\"exit_code\": 0,"
+            grep -q -- "--hash=sha256:" /workspace/requirements.txt
+            python3 /opt/measure/runner.py install 300000 | grep -q "\"exit_code\": 0,"
+            python3 /opt/measure/runner.py run 60000 100000 -- cowsay -t smoke | grep -q smoke
+            python3 /opt/measure/runner.py run 60000 100000 -- sh | grep -q "\"exit_code\": 127,"
+          '

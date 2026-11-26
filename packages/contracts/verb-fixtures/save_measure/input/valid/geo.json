@@ -1,0 +1,39 @@
+{
+  "measureId": "00000000-0000-4000-8000-0000000034a1",
+  "expectedVersion": null,
+  "jdArea": "30-39",
+  "title": "Website GEO score",
+  "slug": "website-geo-score",
+  "bodyMd": "Scores every website we maintain.",
+  "measure": {
+    "runtime": "uvx",
+    "package": "geo-optimizer-skill==4.19.10",
+    "command": ["geo", "audit", "--url", "{address}", "--format", "json"],
+    "resources": {
+      "view": "c0110000-0000-4000-8000-000000000701"
+    },
+    "schedule": {
+      "every": "month",
+      "day": 1
+    },
+    "values": [
+      {
+        "key": "score",
+        "name": "GEO score",
+        "type": "number",
+        "unit": "points",
+        "path": "/score"
+      }
+    ],
+    "metrics": [
+      {
+        "key": "latest_score",
+        "name": "GEO score",
+        "value": "score",
+        "rule": "latest",
+        "target": 90
+      }
+    ],
+    "report_card": null
+  }
+}

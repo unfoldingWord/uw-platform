@@ -119,6 +119,7 @@ const runtimeModuleHosts: ReadonlySet<string> = new Set([
   'apps/uw-platform/live/harness-hub.ts',
   'apps/uw-platform/runs/workflow.ts',
   'apps/uw-platform/pdf/workflow.ts',
+  'apps/uw-platform/measures/workflow.ts',
 ]);
 
 function isSource(file: string): boolean {
@@ -186,6 +187,25 @@ describe('#198 the PdfExportRun Workflow hosts the Workers runtime module', () =
     expect(cloudflareStrays([...planted.keys()], (file) => planted.get(file) ?? '')).toEqual([
       'apps/uw-platform/pdf/renderer.ts imports cloudflare:workers',
       'apps/uw-platform/pdf/steps.ts imports cloudflare:workflows',
+    ]);
+  });
+});
+
+describe('the MeasureRun Workflow hosts the Workers runtime module', () => {
+  it('lets the measure run Workflow file import cloudflare:workers and nothing else from cloudflare', () => {
+    const planted = new Map([
+      [
+        'apps/uw-platform/measures/workflow.ts',
+        "import { WorkflowEntrypoint } from 'cloudflare:workers';\nimport { NonRetryableError } from 'cloudflare:workflows';",
+      ],
+      [
+        'apps/uw-platform/measures/run-steps.ts',
+        "import { WorkflowEntrypoint } from 'cloudflare:workers';",
+      ],
+    ]);
+    expect(cloudflareStrays([...planted.keys()], (file) => planted.get(file) ?? '')).toEqual([
+      'apps/uw-platform/measures/workflow.ts imports cloudflare:workflows',
+      'apps/uw-platform/measures/run-steps.ts imports cloudflare:workers',
     ]);
   });
 });

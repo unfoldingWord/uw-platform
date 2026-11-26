@@ -18,9 +18,19 @@ export const pageTypes = [
   'program',
   'project',
   'okr',
+  'resource',
+  'measure',
+  'dashboard',
 ] as const;
 
-export const collectionPageTypes = ['entry', 'portfolio', 'program', 'project', 'okr'] as const;
+export const collectionPageTypes = [
+  'entry',
+  'portfolio',
+  'program',
+  'project',
+  'okr',
+  'resource',
+] as const;
 
 const collectionPageTypeSet: ReadonlySet<string> = new Set(collectionPageTypes);
 

@@ -69,13 +69,14 @@ describe('GH-2 the sweep is registered as a nightly cron', () => {
     expect(worker.scheduled).toBe(runScheduled);
   });
 
-  it('#198 runs the request retention, the PDF export expiry and then the sweep, each logging database_not_configured as the system principal when there is no database', async () => {
+  it('#198 runs the request retention, the PDF export expiry, the measure output expiry and then the sweep, each logging database_not_configured as the system principal when there is no database', async () => {
     const spy = vi.spyOn(console, 'log').mockImplementation(() => undefined);
     await runScheduled(controller(GITHUB_SWEEP_CRON), {});
     const skipped = { outcome: 'database_not_configured', principal: 'agent:system' };
     expect(logged(spy)).toEqual([
       expect.objectContaining({ ...skipped, route: 'cron request retention' }),
       expect.objectContaining({ ...skipped, route: 'cron pdf export expiry' }),
+      expect.objectContaining({ ...skipped, route: 'cron measure output expiry' }),
       expect.objectContaining({ ...skipped, route: 'cron github sweep' }),
     ]);
   });

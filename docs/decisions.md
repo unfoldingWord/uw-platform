@@ -645,6 +645,38 @@ This number was used and withdrawn. It is not reused.
 
 **Consequences.** The per-file exceptions for Rule 2 and Postgres are removed from `docs/exceptions.md`. If the offline app is built on a store other than Postgres, the modules that work offline need a port then, and this decision is reopened for those modules.
 
+## 0034 A measure runs a pinned package in a sandbox, after a trial and an activation by a person
+
+*2026-11-25.*
+
+**Decision.** Six rulings.
+- **Measuring is data, not a pull request.** A measure is a page that names a runtime from a closed set, an exactly pinned package, a command as an argument list with only `{address}` and `{host}` filled in, its resources, its schedule, and how its values are read from JSON output. An agent can write one. A new runtime is reviewed code; a new tool within a runtime is not.
+- **An agent authors through typed verbs.** The agent is any MCP client on `/mcp`; there is no chat box. It saves a measure with `save_measure` and a dashboard with `save_dashboard`, whose fields are typed in the tool list and whose replies name every problem with its field. It never writes frontmatter or panel YAML; the platform writes the page.
+- **A person runs the trial and a person activates.** Run trial and Activate are platform commands needing `admin` on the measure's area, not harness commands, since a measure belongs to an area and not to a harness. No verb starts either, and no verb makes a dashboard active. A change to the tool, package, command or resources returns the measure to `suggested` and needs a new trial.
+- **What runs is exactly what the trial ran.** The trial records the dependency lock with hashes; activation fixes it; every run installs with hashes required.
+- **The sandbox reaches only what it measures.** The measure container has the internet off; the egress proxy allows the package index while installing, then only the origin of the resource being measured and that origin's `www.` sibling (apex and `www.`, same scheme and port), never a private address, and records every refusal. A site's address is recorded as its canonical one, after its redirects. A measure holds no credential.
+- **Observations are typed records, and a failure is never zero.** One owner table holds every measure's observations, with values validated against the measure's version, read through the measures module and its verbs; the database refuses values on a failed observation. A failed observation is kept with a closed-set reason and left out of every figure. A tool that exits 0 but reports a failure is caught by the measure's optional failure path, a JSON pointer such as `/error`: anything there but null, false or empty text makes the observation failed, with no values. Dashboards are pages of a closed set of native panels, drawn with the existing chart part; no custom HTML or script runs in them.
+
+**Why.** The first dashboard asked for (GEO scores of the organization's websites) was built outside the platform as a scheduled GitHub workflow that committed a JSON file, read by an artifact page that ran a query as each reader. That made a repository the database and a chat artifact the screen, and kept the numbers out of every other page. A person asking for a dashboard should get it without a code change, and its numbers should be platform records that any page, export or agent can read under the same access rules.
+
+**Rejected.**
+- A reviewed adapter in code for every new measurement. Each dashboard would wait for a pull request and a deploy, which is the reason the first one was built elsewhere.
+- Running the tool in GitHub Actions and reading the results from the repository. It makes a repository the record, puts the schedule outside the platform, and gives the numbers no area, classification or access check.
+- An agent starting the trial itself. It would run third-party code chosen by an agent with no person having seen the package, version or hosts.
+- Letting the tool reach any host. A measure could be used to fetch arbitrary addresses from the platform's network.
+- Following a redirect to any host, or allowing every subdomain of the resource's domain. The `www.` sibling covers the commonest redirect (apex to `www.` and back) and nothing broader; a site that redirects elsewhere is recorded at its canonical address.
+- Treating a tool's exit code as the only sign of failure. `geo audit` exits 0 with a score of 0 when it cannot fetch a site, and that 0 would count as a score.
+- A table per measure. Runtime DDL breaks "Drizzle is the only schema" (ADR 0023).
+- Custom HTML dashboards in the first version. They need an isolated origin and a sandboxed renderer, and every panel the first dashboards need is native.
+- The agent writing measure frontmatter and panel YAML with `write_page`. A save refused as `invalid_frontmatter` tells the agent nothing it can fix by, and YAML written by a model is the commonest failure.
+- A record collection over observations in the first version. It needs a new row source, a property source for JSON values and a collection created inside activation; the panels, the JSON route, CSV and the verbs cover the first dashboards.
+- Waiting On You entries for measures. Waiting On You is a view over harnesses and a measure has none; the measure's page and a Measures screen show what waits.
+- Waiting for the chart spec of section 26 (#199) before drawing panels.
+
+**Consequences.** A measure that needs a key waits until a measure can use a credential by reference (ADR 0020), which is an open question. Tools that print only text cannot be measures until a text runtime is reviewed. A run is done under the activating person's authority, a trial under that of the person who pressed Run trial, re-read at each step since no request outlives the press (recorded in `docs/exceptions.md`), and a measure pauses when its activator loses `admin` on the area. A paused measure, unless retired, is activated again by an admin pressing Activate, who becomes its activator. A person's edit or restore of an active measure or dashboard returns it to `suggested` and pauses the measure. At most four runs hold a sandbox at once, trials and requested runs included; a run that finds no free slot waits queued and the minute job starts it when one frees, and a scheduled run whose job cannot be created is retried each minute for up to an hour after its slot. A resource step that fails past its retries is recorded failed and the run goes on, and every run closes from what it observed. A started run with no progress for an hour is closed as stalled. Activation judges only the trial observations the activating admin may read, and needs at least one ok among them. A resource serves portfolios, programs and projects only; serving a product page waits for a collection that lists products. Raw output is deleted after 13 months by the nightly job, not by a bucket lifecycle rule. Panels move onto the chart spec when #199 is built.
+
+**Changes / changed by.** None.
+
 # Part 2. Workflow design decisions
 
 The shorter decisions of the workflow module (the "harness" in code), under their original ids. An id that a Part 1 entry now states in full points there. Entries that only narrated the order of the first builds were dropped.

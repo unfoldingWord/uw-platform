@@ -1,3 +1,4 @@
+import { entityMeasures } from '../../measures/entity-measures.ts';
 import { contextPages } from '../../pages/context.ts';
 import { callerOf, type VerbContext } from '../context.ts';
 import { gatedHandler, refusal, type Found, type VerbInput, type VerbRefusal } from '../handler.ts';
@@ -35,12 +36,14 @@ export const resolveContext = gatedHandler({
     const dropped = (pageId: string) =>
       logger.warn('learning frontmatter invalid', { outcome: 'learning_dropped', pageId });
     const pages = await contextPages(db, principal, scope, at, dropped);
+    const measures = await entityMeasures({ db, actor: principal, at }, scope.itemPageId);
     return {
       status: 'accepted',
       output: {
         instructions: pages.instructions,
         package: [...pages.package],
         learnings: [...pages.learnings],
+        measures: [...measures],
       },
     };
   },

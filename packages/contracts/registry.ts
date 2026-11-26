@@ -29,6 +29,7 @@ import {
 import { draftCheckSchema, draftStageSchema } from './drafts.ts';
 import * as closedSets from './closed-sets.ts';
 import { collectionSchemaRegistry } from './collection-registry.ts';
+import { measureSchemaRegistry } from './measure-registry.ts';
 import {
   commandNameSchema,
   commandSchema,
@@ -197,6 +198,7 @@ import { zulipMessageSchema, zulipOutgoingSchema, zulipTopicSchema } from './zul
 
 export const schemaRegistry: Record<string, ZodType> = {
   ...collectionSchemaRegistry,
+  ...measureSchemaRegistry,
   command: commandSchema,
   'command-name': commandNameSchema,
   'override-command': overrideCommandSchema,

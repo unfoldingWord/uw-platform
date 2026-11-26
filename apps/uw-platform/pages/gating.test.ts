@@ -21,6 +21,9 @@ describe('AB-5 every page type is classified as gated or open', () => {
       ['program', 'open'],
       ['project', 'open'],
       ['okr', 'open'],
+      ['resource', 'open'],
+      ['measure', 'gated'],
+      ['dashboard', 'gated'],
     ]);
   });
 

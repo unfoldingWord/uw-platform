@@ -212,3 +212,25 @@ export function crosswalkCellPath(area: string, tier: string): string {
 export function crosswalkNodePath(nodeId: string): string {
   return `/crosswalk/nodes/${segment(nodeId)}`;
 }
+
+export function measuresPath(): string {
+  return '/measures';
+}
+
+export function measureJsonPath(measureId: string): string {
+  return `/api/measures/${segment(measureId)}`;
+}
+
+export function dashboardJsonPath(dashboardId: string, hostPageId: string | null = null): string {
+  const host = hostPageId === null ? '' : `?host=${segment(hostPageId)}`;
+  return `/api/measures/dashboards/${segment(dashboardId)}${host}`;
+}
+
+export function panelCsvPath(
+  dashboardId: string,
+  index: number,
+  hostPageId: string | null,
+): string {
+  const host = hostPageId === null ? '' : `?host=${segment(hostPageId)}`;
+  return `/api/measures/dashboards/${segment(dashboardId)}/panels/${String(index)}${host}`;
+}

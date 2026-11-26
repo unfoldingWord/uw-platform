@@ -62,6 +62,7 @@ export * from './schema-tasks.ts';
 export * from './schema-directory.ts';
 export * from './schema-crosswalk.ts';
 export * from './schema-exports.ts';
+export * from './schema-measures.ts';
 
 const internalSync = { classification: 'internal', offlineEligibility: 'sync' } as const;
 const restrictedNever = { classification: 'restricted', offlineEligibility: 'never' } as const;

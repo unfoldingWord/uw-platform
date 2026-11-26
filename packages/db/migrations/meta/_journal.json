@@ -484,6 +484,20 @@
       "when": 1795625801881,
       "tag": "0070_persona_stock_verdict_text",
       "breakpoints": true
+    },
+    {
+      "idx": 71,
+      "version": "7",
+      "when": 1795642931293,
+      "tag": "0071_measures",
+      "breakpoints": true
+    },
+    {
+      "idx": 72,
+      "version": "7",
+      "when": 1795661261785,
+      "tag": "0072_measure_run_stalled",
+      "breakpoints": true
     }
   ]
 }

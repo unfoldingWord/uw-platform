@@ -11,7 +11,9 @@ import {
 } from './closed-sets.ts';
 import { jdCategorySchema, jdIdSchema } from './areas.ts';
 import { pullRequestRefSchema, repositorySchema } from './harness.ts';
+import { dashboardFrontmatterSchema } from './dashboards.ts';
 import { identitySchema, isPersonaIdentity } from './identity.ts';
+import { measureFrontmatterSchema } from './measures.ts';
 import { providerIdSchema } from './runs.ts';
 import { pageStatusSchema, slugSchema, type PageType } from './pages.ts';
 
@@ -153,6 +155,9 @@ export const pageTypeRegistry = {
   program: { frontmatter: collectionFrontmatterSchema, ...internalSync },
   project: { frontmatter: collectionFrontmatterSchema, ...internalSync },
   okr: { frontmatter: collectionFrontmatterSchema, ...internalSync },
+  resource: { frontmatter: collectionFrontmatterSchema, ...internalSync },
+  measure: { frontmatter: measureFrontmatterSchema, ...internalSync },
+  dashboard: { frontmatter: dashboardFrontmatterSchema, ...internalSync },
 } as const satisfies Record<PageType, PageTypeDefinition>;
 
 const byType = new Map<string, PageTypeDefinition>(Object.entries(pageTypeRegistry));

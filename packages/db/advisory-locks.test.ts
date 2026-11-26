@@ -10,11 +10,12 @@ function clashes(keys: readonly string[]): string[] {
 }
 
 describe('FD-8 FD-9 advisory lock keys live in one registry, in one key space', () => {
-  it('names the grant-command and page re-parent keys as strings', () => {
+  it('names the grant-command, page re-parent, built-in and measure slot keys as strings', () => {
     expect(advisoryLocks).toEqual({
       grantCommands: 'acl-grant-commands',
       pageReparenting: 'pages-reparenting',
       builtInCollections: 'collections-built-in',
+      measureRunSlots: 'measure-run-slots',
     });
   });
 

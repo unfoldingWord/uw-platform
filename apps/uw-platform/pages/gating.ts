@@ -1,4 +1,4 @@
-import type { PageType } from '@uw/contracts';
+import type { PageStatus, PageType } from '@uw/contracts';
 
 type Gating = 'gated' | 'open';
 
@@ -19,6 +19,9 @@ const gatingByType = {
   program: 'open',
   project: 'open',
   okr: 'open',
+  resource: 'open',
+  measure: 'gated',
+  dashboard: 'gated',
 } as const satisfies Record<PageType, Gating>;
 
 const gating: ReadonlyMap<string, Gating> = new Map(Object.entries(gatingByType));
@@ -31,4 +34,10 @@ export function gatingOf(type: PageType): Gating {
 
 export function isGatedType(type: string): boolean {
   return gating.get(type) === 'gated';
+}
+
+const editedBackToSuggested: ReadonlySet<string> = new Set(['measure', 'dashboard']);
+
+export function returnsToSuggested(type: string, from: PageStatus, to: PageStatus): boolean {
+  return editedBackToSuggested.has(type) && from === 'active' && to === 'active';
 }

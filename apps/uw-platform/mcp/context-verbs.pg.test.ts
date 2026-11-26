@@ -297,6 +297,12 @@ const laterTiers = [
   { page: summary(PAGE.areaLearning, 'learning'), confidence: 'inferred', asOf: '2026-09-30' },
 ];
 
+const itemPackage = [summary(PAGE.item), summary(PAGE.strategy, 'product_strategy')];
+
+function contextReply(instructions: unknown, pkg: unknown[], learnings: unknown[]) {
+  return { instructions, package: pkg, learnings, measures: [] };
+}
+
 describe.skipIf(!testServer)(
   'AB-5 resolve_context returns instructions, package and confirmed learnings, most specific first',
   () => {
@@ -306,11 +312,10 @@ describe.skipIf(!testServer)(
       const r = rig();
       const [itemId] = r.itemIds;
       const reader = await viewer(r, VIEWER_80);
-      expect(await reader('resolve_context', { itemId })).toEqual({
-        instructions: { ...summary(PAGE.instructions, 'skill'), bodyMd: 'Context.' },
-        package: [summary(PAGE.item), summary(PAGE.strategy, 'product_strategy')],
-        learnings: [itemLearning, ...laterTiers],
-      });
+      const instructions = { ...summary(PAGE.instructions, 'skill'), bodyMd: 'Context.' };
+      expect(await reader('resolve_context', { itemId })).toEqual(
+        contextReply(instructions, itemPackage, [itemLearning, ...laterTiers]),
+      );
     });
 
     it('adds a learning in another area only for a caller who may read it', async () => {
@@ -363,21 +368,17 @@ describe.skipIf(!testServer)(
     it('answers only area learnings, newest first, for an item with no page or instructions', async () => {
       const r = rig();
       const reader = await viewer(r, VIEWER_80);
-      expect(await reader('resolve_context', { itemId: r.packageItems.bare })).toEqual({
-        instructions: null,
-        package: [],
-        learnings: areaOnly,
-      });
+      expect(await reader('resolve_context', { itemId: r.packageItems.bare })).toEqual(
+        contextReply(null, [], areaOnly),
+      );
     });
 
     it('puts the item page tier first and leaves out a retired package page', async () => {
       const r = rig();
       const reader = await viewer(r, VIEWER_80);
-      expect(await reader('resolve_context', { itemId: r.packageItems.paged })).toEqual({
-        instructions: null,
-        package: [summary(PAGE.item), summary(PAGE.strategy, 'product_strategy')],
-        learnings: [itemLearning, laterTiers[1], laterTiers[0]],
-      });
+      expect(await reader('resolve_context', { itemId: r.packageItems.paged })).toEqual(
+        contextReply(null, itemPackage, [itemLearning, laterTiers[1], laterTiers[0]]),
+      );
     });
 
     it('drops and logs a learning whose frontmatter does not parse', async () => {

@@ -26,3 +26,18 @@ describe('#198 a PDF export refusal answers with the status its reason names', (
     expect(await response.json()).toEqual({ status: 'error', reason });
   });
 });
+
+const measureReasons: readonly (readonly [ErrorReason, number])[] = [
+  ['trial_required', 409],
+  ['trial_unreadable', 409],
+  ['measure_paused', 409],
+  ['run_too_soon', 429],
+];
+
+describe('ADR 0034 a measure command refusal answers with the status its reason names', () => {
+  it.each(measureReasons)('%s answers %i with the reason in the body', async (reason, status) => {
+    const response = await refuser(reason).request('/');
+    expect(response.status).toBe(status);
+    expect(await response.json()).toEqual({ status: 'error', reason });
+  });
+});

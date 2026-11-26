@@ -11,7 +11,8 @@ import type { AppEnv } from '../../deps.ts';
 import { lineChanges, type LineChange } from '../../pages/diff.ts';
 import { pageVersion, type PageSnapshot } from '../../pages/history.ts';
 import { renderPage } from '../../pages/render-page.ts';
-import { updatePage } from '../../pages/store.ts';
+import { measurePauses } from '../../measures/activations.ts';
+import { updatePageWith } from '../../pages/store.ts';
 import { renderScreen, screenKernel, screenRefusal, type ScreenKernel } from '../parts/frame.tsx';
 import { pageNames } from '../parts/names.ts';
 import {
@@ -198,7 +199,11 @@ export async function restoreVersion(c: Context<AppEnv>): Promise<Response> {
   });
   if (!command.success) return render(c, old, 'malformed_command');
   const { actor, traceId } = old.screen.caller;
-  const saved = await updatePage(database.db, actor, command.data, traceId, old.screen.at);
+  const saved = await updatePageWith(database.db, actor, command.data, {
+    traceId,
+    at: old.screen.at,
+    effects: measurePauses,
+  });
   if (!saved.ok) return render(c, old, saved.reason);
   return c.redirect(`${pagePath(page.id)}?saved=${String(saved.page.version)}`, 303);
 }

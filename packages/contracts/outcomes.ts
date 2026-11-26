@@ -135,6 +135,10 @@ export const errorReasonSchema = z.enum([
   'binder_empty',
   'binder_too_large',
   'export_limit_reached',
+  'trial_required',
+  'trial_unreadable',
+  'run_too_soon',
+  'measure_paused',
 ]);
 
 export const refusalSchema = z.object({

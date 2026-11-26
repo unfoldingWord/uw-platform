@@ -38,6 +38,7 @@ import { ProfileBodySection, profileBody } from '../parts/profile-body.tsx';
 import { ProfileListSections, profileLists } from '../parts/profile-lists.tsx';
 import { notFound } from './not-found.tsx';
 import { withViews } from '../parts/view-embed.tsx';
+import { reportCardSection, withPanels } from '../parts/dashboard-panels.tsx';
 import {
   findingOf,
   relationChoices,
@@ -258,11 +259,12 @@ async function bodyOf(db: Db, screen: ScreenKernel, scene: RowScene): Promise<Ch
     props.screen.at,
   );
   if (page === null) return null;
-  const rendered = await withViews(
+  const viewed = await withViews(
     props.db,
     props.screen,
     await renderPage(props.db, props.screen.caller.actor, page, props.screen.at),
   );
+  const rendered = await withPanels(props.db, props.screen, page, viewed);
   const writable = can(
     props.screen.caller.actor,
     'write',
@@ -315,6 +317,9 @@ export async function rowScreen(c: Context<AppEnv>): Promise<Response> {
     <Relations scene={scene} />,
     await profileOf(database.db, screen, scene),
     await bodyOf(database.db, screen, scene),
+    definition.rowSource === 'pages'
+      ? await reportCardSection(database.db, screen, scene.row.id)
+      : null,
   ];
   const properties = <PropertySections screen={screen} scene={scene} />;
   const hasReading = scene.incoming.length > 0 || definition.rowSource !== 'tasks';

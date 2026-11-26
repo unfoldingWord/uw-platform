@@ -19,7 +19,10 @@
     "testing/knowledge.ts",
     "testing/credentials-world.ts",
     "testing/credentials-app.ts",
-    "testing/credentials-scene.ts"
+    "testing/credentials-scene.ts",
+    "testing/measure-world.ts",
+    "testing/measure-app.ts",
+    "testing/measure-scene.ts"
   ],
   "exclude": ["node_modules"]
 }

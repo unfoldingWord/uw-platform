@@ -31,5 +31,27 @@
       "confidence": "observed",
       "asOf": "2026-10-01"
     }
+  ],
+  "measures": [
+    {
+      "measureId": "00000000-0000-4000-8000-000000000002",
+      "title": "GEO score of our websites",
+      "metrics": [
+        {
+          "metric": "latest_score",
+          "name": "Score",
+          "rule": "latest",
+          "unit": null,
+          "target": 90,
+          "asOf": "2026-11-02T06:00:00.000Z",
+          "figure": 81,
+          "coverage": {
+            "scored": 1,
+            "total": 1,
+            "failed": []
+          }
+        }
+      ]
+    }
   ]
 }

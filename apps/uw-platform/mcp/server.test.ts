@@ -303,7 +303,11 @@ describe('every refusal is a closed-set reason', () => {
     const { result } = await refusalOf('get_health', { harnessId: 'not-a-harness-value' });
     expect(result).toEqual({
       isError: true,
-      body: { status: 'error', reason: 'malformed_command', detail: { fields: ['harnessId'] } },
+      body: {
+        status: 'error',
+        reason: 'malformed_command',
+        detail: { fields: ['harnessId'], issues: ['harnessId: Invalid UUID'] },
+      },
     });
     expect(JSON.stringify(result.body)).not.toContain('not-a-harness-value');
   });

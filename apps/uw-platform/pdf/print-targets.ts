@@ -5,6 +5,7 @@ import type { Database } from '@uw/db/client';
 import { listPages } from '../pages/listing.ts';
 import { renderPage } from '../pages/render-page.ts';
 import { readPage } from '../pages/store.ts';
+import { withPanels } from '../views/parts/dashboard-panels.tsx';
 import { withViews } from '../views/parts/view-embed.tsx';
 import { binderBody, type BinderSection, type SourceHash } from './print-document.ts';
 import { screenOf, titled, type Printable } from './print-kernel.ts';
@@ -31,8 +32,9 @@ const CHILDREN = 200;
 
 async function pageHtml(reader: Reader, page: Page, commit: string): Promise<string> {
   const { db, actor, at } = reader;
-  const rendered = await renderPage(db, actor, page, at, commit);
-  return (await withViews(db, screenOf(db, actor, at), rendered)).html;
+  const screen = screenOf(db, actor, at);
+  const viewed = await withViews(db, screen, await renderPage(db, actor, page, at, commit));
+  return (await withPanels(db, screen, page, viewed)).html;
 }
 
 export async function printPage(

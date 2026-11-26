@@ -16,7 +16,7 @@ import { pages, pageVersions } from '@uw/db/schema';
 import { pgConstraint, pgErrorCode } from '@uw/db/errors';
 import { derivedFrontmatter, personaLanding } from './derive.ts';
 import { filedOutsideItsArea } from './filing.ts';
-import { isGatedType } from './gating.ts';
+import { isGatedType, returnsToSuggested } from './gating.ts';
 import { embedsItself, rebuildLinks, resolveBody } from './links.ts';
 import { provenanceOf, type ExternalWriter } from './provenance.ts';
 import { REPLAY_INDEX, replayOf } from './replay.ts';
@@ -43,6 +43,10 @@ export type PageRefusal = {
   readonly ok: false;
   readonly reason: ErrorReason;
   readonly detail: Readonly<Record<string, string | readonly string[]>>;
+};
+
+export type PageEffects = {
+  readonly leftActive: (tx: Transaction, page: Page) => Promise<void>;
 };
 
 type CheckedSave = {
@@ -365,6 +369,7 @@ type Save = {
   readonly checked: CheckedSave;
   readonly traceId: string;
   readonly at: Date;
+  readonly effects?: PageEffects;
 };
 
 async function writeLinked(
@@ -383,6 +388,17 @@ async function writeLinked(
 
 function statusOf(checked: CheckedSave, stored: Page): PageStatus | PageRefusal {
   return stored.type === PROFILE ? collectionRow : checked.statusFor(stored);
+}
+
+async function withEffects(
+  tx: Transaction,
+  save: Save,
+  stored: Page,
+  saved: PageResult,
+): Promise<PageResult> {
+  const left = saved.ok && stored.status === 'active' && saved.page.status !== 'active';
+  if (left && save.effects !== undefined) await save.effects.leftActive(tx, saved.page);
+  return saved;
 }
 
 async function updateInTransaction(tx: Transaction, save: Save): Promise<PageResult | PageRefusal> {
@@ -404,7 +420,7 @@ async function updateInTransaction(tx: Transaction, save: Save): Promise<PageRes
   if ('ok' in full) return full;
   const blocked = await parentRefusal(tx, actor, full, at);
   if (blocked !== null) return refused(blocked);
-  return writeLinked(tx, save, stored, full);
+  return withEffects(tx, save, stored, await writeLinked(tx, save, stored, full));
 }
 
 async function saveChecked(db: Database, save: Save): Promise<PageResult | PageRefusal> {
@@ -427,18 +443,34 @@ export function updateCheckedPage(
   return saveChecked(db, { actor, checked, traceId, at });
 }
 
-export async function updatePage(
+export type UpdateRequest = {
+  readonly traceId: string;
+  readonly at: Date;
+  readonly effects?: PageEffects;
+};
+
+export function updatePageWith(
+  db: Database,
+  actor: Principal,
+  command: UpdatePageCommand,
+  request: UpdateRequest,
+): Promise<PageResult | PageRefusal> {
+  const statusFor = (stored: Page): PageStatus | PageRefusal => {
+    if (stored.type === ISSUE_MIRROR) return issueMirror;
+    if (returnsToSuggested(stored.type, stored.status, command.status)) return 'suggested';
+    return activates(stored.type, stored.status, command.status)
+      ? activationRequired
+      : command.status;
+  };
+  return saveChecked(db, { actor, checked: { command, statusFor }, ...request });
+}
+
+export function updatePage(
   db: Database,
   actor: Principal,
   command: UpdatePageCommand,
   traceId: string,
   at: Date,
 ): Promise<PageResult | PageRefusal> {
-  const statusFor = (stored: Page): PageStatus | PageRefusal => {
-    if (stored.type === ISSUE_MIRROR) return issueMirror;
-    return activates(stored.type, stored.status, command.status)
-      ? activationRequired
-      : command.status;
-  };
-  return saveChecked(db, { actor, checked: { command, statusFor }, traceId, at });
+  return updatePageWith(db, actor, command, { traceId, at });
 }

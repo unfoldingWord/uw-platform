@@ -1,0 +1,36 @@
+{
+  "dashboardId": "00000000-0000-4000-8000-0000000034d1",
+  "panels": [
+    {
+      "index": 0,
+      "kind": "figure",
+      "title": "Average score",
+      "drawn": true,
+      "coverage": {
+        "scored": 8,
+        "total": 9,
+        "failed": [
+          {
+            "reason": "timed_out",
+            "count": 1
+          }
+        ]
+      },
+      "problems": []
+    },
+    {
+      "index": 1,
+      "kind": "bars",
+      "title": null,
+      "drawn": false,
+      "coverage": null,
+      "problems": [
+        {
+          "path": "panels.1.metric",
+          "message": "the measure has no metric average_speed"
+        }
+      ]
+    }
+  ],
+  "problems": []
+}

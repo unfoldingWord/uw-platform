@@ -1,0 +1,16 @@
+{
+  "kind": "table",
+  "measure": "00000000-0000-4000-8000-0000000034a1",
+  "values": [
+    {
+      "value": "score",
+      "threshold": {
+        "op": "at_least",
+        "threshold": 90
+      }
+    },
+    {
+      "value": "seo"
+    }
+  ]
+}

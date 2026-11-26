@@ -32,6 +32,8 @@ type Answer =
 
 const ROOT = '(root)';
 const NAME_IN_LOG = 64;
+const MESSAGE_LENGTH = 300;
+const MOST_ISSUES = 20;
 
 const inputSchemas = new Map(Object.entries(verbIo).map(([name, io]) => [name, io.input]));
 
@@ -40,8 +42,14 @@ function parsedInput(name: VerbName, args: unknown): Parsed {
   if (schema === undefined) throw new Error(`verb ${name} has no input schema`);
   const parsed = schema.safeParse(args ?? {});
   if (parsed.success) return { ok: true, input: parsed.data };
-  const fields = parsed.error.issues.map((issue) => issue.path.map(String).join('.') || ROOT);
-  return { ok: false, refusal: refusal('malformed_command', { fields: [...new Set(fields)] }) };
+  const placed = parsed.error.issues.map((issue) => ({
+    field: issue.path.map(String).join('.') || ROOT,
+    message: issue.message.slice(0, MESSAGE_LENGTH),
+  }));
+  const fields = [...new Set(placed.map((issue) => issue.field))];
+  const issues = [...new Set(placed.map((issue) => `${issue.field}: ${issue.message}`))];
+  const detail = { fields, issues: issues.slice(0, MOST_ISSUES) };
+  return { ok: false, refusal: refusal('malformed_command', detail) };
 }
 
 function isRefusal(value: Found<unknown> | VerbRefusal): value is VerbRefusal {
