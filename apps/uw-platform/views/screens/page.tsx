@@ -23,6 +23,7 @@ import {
   type PolicyReading,
   type PolicyTarget,
 } from '../../pages/policy-reading.ts';
+import { ConfirmControl, confirmable } from '../parts/confirm-control.tsx';
 import { PolicyFormsSection } from '../parts/policy-forms.tsx';
 import { pendingSuggestions, type PendingSuggestion } from '../../pages/suggestions.ts';
 import { verificationOf } from '../../pages/verification.ts';
@@ -250,6 +251,11 @@ function body(shown: ShownPage, extras: Extras) {
         <div data-page-body="">{raw(extras.rendered.html)}</div>
       </div>
       {category === null ? null : <Pager category={category} previous={previous} next={next} />}
+      <ConfirmControl
+        page={page}
+        shown={confirmable(page, shown.canEdit, extras.reader.kind === 'person')}
+        refused={extras.refused}
+      />
       <PolicyFormsSection
         forms={
           extras.policy === null
@@ -262,7 +268,9 @@ function body(shown: ShownPage, extras: Extras) {
                 at: extras.at,
               }
         }
-        refused={extras.refused}
+        refused={
+          confirmable(page, shown.canEdit, extras.reader.kind === 'person') ? null : extras.refused
+        }
       />
       <History
         pageId={page.id}

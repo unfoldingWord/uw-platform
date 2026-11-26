@@ -74,7 +74,7 @@ export function storedOf(row: Row): Stored | null {
   };
 }
 
-export async function storedPolicies(
+async function storedPolicies(
   db: Executor,
   chain: PolicyChain,
   onInvalid: (pageId: string) => void,

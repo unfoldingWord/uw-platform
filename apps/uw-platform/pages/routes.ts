@@ -213,6 +213,26 @@ async function handleCommand(c: Context<AppEnv>): Promise<Response> {
   return c.json(pageCommandAcceptedSchema.parse(saved), 200);
 }
 
+async function confirmFromForm(c: Context<AppEnv>): Promise<Response> {
+  const database = c.get('database');
+  const actor = c.get('principal');
+  const pageId = c.req.param('pageId') ?? '';
+  if (database === null || actor === null) return refuse(c, 'unauthenticated');
+  const posted = await c.req.parseBody();
+  const command = confirmPageCommandSchema.safeParse({
+    command: 'confirm_page',
+    requestId: posted['requestId'],
+    pageId,
+    expectedVersion: Number(posted['expectedVersion']),
+  });
+  if (!command.success) return refuse(c, 'malformed_command');
+  const done = await confirmPage(database.db, actor, command.data, c.get('traceId'), c.get('now'));
+  const mark = done.ok
+    ? `saved=${String(done.page.version)}`
+    : `refused=${encodeURIComponent(done.reason)}`;
+  return c.redirect(`/pages/${encodeURIComponent(pageId)}?${mark}`, 303);
+}
+
 function wikiReads(routes: Hono<AppEnv>): void {
   routes.get('/categories', pageReads.categories);
   routes.get('/favourites', pageReads.favourites);
@@ -270,6 +290,8 @@ function pageScreenRoutes(): Hono<AppEnv> {
   routes.use('/:pageId/manage', formGuard);
   routes.get('/:pageId/manage', pageManageScreen);
   routes.post('/:pageId/manage', managePage);
+  routes.use('/:pageId/confirm', formGuard);
+  routes.post('/:pageId/confirm', confirmFromForm);
   routes.use('/:pageId/policy', formGuard);
   routes.post('/:pageId/policy', postPolicyForm);
   routes.use('/:pageId/suggestions/:suggestionId', formGuard);

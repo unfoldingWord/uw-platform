@@ -116,6 +116,10 @@ export function pageSuggestionPath(pageId: string, suggestionId: string): string
   return `${pagePath(pageId)}/suggestions/${segment(suggestionId)}`;
 }
 
+export function pageConfirmPath(pageId: string): string {
+  return `${pagePath(pageId)}/confirm`;
+}
+
 export function pagePolicyPath(pageId: string): string {
   return `${pagePath(pageId)}/policy`;
 }

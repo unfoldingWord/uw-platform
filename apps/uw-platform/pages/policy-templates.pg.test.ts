@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import type { Database } from '@uw/db/client';
-import { rewritePageBody, seedPage } from '@uw/db/test-seed';
+import { rewritePageBody, rewritePageFrontmatter, seedPage } from '@uw/db/test-seed';
 import { personOn } from '../testing/kernel.ts';
 import { person, post } from '../testing/commands.ts';
 import { testServer, withAppDatabase } from '../testing/postgres.ts';
@@ -99,9 +99,17 @@ async function driftAndAdopt(db: Database): Promise<void> {
     requestId: randomUUID(),
     pageId: command.pageId,
   };
+  const pinnedOld = await post(db, email, `${COMMANDS}/adopt_template_update`, {
+    ...adopt,
+    requestId: randomUUID(),
+    expectedVersion: 1,
+    templateVersion: 1,
+  });
+  expect(pinnedOld.body).toMatchObject({ status: 'error', reason: 'stale_version' });
   const sent = await post(db, email, `${COMMANDS}/adopt_template_update`, {
     ...adopt,
     expectedVersion: 1,
+    templateVersion: 2,
   });
   expect(sent.body).toMatchObject({ status: 'accepted', version: 2 });
   const adopted = await readPage(db, actor, command.pageId, ON);
@@ -112,8 +120,28 @@ async function driftAndAdopt(db: Database): Promise<void> {
     ...adopt,
     requestId: randomUUID(),
     expectedVersion: 2,
+    templateVersion: 2,
   });
   expect(again.body).toMatchObject({ status: 'error', reason: 'malformed_command' });
+}
+
+async function adoptsOnlyFromATemplate(db: Database): Promise<void> {
+  const { email, templateId } = await world(db);
+  const command = copyCommand(templateId);
+  await post(db, email, `${COMMANDS}/copy_template_policy`, command);
+  await rewritePageBody(db, templateId, 'Now a binding rule.');
+  await rewritePageFrontmatter(db, templateId, {
+    enforcement: 'default',
+    effective_from: '2026-01-01',
+  });
+  const sent = await post(db, email, `${COMMANDS}/adopt_template_update`, {
+    command: 'adopt_template_update',
+    requestId: randomUUID(),
+    pageId: command.pageId,
+    expectedVersion: 1,
+    templateVersion: 2,
+  });
+  expect(sent.body).toMatchObject({ status: 'error', reason: 'malformed_command' });
 }
 
 describe.skipIf(!testServer)('PO-5 a template policy is copied with its source and version', () => {
@@ -125,4 +153,7 @@ describe.skipIf(!testServer)('PO-5 a template policy is copied with its source a
 
   it('reports a copy behind its source, and adopting the update clears it', () =>
     withAppDatabase(driftAndAdopt));
+
+  it('refuses to adopt from a source that is no longer a template', () =>
+    withAppDatabase(adoptsOnlyFromATemplate));
 });

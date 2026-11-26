@@ -46,6 +46,7 @@ export const adoptTemplateUpdateCommandSchema = z.object({
   requestId: z.uuid(),
   pageId: z.uuid(),
   expectedVersion: z.number().int().min(1),
+  templateVersion: z.number().int().min(1),
 });
 
 export type AdoptTemplateUpdateCommand = z.infer<typeof adoptTemplateUpdateCommandSchema>;

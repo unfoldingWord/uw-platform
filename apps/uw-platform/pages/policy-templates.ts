@@ -1,4 +1,4 @@
-import { and, eq, inArray, isNotNull, ne, sql } from 'drizzle-orm';
+import { and, asc, eq, gt, inArray, isNotNull, ne, sql, type SQL } from 'drizzle-orm';
 import {
   policyFrontmatterSchema,
   type AdoptTemplateUpdateCommand,
@@ -6,16 +6,14 @@ import {
   type Page,
   type PolicyFrontmatter,
 } from '@uw/contracts';
-import { can } from '@uw/core/acl';
 import type { Principal } from '@uw/core/principal';
 import type { Database, Executor } from '@uw/db/client';
 import { pages } from '@uw/db/schema';
 import { templateDrift, type TemplateDrift } from '@uw/harness';
 import { slugFor } from './copy.ts';
-import { summarySchema, type PageSummary } from './reads.ts';
+import { everyRow } from './batches.ts';
+import { areaFilter, summarySchema, type PageSummary } from './reads.ts';
 import { createPage, readPage, updatePage, type PageRefusal, type PageResult } from './store.ts';
-
-const DRIFT_LIMIT = 500;
 
 type Done = PageResult | PageRefusal;
 
@@ -71,6 +69,15 @@ export async function copyTemplatePolicy(
   return createPage(db, actor, create, traceId, at);
 }
 
+function sourceRefusal(source: Page, copied: number, shown: number): PageRefusal | null {
+  if (source.status !== 'active' || policyOf(source)?.enforcement !== 'template') {
+    return refused('malformed_command', 'not_a_template');
+  }
+  if (source.version !== shown) return refused('stale_version', 'template_moved');
+  if (source.version <= copied) return refused('malformed_command', 'not_behind');
+  return null;
+}
+
 export async function adoptTemplateUpdate(
   db: Database,
   actor: Principal,
@@ -84,8 +91,8 @@ export async function adoptTemplateUpdate(
   if (facts?.copied_from == null) return refused('malformed_command', 'not_a_copy');
   const source = await readPage(db, actor, facts.copied_from.page_id, at);
   if (source === null || source.status === 'retired') return refused('page_not_found');
-  if (source.version <= facts.copied_from.version)
-    return refused('malformed_command', 'not_behind');
+  const unfit = sourceRefusal(source, facts.copied_from.version, command.templateVersion);
+  if (unfit !== null) return unfit;
   const copiedFrom = { page_id: source.id, version: source.version };
   return updatePage(
     db,
@@ -109,23 +116,34 @@ export async function adoptTemplateUpdate(
 
 const COPIED_FROM = sql<string | null>`${pages.frontmatter} -> 'copied_from' ->> 'page_id'`;
 
-async function copyRows(db: Executor) {
-  return db
-    .select({
-      id: pages.id,
-      type: pages.type,
-      jdArea: pages.jdArea,
-      slug: pages.slug,
-      title: pages.title,
-      status: pages.status,
-      frontmatter: pages.frontmatter,
-    })
-    .from(pages)
-    .where(and(eq(pages.type, 'policy'), ne(pages.status, 'retired'), isNotNull(COPIED_FROM)))
-    .limit(DRIFT_LIMIT);
+type Readable = SQL | undefined;
+
+async function copyRows(db: Executor, readable: Readable) {
+  const copies = and(
+    eq(pages.type, 'policy'),
+    ne(pages.status, 'retired'),
+    isNotNull(COPIED_FROM),
+    readable,
+  );
+  return everyRow((after, size) =>
+    db
+      .select({
+        id: pages.id,
+        type: pages.type,
+        jdArea: pages.jdArea,
+        slug: pages.slug,
+        title: pages.title,
+        status: pages.status,
+        frontmatter: pages.frontmatter,
+      })
+      .from(pages)
+      .where(and(copies, after === null ? undefined : gt(pages.id, after)))
+      .orderBy(asc(pages.id))
+      .limit(size),
+  );
 }
 
-async function sourceRows(db: Executor, ids: readonly string[]) {
+async function sourceRows(db: Executor, ids: readonly string[], readable: Readable) {
   if (ids.length === 0) return [];
   return db
     .select({
@@ -138,7 +156,7 @@ async function sourceRows(db: Executor, ids: readonly string[]) {
       version: pages.version,
     })
     .from(pages)
-    .where(inArray(pages.id, [...ids]));
+    .where(and(inArray(pages.id, [...ids]), readable));
 }
 
 export async function templateDriftFor(
@@ -146,16 +164,17 @@ export async function templateDriftFor(
   actor: Principal,
   at: Date,
 ): Promise<readonly DriftEntry[]> {
-  const readable = (area: string) => can(actor, 'read', { kind: 'area', area }, at);
-  const copies = (await copyRows(db)).flatMap((row) => {
+  const readable = areaFilter(actor, at);
+  if (readable === null) return [];
+  const copies = (await copyRows(db, readable)).flatMap((row) => {
     const source = policyFrontmatterSchema.safeParse(row.frontmatter).data?.copied_from;
-    if (source == null || !readable(row.jdArea)) return [];
+    if (source == null) return [];
     return [
       { row, copy: { id: row.id, source: { pageId: source.page_id, version: source.version } } },
     ];
   });
-  const sources = await sourceRows(db, [...new Set(copies.map((c) => c.copy.source.pageId))]);
-  const seen = sources.filter((source) => readable(source.jdArea));
+  const named = [...new Set(copies.map((c) => c.copy.source.pageId))];
+  const seen = await sourceRows(db, named, readable);
   const drift = templateDrift(
     copies.map((c) => c.copy),
     seen,

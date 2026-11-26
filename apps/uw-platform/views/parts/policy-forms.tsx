@@ -29,7 +29,7 @@ export type PolicyForms = {
 function Adopt(props: { readonly forms: PolicyForms }) {
   const { page, reading } = props.forms;
   const copied = reading.copiedFrom;
-  if (copied?.current == null || copied.current <= copied.version) return null;
+  if (copied?.current == null || !copied.adoptable) return null;
   return (
     <Section
       title="Template update"
@@ -39,6 +39,7 @@ function Adopt(props: { readonly forms: PolicyForms }) {
         <input type="hidden" name="intent" value="adopt" />
         <input type="hidden" name="requestId" value={crypto.randomUUID()} />
         <input type="hidden" name="expectedVersion" value={String(page.version)} />
+        <input type="hidden" name="templateVersion" value={String(copied.current)} />
         <p class="m-0">
           <Button type="submit" variant="human">
             Adopt the template's new text
@@ -137,6 +138,7 @@ export async function postPolicyForm(c: Context<AppEnv>): Promise<Response> {
       requestId: posted['requestId'],
       pageId,
       expectedVersion: Number(posted['expectedVersion']),
+      templateVersion: Number(posted['templateVersion']),
     });
     if (!command.success) return refusedTo('malformed_command');
     const done = await adoptTemplateUpdate(database.db, actor, command.data, traceId, screen.at);
@@ -158,5 +160,5 @@ export async function postPolicyForm(c: Context<AppEnv>): Promise<Response> {
   if (!command.success) return refusedTo('malformed_command');
   const done = await copyTemplatePolicy(database.db, actor, command.data, traceId, screen.at);
   if (!done.ok) return refusedTo(done.reason);
-  return c.redirect(pagePath(copyId), 303);
+  return c.redirect(pagePath(done.page.id), 303);
 }

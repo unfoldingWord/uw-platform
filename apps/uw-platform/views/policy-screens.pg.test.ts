@@ -170,6 +170,17 @@ async function policiesListed(db: Database): Promise<void> {
 
 const TEMPLATE = '00000000-0000-4000-8000-000000003a05';
 
+async function confirmFromThePage(db: Database, email: string, path: string): Promise<void> {
+  const suggested = documentOf((await getHtml(db, email, path)).text);
+  const form = suggested.querySelector(`form[action="${path}/confirm"]`);
+  expect(form?.querySelector('button')?.textContent.trim()).toBe('Confirm');
+  const sent = new URLSearchParams({ requestId: crypto.randomUUID(), expectedVersion: '1' });
+  const confirmed = await postForm(db, email, `${path}/confirm`, sent, ORIGIN);
+  expect(confirmed.headers.get('location')).toBe(`${path}?saved=2`);
+  const live = documentOf((await getHtml(db, email, path)).text);
+  expect(live.querySelector(`form[action="${path}/confirm"]`)).toBeNull();
+}
+
 async function copyAndAdoptFromThePage(db: Database): Promise<void> {
   const made = await world(db);
   await seedPage(db, policy(TEMPLATE, 'Work in progress', { enforcement: 'template', ...from }));
@@ -191,6 +202,9 @@ async function copyAndAdoptFromThePage(db: Database): Promise<void> {
   const made2 = await postForm(db, made.editor, `/pages/${TEMPLATE}/policy`, copy, ORIGIN);
   expect(made2.status).toBe(303);
   const copyPath = made2.headers.get('location') ?? '';
+  const replay = await postForm(db, made.editor, `/pages/${TEMPLATE}/policy`, copy, ORIGIN);
+  expect(replay.headers.get('location')).toBe(copyPath);
+  await confirmFromThePage(db, made.editor, copyPath);
   const copied = documentOf((await getHtml(db, made.editor, copyPath)).text);
   expect(factsOf(copied)).toMatchObject({
     Level: 'Program',
@@ -203,10 +217,11 @@ async function copyAndAdoptFromThePage(db: Database): Promise<void> {
   const sent = new URLSearchParams({
     requestId: crypto.randomUUID(),
     intent: 'adopt',
-    expectedVersion: '1',
+    expectedVersion: '2',
+    templateVersion: '2',
   });
   const adopted = await postForm(db, made.editor, `${copyPath}/policy`, sent, ORIGIN);
-  expect(adopted.headers.get('location')).toBe(`${copyPath}?saved=2`);
+  expect(adopted.headers.get('location')).toBe(`${copyPath}?saved=3`);
   const after = documentOf((await getHtml(db, made.editor, copyPath)).text);
   expect(after.querySelector('[data-page-body]')?.textContent).toContain('at most two');
 }
@@ -214,7 +229,7 @@ async function copyAndAdoptFromThePage(db: Database): Promise<void> {
 describe.skipIf(!testServer)(
   'PO-5 a person copies a template and adopts its update from the page',
   () => {
-    it('copies the template into a suggested policy, then adopts the template update', () =>
+    it('copies the template into a suggested policy, confirms it, then adopts the template update', () =>
       withAppDatabase(copyAndAdoptFromThePage));
   },
 );

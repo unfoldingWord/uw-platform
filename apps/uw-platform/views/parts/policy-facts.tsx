@@ -33,13 +33,16 @@ export function inForceWords(reading: Pick<PolicyReading, 'effectiveFrom' | 'eff
 }
 
 export function TargetLink(props: { readonly reading: PolicyReading }) {
-  const { target, level } = props.reading;
-  if (level === 'organization') return <span>Everyone</span>;
+  const { target, appliesTo } = props.reading;
+  if (appliesTo === null) return <span>Everyone</span>;
   if (target === null) return <span>A page you cannot read</span>;
   return (
-    <a href={pagePath(target.id)} class={pageLink}>
-      {target.title}
-    </a>
+    <>
+      <a href={pagePath(target.id)} class={pageLink}>
+        {target.title}
+      </a>
+      {target.status === 'retired' ? <span> (retired)</span> : null}
+    </>
   );
 }
 
