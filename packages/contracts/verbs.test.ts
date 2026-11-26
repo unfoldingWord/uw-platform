@@ -33,29 +33,34 @@ function groupOf(name: string): string | undefined {
   return findVerb(name)?.group;
 }
 
+const registered = [
+  'search_pages',
+  'read_page',
+  'write_page',
+  'attach_file',
+  'render_pdf',
+  'resolve_context',
+  'query_entities',
+  'create_task',
+  'read_collection',
+  'read_view',
+  'create_row',
+  'set_property',
+  'list_gifts',
+  'create_draft_journal_entry',
+  'poll_queue',
+  'claim_item',
+  'submit_to_gate',
+  'record_run_step',
+  'get_health',
+  'set_reminder',
+  'cancel_reminder',
+  'list_reminders',
+];
+
 describe('CT-2 the verb registry', () => {
-  it('registers the thirteen verbs of PRD section 8.2, attach_file, render_pdf and the four collection verbs', () => {
-    expect(names()).toEqual([
-      'search_pages',
-      'read_page',
-      'write_page',
-      'attach_file',
-      'render_pdf',
-      'resolve_context',
-      'query_entities',
-      'create_task',
-      'read_collection',
-      'read_view',
-      'create_row',
-      'set_property',
-      'list_gifts',
-      'create_draft_journal_entry',
-      'poll_queue',
-      'claim_item',
-      'submit_to_gate',
-      'record_run_step',
-      'get_health',
-    ]);
+  it('registers the thirteen verbs of PRD section 8.2, attach_file, render_pdf, the four collection verbs and the three assistant verbs', () => {
+    expect(names()).toEqual(registered);
     expect(names()).toEqual([...verbNames]);
   });
 
@@ -68,9 +73,15 @@ describe('CT-2 the verb registry', () => {
     expect(findVerb('resolve_policies')).toBeUndefined();
   });
 
-  it('serves every verb in v1 except the two role-gated ones', () => {
+  it('serves every verb in v1 except the two role-gated ones and the assistant ones', () => {
     const unserved = verbRegistry.filter((entry) => !entry.servedInV1).map((entry) => entry.name);
-    expect(unserved).toEqual(['list_gifts', 'create_draft_journal_entry']);
+    expect(unserved).toEqual([
+      'list_gifts',
+      'create_draft_journal_entry',
+      'set_reminder',
+      'cancel_reminder',
+      'list_reminders',
+    ]);
   });
 
   it('declares every grant in a shape verbGrantSchema accepts', () => {
@@ -108,7 +119,7 @@ describe('CT-2 the verb manifest is contract data', () => {
   it('is plain JSON-serialisable contract data', () => {
     const manifest = verbManifest();
     expect(JSON.parse(JSON.stringify(manifest))).toEqual(manifest);
-    expect(manifest).toHaveLength(19);
+    expect(manifest).toHaveLength(22);
   });
 
   it('serialises the registry with its Zod schemas stripped', () => {

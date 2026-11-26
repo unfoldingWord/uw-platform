@@ -64,6 +64,13 @@ export function formatMonth(month: string): string {
   return `${MONTH_NAMES[first.getUTCMonth()] ?? ''} ${first.getUTCFullYear()}`;
 }
 
+export function yearsAfter(instant: Date, years: number): Date {
+  const moved = new Date(instant.getTime());
+  moved.setUTCFullYear(instant.getUTCFullYear() + years);
+  if (moved.getUTCMonth() !== instant.getUTCMonth()) moved.setUTCDate(0);
+  return moved;
+}
+
 const FIXED_OFFSET_ZONE = /^(?:[+\-\u2212]|(?:etc\/)?(?:gmt|utc)[+\-\u2212])/i;
 
 function fixedOffset(name: string): boolean {

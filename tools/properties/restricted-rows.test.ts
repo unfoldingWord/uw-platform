@@ -119,6 +119,7 @@ const written = new Map<string, { areaRank: number | null; owner: boolean; orgAd
   ['assistant_settings', { areaRank: null, owner: true, orgAdmin: false }],
   ['assistant_requests', { areaRank: null, owner: true, orgAdmin: false }],
   ['assistant_effects', { areaRank: null, owner: true, orgAdmin: false }],
+  ['assistant_reminders', { areaRank: null, owner: true, orgAdmin: false }],
 ]);
 
 type Asked = {

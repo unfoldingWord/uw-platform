@@ -28,6 +28,7 @@ import type {
   AssistantMonthQuery,
   AssistantMonthSpend,
   AssistantEffectsGateway,
+  AssistantRemindersGateway,
   AssistantRequestsGateway,
   AssistantSettingsGateway,
 } from './types-assistants.ts';
@@ -413,4 +414,5 @@ export type DrizzleTransaction = {
   readonly assistantSettings: AssistantSettingsGateway;
   readonly assistantRequests: AssistantRequestsGateway;
   readonly assistantEffects: AssistantEffectsGateway;
+  readonly assistantReminders: AssistantRemindersGateway;
 };

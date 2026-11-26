@@ -54,4 +54,11 @@ export const assistantEvidence = {
     kind: assistantEffectKindSchema,
     why: assistantEffectFailureSchema,
   }),
+  assistant_reminder_set: z.strictObject({ reminderId: id, effectId: id }),
+  assistant_reminder_cancelled: z.strictObject({ reminderId: id, effectId: id }),
+  assistant_reminder_fired: z.strictObject({ reminderId: id }),
+  assistant_reminder_undelivered: z.strictObject({
+    reminderId: id,
+    why: assistantEffectFailureSchema,
+  }),
 };

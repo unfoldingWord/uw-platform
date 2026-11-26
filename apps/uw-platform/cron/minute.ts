@@ -18,6 +18,7 @@ const SWEEP_LIMIT = 200;
 const BEAT_LIMIT = 10;
 const EXPIRY_LIMIT = 200;
 const SILENCE_LIMIT = 200;
+const REMINDER_LIMIT = 50;
 
 type Minute = {
   readonly kernel: Kernel;
@@ -101,6 +102,20 @@ async function silence({ kernel, caller, logger }: Minute): Promise<void> {
   });
 }
 
+async function remind({ kernel, caller, logger }: Minute): Promise<void> {
+  const fired = await kernel.assistants.fireDueReminders(caller, { limit: REMINDER_LIMIT });
+  if (fired.status !== 'accepted') {
+    logger.warn('reminders refused', { step: 'reminders', outcome: fired.reason });
+    return;
+  }
+  logger.info('reminders fired', {
+    step: 'reminders',
+    outcome: 'reminders_fired',
+    fired: fired.value.fired.length,
+    undelivered: fired.value.undelivered.length,
+  });
+}
+
 function failureOf(step: string, error: unknown): string {
   if (step === 'breaker' && error instanceof PortNotWiredError) return 'breaker_not_configured';
   if (step === 'breaker') return 'breaker_unreadable';
@@ -132,10 +147,11 @@ async function minuteWith(
   const unit = unitHub(hubOf(env, logger));
   const modelEngine = spendOnlyEngine(gatewaySpend(deps.engines, deps.now));
   const notifier = notifierOf(env, database, deps.sink, deps.fetch);
+  const directMessages = deps.directMessages({ env, database, fetch: deps.fetch });
   const kernel = platformKernel(
     database,
     { now: deps.now },
-    hubWiring(unit.hub, { modelEngine, runs: runsOf(env), notifier }),
+    hubWiring(unit.hub, { modelEngine, runs: runsOf(env), notifier, directMessages }),
   );
   const caller: Caller = { actor: systemPrincipal(), traceId: deps.newId(), requestId: null };
   const minute = { kernel, caller, deps, logger };
@@ -144,6 +160,7 @@ async function minuteWith(
     await guarded(minute, 'expiry', expire);
     await guarded(minute, 'breaker', checkBreaker);
     await guarded(minute, 'beat', beat);
+    await guarded(minute, 'reminders', remind);
     await guarded(minute, 'silence', silence);
     await runDelegatedExits({
       database,

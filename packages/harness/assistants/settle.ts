@@ -59,8 +59,12 @@ export function leaseHeld(claim: Claim, at: Date): boolean {
   return since !== null && at.getTime() < since.getTime() + DELIVERY_LEASE_MS;
 }
 
+export function sendByFrom(at: Date): Date {
+  return new Date(at.getTime() + SEND_WINDOW_MS);
+}
+
 export function sendByOf(effect: AssistantEffectRow): Date {
-  return new Date(effect.createdAt.getTime() + SEND_WINDOW_MS);
+  return sendByFrom(effect.createdAt);
 }
 
 export function finishedOf(

@@ -1,5 +1,6 @@
 import { engineConfigOf } from '../engines/config.ts';
 import { commitOf, type Bindings } from '../env.ts';
+import { directMessagesOf } from '../assistants/direct-messages.ts';
 import { withSecrets, type WorkerEnv } from '../secrets.ts';
 import { cronLogger, type CronDeps } from './job.ts';
 import { cronJobs } from './registry.ts';
@@ -13,6 +14,7 @@ function platformCronDeps(env: Bindings): CronDeps {
     newId: () => crypto.randomUUID(),
     commit: commitOf(env),
     engines: engineConfigOf(env, send),
+    directMessages: directMessagesOf,
   };
 }
 

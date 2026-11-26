@@ -777,7 +777,7 @@ An effect outside the closed set, drafted by an assistant, which runs only after
 _Avoid_: draft (that is a private copy of a harness's stages, or a working draft of a page), suggestion, pending action
 
 **Reminder**:
-A note to an assistant's person, due at an instant, delivered only to that person.
+A note to an assistant's person, due at an instant, delivered only to that person. It is set when the turn that drafted it ends, fires once, and is recorded undelivered, never sent, when the person's `assist` delegation has lapsed by then.
 _Avoid_: alarm (that word belongs to the silence alarm), task, due date
 
 **Pairing**:

@@ -4,7 +4,13 @@ import { roleSchema, type Role } from './closed-sets.ts';
 import { verbIo } from './verb-io.ts';
 import type { VerbName } from './verb-names.ts';
 
-export const verbGroupSchema = z.enum(['pages_and_context', 'records', 'role_gated', 'harness']);
+export const verbGroupSchema = z.enum([
+  'pages_and_context',
+  'records',
+  'role_gated',
+  'harness',
+  'assistant',
+]);
 
 export const verbGrantSchema = z.discriminatedUnion('scope', [
   z.object({ scope: z.literal('resource_area'), role: roleSchema }),
@@ -162,6 +168,27 @@ export const verbRegistry: readonly VerbDefinition[] = [
     'harness',
     onResource('viewer'),
     'Get the agent-plane health of one harness you may see.',
+  ),
+  verb(
+    'set_reminder',
+    'assistant',
+    null,
+    'Draft a reminder for your person, due between a minute and two years from now; it is set when your turn ends and reaches only your person. Not served yet.',
+    false,
+  ),
+  verb(
+    'cancel_reminder',
+    'assistant',
+    null,
+    "Draft cancelling one of your person's reminders that has not fired; it is cancelled when your turn ends. Not served yet.",
+    false,
+  ),
+  verb(
+    'list_reminders',
+    'assistant',
+    null,
+    "List your person's reminders that have not fired yet. Not served yet.",
+    false,
   ),
 ];
 

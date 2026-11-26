@@ -18,6 +18,8 @@ import {
   assistantDirectEffectSchema,
   assistantEffectFailureSchema,
   assistantEffectKindSchema,
+  assistantReminderRefusalSchema,
+  assistantReminderStatusSchema,
   assistantRequestInputSchema,
   assistantSettingFieldSchema,
   assistantSettingsSchema,
@@ -465,4 +467,6 @@ export const schemaRegistry: Record<string, ZodType> = {
   'untrusted-part': untrustedPartSchema,
   'assistant-request-input': assistantRequestInputSchema,
   'assistant-settings': assistantSettingsSchema,
+  'assistant-reminder-status': assistantReminderStatusSchema,
+  'assistant-reminder-refusal': assistantReminderRefusalSchema,
 };

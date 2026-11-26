@@ -1,6 +1,7 @@
 import type {
   AssistantChannel,
   AssistantEffectKind,
+  AssistantReminderStatus,
   EventName,
   UntrustedPart,
 } from '@uw/contracts';
@@ -64,8 +65,39 @@ export type AssistantEffectsGateway = {
   readonly read: {
     byKey(harnessId: string, idempotencyKey: string): Promise<AssistantEffectRow | null>;
     forRequests(requestIds: readonly string[]): Promise<readonly AssistantEffectRow[]>;
+    countSince(harnessId: string, kind: AssistantEffectKind, since: Date): Promise<number>;
   };
   readonly write: { insert(row: AssistantEffectRow): Promise<boolean> };
+};
+
+export type AssistantReminderRow = {
+  readonly id: string;
+  readonly harnessId: string;
+  readonly personId: string;
+  readonly requestId: string;
+  readonly effectId: string;
+  readonly text: string;
+  readonly dueAt: Date;
+  readonly status: AssistantReminderStatus;
+  readonly closedAt: Date | null;
+  readonly createdAt: Date;
+};
+export type ReminderClose = {
+  readonly id: string;
+  readonly from: AssistantReminderStatus;
+  readonly to: AssistantReminderStatus;
+  readonly at: Date;
+};
+export type AssistantRemindersGateway = {
+  readonly read: {
+    byId(reminderId: string): Promise<AssistantReminderRow | null>;
+    due(at: Date, limit: number): Promise<readonly AssistantReminderRow[]>;
+    pending(harnessId: string, limit: number): Promise<readonly AssistantReminderRow[]>;
+  };
+  readonly write: {
+    insert(row: AssistantReminderRow): Promise<void>;
+    close(change: ReminderClose): Promise<boolean>;
+  };
 };
 
 export type AssistantLedgerSubject = { readonly requestId: string } | { readonly effectId: string };

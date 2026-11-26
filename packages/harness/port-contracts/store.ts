@@ -34,6 +34,7 @@ const refusalTimeout = 2_000;
 
 const transactionMembers = [
   'assistantEffects',
+  'assistantReminders',
   'assistantRequests',
   'assistantSettings',
   'delegations',

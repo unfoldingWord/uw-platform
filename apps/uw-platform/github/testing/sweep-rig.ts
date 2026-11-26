@@ -16,6 +16,7 @@ import { sweepGitHub, type SweepOptions, type SweepReport } from '../sweep.ts';
 import { fixtureTransport } from './app-key.ts';
 import { base, head } from './facts-fixtures.ts';
 import { fixtureGitHub, type FixtureGitHub } from './fixture-github.ts';
+import { directMessagesOf } from '../../assistants/direct-messages.ts';
 
 type Line = Record<string, unknown>;
 
@@ -110,6 +111,7 @@ export async function sweepOnce(
       newId: () => crypto.randomUUID(),
       commit: 'c',
       engines: { fetch: run.github.fetch },
+      directMessages: directMessagesOf,
     },
     'cron github sweep',
   );

@@ -146,6 +146,9 @@ function argumentsOf(): Readonly<Record<VerbName, readonly unknown[]>> {
     ],
     record_run_step: [ids],
     get_health: [{ harnessId }],
+    set_reminder: [{ text: name, dueAt: '2027-01-01T09:00:00Z' }],
+    cancel_reminder: [{ reminderId: credentialId }],
+    list_reminders: [{}],
   };
 }
 

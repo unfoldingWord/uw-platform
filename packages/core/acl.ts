@@ -83,6 +83,7 @@ export const rowReadRules = {
   assistant_settings: ownerOnly,
   assistant_requests: ownerOnly,
   assistant_effects: ownerOnly,
+  assistant_reminders: ownerOnly,
 } as const satisfies Readonly<Record<string, RowReadRule>>;
 
 export type RestrictedTable = keyof typeof rowReadRules;

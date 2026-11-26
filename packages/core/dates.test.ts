@@ -7,6 +7,7 @@ import {
   formatMonth,
   isoDateSchema,
   parseDate,
+  yearsAfter,
 } from './dates.ts';
 
 describe('formatDate', () => {
@@ -116,5 +117,19 @@ describe('knownTimeZone accepts only an IANA time zone', () => {
     'Etc/GMT-14',
   ])('refuses the fixed offset %j, which keeps no daylight saving', (name) => {
     expect(knownTimeZone(name)).toBe(false);
+  });
+});
+
+describe('PA-5 yearsAfter moves an instant by whole calendar years in UTC', () => {
+  it('keeps the month, day and time', () => {
+    expect(yearsAfter(new Date('2026-11-26T09:30:00.000Z'), 2)).toEqual(
+      new Date('2028-11-26T09:30:00.000Z'),
+    );
+  });
+
+  it('lands a leap day on the last day of February in a common year', () => {
+    expect(yearsAfter(new Date('2028-02-29T12:00:00.000Z'), 1)).toEqual(
+      new Date('2029-02-28T12:00:00.000Z'),
+    );
   });
 });

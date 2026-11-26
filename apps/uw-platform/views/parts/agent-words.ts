@@ -78,6 +78,9 @@ const notBuiltWords: Readonly<Record<string, string>> = {
   create_task: 'Create a task',
   list_gifts: 'List gifts',
   create_draft_journal_entry: 'Draft a journal entry',
+  set_reminder: 'Set a reminder for its person',
+  cancel_reminder: "Cancel one of its person's reminders",
+  list_reminders: "List its person's reminders",
 };
 
 const grouped = new Set(actionGroups.flatMap((group) => group.actions.map((entry) => entry.name)));

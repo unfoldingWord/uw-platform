@@ -6,6 +6,7 @@ import type { CronDeps } from './job.ts';
 import { minuteJob } from './minute.ts';
 import { cronJobs, GITHUB_SWEEP_CRON, MINUTE_CRON } from './registry.ts';
 import { runScheduled } from './scheduled.ts';
+import { directMessagesOf } from '../assistants/direct-messages.ts';
 
 type Line = Record<string, unknown>;
 
@@ -34,6 +35,7 @@ function recordingDeps(): { readonly deps: CronDeps; readonly lines: Line[]; sen
       newId: () => '00000000-0000-4000-8000-000000000001',
       commit: 'c',
       engines: { fetch: () => Promise.reject(new Error('no spend is read')) },
+      directMessages: directMessagesOf,
     },
   };
   return state;

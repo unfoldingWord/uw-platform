@@ -1214,6 +1214,7 @@ Issue: #153, #154, #155; the quarterly access review under #203. Rules: ADR 0015
 - **It acts directly only within a closed low-risk set.** It may reply to its person, set and cancel the person's reminders, and add, change or remove a private hold on the person's own calendar, with no attendees and no notice to anyone. Everything else (mail or a message to anyone else, an invitation, an RSVP, a change to someone else's event, a write to a shared page, an expense line) is a **proposal** that waits until the person decides it in the web app. A "yes" sent by chat or email is a new request, never a decision. Payment, purchase and booking are never available.
 - **What it says stays private.** Requests and replies are stored owner-only. The workflow's events record that a request, turn or effect happened, never what it said.
 - **Spend.** Each assistant has a monthly budget, and every turn also respects the platform's spend breaker. Without a live delegation, or over its budget, it makes no model call.
+- **Reminders.** In a turn the assistant can set a reminder for its person, list the ones still to come and cancel one. A reminder is set when the turn ends, at most five effects a request and fifty reminders a day. At its time it is sent once, as a direct message, to the address the request that set it came from, and only if that is still the person's verified address. If the person's `assist` delegation has lapsed by then, it is recorded undelivered and nothing is sent; a failed send is recorded the same way, with its reason. A reminder runs no model.
 
 **Assistants (PA)**
 
@@ -1223,6 +1224,7 @@ Issue: #153, #154, #155; the quarterly access review under #203. Rules: ADR 0015
 | PA-2 | A request from the person is answered only to that person, and its text never enters the event log. | Must |
 | PA-3 | Without a live delegation, while its harness is paused, or over its monthly budget (turns in flight included), an assistant makes no model call. | Must |
 | PA-4 | Forwarded or quoted text is fenced as untrusted, and no effect outside the closed low-risk set can be recorded. | Must |
+| PA-5 | A reminder the assistant drafts is set only when its turn ends, only between a minute and two years ahead, fires once at its time and reaches only its person; a cancelled one never fires, and one due after the `assist` delegation lapsed is recorded undelivered and sends nothing. | Must |
 
 Issue: #123 (assistants); #98 and #99 for agents working the software workflow; the rest under #244. Rules: ADR 0002, ADR 0005, ADR 0006, ADR 0036.
 

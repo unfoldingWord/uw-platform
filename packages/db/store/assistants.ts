@@ -2,6 +2,7 @@ import {
   assistantChannelSchema,
   assistantEffectKindSchema,
   untrustedPartSchema,
+  type AssistantEffectKind,
 } from '@uw/contracts';
 import { and, asc, desc, eq, gte, inArray, sql } from 'drizzle-orm';
 import type { AnyExecutor } from '../any-database.ts';
@@ -169,6 +170,25 @@ export function bindAssistantRequests(executor: AnyExecutor): AssistantRequestsG
   };
 }
 
+async function effectsSince(
+  executor: AnyExecutor,
+  harnessId: string,
+  kind: AssistantEffectKind,
+  since: Date,
+): Promise<number> {
+  const rows = await executor
+    .select({ count: sql<number>`count(*)::int` })
+    .from(assistantEffects)
+    .where(
+      and(
+        eq(assistantEffects.harnessId, harnessId),
+        eq(assistantEffects.kind, kind),
+        gte(assistantEffects.createdAt, since),
+      ),
+    );
+  return rows[0]?.count ?? 0;
+}
+
 export function bindAssistantEffects(executor: AnyExecutor): AssistantEffectsGateway {
   return {
     read: {
@@ -194,6 +214,7 @@ export function bindAssistantEffects(executor: AnyExecutor): AssistantEffectsGat
           .limit(EFFECT_READ_MOST);
         return rows.map(toEffect);
       },
+      countSince: (harnessId, kind, since) => effectsSince(executor, harnessId, kind, since),
     },
     write: {
       insert: (row) =>

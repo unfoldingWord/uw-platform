@@ -50,6 +50,15 @@ export const assistantEffectFailureSchema = z.enum([
   'outcome_unknown',
   'delegation_lapsed',
   'deadline_passed',
+  'reminder_closed',
+]);
+export const assistantReminderStatusSchema = z.enum(['set', 'fired', 'cancelled', 'undelivered']);
+export const assistantReminderRefusalSchema = z.enum([
+  'due_in_past',
+  'due_too_far',
+  'effects_capped',
+  'reminders_capped',
+  'reminder_not_found',
 ]);
 export const assistantSettingFieldSchema = z.enum(['display_name', 'instructions', 'timezone']);
 
@@ -87,6 +96,8 @@ export type AssistantDirectEffect = z.infer<typeof assistantDirectEffectSchema>;
 export type AssistantEffectKind = z.infer<typeof assistantEffectKindSchema>;
 export type AssistantTurnRefusal = z.infer<typeof assistantTurnRefusalSchema>;
 export type AssistantEffectFailure = z.infer<typeof assistantEffectFailureSchema>;
+export type AssistantReminderStatus = z.infer<typeof assistantReminderStatusSchema>;
+export type AssistantReminderRefusal = z.infer<typeof assistantReminderRefusalSchema>;
 export type AssistantSettingField = z.infer<typeof assistantSettingFieldSchema>;
 export type UntrustedPart = z.infer<typeof untrustedPartSchema>;
 export type AssistantRequestInput = z.infer<typeof assistantRequestInputSchema>;

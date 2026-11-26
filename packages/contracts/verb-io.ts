@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { jdAreaSchema } from './areas.ts';
+import { assistantVerbIo } from './assistant-verb-io.ts';
 import { costBasisSchema, evidenceLabelSchema } from './closed-sets.ts';
 import { healthReportSchema } from './health.ts';
 import { fileContentTypes, fileSchema, MAX_AGENT_FILE_BASE64_LENGTH } from './page-reads.ts';
@@ -249,4 +250,5 @@ export const verbIo = {
     input: z.object({ harnessId: z.uuid() }),
     output: healthReportSchema,
   },
+  ...assistantVerbIo,
 } as const satisfies Record<VerbName, { input: z.ZodType; output: z.ZodType }>;

@@ -2,6 +2,7 @@ import { createLogger, type Logger, type LogSink } from '@uw/core/log';
 import { systemPrincipal } from '@uw/core/principal';
 import type { EngineConfig } from '../engines/config.ts';
 import type { Bindings } from '../env.ts';
+import type { DirectMessagesFactory } from '../assistants/direct-messages.ts';
 
 export type CronDeps = {
   readonly now: () => Date;
@@ -10,6 +11,7 @@ export type CronDeps = {
   readonly newId: () => string;
   readonly commit: string;
   readonly engines: EngineConfig;
+  readonly directMessages: DirectMessagesFactory;
 };
 
 export type CronJob = (env: Bindings, deps: CronDeps) => Promise<void>;

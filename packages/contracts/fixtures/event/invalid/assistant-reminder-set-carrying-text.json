@@ -1,0 +1,16 @@
+{
+  "eventId": "00000000-0000-4000-8000-0000000000e6",
+  "harnessId": "00000000-0000-4000-8000-0000000000a1",
+  "itemId": null,
+  "name": "assistant_reminder_set",
+  "position": 1,
+  "at": "2026-10-01T09:00:00.000Z",
+  "actor": "agent:system",
+  "evidence": {
+    "reminderId": "00000000-0000-4000-8000-0000000000f4",
+    "effectId": "00000000-0000-4000-8000-0000000000f3",
+    "text": "Call Ana"
+  },
+  "traceId": "00000000-0000-4000-8000-0000000000c1",
+  "requestId": null
+}

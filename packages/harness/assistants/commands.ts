@@ -5,6 +5,16 @@ import type { AssistantSettingsRow, Ports } from '../ports.ts';
 import type { Activated } from '../stages/activate.ts';
 import { finishTurn, type FinishInput, type Finished } from './finish.ts';
 import { provision, type ProvisionInput } from './provision.ts';
+import {
+  cancelReminder,
+  setReminder,
+  type CancelReminderInput,
+  type DraftedEffect,
+  type SetReminderInput,
+} from './reminder-drafts.ts';
+import { fireDueReminders, type FireInput, type Fired } from './reminder-fire.ts';
+import type { TurnAddress } from './reminder-turn.ts';
+import { listReminders, type ListedReminders } from './reminders.ts';
 import { recordRequest, type RecordedRequest, type RequestInput } from './requests.ts';
 import { customise, type CustomiseInput } from './settings.ts';
 import { beginTurn, type BeginInput, type Turn } from './turn.ts';
@@ -15,6 +25,10 @@ export type AssistantCommands = {
   recordRequest(caller: Caller, input: RequestInput): Promise<KernelOutcome<RecordedRequest>>;
   beginTurn(caller: Caller, input: BeginInput): Promise<KernelOutcome<Turn>>;
   finishTurn(caller: Caller, input: FinishInput): Promise<KernelOutcome<Finished>>;
+  setReminder(caller: Caller, input: SetReminderInput): Promise<KernelOutcome<DraftedEffect>>;
+  cancelReminder(caller: Caller, input: CancelReminderInput): Promise<KernelOutcome<DraftedEffect>>;
+  listReminders(caller: Caller, input: TurnAddress): Promise<KernelOutcome<ListedReminders>>;
+  fireDueReminders(caller: Caller, input: FireInput): Promise<KernelOutcome<Fired>>;
 };
 
 type AssistantPorts = Pick<Ports, 'clock' | 'grants' | 'ids' | 'store' | 'directMessages'>;
@@ -29,5 +43,9 @@ export function createAssistantCommands(
     recordRequest: (caller, input) => recordRequest(ports, caller, input),
     beginTurn: (caller, input) => beginTurn(ports, caller, input),
     finishTurn: (caller, input) => finishTurn(ports, caller, input),
+    setReminder: (caller, input) => setReminder(ports, caller, input),
+    cancelReminder: (caller, input) => cancelReminder(ports, caller, input),
+    listReminders: (caller, input) => listReminders(ports, caller, input),
+    fireDueReminders: (caller, input) => fireDueReminders(ports, caller, input),
   };
 }

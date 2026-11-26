@@ -20,6 +20,9 @@ export const verbNames = [
   'submit_to_gate',
   'record_run_step',
   'get_health',
+  'set_reminder',
+  'cancel_reminder',
+  'list_reminders',
 ] as const;
 
 export const FORBIDDEN_VERBS = ['approve', 'merge', 'deploy', 'publish', 'advance'] as const;

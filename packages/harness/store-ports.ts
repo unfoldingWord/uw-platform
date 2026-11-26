@@ -28,6 +28,7 @@ import type {
   AssistantMonthQuery,
   AssistantMonthSpend,
   AssistantEffectsGateway,
+  AssistantRemindersGateway,
   AssistantRequestsGateway,
   AssistantSettingsGateway,
 } from './store-ports-assistants.ts';
@@ -413,4 +414,5 @@ export type StoreTransaction = {
   readonly assistantSettings: AssistantSettingsGateway;
   readonly assistantRequests: AssistantRequestsGateway;
   readonly assistantEffects: AssistantEffectsGateway;
+  readonly assistantReminders: AssistantRemindersGateway;
 };

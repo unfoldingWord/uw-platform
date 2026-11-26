@@ -11,7 +11,11 @@ import {
   uuid,
   type AnyPgColumn,
 } from 'drizzle-orm/pg-core';
-import { assistantChannelSchema, assistantDirectEffectSchema } from '@uw/contracts';
+import {
+  assistantChannelSchema,
+  assistantDirectEffectSchema,
+  assistantReminderStatusSchema,
+} from '@uw/contracts';
 import { oneOf } from './checks.ts';
 import { instant } from './columns.ts';
 import { declareTable } from './declarations.ts';
@@ -128,6 +132,53 @@ export const assistantEffects = declareTable(
       sql`char_length(${t.idempotencyKey}) BETWEEN 1 AND 200`,
     ),
     uniqueIndex('assistant_effects_key_once').on(t.harnessId, t.idempotencyKey),
+    unique('assistant_effects_id_harness').on(t.id, t.harnessId),
     index('assistant_effects_request').on(t.requestId),
+  ],
+);
+
+export const assistantReminders = declareTable(
+  'assistant_reminders',
+  {
+    id: uuid('id').primaryKey(),
+    harnessId: uuid('harness_id').notNull(),
+    personId: uuid('person_id').notNull(),
+    requestId: uuid('request_id').notNull(),
+    effectId: uuid('effect_id').notNull(),
+    text: text('text').notNull(),
+    dueAt: instant('due_at').notNull(),
+    status: text('status').notNull(),
+    closedAt: instant('closed_at'),
+    createdAt: instant('created_at').notNull(),
+  },
+  restrictedNever,
+  (t) => [
+    foreignKey({
+      name: 'assistant_reminders_personal_harness_fk',
+      columns: [t.harnessId, t.personId],
+      foreignColumns: [harnesses.id, harnesses.personId],
+    }),
+    foreignKey({
+      name: 'assistant_reminders_request_harness_fk',
+      columns: [t.requestId, t.harnessId],
+      foreignColumns: [assistantRequests.id, assistantRequests.harnessId],
+    }),
+    foreignKey({
+      name: 'assistant_reminders_effect_harness_fk',
+      columns: [t.effectId, t.harnessId],
+      foreignColumns: [assistantEffects.id, assistantEffects.harnessId],
+    }),
+    check(
+      'assistant_reminders_status_known',
+      oneOf(t.status, assistantReminderStatusSchema.options),
+    ),
+    check(
+      'assistant_reminders_closed_when_done',
+      sql`(${t.status} = 'set') = (${t.closedAt} IS NULL)`,
+    ),
+    check('assistant_reminders_text_length', sql`char_length(${t.text}) BETWEEN 1 AND 500`),
+    uniqueIndex('assistant_reminders_effect_once').on(t.effectId),
+    index('assistant_reminders_due').on(t.status, t.dueAt, t.id),
+    index('assistant_reminders_harness').on(t.harnessId, t.status, t.dueAt),
   ],
 );

@@ -157,6 +157,9 @@ export const modules = [
       'submit_to_gate',
       'record_run_step',
       'get_health',
+      'set_reminder',
+      'cancel_reminder',
+      'list_reminders',
     ],
     name: 'Agents',
     summary:

@@ -7,6 +7,7 @@ import { softwareHarness } from '../testing/commands.ts';
 import { testServer } from '../testing/postgres.ts';
 import type { CronDeps } from './job.ts';
 import { minuteJob } from './minute.ts';
+import { directMessagesOf } from '../assistants/direct-messages.ts';
 
 type Line = Record<string, unknown>;
 
@@ -31,6 +32,7 @@ describe.skipIf(!testServer)('OB-1 the minute cron sounds the silence alarm', ()
           AI_SPEND_CAP_MINOR: undefined,
           fetch: () => Promise.reject(new Error('no spend read in this test')),
         },
+        directMessages: directMessagesOf,
       };
       await minuteJob(env, deps);
       const silence = lines.find((line) => line['step'] === 'silence');

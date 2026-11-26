@@ -14,6 +14,7 @@ import { boundAssist } from './delegation.ts';
 import { deliver, type Delivered } from './deliver.ts';
 import { replyKeyOf } from './history.ts';
 import { anyNamed, requestEvents, startedTurn } from './ledger.ts';
+import { applyReminderDrafts } from './reminders.ts';
 import { replyTextOf } from './reply.ts';
 import {
   claimOf,
@@ -114,6 +115,7 @@ async function planIn(scene: Scene): Promise<Plan | Refused> {
     return refused('stale_version', { why: 'turn_finished', requestId: turn.request.id });
   }
   const assist = await boundAssist(tx, ports, context, turn.delegationId);
+  await applyReminderDrafts(tx, context, turn.request, assist !== null);
   const effect = await claimed(scene, turn.request);
   if (assist !== null) return { send: true, request: turn.request, effect };
   return { send: false, finished: await settle(tx, context, input, effect, 'delegation_lapsed') };
