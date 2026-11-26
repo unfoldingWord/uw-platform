@@ -6,7 +6,7 @@ import { assetRoutes } from './assets/routes.ts';
 import { meRoutes } from './auth/me.ts';
 import { withPrincipal } from './auth/principal-middleware.ts';
 import { platformPersonDeps, type PersonDeps } from './commands/person-deps.ts';
-import { chartRoutes, chartScreenRoutes } from './charts/routes.ts';
+import { chartRoutes, chartScreenRoutes, teamChartScreenRoutes } from './charts/routes.ts';
 import { harnessRoutes } from './commands/routes.ts';
 import { credentialRoutes, credentialScreenRoutes } from './credentials/routes.ts';
 import { mountCrosswalk } from './crosswalk/routes.ts';
@@ -18,6 +18,7 @@ import { healthScreenRoutes, probeRoutes } from './health/routes.tsx';
 import { mcpRoutes } from './mcp/routes.ts';
 import { measureRoutes, measureScreenRoutes } from './measures/routes.ts';
 import { pushRoutes } from './notify/routes.ts';
+import { teamRoutes } from './people/routes.ts';
 import { observe, serverTiming } from './observe.ts';
 import { mountCollections } from './collections/routes.ts';
 import { mountKnowledgeBase } from './pages/routes.ts';
@@ -35,6 +36,8 @@ function mountContent(app: Hono<AppEnv>): void {
   app.route('/measures', measureScreenRoutes());
   app.route('/api/charts', chartRoutes());
   app.route('/charts', chartScreenRoutes());
+  app.route('/api/team', teamRoutes());
+  app.route('/team-charts', teamChartScreenRoutes());
 }
 
 export function createApp(

@@ -6,7 +6,8 @@ import { Note } from '@uw/ui/components/note.tsx';
 import { Section } from '@uw/ui/components/section.tsx';
 import { SpecChart } from '@uw/ui/components/spec-chart.tsx';
 import { Table } from '@uw/ui/components/table.tsx';
-import { cellOf } from '../../charts/queries.ts';
+import { UNSPECIFIED } from '../../charts/graph-drawing.ts';
+import { cellOf } from '../../charts/query-types.ts';
 import type { DrawnChart } from '../../charts/render.ts';
 import { chartFilePath, type ChartFileFormat } from './paths.ts';
 
@@ -17,7 +18,15 @@ const files: readonly (readonly [ChartFileFormat, string])[] = [
   ['json', 'JSON'],
 ];
 
-function Downloads(props: { readonly chartKey: string; readonly harnessId: string }) {
+type Ids = { readonly heading: string; readonly rows: string; readonly lineage: string };
+
+const singleChartIds: Ids = {
+  heading: 'chart-heading',
+  rows: 'chart-rows-heading',
+  lineage: 'chart-lineage-heading',
+};
+
+function Downloads(props: { readonly chartKey: string; readonly harnessId: string | null }) {
   return (
     <span data-pdf-hidden="" class="inline-flex flex-wrap items-center gap-2">
       {files.map(([format, label]) => (
@@ -25,7 +34,7 @@ function Downloads(props: { readonly chartKey: string; readonly harnessId: strin
           href={chartFilePath(props.chartKey, props.harnessId, format)}
           variant="secondary"
           size="sm"
-          label={`Download the chart as ${label}`}
+          label={`Download ${props.chartKey.replaceAll('_', ' ')} as ${label}`}
         >
           {label}
         </ButtonLink>
@@ -37,13 +46,14 @@ function Downloads(props: { readonly chartKey: string; readonly harnessId: strin
 export function ChartPicture(props: {
   readonly drawn: DrawnChart;
   readonly chartKey: string;
-  readonly harnessId: string;
+  readonly harnessId: string | null;
+  readonly ids?: Ids;
 }) {
   const { drawn } = props;
   return (
     <Section
       title={drawn.spec.title}
-      headingId="chart-heading"
+      headingId={(props.ids ?? singleChartIds).heading}
       sub={`As of ${formatInstant(new Date(drawn.lineage.asOf))}`}
       actions={<Downloads chartKey={props.chartKey} harnessId={props.harnessId} />}
     >
@@ -56,7 +66,10 @@ export function ChartPicture(props: {
 }
 
 function cellText(drawn: DrawnChart, key: string, cell: unknown): string {
-  if (cell === null || cell === undefined) return 'None';
+  if (cell === null || cell === undefined) {
+    const percent = drawn.spec.format.y === 'percent' && drawn.spec.encodings.y.includes(key);
+    return percent ? `${UNSPECIFIED.charAt(0).toUpperCase()}${UNSPECIFIED.slice(1)}` : 'None';
+  }
   if (typeof cell !== 'number') return String(cell);
   return drawn.spec.encodings.y.includes(key) ? drawn.drawing.figure(cell) : formatCount(cell);
 }
@@ -65,7 +78,11 @@ function numeric(table: ChartTable, key: string): boolean {
   return table.rows.some((row) => typeof cellOf(row, key) === 'number');
 }
 
-export function ChartData(props: { readonly drawn: DrawnChart }) {
+export function ChartData(props: {
+  readonly drawn: DrawnChart;
+  readonly ids?: Ids;
+  readonly title?: string;
+}) {
   const { drawn } = props;
   const { table } = drawn;
   const columns = table.columns.map((column) => ({
@@ -81,7 +98,11 @@ export function ChartData(props: { readonly drawn: DrawnChart }) {
     ),
   );
   return (
-    <Section title="The rows drawn" headingId="chart-rows-heading" flush>
+    <Section
+      title={props.title ?? 'The rows drawn'}
+      headingId={(props.ids ?? singleChartIds).rows}
+      flush
+    >
       <Table caption={`${drawn.spec.title}, the rows drawn`} columns={columns} rows={rows} bare />
     </Section>
   );
@@ -90,7 +111,7 @@ export function ChartData(props: { readonly drawn: DrawnChart }) {
 function leftOutText(lineage: ChartLineage): string {
   if (lineage.excluded.count === 0) return 'Nothing';
   return lineage.excluded.reasons
-    .map((each) => `${formatCount(each.count)} items: ${each.reason.replaceAll('_', ' ')}`)
+    .map((each) => `${formatCount(each.count)}: ${each.reason.replaceAll('_', ' ')}`)
     .join('; ');
 }
 
@@ -102,14 +123,16 @@ function staleText(lineage: ChartLineage): string {
 
 export function ChartLineageRows(props: {
   readonly lineage: ChartLineage;
-  readonly workflow: string;
+  readonly workflow?: string;
+  readonly ids?: Ids;
+  readonly title?: string;
 }) {
   const { lineage } = props;
   const rows = [
     { what: 'Query', value: lineage.query },
     { what: 'Source', value: lineage.source },
     { what: 'As of', value: formatInstant(new Date(lineage.asOf)) },
-    { what: 'Workflow', value: props.workflow },
+    ...(props.workflow === undefined ? [] : [{ what: 'Workflow', value: props.workflow }]),
     { what: 'Left out', value: leftOutText(lineage) },
     { what: 'Source freshness', value: staleText(lineage) },
   ];
@@ -118,8 +141,12 @@ export function ChartLineageRows(props: {
     { key: 'value', label: 'Value' },
   ];
   return (
-    <Section title="Lineage" headingId="chart-lineage-heading" flush>
-      <Table caption="Lineage" columns={columns} rows={rows} bare />
+    <Section
+      title={props.title ?? 'Lineage'}
+      headingId={(props.ids ?? singleChartIds).lineage}
+      flush
+    >
+      <Table caption={props.title ?? 'Lineage'} columns={columns} rows={rows} bare />
     </Section>
   );
 }

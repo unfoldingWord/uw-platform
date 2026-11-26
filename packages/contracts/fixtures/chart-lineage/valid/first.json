@@ -7,7 +7,8 @@
   },
   "excluded": {
     "count": 0,
-    "reasons": []
+    "reasons": [],
+    "entries": []
   },
   "stale": null
 }

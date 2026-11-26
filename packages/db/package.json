@@ -17,6 +17,7 @@
     "./test-seed": "./test-seed.ts",
     "./test-suggestions": "./test-suggestions.ts",
     "./test-admin": "./test-admin.ts",
+    "./test-team": "./test-team.ts",
     "./test-database": "./test-database.ts",
     "./test-targets": "./test-targets.ts"
   },

@@ -4,9 +4,8 @@ import { EmptyState } from '@uw/ui/components/empty-state.tsx';
 import { Section } from '@uw/ui/components/section.tsx';
 import { Table } from '@uw/ui/components/table.tsx';
 import { OverviewShape } from '@uw/ui/shapes/overview.tsx';
-import { harnessFreshness } from '../../charts/freshness.ts';
+import { platformSources } from '../../charts/platform-sources.ts';
 import { drawChart } from '../../charts/render.ts';
-import { kernelSources } from '../../charts/sources.ts';
 import { standardCharts, type StandardChart } from '../../charts/standard.ts';
 import type { AppEnv } from '../../deps.ts';
 import { ChartData, ChartLineageRows, ChartPicture } from '../parts/chart-parts.tsx';
@@ -69,7 +68,7 @@ async function drawnScreen(
   const database = c.get('database');
   const scene = await screen.kernel.reads.harness(screen.caller, { harnessId }, { at: screen.at });
   if (database === null || scene.status === 'error') return notFound(c);
-  const sources = kernelSources(screen, () => harnessFreshness(database.db, screen.at));
+  const sources = platformSources(database.db, screen);
   const drawn = await drawChart(sources, chart.spec({ harnessId }), `chart-${chart.key}`);
   if (drawn.status === 'error') return notFound(c);
   const { harness } = scene.value;
@@ -95,7 +94,7 @@ export async function chartScreen(c: Context<AppEnv>): Promise<Response> {
   const screen = screenKernel(c);
   if (screen === null) return screenRefusal(c);
   const chart = standardCharts.get(c.req.param('chart') ?? '');
-  if (chart === undefined) return notFound(c);
+  if (chart === undefined || chart.scope !== 'workflow') return notFound(c);
   const raw = c.req.query('harnessId');
   if (raw === undefined) return pickWorkflow(c, screen, chart);
   const harnessId = idParam(raw);

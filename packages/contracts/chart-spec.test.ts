@@ -43,8 +43,14 @@ describe('#199 a chart spec names a type, a query, its encodings and its formatt
     expect(chartSpecSchema.safeParse(elsewhere).success).toBe(true);
   });
 
-  it('#199 types the parameters of every whitelisted query', () => {
-    for (const params of Object.values(chartQueryParamsSchemas)) {
+  it('#199 types the parameters of every whitelisted workflow query', () => {
+    const workflow = [
+      'daily_runs_and_waits',
+      'item_cumulative_flow',
+      'item_cycle_time',
+      'item_burndown',
+    ] as const;
+    for (const params of workflow.map((key) => chartQueryParamsSchemas[key])) {
       expect(params.safeParse({ harnessId }).success).toBe(true);
       expect(params.safeParse({ harnessId: 'nope' }).success).toBe(false);
     }
@@ -57,7 +63,7 @@ describe('#199 lineage names the source, the time, the filters, what was left ou
     query: 'item_cumulative_flow',
     asOf: '2026-11-26T09:00:00.000Z',
     filters: { harnessId },
-    excluded: { count: 2, reasons: [{ reason: 'creation_not_read', count: 2 }] },
+    excluded: { count: 2, reasons: [{ reason: 'creation_not_read', count: 2 }], entries: [] },
     stale: { since: '2026-11-26T08:00:00.000Z', reason: 'source_behind' },
   };
 

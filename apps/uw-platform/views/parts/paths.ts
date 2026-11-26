@@ -274,6 +274,19 @@ export function chartPath(key: string, harnessId: string | null = null): string 
   return `/charts/${segment(key)}${query}`;
 }
 
-export function chartFilePath(key: string, harnessId: string, format: ChartFileFormat): string {
-  return `/api/charts/${segment(key)}?harnessId=${segment(harnessId)}&format=${format}`;
+export function chartFilePath(
+  key: string,
+  harnessId: string | null,
+  format: ChartFileFormat,
+): string {
+  const scope = harnessId === null ? '' : `harnessId=${segment(harnessId)}&`;
+  return `/api/charts/${segment(key)}?${scope}format=${format}`;
+}
+
+export function teamChartsPath(): string {
+  return '/team-charts';
+}
+
+export function teamCommandsPath(): string {
+  return '/api/team/commands';
 }

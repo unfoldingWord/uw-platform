@@ -43,6 +43,7 @@ function sources(overrides: Partial<ChartSources> = {}): ChartSources {
     daily: async () =>
       accepted(days.map((day, index) => ({ day, runs: index % 4, gateWaits: index % 3 }))),
     history: async () => accepted(history),
+    team: async () => refused('not_permitted'),
     freshness: async () => null,
     ...overrides,
   };
@@ -142,6 +143,7 @@ describe('#199 a chart says what it left out and when its source is stale', () =
     expect(rendered.lineage.excluded).toEqual({
       count: 2,
       reasons: [{ reason: 'creation_not_read', count: 2 }],
+      entries: [],
     });
     expect(rendered.svg).toContain('2 items left out');
   });

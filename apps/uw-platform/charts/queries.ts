@@ -1,8 +1,4 @@
-import {
-  chartHarnessParamsSchema,
-  type ChartExcludedReason,
-  type ChartQueryKey,
-} from '@uw/contracts';
+import { chartHarnessParamsSchema, type ChartQueryKey } from '@uw/contracts';
 import {
   accepted,
   burndown,
@@ -12,68 +8,67 @@ import {
   type ItemHistoryRead,
   type KernelOutcome,
 } from '@uw/harness';
-import type { z } from 'zod';
+import {
+  nothingLeftOut,
+  preparedWith,
+  type ChartColumn,
+  type ChartQuery,
+  type ChartRow,
+  type Excluded,
+  type QueryRead,
+} from './query-types.ts';
 import type { ChartSources } from './sources.ts';
+import { teamQueries } from './team-queries.ts';
 
-export type ChartCell = string | number | null;
-export type ChartRow = Readonly<Record<string, ChartCell>>;
-export function cellOf(row: ChartRow, key: string): ChartCell {
-  return new Map(Object.entries(row)).get(key) ?? null;
-}
-
-export type ChartColumn = { readonly key: string; readonly label: string };
-type Excluded = {
-  readonly count: number;
-  readonly reasons: readonly { readonly reason: ChartExcludedReason; readonly count: number }[];
-};
-type QueryRead = { readonly rows: readonly ChartRow[]; readonly excluded: Excluded };
-type Params = z.infer<typeof chartHarnessParamsSchema>;
-
-export type ChartQuery = {
-  readonly params: typeof chartHarnessParamsSchema;
-  readonly source: string;
-  readonly columns: readonly ChartColumn[];
-  run(sources: ChartSources, params: Params): Promise<KernelOutcome<QueryRead>>;
-};
-
-const nothingLeftOut: Excluded = { count: 0, reasons: [] };
 const HISTORY_SOURCE =
   'harness_events: item_created, stage_advanced and loop_edge_taken, folded per item';
+
+type HarnessRun = (sources: ChartSources, harnessId: string) => Promise<KernelOutcome<QueryRead>>;
+
+function harnessQuery(
+  source: string,
+  columns: readonly ChartColumn[],
+  run: HarnessRun,
+): ChartQuery {
+  return {
+    source,
+    columns,
+    live: false,
+    prepare: (params) =>
+      preparedWith(chartHarnessParamsSchema, params, ({ harnessId }) => ({
+        harnessId,
+        run: (sources) => run(sources, harnessId),
+      })),
+  };
+}
 
 function leftOut(read: ItemHistoryRead): Excluded {
   if (read.unread === 0) return nothingLeftOut;
   const reason = read.capped ? 'history_capped' : 'creation_not_read';
-  return { count: read.unread, reasons: [{ reason, count: read.unread }] };
+  return { count: read.unread, reasons: [{ reason, count: read.unread }], entries: [] };
 }
 
 function historyQuery(
   columns: readonly ChartColumn[],
   rowsOf: (read: ItemHistoryRead, days: readonly string[]) => readonly ChartRow[],
 ): ChartQuery {
-  return {
-    params: chartHarnessParamsSchema,
-    source: HISTORY_SOURCE,
-    columns,
-    run: async (sources, params) => {
-      const read = await sources.history(params.harnessId);
-      if (read.status === 'error') return read;
-      const rows = rowsOf(read.value, daysEnding(sources.at));
-      return accepted({ rows, excluded: leftOut(read.value) });
-    },
-  };
+  return harnessQuery(HISTORY_SOURCE, columns, async (sources, harnessId) => {
+    const read = await sources.history(harnessId);
+    if (read.status === 'error') return read;
+    const rows = rowsOf(read.value, daysEnding(sources.at));
+    return accepted({ rows, excluded: leftOut(read.value) });
+  });
 }
 
-const dailyQuery: ChartQuery = {
-  params: chartHarnessParamsSchema,
-  source:
-    'agent runs by the day they started, and gate decisions by the day they were made with the items parked at a gate now',
-  columns: [
+const dailyQuery = harnessQuery(
+  'agent runs by the day they started, and gate decisions by the day they were made with the items parked at a gate now',
+  [
     { key: 'day', label: 'Day' },
     { key: 'runs', label: 'Runs' },
     { key: 'gateWaits', label: 'Gate waits' },
   ],
-  run: async (sources, params) => {
-    const read = await sources.daily(params.harnessId);
+  async (sources, harnessId) => {
+    const read = await sources.daily(harnessId);
     if (read.status === 'error') return read;
     const rows = read.value.map((point) => ({
       day: point.day,
@@ -82,7 +77,7 @@ const dailyQuery: ChartQuery = {
     }));
     return accepted({ rows, excluded: nothingLeftOut });
   },
-};
+);
 
 const flowQuery = historyQuery(
   [
@@ -123,4 +118,5 @@ export const chartQueries: ReadonlyMap<ChartQueryKey, ChartQuery> = new Map<
   ['item_cumulative_flow', flowQuery],
   ['item_cycle_time', cycleQuery],
   ['item_burndown', burndownQuery],
+  ...teamQueries,
 ]);

@@ -1,15 +1,59 @@
-import type { ChartLineage, ChartSpec } from '@uw/contracts';
+import type { ChartExcludedEntry, ChartLineage, ChartSpec } from '@uw/contracts';
 import { formatInstant } from '@uw/core/dates';
 import { formatCount, formatFigure, formatMoney } from '@uw/core/money';
 import type { ChartSeries, SpecChartDrawing } from '@uw/ui/components/spec-chart.tsx';
-import { cellOf, type ChartCell, type ChartColumn, type ChartRow } from './queries.ts';
+import { graphOf } from './graph-drawing.ts';
+import { cellOf, type ChartCell, type ChartColumn, type ChartRow } from './query-types.ts';
 
 type Format = ChartSpec['format'];
 
-const leftOutWords: ReadonlyMap<string, string> = new Map([
-  ['creation_not_read', 'their creation was not in the history read'],
-  ['history_capped', 'only the newest stage events were read'],
+const leftOutWords: ReadonlyMap<string, readonly [string, string]> = new Map([
+  ['creation_not_read', ['item', ': their creation was not in the history read']],
+  ['history_capped', ['item', ': only the newest stage events were read']],
+  ['ambiguous_name', ['entry', ', naming more than one person']],
+  ['unresolved_name', ['entry', ', naming no one in the directory']],
+  ['person_not_readable', ['entry', ', naming a person you cannot read']],
+  ['page_not_readable', ['entry', ', naming a page you cannot read']],
+  ['page_retired', ['entry', ', naming a retired page']],
 ]);
+
+function leftOutLine(count: number, reason: string): string {
+  const [noun, why] = leftOutWords.get(reason) ?? ['entry', `: ${reason}`];
+  const plural = noun === 'entry' ? 'entries' : `${noun}s`;
+  return `${formatCount(count)} ${count === 1 ? noun : plural} left out${why}.`;
+}
+
+function either(names: readonly string[]): string {
+  if (names.length < 3) return names.join(' or ');
+  return `${names.slice(0, -1).join(', ')} or ${names.at(-1) ?? ''}`;
+}
+
+function quoted(named: string | null): string {
+  return `“${named ?? ''}”`;
+}
+
+function entryNote(entry: ChartExcludedEntry): string {
+  const { subject, named } = entry;
+  if (entry.reason === 'ambiguous_name') {
+    return `Left out, ambiguous: ${subject} named ${quoted(named)}, who could be ${either(entry.candidates)}.`;
+  }
+  if (entry.reason === 'unresolved_name') {
+    return `Left out, unresolved: ${subject} named ${quoted(named)}, who matches no one in the directory.`;
+  }
+  if (entry.reason === 'page_retired') {
+    return `Left out, retired: ${subject} on ${named ?? 'a page'}, which is retired.`;
+  }
+  return `Left out: ${subject} on a page you cannot read.`;
+}
+
+function countNotes(lineage: ChartLineage): string[] {
+  const { reasons, entries } = lineage.excluded;
+  return reasons.flatMap((each) => {
+    const rest = each.count - entries.filter((entry) => entry.reason === each.reason).length;
+    if (rest <= 0) return [];
+    return [leftOutLine(rest, each.reason)];
+  });
+}
 
 const staleWords: ReadonlyMap<string, string> = new Map([
   ['source_behind', 'GitHub deliveries are waiting to be read, so the latest days may be short'],
@@ -22,6 +66,7 @@ function figureOf(format: Format): (value: number) => string {
     return (value) => formatMoney({ amountMinor: Math.round(value), currency });
   }
   if (format.y === 'days') return (value) => `${formatFigure(value)} d`;
+  if (format.y === 'percent') return (value) => `${formatFigure(value)}%`;
   return formatCount;
 }
 
@@ -33,11 +78,7 @@ export function notesOf(lineage: ChartLineage): readonly string[] {
       : [
           `Source ${stale.reason === 'source_behind' ? 'behind' : 'unreadable'} since ${formatInstant(new Date(stale.since))}: ${staleWords.get(stale.reason) ?? stale.reason}.`,
         ];
-  const leftOut = lineage.excluded.reasons.map(
-    (each) =>
-      `${formatCount(each.count)} items left out: ${leftOutWords.get(each.reason) ?? each.reason}.`,
-  );
-  return [...staleNote, ...leftOut];
+  return [...staleNote, ...lineage.excluded.entries.map(entryNote), ...countNotes(lineage)];
 }
 
 function text(cell: ChartCell | undefined): string {
@@ -103,7 +144,9 @@ export function drawingOf(input: {
 }): SpecChartDrawing {
   const { spec, rows } = input;
   const categories = distinct(rows, spec.encodings.x);
+  const graph = spec.encodings.target === undefined ? {} : { graph: graphOf(spec, rows) };
   return {
+    ...graph,
     id: input.id,
     title: spec.title,
     type: spec.type,

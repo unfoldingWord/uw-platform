@@ -9,7 +9,8 @@ import {
 import { accepted, refused, type KernelOutcome } from '@uw/harness';
 import { specChartSvg, type SpecChartDrawing } from '@uw/ui/components/spec-chart.tsx';
 import { drawingOf, notesOf } from './drawing.ts';
-import { chartQueries, type ChartQuery } from './queries.ts';
+import { chartQueries } from './queries.ts';
+import type { ChartQuery, PreparedQuery } from './query-types.ts';
 import type { ChartSources } from './sources.ts';
 
 export type { ChartSources } from './sources.ts';
@@ -24,11 +25,15 @@ export type DrawnChart = {
 type Checked = {
   readonly key: ChartQueryKey;
   readonly query: ChartQuery;
-  readonly harnessId: string;
+  readonly prepared: PreparedQuery;
+  readonly harnessId: string | null;
 };
 
-function fieldsOf(issues: readonly { readonly path: readonly PropertyKey[] }[]): string[] {
-  return [...new Set(issues.map((issue) => ['params', ...issue.path.map(String)].join('.')))];
+function encodedColumns(spec: ChartSpec): readonly string[] {
+  const { encodings } = spec;
+  const optional = [encodings.series, encodings.target, encodings.group];
+  const named = optional.filter((key): key is string => key !== null && key !== undefined);
+  return [encodings.x, ...encodings.y, ...named];
 }
 
 export function checkedSpec(spec: ChartSpec): KernelOutcome<Checked> {
@@ -37,15 +42,13 @@ export function checkedSpec(spec: ChartSpec): KernelOutcome<Checked> {
   if (!key.success || query === undefined) {
     return refused('chart_query_not_allowed', { query: spec.query.key });
   }
-  const params = query.params.safeParse(spec.query.params);
-  if (!params.success)
-    return refused('malformed_command', { fields: fieldsOf(params.error.issues) });
+  const prepared = query.prepare(spec.query.params);
+  if (prepared.status === 'error') return prepared;
   const known = new Set(query.columns.map((column) => column.key));
-  const series = spec.encodings.series === null ? [] : [spec.encodings.series];
-  const named = [spec.encodings.x, ...spec.encodings.y, ...series];
-  const unknown = [...new Set(named.filter((key) => !known.has(key)))];
+  const unknown = [...new Set(encodedColumns(spec).filter((name) => !known.has(name)))];
   if (unknown.length > 0) return refused('chart_encoding_unknown', { fields: unknown });
-  return accepted({ key: key.data, query, harnessId: params.data.harnessId });
+  const { harnessId } = prepared.value;
+  return accepted({ key: key.data, query, prepared: prepared.value, harnessId });
 }
 
 function filtersOf(params: ChartSpec['query']['params']): Record<string, string> {
@@ -64,16 +67,21 @@ export async function drawChart(
 ): Promise<KernelOutcome<DrawnChart>> {
   const checked = checkedSpec(spec);
   if (checked.status === 'error') return checked;
-  const { key, query, harnessId } = checked.value;
-  const read = await query.run(sources, { harnessId });
+  const { key, query, prepared } = checked.value;
+  const read = await prepared.run(sources);
   if (read.status === 'error') return read;
-  const stale = await sources.freshness();
+  const stale = query.live ? null : await sources.freshness();
+  const { excluded } = read.value;
   const lineage: ChartLineage = {
     source: query.source,
     query: key,
     asOf: sources.at.toISOString(),
     filters: filtersOf(spec.query.params),
-    excluded: { count: read.value.excluded.count, reasons: [...read.value.excluded.reasons] },
+    excluded: {
+      count: excluded.count,
+      reasons: [...excluded.reasons],
+      entries: [...excluded.entries],
+    },
     stale: stale === null ? null : { since: stale.since.toISOString(), reason: stale.reason },
   };
   const table = { columns: [...query.columns], rows: read.value.rows.map((row) => ({ ...row })) };

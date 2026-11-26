@@ -56,6 +56,10 @@ export const OUTCOME_TEXT: Readonly<Record<string, string>> = {
   activate_measure: 'Activated. It runs on its schedule.',
   run_measure_now: 'Run started, or queued until a sandbox is free. Reload to see each outcome.',
   activate_dashboard: 'This dashboard is active.',
+  add_commitment: 'Added. Reload to redraw the charts.',
+  remove_commitment: 'Removed. Reload to redraw the charts.',
+  set_staff_allocation: 'Saved. Reload to redraw the charts.',
+  remove_staff_allocation: 'Removed. Reload to redraw the charts.',
 };
 
 const outcomes: ReadonlyMap<string, string> = new Map(Object.entries(OUTCOME_TEXT));

@@ -2,6 +2,7 @@ import { LegendComponent } from 'echarts/components';
 import { use, type EChartsCoreOption } from 'echarts/core';
 import { raw } from 'hono/html';
 import { forStrictCsp, renderSvg, seriesRoles, tokenColour } from './chart.tsx';
+import { graphOption, type GraphDrawing } from './graph-chart.ts';
 
 use([LegendComponent]);
 
@@ -10,11 +11,12 @@ export type ChartSeries = { readonly name: string; readonly values: readonly (nu
 export type SpecChartDrawing = {
   readonly id: string;
   readonly title: string;
-  readonly type: 'bar' | 'line' | 'stacked_area';
+  readonly type: 'bar' | 'line' | 'stacked_area' | 'graph' | 'bipartite';
   readonly categories: readonly string[];
   readonly series: readonly ChartSeries[];
   readonly figure: (value: number) => string;
   readonly notes: readonly string[];
+  readonly graph?: GraphDrawing | undefined;
 };
 
 const WIDTH = 1080;
@@ -121,9 +123,21 @@ function noteLines(drawing: SpecChartDrawing, height: number): string {
     .join('');
 }
 
+type Picture = {
+  readonly option: EChartsCoreOption;
+  readonly width: number;
+  readonly height: number;
+};
+
+function pictureOf(drawing: SpecChartDrawing): Picture {
+  const notesRoom = NOTE_LINE * drawing.notes.length;
+  if (drawing.graph !== undefined) return graphOption(drawing.graph, notesRoom);
+  return { option: optionOf(drawing), width: WIDTH, height: HEIGHT + notesRoom };
+}
+
 export function specChartSvg(drawing: SpecChartDrawing): string {
-  const height = HEIGHT + NOTE_LINE * drawing.notes.length;
-  const svg = forStrictCsp(renderSvg(optionOf(drawing), WIDTH, height), drawing.id, drawing.title);
+  const { option, width, height } = pictureOf(drawing);
+  const svg = forStrictCsp(renderSvg(option, width, height), drawing.id, drawing.title);
   const opened = svg.indexOf('>') + 1;
   const titled = `${svg.slice(0, opened)}<title>${escapeText(drawing.title)}</title>${svg.slice(opened)}`;
   return titled.replace(/<\/svg>$/, `${noteLines(drawing, height)}</svg>`);

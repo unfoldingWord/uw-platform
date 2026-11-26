@@ -36,7 +36,8 @@
           "reason": "creation_not_read",
           "count": 2
         }
-      ]
+      ],
+      "entries": []
     },
     "stale": {
       "since": "2026-11-26T08:00:00.000Z",

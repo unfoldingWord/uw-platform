@@ -4,6 +4,7 @@ import {
   chartExcludedReasonSchema,
   chartHarnessParamsSchema,
   chartLineageSchema,
+  chartNoParamsSchema,
   chartQueryKeySchema,
   chartSpecSchema,
   chartStaleReasonSchema,
@@ -14,6 +15,13 @@ import {
   renderedChartSchema,
   standardChartKeySchema,
 } from './chart-spec.ts';
+import {
+  addCommitmentCommandSchema,
+  allocationTargetKindSchema,
+  removeCommitmentCommandSchema,
+  removeStaffAllocationCommandSchema,
+  setStaffAllocationCommandSchema,
+} from './team-commands.ts';
 
 export const chartSchemaRegistry: Record<string, ZodType> = {
   'chart-type': chartTypeSchema,
@@ -24,9 +32,15 @@ export const chartSchemaRegistry: Record<string, ZodType> = {
   'chart-stale-reason': chartStaleReasonSchema,
   'chart-excluded-reason': chartExcludedReasonSchema,
   'chart-harness-params': chartHarnessParamsSchema,
+  'chart-no-params': chartNoParamsSchema,
   'chart-spec': chartSpecSchema,
   'chart-lineage': chartLineageSchema,
   'chart-table': chartTableSchema,
   'rendered-chart': renderedChartSchema,
   'render-chart-input': renderChartInputSchema,
+  'allocation-target-kind': allocationTargetKindSchema,
+  'add-commitment-command': addCommitmentCommandSchema,
+  'remove-commitment-command': removeCommitmentCommandSchema,
+  'set-staff-allocation-command': setStaffAllocationCommandSchema,
+  'remove-staff-allocation-command': removeStaffAllocationCommandSchema,
 };

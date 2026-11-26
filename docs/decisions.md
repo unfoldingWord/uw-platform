@@ -807,7 +807,37 @@ A policy's page and the Policies screen show its level, target, enforcement, dat
 
 **Consequences.** A chart query is code, reviewed like a validator: budget and revenue charts arrive as queries. Every whitelisted query today is scoped to one workflow, so `render_chart` resolves its grant from that workflow; a query over another area will need its own resource. Staleness for harness charts reads the GitHub ingest queue only. The PNG path is proven against a fake binding; the `screenshot` quick action's option names follow the Browser Run REST API and are not yet run on staging. A downloaded SVG opened away from the platform's origin has no stylesheet and draws its classes in the viewer's defaults. Workflows with more than 5,000 item events show their older items as left out.
 
-**Changes / changed by.** Builds on 0012. Changes 0036: the measures panels do not move onto the spec yet.
+**Changes / changed by.** Builds on 0012. Changes 0036: the measures panels do not move onto the spec yet. Extended by 0039.
+
+## 0039 The team charts resolve names at read time, never guess, and report what they leave out in the lineage
+
+*2026-11-26. Extends 0038. Part of #200.*
+
+**Decision.** Seven rulings.
+- **Platform data, two new tables.** The commitments network, staff allocation and people and portfolios charts read `people`, `directory_entries`, the portfolio and program pages and their `program.portfolio` relation, and two tables the people module owns: `staff_allocations` (a person to exactly one of a program page or a portfolio page, a whole percent from 0 to 100 or none) and `person_commitments` (a person to exactly one of a person or a text). Both are `internal` and `cache_readonly`; the database refuses a row with both targets or neither, a percent out of range, a blank text and a commitment to oneself.
+- **A commitment keeps its words.** A commitment entered as text stays text and is resolved each time a chart is drawn: by id exactly; otherwise by exact full name, then by a loose name with punctuation flattened, then by a first name when the text is one word. At each step one candidate resolves; two or more make the entry ambiguous; none at every step leaves it unresolved. An ambiguous or unresolved entry is never drawn and never guessed.
+- **The data-quality note is the lineage.** `lineage.excluded` gains `entries` (reason, who, what they named, and the candidates) and five closed-set reasons: `ambiguous_name`, `unresolved_name`, `person_not_readable`, `page_not_readable`, `page_retired`. An entry the reader may see is listed by name; a person the reader cannot read is only counted, and a page the reader cannot read is listed without its title. The notes in the picture and on the screen are drawn from these entries.
+- **Two graph types with fixed layouts.** `graph` places its nodes on a circle in name order and `bipartite` places people in one column and programs and portfolios in another, grouped and coloured by portfolio, each edge labelled with its percent or "unspecified". Both are ECharts graph series with positions computed on the server, so the same rows always draw the same picture. The spec names the edge's other end in a new `target` encoding, and a two-column graph its `group`; other types refuse both. People and portfolios is a bar chart of counts by portfolio and ring with the names in its rows.
+- **Reads under the reader's access.** A team chart needs a read of the directory's area (`00-09`); a person is listed only when `can()` reads their record, a page only when it reads the page's area. The rows carry display names and page titles, never an email, phone or address. Team charts read live tables, so they are never stale.
+- **Writers.** A person adds and removes their own commitments; an `admin` on `10-19`, or an org admin, writes anyone's commitments and every allocation, through `add_commitment`, `remove_commitment`, `set_staff_allocation` and `remove_staff_allocation` at `/api/team/commands/:name`. Editing is asked for on the Team Charts screen.
+- **`render_chart` reaches the team charts on the directory's area.** A spec over a team query is gated `viewer` on `00-09`; an agent reads no person record, so its team chart has no people in it.
+
+**Why.**
+- **A prose list is how commitments were written.** Keeping the words lets an import from prose arrive whole, and a later directory change (a second "Sam" joining) turns a once-clear name ambiguous in the note instead of silently pointing at the wrong colleague.
+- **One lineage, one note.** A chart that leaves rows out already says so in its lineage (ADR 0038); a second report beside it would drift from the first.
+- **A random layout is not checkable.** Two exports of the same rows must be the same picture.
+
+**Rejected.**
+- Resolving a text when it is saved and storing the person. It freezes a guess and loses what was written.
+- The reference dashboard's prefix and initials matching ("Ada" for "Adaline", "ada e."), and a table of manual overrides. Prefixes and initials are guesses; an entry by id is the override.
+- A force-directed layout. It is random unless seeded, and hand-tuned relaxation belongs in a browser, which ADR 0012 keeps out of the chart.
+- A sankey for allocations. A flow needs a width, and a blank percent has none.
+- The reference dashboard's ellipse of people by portfolio sector and ring. Its overlap relaxation measures text in a browser; counts by portfolio and ring with the names in the table carry the same facts and print.
+- A separate data-quality report field beside the lineage.
+
+**Consequences.** A directory edit can change which entries resolve, so a chart's lineage, not the stored row, says what was drawn. Two people with one display name are one node in a graph and make every text naming them ambiguous until one is renamed. A table cell may now hold up to 4,000 characters, for the names in a people row. Retiring the Apps Script deployment is an operations step outside this repository. Cost if wrong: the resolution tiers are one pure function (`people/name-resolution.ts`) and the layouts one renderer (`packages/ui/components/graph-chart.ts`); either changes without a migration.
+
+**Changes / changed by.** Extends 0038 (two chart types, a value format, five exclusion reasons and listed entries in the lineage).
 
 ---
 

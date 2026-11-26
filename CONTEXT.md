@@ -633,7 +633,7 @@ _Avoid_: redline (that is the PDF mode, not built), tracked changes, diff
 ## Charts
 
 **Chart spec**:
-What a chart is, declared rather than drawn by hand: a type from a closed set (bar, line, stacked area), one **chart query** with its typed parameters, its encodings (the column on x, the columns on y, and an optional column that splits the series) and its formatting (`YYYY-MM-DD` dates, counts, days, or money in minor units with its currency). Validated by Zod in `packages/contracts/chart-spec.ts` and drawn on the server to SVG. A **standard chart** is a chart spec defined once by key, such as `cumulative_flow`.
+What a chart is, declared rather than drawn by hand: a type from a closed set (bar, line, stacked area, graph, or a two-column graph), one **chart query** with its typed parameters, its encodings (the column on x, the columns on y, an optional column that splits the series, and for a graph the column its edges point to and, for a two-column graph, the column that groups their targets) and its formatting (`YYYY-MM-DD` dates, counts, days, percents, or money in minor units with its currency). Validated by Zod in `packages/contracts/chart-spec.ts` and drawn on the server to SVG. A **standard chart** is a chart spec defined once by key, such as `cumulative_flow`.
 _Avoid_: chart config, widget, panel (that is a dashboard's), view (that is a collection's)
 
 **Chart query**:
@@ -641,8 +641,24 @@ One entry of the whitelist a chart spec may name, by key: its parameters' schema
 _Avoid_: data source (that is a Package page), report query, SQL
 
 **Lineage**:
-What every drawn chart says about its rows: the source, the chart query, the as-of time, the filters, the rows left out with a count per closed-set reason, and, when its source is behind or unreadable, since when. A stale source is drawn with a note, never as a short series passed off as whole.
+What every drawn chart says about its rows: the source, the chart query, the as-of time, the filters, the rows left out with a count per closed-set reason and, where the reader may see them, the entries themselves, and, when its source is behind or unreadable, since when. A stale source is drawn with a note, never as a short series passed off as whole.
 _Avoid_: provenance (that is a page export's footer), metadata, audit trail
+
+**Data-quality note**:
+The lines a chart draws under its picture and shows on its screen for what its **lineage** left out: each ambiguous entry with the people it could name, each unresolved entry, each entry on a retired page or a page the reader cannot read, and a count of the rest. Ambiguous entries are left out and listed, never guessed (ADR 0039).
+_Avoid_: quality report, warnings, errors
+
+**Commitment**:
+A person's commitment to a colleague, a row of `person_commitments` owned by the people module: from one person to another person by id, or to a text such as a name copied from prose. A text is resolved each time a chart is drawn, by full name, loose name or a unique first name; two or more matches make it ambiguous and none makes it unresolved (ADR 0039).
+_Avoid_: CLOU (the reference dashboard's word), relationship, link
+
+**Staff allocation**:
+A person's share of time on exactly one program or portfolio, a row of `staff_allocations` owned by the people module, with a whole percent from 0 to 100 or none when it is not known ("unspecified"). Written only by the directory steward (`admin` on `10-19`) or an org admin.
+_Avoid_: assignment, FTE, capacity
+
+**Team Charts**:
+The screen at `/team-charts`, beside the Colleague Directory, that draws the commitments network, staff allocation, and people and portfolios as **standard charts** of the chart spec, each with its data-quality note, rows and downloads, and prints as a PDF.
+_Avoid_: org chart, team dashboard
 
 ## Measures and dashboards
 

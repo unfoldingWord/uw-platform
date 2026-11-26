@@ -2,7 +2,7 @@ import type { Context } from 'hono';
 import { Section } from '@uw/ui/components/section.tsx';
 import { Table } from '@uw/ui/components/table.tsx';
 import { ListShape } from '@uw/ui/shapes/list.tsx';
-import { standardCharts } from '../../charts/standard.ts';
+import { workflowCharts } from '../../charts/standard.ts';
 import type { AppEnv } from '../../deps.ts';
 import { renderScreen, screenKernel, screenRefusal } from '../parts/frame.tsx';
 import { moduleCodes, pageNames } from '../parts/names.ts';
@@ -17,7 +17,7 @@ const columns = [
 export async function chartsScreen(c: Context<AppEnv>): Promise<Response> {
   const screen = screenKernel(c);
   if (screen === null) return screenRefusal(c);
-  const rows = [...standardCharts.values()].map((chart) => ({
+  const rows = workflowCharts.map((chart) => ({
     name: (
       <a href={chartPath(chart.key)} class={pageLink}>
         {chart.name}

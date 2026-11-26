@@ -526,6 +526,13 @@
       "when": 1795725437164,
       "tag": "0076_page_review_sets_settled",
       "breakpoints": true
+    },
+    {
+      "idx": 77,
+      "version": "7",
+      "when": 1795732711347,
+      "tag": "0077_team_charts",
+      "breakpoints": true
     }
   ]
 }

@@ -19,6 +19,7 @@ import {
   homePath,
   logOutPath,
   measuresPath,
+  teamChartsPath,
   wikiPath,
 } from './paths.ts';
 import { moduleCodes, noModules, pageNames, platformAreas, type PlatformModule } from './names.ts';
@@ -63,6 +64,7 @@ const plainModules: ReadonlyMap<string, { readonly href: string; readonly code: 
     ['directory', { href: collectionPath('directory'), code: moduleCodes.directory }],
     ['crosswalk', { href: crosswalkPath(), code: moduleCodes.crosswalk }],
     ['measures', { href: measuresPath(), code: moduleCodes.measures }],
+    ['teamCharts', { href: teamChartsPath(), code: moduleCodes.teamCharts }],
   ],
 );
 

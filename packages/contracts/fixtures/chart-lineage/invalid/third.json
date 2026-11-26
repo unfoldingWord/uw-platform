@@ -1,0 +1,28 @@
+{
+  "source": "person_commitments resolved against the directory",
+  "query": "team_commitments",
+  "asOf": "2026-11-26T09:00:00.000Z",
+  "filters": {},
+  "excluded": {
+    "count": 2,
+    "reasons": [
+      {
+        "reason": "ambiguous_name",
+        "count": 1
+      },
+      {
+        "reason": "person_not_readable",
+        "count": 1
+      }
+    ],
+    "entries": [
+      {
+        "reason": "unresolved_name",
+        "subject": "Ada Example",
+        "named": "Quinn",
+        "candidates": []
+      }
+    ]
+  },
+  "stale": null
+}

@@ -180,6 +180,11 @@ export const screens: readonly ScreenEntry[] = [
   { name: 'charts', file: 'apps/uw-platform/views/screens/charts.tsx', path: '/charts' },
   { name: 'chart', file: 'apps/uw-platform/views/screens/chart.tsx', path: '/charts/:chart' },
   {
+    name: 'team-charts',
+    file: 'apps/uw-platform/views/screens/team-charts.tsx',
+    path: '/team-charts',
+  },
+  {
     name: 'not-found',
     file: 'apps/uw-platform/views/screens/not-found.tsx',
     path: '/harnesses/00000000-0000-4000-8000-000000000000',

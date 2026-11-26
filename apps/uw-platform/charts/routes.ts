@@ -6,10 +6,10 @@ import { refuse } from '../http/outcomes.ts';
 import { platformKernel } from '../kernel.ts';
 import { chartScreen } from '../views/screens/chart.tsx';
 import { chartsScreen } from '../views/screens/charts.tsx';
+import { teamChartsScreen } from '../views/screens/team-charts.tsx';
 import { chartFormatSchema, chartResponse } from './exports.ts';
-import { harnessFreshness } from './freshness.ts';
+import { platformSources } from './platform-sources.ts';
 import { drawChart } from './render.ts';
-import { kernelSources } from './sources.ts';
 import { standardSpec } from './standard.ts';
 
 async function drawnFile(c: Context<AppEnv>, spec: ChartSpec, name: string): Promise<Response> {
@@ -22,7 +22,7 @@ async function drawnFile(c: Context<AppEnv>, spec: ChartSpec, name: string): Pro
   const at = c.get('now');
   const kernel = platformKernel(database, { now: () => at });
   const reader = { kernel, caller: { actor, traceId: c.get('traceId') }, at };
-  const sources = kernelSources(reader, () => harnessFreshness(database.db, at));
+  const sources = platformSources(database.db, reader);
   const drawn = await drawChart(sources, spec, name);
   if (drawn.status === 'error') return refuse(c, drawn.reason);
   return chartResponse(c, drawn.value, format.data, name);
@@ -31,7 +31,8 @@ async function drawnFile(c: Context<AppEnv>, spec: ChartSpec, name: string): Pro
 async function standardChartFile(c: Context<AppEnv>): Promise<Response> {
   const key = standardChartKeySchema.safeParse(c.req.param('key'));
   if (!key.success) return refuse(c, 'chart_query_not_allowed');
-  const spec = standardSpec(key.data, { harnessId: c.req.query('harnessId') ?? '' });
+  const harnessId = c.req.query('harnessId');
+  const spec = standardSpec(key.data, harnessId === undefined ? {} : { harnessId });
   return drawnFile(c, spec, key.data);
 }
 
@@ -53,5 +54,11 @@ export function chartScreenRoutes(): Hono<AppEnv> {
   const routes = new Hono<AppEnv>();
   routes.get('/', chartsScreen);
   routes.get('/:chart', chartScreen);
+  return routes;
+}
+
+export function teamChartScreenRoutes(): Hono<AppEnv> {
+  const routes = new Hono<AppEnv>();
+  routes.get('/', teamChartsScreen);
   return routes;
 }

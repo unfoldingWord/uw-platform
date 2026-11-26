@@ -27,6 +27,10 @@ export const platformCommandNameSchema = z.enum([
   'activate_measure',
   'run_measure_now',
   'activate_dashboard',
+  'add_commitment',
+  'remove_commitment',
+  'set_staff_allocation',
+  'remove_staff_allocation',
 ]);
 
 export type PlatformCommandName = z.infer<typeof platformCommandNameSchema>;
