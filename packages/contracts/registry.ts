@@ -19,6 +19,8 @@ import {
   assistantEffectFailureSchema,
   assistantEffectKindSchema,
   assistantReminderRefusalSchema,
+  assistantPairingRefusalSchema,
+  assistantPairingViaSchema,
   assistantReminderStatusSchema,
   assistantRequestInputSchema,
   assistantSettingFieldSchema,
@@ -224,7 +226,12 @@ import {
 import { recordRunStepReplySchema, submitToGateResultSchema } from './verb-io.ts';
 import { forbiddenVerbSchema, verbNameSchema } from './verb-names.ts';
 import { verbGrantSchema, verbGroupSchema } from './verbs.ts';
-import { zulipMessageSchema, zulipOutgoingSchema, zulipTopicSchema } from './zulip.ts';
+import {
+  zulipMessageSchema,
+  zulipOutgoingSchema,
+  zulipRecipientSchema,
+  zulipTopicSchema,
+} from './zulip.ts';
 
 export const schemaRegistry: Record<string, ZodType> = {
   ...collectionSchemaRegistry,
@@ -453,6 +460,7 @@ export const schemaRegistry: Record<string, ZodType> = {
   'zulip-topic': zulipTopicSchema,
   'zulip-outgoing': zulipOutgoingSchema,
   'zulip-message': zulipMessageSchema,
+  'zulip-recipient': zulipRecipientSchema,
   'pdf-export-kind': pdfExportKindSchema,
   'pdf-export-status': pdfExportStatusSchema,
   'binder-request': binderRequestSchema,
@@ -469,4 +477,6 @@ export const schemaRegistry: Record<string, ZodType> = {
   'assistant-settings': assistantSettingsSchema,
   'assistant-reminder-status': assistantReminderStatusSchema,
   'assistant-reminder-refusal': assistantReminderRefusalSchema,
+  'assistant-pairing-via': assistantPairingViaSchema,
+  'assistant-pairing-refusal': assistantPairingRefusalSchema,
 };

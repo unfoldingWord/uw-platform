@@ -1,6 +1,7 @@
 import type {
   AssistantChannel,
   AssistantEffectKind,
+  AssistantPairingVia,
   AssistantReminderStatus,
   EventName,
   UntrustedPart,
@@ -47,6 +48,7 @@ export type AssistantRequestsGateway = {
     byId(requestId: string): Promise<AssistantRequestRow | null>;
     byExternal(channel: AssistantChannel, externalId: string): Promise<AssistantRequestRow | null>;
     deliveredInThread(query: ThreadQuery): Promise<readonly AssistantRequestRow[]>;
+    countSince(harnessId: string, since: Date): Promise<number>;
   };
   readonly write: { insert(row: AssistantRequestRow): Promise<void> };
 };
@@ -97,6 +99,42 @@ export type AssistantRemindersGateway = {
   readonly write: {
     insert(row: AssistantReminderRow): Promise<void>;
     close(change: ReminderClose): Promise<boolean>;
+  };
+};
+
+export type AssistantBindingRow = {
+  readonly harnessId: string;
+  readonly personId: string;
+  readonly channel: AssistantChannel;
+  readonly address: string;
+  readonly via: AssistantPairingVia;
+  readonly boundAt: Date;
+};
+export type AssistantBindingsGateway = {
+  readonly read: {
+    of(harnessId: string, channel: AssistantChannel): Promise<AssistantBindingRow | null>;
+    byAddress(channel: AssistantChannel, address: string): Promise<AssistantBindingRow | null>;
+  };
+  readonly write: { put(row: AssistantBindingRow): Promise<void> };
+};
+
+export type AssistantPairingCodeRow = {
+  readonly harnessId: string;
+  readonly personId: string;
+  readonly channel: AssistantChannel;
+  readonly codeDigest: string;
+  readonly expiresAt: Date;
+  readonly attempts: number;
+  readonly createdAt: Date;
+};
+export type AssistantPairingCodesGateway = {
+  readonly read: {
+    of(harnessId: string, channel: AssistantChannel): Promise<AssistantPairingCodeRow | null>;
+  };
+  readonly write: {
+    put(row: AssistantPairingCodeRow): Promise<void>;
+    attempted(harnessId: string, channel: AssistantChannel, attempts: number): Promise<void>;
+    remove(harnessId: string, channel: AssistantChannel): Promise<void>;
   };
 };
 

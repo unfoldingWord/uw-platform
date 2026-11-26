@@ -1214,6 +1214,7 @@ Issue: #153, #154, #155; the quarterly access review under #203. Rules: ADR 0015
 - **It acts directly only within a closed low-risk set.** It may reply to its person, set and cancel the person's reminders, and add, change or remove a private hold on the person's own calendar, with no attendees and no notice to anyone. Everything else (mail or a message to anyone else, an invitation, an RSVP, a change to someone else's event, a write to a shared page, an expense line) is a **proposal** that waits until the person decides it in the web app. A "yes" sent by chat or email is a new request, never a decision. Payment, purchase and booking are never available.
 - **What it says stays private.** Requests and replies are stored owner-only. The workflow's events record that a request, turn or effect happened, never what it said.
 - **Spend.** Each assistant has a monthly budget, and every turn also respects the platform's spend breaker. Without a live delegation, or over its budget, it makes no model call.
+- **Its own Zulip bot.** Each assistant is its own Zulip bot, named by its person, created when the person turns the assistant on, deactivated when they turn it off and reactivated when they turn it back on. It is paired with the person's Zulip account by their email when it is created; if that finds no account, the person starts a one-time code on the platform and sends it to the bot, which pairs the account that sent it. One Zulip account belongs to one person's assistant. Only a one-to-one message from the paired account becomes a request; a group message, anyone else's message and a stream mention do nothing. An assistant takes at most thirty requests an hour. Its replies and reminders reach the person as direct messages from that bot, at most once, and never after their send-by time.
 - **Reminders.** In a turn the assistant can set a reminder for its person, list the ones still to come and cancel one. A reminder is set when the turn ends, at most five effects a request and fifty reminders a day. At its time it is sent once, as a direct message, to the address the request that set it came from, and only if that is still the person's verified address. If the person's `assist` delegation has lapsed by then, it is recorded undelivered and nothing is sent; a failed send is recorded the same way, with its reason. A reminder runs no model.
 
 **Assistants (PA)**
@@ -1225,8 +1226,9 @@ Issue: #153, #154, #155; the quarterly access review under #203. Rules: ADR 0015
 | PA-3 | Without a live delegation, while its harness is paused, or over its monthly budget (turns in flight included), an assistant makes no model call. | Must |
 | PA-4 | Forwarded or quoted text is fenced as untrusted, and no effect outside the closed low-risk set can be recorded. | Must |
 | PA-5 | A reminder the assistant drafts is set only when its turn ends, only between a minute and two years ahead, fires once at its time and reaches only its person; a cancelled one never fires, and one due after the `assist` delegation lapsed is recorded undelivered and sends nothing. | Must |
+| PA-6 | Each assistant is its own Zulip bot, paired with its person's Zulip account by email or by a one-time code the person starts; only a one-to-one message from the paired account becomes a request, quotes are fenced, and a reply reaches only the paired account, at most once and never after its send-by time. | Must |
 
-Issue: #123 (assistants); #98 and #99 for agents working the software workflow; the rest under #244. Rules: ADR 0002, ADR 0005, ADR 0006, ADR 0036.
+Issue: #123 (assistants); #98 and #99 for agents working the software workflow; the rest under #244. Rules: ADR 0002, ADR 0005, ADR 0006, ADR 0036, ADR 0037.
 
 ### 4.3 PDF and documents
 

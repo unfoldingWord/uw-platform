@@ -48,6 +48,8 @@ VAPID_PUBLIC_KEY = "set-at-go-live"
 VAPID_SUBJECT = "set-at-go-live"
 ZULIP_SITE = "set-at-go-live"
 ZULIP_BOT_EMAIL = "set-at-go-live"
+ZULIP_ADMIN_EMAIL = "set-at-go-live"
+ASSISTANT_WEBHOOK_BASE = "set-at-go-live"
 ZULIP_CHANNELS = "{}"
 AI_GATEWAY_ACCOUNT_ID = "5a3ffd86280d3ed086be76d955829242"
 AI_GATEWAY_ID = "uw-platform-staging"
@@ -195,6 +197,11 @@ binding = "STORE_ZULIP_BOT_API_KEY"
 store_id = "set-at-go-live"
 secret_name = "UW_STAGING_ZULIP_BOT_API_KEY"
 
+[[env.staging.secrets_store_secrets]]
+binding = "STORE_ZULIP_ADMIN_API_KEY"
+store_id = "set-at-go-live"
+secret_name = "UW_STAGING_ZULIP_ADMIN_API_KEY"
+
 [env.production]
 name = "uw-platform"
 workers_dev = true
@@ -212,6 +219,8 @@ VAPID_PUBLIC_KEY = "set-at-go-live"
 VAPID_SUBJECT = "set-at-go-live"
 ZULIP_SITE = "set-at-go-live"
 ZULIP_BOT_EMAIL = "set-at-go-live"
+ZULIP_ADMIN_EMAIL = "set-at-go-live"
+ASSISTANT_WEBHOOK_BASE = "set-at-go-live"
 ZULIP_CHANNELS = "{}"
 AI_GATEWAY_ACCOUNT_ID = "5a3ffd86280d3ed086be76d955829242"
 AI_GATEWAY_ID = "uw-platform-production"
@@ -358,6 +367,11 @@ secret_name = "UW_PRODUCTION_VAPID_PRIVATE_JWK"
 binding = "STORE_ZULIP_BOT_API_KEY"
 store_id = "set-at-go-live"
 secret_name = "UW_PRODUCTION_ZULIP_BOT_API_KEY"
+
+[[env.production.secrets_store_secrets]]
+binding = "STORE_ZULIP_ADMIN_API_KEY"
+store_id = "set-at-go-live"
+secret_name = "UW_PRODUCTION_ZULIP_ADMIN_API_KEY"
 
 [env.preview]
 workers_dev = true

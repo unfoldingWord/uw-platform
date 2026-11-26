@@ -781,8 +781,16 @@ A note to an assistant's person, due at an instant, delivered only to that perso
 _Avoid_: alarm (that word belongs to the silence alarm), task, due date
 
 **Pairing**:
-Binding a person's Zulip account to their assistant by sending it a one-time code from My Assistant.
+Binding a person's Zulip account to their assistant: by the person's email when the assistant's bot is created, or by sending the bot a one-time code the person started on the platform.
 _Avoid_: linking, verification
+
+**Binding**:
+The one verified address an assistant's person has on a channel, such as their Zulip user id. A request counts only from it, and a reply goes only to it.
+_Avoid_: pairing (the act; the binding is what it leaves), contact, handle
+
+**Assistant bot**:
+The Zulip bot user that is one person's assistant in Zulip, with its own name and key. The bot that posts wakes to streams is not an assistant bot.
+_Avoid_: the bot (say which), service bot
 
 **Assistant mailbox**:
 The assistant's own Google Workspace address, from which it receives forwarded mail and sends replies.

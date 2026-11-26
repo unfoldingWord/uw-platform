@@ -43,6 +43,8 @@ function tracking(tx: StoreTransaction, appended: HarnessEvent[]): StoreTransact
     assistantRequests: tx.assistantRequests,
     assistantEffects: tx.assistantEffects,
     assistantReminders: tx.assistantReminders,
+    assistantBindings: tx.assistantBindings,
+    assistantPairingCodes: tx.assistantPairingCodes,
   };
   originals.set(tracked, tx);
   return tracked;

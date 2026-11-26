@@ -3,6 +3,7 @@ import type { IngestSource } from '@uw/contracts';
 import { createClient, type Database } from '@uw/db/client';
 import { webhookDeliveries } from '@uw/db/schema';
 import type { IngestBindings } from '../env.ts';
+import { postgresBotTokens, type BotTokens } from './bot-tokens.ts';
 
 export const owns = ['webhook_deliveries'] as const;
 
@@ -11,7 +12,11 @@ export type DeliveryLedger = {
   release(source: IngestSource, deliveryId: string): Promise<void>;
 };
 
-export type LedgerHandle = { readonly ledger: DeliveryLedger; release(): Promise<void> };
+export type LedgerHandle = {
+  readonly ledger: DeliveryLedger;
+  readonly botTokens?: BotTokens;
+  release(): Promise<void>;
+};
 
 export function postgresLedger(db: Database): DeliveryLedger {
   return {
@@ -36,5 +41,9 @@ export function postgresLedger(db: Database): DeliveryLedger {
 export function hyperdriveLedger(env: IngestBindings): LedgerHandle | null {
   if (!env.HYPERDRIVE) return null;
   const db = createClient(env.HYPERDRIVE.connectionString);
-  return { ledger: postgresLedger(db), release: () => db.$client.end() };
+  return {
+    ledger: postgresLedger(db),
+    botTokens: postgresBotTokens(db),
+    release: () => db.$client.end(),
+  };
 }

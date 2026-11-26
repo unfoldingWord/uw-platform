@@ -519,6 +519,13 @@
       "when": 1795720626522,
       "tag": "0075_assistant_reminders",
       "breakpoints": true
+    },
+    {
+      "idx": 76,
+      "version": "7",
+      "when": 1795724782079,
+      "tag": "0076_assistant_zulip",
+      "breakpoints": true
     }
   ]
 }

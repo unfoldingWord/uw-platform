@@ -283,6 +283,32 @@ The Zulip bot is an outgoing-webhook bot. Its endpoint URL is `https://<uw-inges
 
 A post reaches everyone in its channel, and the platform does not check who that is. Every channel in `ZULIP_CHANNELS` must therefore be a private channel (never public or web-public) whose members are exactly the people who can read that area: anyone with a live grant on the area or a live org grant, and no one else (ADR 0015: a grant on another area reads nothing here). Whoever configures the realm keeps membership in step with grants: a person granted read on an area joins its channel, and a person whose grant is revoked or expires leaves it. Otherwise a person who cannot read the area sees its harness key, its repository names and issue numbers, and that a gate, a lapse or a failed run is waiting. The post carries only the harness key, the item ref, one fixed sentence and the link, never an item's title or body.
 
+## Personal assistants on Zulip: one bot per person (PA-6)
+
+Each person's assistant is its own Zulip bot user, with its own name and API key (ADR 0037). The platform creates the bot when the person turns their assistant on, deactivates it when they turn it off, and reactivates it when they turn it back on within 30 days. It signs in to Zulip as one org-admin service account to do that. Each bot is an outgoing-webhook bot pointed at `uw-ingest`, so a direct message to it arrives as a delivery; the platform replies through the Zulip REST API as that bot.
+
+Variables, in `infra/uw-platform/wrangler.go-live.toml` (and `wrangler.toml`) under staging and production (`set-at-go-live` until then):
+
+| Variable | Value |
+|---|---|
+| `ZULIP_ADMIN_EMAIL` | The email of the org-admin service account that creates the assistant bots |
+| `ASSISTANT_WEBHOOK_BASE` | The `uw-ingest` Worker's `https://` origin with no path; every assistant bot posts to `<origin>/webhooks/zulip-assistant` |
+
+`ZULIP_SITE` is the notifier's. Secret, set in the store as the table below names it:
+
+```bash
+# uw-platform (from infra/uw-platform)
+wrangler secret put ZULIP_ADMIN_API_KEY --env <name>   # the service admin account's API key
+```
+
+One-time steps in Zulip, by a realm owner:
+
+1. Create a dedicated service account (not a person's account), make it an organization administrator, and copy its API key into `ZULIP_ADMIN_API_KEY`. Bots it creates are owned by it; deactivating that account may deactivate every assistant bot, so it is never a person's own account.
+2. Let administrators create bots (Organization settings, Who can create bots).
+3. Run the staging probes in the assistants' staging-probes list before go-live: creating a bot (`POST /api/v1/bots`, `bot_type=3`), reading its webhook token (`GET /api/v1/bots`), looking a person up by email (`GET /api/v1/users/{email}`), deactivating and reactivating (`DELETE /api/v1/users/{id}`, `POST /api/v1/users/{id}/reactivate`), and a direct message (`POST /api/v1/messages`, `type=direct`).
+
+`uw-ingest` verifies each assistant delivery by the SHA-256 digest of that bot's own webhook token, looked up by the bot's email in `assistant_zulip_bots`; the stream bot keeps `ZULIP_WEBHOOK_TOKEN` and `/webhooks/zulip`. A bot's API key is sealed with the credentials KMS key (`CREDENTIALS_KMS_*`) under its own encryption context, so the per-bot keys never enter the Secrets Store. Until `ZULIP_ADMIN_API_KEY`, `ZULIP_ADMIN_EMAIL` and `ASSISTANT_WEBHOOK_BASE` are set, no bot can be created; until `ZULIP_SITE` is set, an assistant reply is recorded `not_wired`.
+
 ## Platform secrets in Cloudflare Secrets Store (#160)
 
 The secrets the platform itself runs on live in the account's Cloudflare Secrets Store, and each Worker binds only the ones it reads. `uw-ingest` binds its two; `uw-platform` binds the rest; a per-PR Worker (`preview`) binds none. The list is `infra/secrets-store.json`, under 30-39 Infrastructure: each secret with what it is, who issues it, its owner and the date to rotate it by, per environment. `tools/infra/secrets-store.test.ts` keeps the list, the wrangler files and the code naming the same secrets, and fails when a binding named like a credential is added to a Worker without a row.
@@ -302,11 +328,12 @@ The secrets the platform itself runs on live in the account's Cloudflare Secrets
 | `REVIEWER_CODEX_GITHUB_APP_PRIVATE_KEY` | uw-platform | `STORE_REVIEWER_CODEX_GITHUB_APP_PRIVATE_KEY` | `UW_<ENV>_REVIEWER_CODEX_GITHUB_APP_PRIVATE_KEY` |
 | `REVIEWER_GITHUB_APP_PRIVATE_KEY` | uw-platform | `STORE_REVIEWER_GITHUB_APP_PRIVATE_KEY` | `UW_<ENV>_REVIEWER_GITHUB_APP_PRIVATE_KEY` |
 | `VAPID_PRIVATE_JWK` | uw-platform | `STORE_VAPID_PRIVATE_JWK` | `UW_<ENV>_VAPID_PRIVATE_JWK` |
+| `ZULIP_ADMIN_API_KEY` | uw-platform | `STORE_ZULIP_ADMIN_API_KEY` | `UW_<ENV>_ZULIP_ADMIN_API_KEY` |
 | `ZULIP_BOT_API_KEY` | uw-platform | `STORE_ZULIP_BOT_API_KEY` | `UW_<ENV>_ZULIP_BOT_API_KEY` |
 | `GITHUB_WEBHOOK_SECRET` | uw-ingest | `STORE_GITHUB_WEBHOOK_SECRET` | `UW_<ENV>_GITHUB_WEBHOOK_SECRET` |
 | `ZULIP_WEBHOOK_TOKEN` | uw-ingest | `STORE_ZULIP_WEBHOOK_TOKEN` | `UW_<ENV>_ZULIP_WEBHOOK_TOKEN` |
 
-`<ENV>` is `STAGING` or `PRODUCTION`. An account has one store, and a name is unique in it, so the environment is part of the name: 32 secrets of the 100 an account may hold. The GitHub App ids and installation ids (`*_GITHUB_APP_ID`, `*_GITHUB_APP_INSTALLATION_ID`) are not secrets; they stay Worker settings and are not in the store.
+`<ENV>` is `STAGING` or `PRODUCTION`. An account has one store, and a name is unique in it, so the environment is part of the name: 34 secrets of the 100 an account may hold. The GitHub App ids and installation ids (`*_GITHUB_APP_ID`, `*_GITHUB_APP_INSTALLATION_ID`) are not secrets; they stay Worker settings and are not in the store.
 
 ### How a secret is read
 
@@ -493,7 +520,7 @@ GL-1 switches the wiring above on. It writes no code: each step creates a resour
 1. **The database (FD-12).** A Postgres 16 or later database for staging and one for production (AWS RDS, or any Postgres the Hyperdrive config and the GitHub runner can reach). In the repository settings set `DATABASE_URL_STAGING` and `DATABASE_URL_PRODUCTION` as secrets (the table above); the deploy migrates through them, so the database must accept connections from GitHub's runners while it does. When the database is reachable only through a Cloudflare Tunnel (AWS Aurora, set up with the infrastructure team), set `DATABASE_TUNNEL_HOST_STAGING` and `DATABASE_TUNNEL_HOST_PRODUCTION` as variables and `DATABASE_TUNNEL_CLIENT_ID` and `DATABASE_TUNNEL_CLIENT_SECRET` as secrets: the tunnel needs a TCP route to the database behind a Cloudflare Access application that admits that service token, and each migrate job opens it with `.github/scripts/db-tunnel.sh` before migrating, with the `DATABASE_URL_*` secret pointing at `127.0.0.1:15432`.
 2. **Hyperdrive (FD-12, FD-6).** `wrangler hyperdrive create uw-staging --connection-string=<pooled staging string>`, and the same for `uw-production`. Put each Hyperdrive id in place of `set-at-go-live` in `[[env.staging.hyperdrive]]` and `[[env.production.hyperdrive]]` of both go-live files, and staging's Hyperdrive id in uw-platform's `[[env.preview.hyperdrive]]` (P33).
 3. **Queues, hosts and the deploy token (FD-10).** Create the four queues listed above with `wrangler queues create`. In the repository settings set `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` as secrets (the table above). Until the token is set, `deploy-pr`, `cleanup-pr`, `deploy-staging`, `deploy-ingest-staging`, `deploy-production` and `deploy-ingest-production` each log the notice "CLOUDFLARE_API_TOKEN is not set" and stay green; check that each now runs its steps. Read the account's `workers.dev` subdomain in the Cloudflare dashboard; if it is not `unfoldingword`, correct `STAGING_URL` and `INGEST_URL` in `.github/workflows/deploy-staging.yml` and the address in step 7.
-4. **Access and origins (FD-7).** Apply the three applications as the Access section says. Put the app application's AUD tag in `ACCESS_AUD`, the `mcp` application's in `ACCESS_MCP_AUD` and the team domain in `ACCESS_TEAM_DOMAIN`, under staging, production and preview of `uw-platform/wrangler.go-live.toml`, and the staging origin in `APP_ORIGIN`. `VAPID_PUBLIC_KEY`, `VAPID_SUBJECT`, `ZULIP_SITE` and `ZULIP_BOT_EMAIL` come from the notifier section; the push and Zulip halves read their secrets (`VAPID_PRIVATE_JWK`, `ZULIP_BOT_API_KEY`) before these values, so they stay off until those secrets are set.
+4. **Access and origins (FD-7).** Apply the three applications as the Access section says. Put the app application's AUD tag in `ACCESS_AUD`, the `mcp` application's in `ACCESS_MCP_AUD` and the team domain in `ACCESS_TEAM_DOMAIN`, under staging, production and preview of `uw-platform/wrangler.go-live.toml`, and the staging origin in `APP_ORIGIN`. `VAPID_PUBLIC_KEY`, `VAPID_SUBJECT`, `ZULIP_SITE` and `ZULIP_BOT_EMAIL` come from the notifier section, and `ZULIP_ADMIN_EMAIL` and `ASSISTANT_WEBHOOK_BASE` from the personal assistants section; the push and Zulip halves read their secrets (`VAPID_PRIVATE_JWK`, `ZULIP_BOT_API_KEY`) before these values, so they stay off until those secrets are set.
 5. **Worker secrets (FD-10, GH-1).** Once an org owner has registered the GitHub App (the GitHub App section), set `GITHUB_WEBHOOK_SECRET` on uw-ingest and the `GITHUB_APP_*` secrets on uw-platform with `wrangler secret put <name> --env staging`, as that section lists. The other Worker secrets are set the same way and listed where they are used: the Reviewer Apps section, the Builder GitHub App section, and the notifier section (`VAPID_PRIVATE_JWK`, `ZULIP_BOT_API_KEY`). Step 7's probe does not need them; the FD-10 webhook check and the delegated merge's live run do.
 6. **The switch pull request.** In one pull request: copy `uw-platform/wrangler.go-live.toml` over `uw-platform/wrangler.toml` and `uw-ingest/wrangler.go-live.toml` over `uw-ingest/wrangler.toml`, and set `"switchedOn": true` in `infra/go-live.json`. `pnpm verify` must be green: with the flag on, the live-file tests require each live file to carry everything its go-live twin declares, and with it off they require none of it, so a half switch fails. Merge it on a green CI `test` job; `deploy-staging.yml` then runs `migrate-staging` and deploys both Workers. The deploy builds the sandbox images, so the runner needs Docker (the sandbox section).
 7. **The release gate: the staging probe through Hyperdrive.** Run

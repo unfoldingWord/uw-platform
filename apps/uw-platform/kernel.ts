@@ -56,7 +56,10 @@ export function hubWiring(hub: Hub, host: HostWiring = {}): KernelWiring {
   };
 }
 
-type RunHostWiring = LiveWiring & { readonly modelEngine: ModelEngine };
+type RunHostWiring = LiveWiring & {
+  readonly modelEngine: ModelEngine;
+  readonly directMessages?: DirectMessages;
+};
 
 export function runWiring(
   host: RunHostWiring,

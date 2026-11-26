@@ -33,7 +33,9 @@ export type StoreSubject = {
 const refusalTimeout = 2_000;
 
 const transactionMembers = [
+  'assistantBindings',
   'assistantEffects',
+  'assistantPairingCodes',
   'assistantReminders',
   'assistantRequests',
   'assistantSettings',

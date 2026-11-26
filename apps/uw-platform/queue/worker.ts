@@ -1,3 +1,4 @@
+import type { IngestSource } from '@uw/contracts';
 import { createLogger, type Logger, type LogSink } from '@uw/core/log';
 import { commitOf, type Bindings } from '../env.ts';
 import { hyperdriveDatabase, type DatabaseHandle } from '../database.ts';
@@ -9,6 +10,7 @@ import { hubWiring, platformKernel } from '../kernel.ts';
 import { systemClock } from '../ports/clock.ts';
 import { hubOf } from '../ports/hub.ts';
 import { directMessagesOf } from '../assistants/direct-messages.ts';
+import { assistantDmHandler } from '../assistants/zulip/inbound.ts';
 import { notifierOf } from '../ports/notifier.ts';
 import { zulipConfigOf } from '../notify/zulip/config.ts';
 import { zulipIngestHandler } from '../notify/zulip/inbound.ts';
@@ -42,9 +44,10 @@ function handlersFor(database: DatabaseHandle | null, env: Bindings, host: Handl
     systemClock,
     hubWiring(unit.hub, { notifier, directMessages }),
   );
-  return new Map<'github' | 'zulip', IngestHandler>([
+  return new Map<IngestSource, IngestHandler>([
     ['github', githubIngestHandler({ db: database.db, kernel, client, now })],
     ['zulip', zulipIngestHandler({ db: database.db, kernel, config: zulipConfigOf(env), now })],
+    ['zulip-assistant', assistantDmHandler({ db: database.db, kernel, now })],
   ]);
 }
 

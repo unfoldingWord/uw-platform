@@ -60,6 +60,14 @@ export const assistantReminderRefusalSchema = z.enum([
   'reminders_capped',
   'reminder_not_found',
 ]);
+export const assistantPairingViaSchema = z.enum(['email_match', 'pairing_code']);
+export const assistantPairingRefusalSchema = z.enum([
+  'no_pairing',
+  'pairing_code_wrong',
+  'pairing_code_expired',
+  'pairing_attempts_spent',
+  'address_taken',
+]);
 export const assistantSettingFieldSchema = z.enum(['display_name', 'instructions', 'timezone']);
 
 export const untrustedPartSchema = z.strictObject({
@@ -98,6 +106,8 @@ export type AssistantTurnRefusal = z.infer<typeof assistantTurnRefusalSchema>;
 export type AssistantEffectFailure = z.infer<typeof assistantEffectFailureSchema>;
 export type AssistantReminderStatus = z.infer<typeof assistantReminderStatusSchema>;
 export type AssistantReminderRefusal = z.infer<typeof assistantReminderRefusalSchema>;
+export type AssistantPairingVia = z.infer<typeof assistantPairingViaSchema>;
+export type AssistantPairingRefusal = z.infer<typeof assistantPairingRefusalSchema>;
 export type AssistantSettingField = z.infer<typeof assistantSettingFieldSchema>;
 export type UntrustedPart = z.infer<typeof untrustedPartSchema>;
 export type AssistantRequestInput = z.infer<typeof assistantRequestInputSchema>;

@@ -96,6 +96,7 @@ export type Bindings = {
   ALWAYS_ON_PROVIDER?: string;
   ANTHROPIC_API_KEY?: string;
   APP_ORIGIN?: string;
+  ASSISTANT_WEBHOOK_BASE?: string;
   COMMIT_SHA?: string;
   ENVIRONMENT?: string;
   ACCESS_TEAM_DOMAIN?: string;
@@ -131,6 +132,8 @@ export type Bindings = {
   VAPID_PRIVATE_JWK?: string;
   VAPID_PUBLIC_KEY?: string;
   VAPID_SUBJECT?: string;
+  ZULIP_ADMIN_API_KEY?: string;
+  ZULIP_ADMIN_EMAIL?: string;
   ZULIP_BOT_API_KEY?: string;
   ZULIP_BOT_EMAIL?: string;
   ZULIP_CHANNELS?: string;

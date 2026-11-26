@@ -158,6 +158,7 @@ export function bindAssistantRequests(executor: AnyExecutor): AssistantRequestsG
         return rows[0] ? toRequest(rows[0]) : null;
       },
       deliveredInThread: (query) => deliveredInThread(executor, query),
+      countSince: (harnessId, since) => requestsSince(executor, harnessId, since),
     },
     write: {
       insert: (row) =>
@@ -168,6 +169,20 @@ export function bindAssistantRequests(executor: AnyExecutor): AssistantRequestsG
         }),
     },
   };
+}
+
+async function requestsSince(
+  executor: AnyExecutor,
+  harnessId: string,
+  since: Date,
+): Promise<number> {
+  const rows = await executor
+    .select({ count: sql<number>`count(*)::int` })
+    .from(assistantRequests)
+    .where(
+      and(eq(assistantRequests.harnessId, harnessId), gte(assistantRequests.recordedAt, since)),
+    );
+  return rows[0]?.count ?? 0;
 }
 
 async function effectsSince(

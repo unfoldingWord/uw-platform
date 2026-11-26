@@ -13,11 +13,13 @@ const NONCE_BYTES = 12;
 const TAG_BITS = 128;
 const TAG_BYTES = TAG_BITS / 8;
 
-export type EnvelopeContext = {
+type CredentialEnvelope = {
   readonly credentialId: string;
   readonly versionId: string;
   readonly jdArea: string;
 };
+type BotKeyEnvelope = { readonly assistantHarnessId: string; readonly botUserId: number };
+export type EnvelopeContext = CredentialEnvelope | BotKeyEnvelope;
 
 export type SealedValue = {
   readonly cipher: CredentialCipher;
@@ -36,6 +38,13 @@ function refused(reason: EnvelopeRefusal): Refused {
 }
 
 function keyContextOf(context: EnvelopeContext): KeyContext {
+  if ('assistantHarnessId' in context) {
+    return {
+      purpose: 'assistant_bot_key',
+      harness_id: context.assistantHarnessId,
+      bot_user_id: String(context.botUserId),
+    };
+  }
   return {
     purpose: 'credential',
     credential_id: context.credentialId,

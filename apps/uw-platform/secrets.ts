@@ -16,6 +16,7 @@ export const platformSecretNames = [
   'REVIEWER_CODEX_GITHUB_APP_PRIVATE_KEY',
   'REVIEWER_GITHUB_APP_PRIVATE_KEY',
   'VAPID_PRIVATE_JWK',
+  'ZULIP_ADMIN_API_KEY',
   'ZULIP_BOT_API_KEY',
 ] as const satisfies readonly (keyof Bindings)[];
 

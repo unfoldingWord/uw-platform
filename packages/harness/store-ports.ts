@@ -24,10 +24,12 @@ import type {
   Stage,
 } from '@uw/contracts';
 import type {
+  AssistantBindingsGateway,
   AssistantLedgerQuery,
   AssistantMonthQuery,
   AssistantMonthSpend,
   AssistantEffectsGateway,
+  AssistantPairingCodesGateway,
   AssistantRemindersGateway,
   AssistantRequestsGateway,
   AssistantSettingsGateway,
@@ -415,4 +417,6 @@ export type StoreTransaction = {
   readonly assistantRequests: AssistantRequestsGateway;
   readonly assistantEffects: AssistantEffectsGateway;
   readonly assistantReminders: AssistantRemindersGateway;
+  readonly assistantBindings: AssistantBindingsGateway;
+  readonly assistantPairingCodes: AssistantPairingCodesGateway;
 };

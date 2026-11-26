@@ -242,3 +242,21 @@ describe('#157 a key service failure is a closed-set reason, never exception tex
     });
   });
 });
+
+describe('PA-6 an assistant bot key is sealed under its own bot', () => {
+  const bot: EnvelopeContext = {
+    assistantHarnessId: '00000000-0000-4000-8000-0000000157e1',
+    botUserId: 9001,
+  };
+
+  it('opens under the same bot and under no other bot or credential', async () => {
+    const keys = await memoryDataKeys();
+    const value = await sealed(keys, bot);
+    const opened = await openValue(keys, bot, value);
+    expect(opened.ok && text(opened.plaintext)).toBe(secret);
+    const otherBot = await openValue(keys, { ...bot, botUserId: 9002 }, value);
+    expect(otherBot.ok).toBe(false);
+    const credential = await openValue(keys, context, value);
+    expect(credential.ok).toBe(false);
+  });
+});

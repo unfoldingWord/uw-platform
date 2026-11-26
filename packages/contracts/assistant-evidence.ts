@@ -3,6 +3,8 @@ import {
   assistantChannelSchema,
   assistantEffectFailureSchema,
   assistantEffectKindSchema,
+  assistantPairingRefusalSchema,
+  assistantPairingViaSchema,
   assistantSettingFieldSchema,
   assistantTurnRefusalSchema,
 } from './assistants.ts';
@@ -60,5 +62,14 @@ export const assistantEvidence = {
   assistant_reminder_undelivered: z.strictObject({
     reminderId: id,
     why: assistantEffectFailureSchema,
+  }),
+  assistant_pairing_started: z.strictObject({ channel: assistantChannelSchema }),
+  assistant_paired: z.strictObject({
+    channel: assistantChannelSchema,
+    via: assistantPairingViaSchema,
+  }),
+  assistant_pairing_refused: z.strictObject({
+    channel: assistantChannelSchema,
+    why: assistantPairingRefusalSchema,
   }),
 };

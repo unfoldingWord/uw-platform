@@ -16,7 +16,7 @@ export type CustomiseInput = {
   readonly expectedVersion: number;
 };
 
-type SettingsPorts = Pick<Ports, 'clock' | 'grants' | 'ids' | 'store'>;
+export type SettingsPorts = Pick<Ports, 'clock' | 'grants' | 'ids' | 'store'>;
 
 export function changedFields(
   before: AssistantSettingsRow | null,
@@ -40,9 +40,9 @@ function inputRefusal(input: CustomiseInput): AssistantSettings | Refused {
     : refused('malformed_command', { why: 'expected_version' });
 }
 
-type Owned = { readonly harnessId: string; readonly personId: string };
+export type Owned = { readonly harnessId: string; readonly personId: string };
 
-async function ownedHarness(
+export async function ownedHarness(
   ports: SettingsPorts,
   tx: StoreTransaction,
   caller: Caller,

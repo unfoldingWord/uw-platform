@@ -1,5 +1,5 @@
 import { zulipOutgoingSchema, type IngestRefusal } from '@uw/contracts';
-import type { VerifiedDelivery, WebhookSource } from '../env.ts';
+import type { SharedSecretSource, VerifiedDelivery } from '../env.ts';
 
 async function digest(value: string): Promise<Uint8Array> {
   return new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value)));
@@ -12,7 +12,7 @@ async function sameSecret(given: string, secret: string): Promise<boolean> {
   return difference === 0;
 }
 
-function parsed(rawBody: string): unknown {
+export function parsed(rawBody: string): unknown {
   try {
     return JSON.parse(rawBody);
   } catch {
@@ -20,7 +20,7 @@ function parsed(rawBody: string): unknown {
   }
 }
 
-function tokenOf(payload: unknown): string | null {
+export function tokenOf(payload: unknown): string | null {
   if (typeof payload !== 'object' || payload === null || !('token' in payload)) return null;
   return typeof payload.token === 'string' ? payload.token : null;
 }
@@ -40,12 +40,12 @@ async function verifyZulip(
   return { deliveryId: `zulip:${outgoing.data.message.id}`, event: 'message' };
 }
 
-function withoutToken(payload: unknown): unknown {
+export function withoutToken(payload: unknown): unknown {
   if (typeof payload !== 'object' || payload === null) return payload;
   return Object.fromEntries(Object.entries(payload).filter(([key]) => key !== 'token'));
 }
 
-export const zulipSource: WebhookSource = {
+export const zulipSource: SharedSecretSource = {
   secret: (env) => env.ZULIP_WEBHOOK_TOKEN,
   verify: verifyZulip,
   redact: withoutToken,

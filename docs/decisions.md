@@ -325,7 +325,7 @@ This number was used and withdrawn. It is not reused.
 
 ## 0020 A connector uses a credential by reference, as the run's person
 
-*2026-11-20.*
+*2026-11-20. Changed by 0037.*
 
 **Decision.** One function, `useCredential` in `apps/uw-platform/credentials/use.ts`, is the only way a value leaves the store for use. The caller names a credential by reference with the workflow, connector, run and acting principal, and passes a function to call; it never receives bytes or text. The store does not trust the grants on the principal: it looks up the run's person, refuses one who is not active, and reads that person's live grants at the moment of use, and again at the final check of 0019. The value exists as a `Secret` for the length of one call; only `exposeSecret` gives the text back, and afterwards the bytes are zeroed. Everywhere else (a string, JSON, a log line, an event, a page) a `Secret` renders `[secret]` and does not throw. What the caller's function returns is searched for the value before it is handed back, and an outcome that carries it or cannot be walked is refused `value_in_outcome`; a function that throws is answered `connector_failed` with no text. Binding and unbinding need `manage` and are logged. Nothing is cached. No verb is added and no verb takes a reference: a reference is named in configuration a person writes, never in a tool call. A use is a row in the credential access log, not a workflow event.
 
@@ -709,7 +709,7 @@ A policy's page and the Policies screen show its level, target, enforcement, dat
 
 ## 0036 A person's assistant is a persona on their own harness, lent authority by that person, acting directly only within a closed low-risk set
 
-*2026-11-26. Changes 0002, 0003, 0005, 0015 and 0020.*
+*2026-11-26. Changes 0002, 0003, 0005, 0015 and 0020. Changed by 0037.*
 
 **Decision.**
 
@@ -744,6 +744,29 @@ A policy's page and the Policies screen show its level, target, enforcement, dat
 **Consequences.** PRD section 4.2 gains "Assistants" with requirements PA-1 onward. "An agent can produce a deliverable and cannot send it" and "no route reaches an external effect without crossing a human gate" each gain one named exception: the closed set above. A reply direct-messaged to its own person carries content; nothing posted to a stream does. Content-free assistant events are internal like every harness's events: readers of the assistants area and org-scope readers (0015) can see that a request, turn or effect kind happened and when, and never what it said. The request text goes to the model vendor; which provider, how long text is kept, which area holds the personal harnesses and how Google is reached are open questions in the PRD.
 
 **Changes / changed by.** Changes 0002 (the registry may gain verbs that draft effects which take effect without a person, only within this set), 0003 (the Ship constraint is untouched; a twin constraint holds the assistant's set), 0005 (the grantor of `assist` is the harness's person, not an area admin), 0015 (the principal under an `assist` delegation holds its person's grants clamped to `viewer`, in every area the person reads) and 0020 (an assistant effect is not a connector; it runs at the turn's exit through its own port).
+
+## 0037 One Zulip bot per person, paired by email or a one-time code, its key sealed by KMS
+
+*2026-11-26. Changes 0020 and 0036.*
+
+**Decision.**
+
+1. **Each assistant is its own Zulip bot.** The owner ruled one bot per person (issue #123, decision 3), replacing the single shared bot 0036's design assumed. The platform creates each bot through Zulip's admin API, signed in as one org-admin service account (`ZULIP_ADMIN_EMAIL`, `ZULIP_ADMIN_API_KEY`), as an outgoing-webhook bot whose endpoint is `uw-ingest`'s `/webhooks/zulip-assistant`. It deactivates the bot when its person turns the assistant off and reactivates it when they turn it back on (`apps/uw-platform/assistants/zulip/provision.ts`). The person picks the bot's name.
+2. **A bot's secrets never enter the Secrets Store.** Its API key is sealed with the credentials KMS key under its own encryption context (`purpose: assistant_bot_key`, the harness id and the bot's user id), so a key sealed for one bot opens for no other bot and no credential (0020's envelope, `apps/uw-platform/credentials/envelope.ts`). Its webhook token is kept only as a SHA-256 digest. Both live in `assistant_zulip_bots`, owned by `apps/uw-platform/assistants/zulip/`.
+3. **`uw-ingest` verifies each delivery against its own bot.** The new source `zulip-assistant` reads the delivery's `bot_email`, looks up that active bot's token digest over Hyperdrive and compares digests in constant time; the delivery id is `zulip-assistant:<bot user id>:<message id>`, so one group message reaching two bots is not a replay. The stream bot's source, path and `ZULIP_WEBHOOK_TOKEN` are unchanged.
+4. **A binding is the person's verified address, held by the kernel.** `assistant_bindings` holds one address per assistant and channel, and one assistant per address (a unique index). It is written only by `kernel.assistants`: `bindAddress`, for the system principal, when provisioning finds the person's Zulip account by their email and nothing is bound yet; and `completePairing`, for the ingest principal, when the account sends back the one-time code its person started on the platform (`startPairing`, for the person only, interactive and holding a live grant). A code lives ten minutes, is stored only as a digest, and is spent by five wrong tries. Each pairing records `assistant_paired`, `assistant_pairing_started` or `assistant_pairing_refused`, with only the channel and a closed-set reason.
+5. **Only a one-to-one message from the bound account is a request.** The queue consumer's `assistantDmHandler` records a request only for a private message whose recipients are exactly the sender and the bot and whose sender id is the bound address; a group message, a stranger and a stream message record nothing, and a message that is only a pairing code is offered to `completePairing`. Zulip quote blocks (`> ` lines and `quote` fences) are fenced as `chat_quote` untrusted parts. An assistant takes at most thirty requests an hour.
+6. **Replies go out as that person's bot, at most once.** The platform `DirectMessages` adapter (`apps/uw-platform/ports/direct-messages.ts`) answers `deadline_passed` at or after `sendBy`, `not_paired` unless the request's address is the person's binding and the bot is active, claims the effect id in `assistant_zulip_sends` before sending, and never sends an effect again once its outcome is unknown (Zulip takes no idempotency key). It passes the DirectMessages port contract against a recorded-shape fake of Zulip.
+
+**Why.** The owner chose one bot per person so each assistant has its own name and identity in Zulip. Per-bot keys need a store that grows with people, and the Secrets Store is capped per account. Binding by Zulip user id, not email, keeps a masked or changed email from redirecting replies, and the one-time code covers a person whose Zulip email differs from their platform email.
+
+**Rejected.**
+- One shared platform bot (0036's design default). Overruled by the owner.
+- A path per bot (`/webhooks/zulip-assistant/<id>`). A bot's id is not known until it is created, and the webhook URL is set at creation.
+- Polling each bot's event queue. Workers have no long-lived process, and Zulip drops idle queues.
+- Storing bot keys in the Secrets Store or the credentials vault rows. The store is capped, and the vault's rows are area-scoped credentials a person reveals, not platform keys.
+
+**Changes / changed by.** Changes 0020 (its envelope also seals assistant bot keys, under their own context) and 0036 (item 9: the pairing is by email at provisioning or by a one-time code, and each assistant has its own bot).
 
 # Part 2. Workflow design decisions
 

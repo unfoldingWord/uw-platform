@@ -10,8 +10,8 @@ import {
 } from '@uw/contracts';
 import { ingestPrincipal } from '@uw/core/principal';
 import type { IngestDeps, IngestEnv } from './deps.ts';
-import type { DeliveryLedger } from './deliveries/ledger.ts';
-import type { VerifiedDelivery } from './env.ts';
+import type { DeliveryLedger, LedgerHandle } from './deliveries/ledger.ts';
+import type { VerifiedDelivery, WebhookSource } from './env.ts';
 import { webhookSources } from './sources/registry.ts';
 
 const refusalStatus = new Map<IngestRefusal, ContentfulStatusCode>([
@@ -90,29 +90,50 @@ type Verified = {
   readonly payload: unknown;
 };
 
-async function verifiedDelivery(c: Context<IngestEnv>): Promise<Verified | IngestRefusal> {
-  const name = ingestSourceSchema.safeParse(c.req.param('source'));
-  const source = name.success ? webhookSources.get(name.data) : undefined;
-  if (!name.success || !source) return 'unknown_source';
+async function deliveryOf(
+  c: Context<IngestEnv>,
+  source: WebhookSource,
+  handle: LedgerHandle | null,
+): Promise<{ readonly delivery: VerifiedDelivery; readonly rawBody: string } | IngestRefusal> {
+  if ('verifyWith' in source) {
+    const tokens = handle?.botTokens;
+    if (tokens === undefined) return 'replay_store_not_configured';
+    if (declaredTooLarge(c.req.raw.headers)) return 'payload_too_large';
+    const rawBody = await c.req.text();
+    const delivery = await source.verifyWith(rawBody, tokens);
+    return typeof delivery === 'string' ? delivery : { delivery, rawBody };
+  }
   const secret = source.secret(c.env);
   if (!secret) return 'source_not_configured';
   if (declaredTooLarge(c.req.raw.headers)) return 'payload_too_large';
   const rawBody = await c.req.text();
   const delivery = await source.verify(c.req.raw.headers, rawBody, secret);
-  if (typeof delivery === 'string') return delivery;
-  const parsed = parseJson(rawBody);
+  return typeof delivery === 'string' ? delivery : { delivery, rawBody };
+}
+
+async function verifiedDelivery(
+  c: Context<IngestEnv>,
+  handle: LedgerHandle | null,
+): Promise<Verified | IngestRefusal> {
+  const name = ingestSourceSchema.safeParse(c.req.param('source'));
+  const source = name.success ? webhookSources.get(name.data) : undefined;
+  if (!name.success || !source) return 'unknown_source';
+  const verified = await deliveryOf(c, source, handle);
+  if (typeof verified === 'string') return verified;
+  const parsed = parseJson(verified.rawBody);
   if (!parsed) return 'malformed_payload';
   const payload = source.redact ? source.redact(parsed.value) : parsed.value;
-  return { source: name.data, delivery, rawBody, payload };
+  return { source: name.data, delivery: verified.delivery, rawBody: verified.rawBody, payload };
 }
 
 async function admit(
   c: Context<IngestEnv>,
   deps: IngestDeps,
-  ledger: DeliveryLedger | undefined,
+  handle: LedgerHandle | null,
 ): Promise<IngestRefusal | null> {
-  const verified = await verifiedDelivery(c);
+  const verified = await verifiedDelivery(c, handle);
   if (typeof verified === 'string') return verified;
+  const ledger = handle?.ledger;
   if (!ledger) return 'replay_store_not_configured';
   const queue = c.env.INGEST_QUEUE;
   if (!queue) return 'queue_not_configured';
@@ -137,7 +158,7 @@ export function receive(deps: IngestDeps) {
     c.set('logger', c.get('logger').with({ principal: ingestPrincipal().identity }));
     const handle = deps.openLedger(c.env);
     try {
-      const reason = await admit(c, deps, handle?.ledger);
+      const reason = await admit(c, deps, handle);
       if (reason === null) {
         c.set('outcome', 'accepted');
         return c.json({ ...acceptedFields(c), status: 'accepted' }, 202);

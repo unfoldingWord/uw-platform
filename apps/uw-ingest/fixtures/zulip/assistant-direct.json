@@ -1,0 +1,30 @@
+{
+  "bot_email": "barnabas-bot@chat.example.org",
+  "bot_full_name": "barnabas",
+  "data": "What is on my calendar today?",
+  "message": {
+    "avatar_url": "https://chat.example.org/avatar/5005",
+    "client": "website",
+    "content": "What is on my calendar today?",
+    "display_recipient": [
+      { "email": "ana@example.org", "full_name": "Ana", "id": 5005 },
+      { "email": "barnabas-bot@chat.example.org", "full_name": "barnabas", "id": 9001 }
+    ],
+    "id": 7001,
+    "is_me_message": false,
+    "reactions": [],
+    "recipient_id": 41,
+    "rendered_content": "<p>What is on my calendar today?</p>",
+    "sender_email": "ana@example.org",
+    "sender_full_name": "Ana",
+    "sender_id": 5005,
+    "sender_realm_str": "chat",
+    "subject": "",
+    "submessages": [],
+    "timestamp": 1795000000,
+    "topic_links": [],
+    "type": "private"
+  },
+  "token": "barnabas-webhook-token",
+  "trigger": "direct_message"
+}

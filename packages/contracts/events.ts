@@ -89,6 +89,9 @@ export const eventNames = [
   'assistant_reminder_cancelled',
   'assistant_reminder_fired',
   'assistant_reminder_undelivered',
+  'assistant_pairing_started',
+  'assistant_paired',
+  'assistant_pairing_refused',
 ] as const;
 
 export const eventNameSchema = z.enum(eventNames);

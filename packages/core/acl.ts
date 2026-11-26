@@ -84,6 +84,9 @@ export const rowReadRules = {
   assistant_requests: ownerOnly,
   assistant_effects: ownerOnly,
   assistant_reminders: ownerOnly,
+  assistant_bindings: ownerOnly,
+  assistant_pairing_codes: ownerOnly,
+  assistant_zulip_bots: ownerOnly,
 } as const satisfies Readonly<Record<string, RowReadRule>>;
 
 export type RestrictedTable = keyof typeof rowReadRules;

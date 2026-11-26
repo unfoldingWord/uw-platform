@@ -19,6 +19,8 @@ export type RecordedRequest = { readonly requestId: string; readonly created: bo
 type RequestPorts = Pick<Ports, 'clock' | 'ids' | 'store'>;
 
 const EXTERNAL_ONCE = 'assistant_requests_external_once';
+const REQUESTS_PER_HOUR = 30;
+const HOUR_MS = 60 * 60_000;
 
 function existing(harness: Harness, found: AssistantRequestRow): KernelOutcome<RecordedRequest> {
   if (found.harnessId !== harness.id) {
@@ -59,6 +61,10 @@ async function recordIn(
   if (harness === null) return refused('no_assistant', { personId: input.personId });
   const found = await tx.assistantRequests.read.byExternal(input.channel, input.externalId);
   if (found !== null) return existing(harness, found);
+  const since = new Date(at.getTime() - HOUR_MS);
+  if ((await tx.assistantRequests.read.countSince(harness.id, since)) >= REQUESTS_PER_HOUR) {
+    return refused('not_permitted', { why: 'requests_capped' });
+  }
   const row = rowOf(ports, harness, input, at);
   await tx.assistantRequests.write.insert(row);
   await recordHarnessEvents(tx, recordContext(ports, caller, at), harness.id, [

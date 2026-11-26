@@ -4,6 +4,16 @@ import type { KernelSettings } from '../kernel-settings.ts';
 import type { AssistantSettingsRow, Ports } from '../ports.ts';
 import type { Activated } from '../stages/activate.ts';
 import { finishTurn, type FinishInput, type Finished } from './finish.ts';
+import {
+  bindAddress,
+  completePairing,
+  startPairing,
+  type BindAddressInput,
+  type CompletePairingInput,
+  type Paired,
+  type StartedPairing,
+  type StartPairingInput,
+} from './pairing.ts';
 import { provision, type ProvisionInput } from './provision.ts';
 import {
   cancelReminder,
@@ -29,6 +39,9 @@ export type AssistantCommands = {
   cancelReminder(caller: Caller, input: CancelReminderInput): Promise<KernelOutcome<DraftedEffect>>;
   listReminders(caller: Caller, input: TurnAddress): Promise<KernelOutcome<ListedReminders>>;
   fireDueReminders(caller: Caller, input: FireInput): Promise<KernelOutcome<Fired>>;
+  startPairing(caller: Caller, input: StartPairingInput): Promise<KernelOutcome<StartedPairing>>;
+  completePairing(caller: Caller, input: CompletePairingInput): Promise<KernelOutcome<Paired>>;
+  bindAddress(caller: Caller, input: BindAddressInput): Promise<KernelOutcome<Paired>>;
 };
 
 type AssistantPorts = Pick<Ports, 'clock' | 'grants' | 'ids' | 'store' | 'directMessages'>;
@@ -47,5 +60,8 @@ export function createAssistantCommands(
     cancelReminder: (caller, input) => cancelReminder(ports, caller, input),
     listReminders: (caller, input) => listReminders(ports, caller, input),
     fireDueReminders: (caller, input) => fireDueReminders(ports, caller, input),
+    startPairing: (caller, input) => startPairing(ports, caller, input),
+    completePairing: (caller, input) => completePairing(ports, caller, input),
+    bindAddress: (caller, input) => bindAddress(ports, caller, input),
   };
 }

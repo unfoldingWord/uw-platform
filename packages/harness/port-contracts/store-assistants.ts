@@ -14,6 +14,7 @@ import {
   type AssistantsSubject,
 } from './store-assistant-fixtures.ts';
 import { describeStoreAssistantReads } from './store-assistant-reads.ts';
+import { describeStoreAssistantPairing } from './store-assistant-pairing.ts';
 import { describeStoreAssistantReminders } from './store-assistant-reminders.ts';
 import { at, hour, refusedBy, uid } from './store-gateway-fixtures.ts';
 
@@ -229,5 +230,6 @@ export function describeStoreAssistants(adapter: string, subject: AssistantsSubj
     describeEffects(subject);
     describeStoreAssistantReads(subject);
     describeStoreAssistantReminders(subject);
+    describeStoreAssistantPairing(subject);
   });
 }

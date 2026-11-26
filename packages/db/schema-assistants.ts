@@ -1,9 +1,11 @@
 import { sql } from 'drizzle-orm';
 import {
+  bigint,
   check,
   foreignKey,
   index,
   integer,
+  primaryKey,
   jsonb,
   text,
   unique,
@@ -14,6 +16,7 @@ import {
 import {
   assistantChannelSchema,
   assistantDirectEffectSchema,
+  assistantPairingViaSchema,
   assistantReminderStatusSchema,
 } from '@uw/contracts';
 import { oneOf } from './checks.ts';
@@ -180,5 +183,120 @@ export const assistantReminders = declareTable(
     uniqueIndex('assistant_reminders_effect_once').on(t.effectId),
     index('assistant_reminders_due').on(t.status, t.dueAt, t.id),
     index('assistant_reminders_harness').on(t.harnessId, t.status, t.dueAt),
+  ],
+);
+
+const personalHarnessOf = (name: string, harnessId: AnyPgColumn, personId: AnyPgColumn) =>
+  foreignKey({
+    name,
+    columns: [harnessId, personId],
+    foreignColumns: [harnesses.id, harnesses.personId],
+  });
+const sha256Hex = (column: AnyPgColumn) => sql`${column} ~ '^[0-9a-f]{64}$'`;
+
+export const assistantBindings = declareTable(
+  'assistant_bindings',
+  {
+    harnessId: uuid('harness_id').notNull(),
+    personId: uuid('person_id').notNull(),
+    channel: text('channel').notNull(),
+    address: text('address').notNull(),
+    via: text('via').notNull(),
+    boundAt: instant('bound_at').notNull(),
+  },
+  restrictedNever,
+  (t) => [
+    primaryKey({ name: 'assistant_bindings_pk', columns: [t.harnessId, t.channel] }),
+    personalHarnessOf('assistant_bindings_personal_harness_fk', t.harnessId, t.personId),
+    check('assistant_bindings_channel_known', oneOf(t.channel, assistantChannelSchema.options)),
+    check('assistant_bindings_via_known', oneOf(t.via, assistantPairingViaSchema.options)),
+    check('assistant_bindings_address_length', sql`char_length(${t.address}) BETWEEN 1 AND 254`),
+    check(
+      'assistant_bindings_zulip_address',
+      sql`${t.channel} <> 'zulip_dm' OR ${t.address} ~ '^zulip:[1-9][0-9]{0,14}$'`,
+    ),
+    uniqueIndex('assistant_bindings_address_once').on(t.channel, t.address),
+    index('assistant_bindings_person').on(t.personId, t.channel),
+  ],
+);
+
+export const assistantPairingCodes = declareTable(
+  'assistant_pairing_codes',
+  {
+    harnessId: uuid('harness_id').notNull(),
+    personId: uuid('person_id').notNull(),
+    channel: text('channel').notNull(),
+    codeDigest: text('code_digest').notNull(),
+    expiresAt: instant('expires_at').notNull(),
+    attempts: integer('attempts').notNull(),
+    createdAt: instant('created_at').notNull(),
+  },
+  restrictedNever,
+  (t) => [
+    primaryKey({ name: 'assistant_pairing_codes_pk', columns: [t.harnessId, t.channel] }),
+    personalHarnessOf('assistant_pairing_codes_personal_harness_fk', t.harnessId, t.personId),
+    check(
+      'assistant_pairing_codes_channel_known',
+      oneOf(t.channel, assistantChannelSchema.options),
+    ),
+    check('assistant_pairing_codes_digest_shape', sha256Hex(t.codeDigest)),
+    check('assistant_pairing_codes_attempts_bounded', sql`${t.attempts} BETWEEN 0 AND 5`),
+  ],
+);
+
+export const assistantZulipBots = declareTable(
+  'assistant_zulip_bots',
+  {
+    harnessId: uuid('harness_id').primaryKey(),
+    personId: uuid('person_id').notNull(),
+    botUserId: bigint('bot_user_id', { mode: 'number' }).notNull(),
+    botEmail: text('bot_email').notNull(),
+    fullName: text('full_name').notNull(),
+    keyCipher: text('key_cipher').notNull(),
+    keyCiphertext: text('key_ciphertext').notNull(),
+    keyNonce: text('key_nonce').notNull(),
+    keyWrapped: text('key_wrapped').notNull(),
+    keyId: text('key_id').notNull(),
+    webhookTokenDigest: text('webhook_token_digest').notNull(),
+    status: text('status').notNull(),
+    createdAt: instant('created_at').notNull(),
+    updatedAt: instant('updated_at').notNull(),
+  },
+  restrictedNever,
+  (t) => [
+    personalHarnessOf('assistant_zulip_bots_personal_harness_fk', t.harnessId, t.personId),
+    check('assistant_zulip_bots_status_known', oneOf(t.status, ['active', 'deactivated'])),
+    check('assistant_zulip_bots_token_digest_shape', sha256Hex(t.webhookTokenDigest)),
+    check('assistant_zulip_bots_user_positive', sql`${t.botUserId} > 0`),
+    check('assistant_zulip_bots_email_length', sql`char_length(${t.botEmail}) BETWEEN 3 AND 254`),
+    check(
+      'assistant_zulip_bots_full_name_length',
+      sql`char_length(${t.fullName}) BETWEEN 1 AND 100`,
+    ),
+    uniqueIndex('assistant_zulip_bots_user_once').on(t.botUserId),
+    uniqueIndex('assistant_zulip_bots_email_once').on(t.botEmail),
+    index('assistant_zulip_bots_person').on(t.personId),
+  ],
+);
+
+export const assistantZulipSends = declareTable(
+  'assistant_zulip_sends',
+  {
+    effectId: uuid('effect_id').primaryKey(),
+    harnessId: uuid('harness_id')
+      .notNull()
+      .references(() => harnesses.id),
+    status: text('status').notNull(),
+    zulipMessageId: bigint('zulip_message_id', { mode: 'number' }),
+    claimedAt: instant('claimed_at').notNull(),
+    sentAt: instant('sent_at'),
+  },
+  { classification: 'internal', offlineEligibility: 'never' },
+  (t) => [
+    check('assistant_zulip_sends_status_known', oneOf(t.status, ['sending', 'sent'])),
+    check(
+      'assistant_zulip_sends_sent_has_message',
+      sql`(${t.status} = 'sent') = (${t.zulipMessageId} IS NOT NULL AND ${t.sentAt} IS NOT NULL)`,
+    ),
   ],
 );

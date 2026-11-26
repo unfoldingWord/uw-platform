@@ -24,6 +24,12 @@ import { allEvents } from '../testing/commands.ts';
 import { personOn } from '../testing/kernel.ts';
 import type { CronDeps } from './job.ts';
 import { minuteJob } from './minute.ts';
+import { zulipAdmin } from '../assistants/zulip/admin.ts';
+import { provisionZulipBot } from '../assistants/zulip/provision.ts';
+import { FAKE_ADMIN, FAKE_ZULIP_SITE, fakeZulip } from '../assistants/zulip/testing/fake-zulip.ts';
+import { credentialsDepsOf } from '../credentials/compose.ts';
+import { fakeKms, fakeKmsAccess, fakeKmsRegion } from '../credentials/testing/fake-kms.ts';
+import { systemTimers } from '../timers.ts';
 
 type Line = Record<string, unknown>;
 type Rig = {
@@ -145,7 +151,11 @@ function recording(sent: DirectMessage[]): DirectMessagesFactory {
   return () => port;
 }
 
-function depsOf(rig: Rig, directMessages: DirectMessagesFactory): CronDeps {
+function depsOf(
+  rig: Rig,
+  directMessages: DirectMessagesFactory,
+  fetcher: typeof fetch = () => Promise.reject(new Error('nothing but the spend read')),
+): CronDeps {
   const spend = () =>
     Promise.resolve(
       Response.json({
@@ -154,7 +164,7 @@ function depsOf(rig: Rig, directMessages: DirectMessagesFactory): CronDeps {
     );
   return {
     now: () => new Date(start.getTime() + 2 * DAY_MS),
-    fetch: () => Promise.reject(new Error('the minute job sends nothing but the spend read')),
+    fetch: fetcher,
     sink: (line) => rig.lines.push(JSON.parse(line) as Line),
     newId: () => randomUUID(),
     commit: 'c',
@@ -214,10 +224,69 @@ async function platformFactory(rig: Rig): Promise<void> {
   expect(reminderLines(rig).at(-1)).toMatchObject({ fired: 0, undelivered: 1 });
 }
 
+async function zulipWorld(rig: Rig) {
+  const kms = await fakeKms();
+  const zulip = fakeZulip();
+  zulip.addUser('rowan.test@unfoldingword.org', 'Rowan', 5001);
+  const urlOf = (input: Parameters<typeof fetch>[0]) =>
+    typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+  const fetcher: typeof fetch = (input, init) =>
+    urlOf(input).startsWith(FAKE_ZULIP_SITE) ? zulip.fetch(input, init) : kms.fetcher(input, init);
+  const env: Bindings = {
+    ...rig.env,
+    ZULIP_SITE: FAKE_ZULIP_SITE,
+    CREDENTIALS_KMS_REGION: fakeKmsRegion,
+    CREDENTIALS_KMS_KEY_ID: kms.keyArn,
+    CREDENTIALS_KMS_ACCESS_KEY_ID: fakeKmsAccess.accessKeyId,
+    CREDENTIALS_KMS_SECRET_ACCESS_KEY: fakeKmsAccess.secretAccessKey,
+  };
+  const platform = {
+    fetch: fetcher,
+    timers: systemTimers,
+    clock: { now: () => start },
+    newId: randomUUID,
+  };
+  const provisioned = await provisionZulipBot(
+    {
+      db: rig.db,
+      kernel: kernelOn(rig.db),
+      keys: credentialsDepsOf(env, rig.db, platform).keys,
+      admin: zulipAdmin({ site: FAKE_ZULIP_SITE, ...FAKE_ADMIN }, fetcher, systemTimers),
+      webhookUrl: 'https://ingest.example.org/webhooks/zulip-assistant',
+      clock: { now: () => start },
+      caller: caller(systemPrincipal()),
+    },
+    {
+      harnessId: rig.harnessId,
+      personId: rowanId,
+      personEmail: 'rowan.test@unfoldingword.org',
+      name: 'barnabas',
+    },
+  );
+  expect(provisioned).toEqual({ outcome: 'provisioned', botUserId: 1002, paired: true });
+  return { zulip, env, fetcher };
+}
+
+async function deliveredByMyBot(rig: Rig): Promise<void> {
+  const { zulip, env, fetcher } = await zulipWorld(rig);
+  await minuteJob(env, depsOf(rig, directMessagesOf, fetcher));
+  await minuteJob(env, depsOf(rig, directMessagesOf, fetcher));
+  const sent = zulip.messages();
+  expect(sent.map((message) => [message.sender, message.type, message.to])).toEqual([
+    ['barnabas-bot@chat.example.org', 'direct', [5001]],
+  ]);
+  expect(sent[0]?.content).toContain('Call Ana');
+  expect(await named(rig, 'assistant_reminder_fired')).toHaveLength(1);
+  expect(await named(rig, 'assistant_reminder_undelivered')).toEqual([]);
+}
+
 describe('PA-5 the minute cron fires due reminders through the DirectMessages factory', () => {
   it('fires a due reminder once across two minutes, through the factory it was given', () =>
     withRig(firesOnce));
 
-  it('records the closed-set reason when the platform factory cannot deliver yet', () =>
+  it('records the closed-set reason when no Zulip site is configured', () =>
     withRig(platformFactory));
+
+  it('PA-6 delivers the due reminder once as a direct message from my own Zulip bot', () =>
+    withRig(deliveredByMyBot));
 });
