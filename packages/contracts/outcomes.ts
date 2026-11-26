@@ -140,6 +140,8 @@ export const errorReasonSchema = z.enum([
   'suggestion_not_found',
   'suggestion_decided',
   'suggestion_changed',
+  'changes_overlap',
+  'anchor_orphaned',
   'trial_required',
   'trial_unreadable',
   'run_too_soon',

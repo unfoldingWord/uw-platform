@@ -3,6 +3,7 @@ import type { Page, PageStatus, verbIo } from '@uw/contracts';
 import type { Principal } from '@uw/core/principal';
 import type { Database } from '@uw/db/client';
 import type { Kernel } from '@uw/harness';
+import { holdAsReviewSet } from './agent-review.ts';
 import { isGatedType } from './gating.ts';
 import type { ExternalWriter } from './provenance.ts';
 import {
@@ -12,7 +13,6 @@ import {
   type PageRefusal,
   type PageResult,
 } from './store.ts';
-import { proposeIn } from './suggestions.ts';
 import { agentSuggests } from './validate.ts';
 
 type AgentPage = z.infer<(typeof verbIo)['write_page']['input']>;
@@ -37,7 +37,7 @@ function heldAsSuggestion(stored: Page): boolean {
 
 function divertFor(actor: Principal, at: Date): Divert {
   return (tx, stored, full) =>
-    heldAsSuggestion(stored) ? proposeIn(tx, actor, stored, full, at) : null;
+    heldAsSuggestion(stored) ? holdAsReviewSet(tx, actor, stored, full, at) : null;
 }
 
 function statusFor(input: AgentPage, expectedVersion: number, instructions: boolean) {

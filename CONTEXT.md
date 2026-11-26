@@ -615,8 +615,20 @@ A page of type `decision`: level-two headings Context, Decision and Consequences
 _Avoid_: ADR (that is a Decision), ruling, minute
 
 **Suggestion set**:
-A whole proposed new title, properties and text for one page over a base version, waiting for a person: a row of `page_suggestion_sets`. An agent's save to an active policy or charter becomes one, and each agent has at most one pending set per page, which a later save replaces. A person accepts it as one new version or rejects it; once decided it never changes. A set whose base is no longer the page's version can only be rejected.
+A whole proposed new title, properties and text for one page over a base version, waiting for a person: a row of `page_suggestion_sets` (ADR 0035). Agents made them before review sets; none is made now, and those still pending are decided as before: a person accepts one as one new version or rejects it, and once decided it never changes. A set whose base is no longer the page's version can only be rejected.
 _Avoid_: draft (that is a working draft), revision, proposal, pull request
+
+**Suggested change**:
+One proposed edit inside one page version, waiting in a **review set**: an insertion, a deletion, a replacement or a comment, anchored to a span of the base version's text by its start and end offsets and by a quote of that text with up to 32 characters either side (ADR 0037). Where the offsets no longer hold, the quote finds the span again; where the quote is gone or appears more than once, the change is **orphaned** and nothing is guessed. A row of `page_suggested_changes`. A comment changes no text.
+_Avoid_: revision (that is an Iterate run's draft page), edit, patch, annotation, tracked change (that is Word's)
+
+**Review set**:
+A named group of suggested changes over one base version of one page, such as "Board review 2026-12-01", accepted or rejected as a whole: a row of `page_review_sets`. Accepting applies every change in one save, making exactly one new version and one row of `page_review_decisions`; rejecting makes the row and no version. Only a person who may write the page decides, and a set whose base is no longer the page's version can only be rejected. An agent's save to an active policy or charter becomes one, worked out word by word, and each agent holds at most one pending set per page, which its next save replaces. Changes in one set never overlap.
+_Avoid_: suggestion set (that is the older whole-page set), change request, changeset, batch, pull request
+
+**Marked export**:
+A page's markdown export in `marked` mode: the current version's text with the suggested changes of its pending review sets written in CriticMarkup (`{++ ++}`, `{-- --}`, `{~~ ~> ~~}`, `{== ==}{>> <<}`), which reads back into the same suggested changes. The other modes are `accepted`, the clean current text and the default, and `original`, the stored text the marks are over. Every export is stamped with `source` (`slug@version`), `exported`, `sha256` (of the stored version, as in a provenance footer) and `mode`, and `verifyExport` checks a file against the stored version.
+_Avoid_: redline (that is the PDF mode, not built), tracked changes, diff
 
 ## Measures and dashboards
 

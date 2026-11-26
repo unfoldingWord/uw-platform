@@ -1,15 +1,45 @@
 import GithubSlugger from 'github-slugger';
-import type { Page } from '@uw/contracts';
+import type { PageExportMode, Page, SuggestedChangeInput } from '@uw/contracts';
+import { markedText } from './critic.ts';
 import type { EmbedSource } from './page-refs.ts';
 import { pageAddress } from './wiki-syntax.ts';
 
 type Sources = (id: string) => EmbedSource;
 
+type ExportStamp = {
+  readonly exported: string;
+  readonly sha256: string;
+  readonly withheld: boolean;
+};
+
+export type ExportRequest = {
+  readonly mode: PageExportMode;
+  readonly stamp: ExportStamp;
+  readonly marks: readonly SuggestedChangeInput[];
+  readonly leftOut?: number;
+};
+
+export function exportSource(page: Pick<Page, 'slug' | 'version'>): string {
+  return `${page.slug}@${String(page.version)}`;
+}
+
 const FENCE = '```';
 const GONE = '> This section no longer exists.';
 const DENIED = '> You do not have access to this section.';
 
-function frontMatter(page: Page): string[] {
+function stampOf(page: Page, request: ExportRequest): (readonly [string, unknown])[] {
+  const { stamp, mode, leftOut = 0 } = request;
+  return [
+    ['source', exportSource(page)],
+    ['exported', stamp.exported],
+    ['sha256', stamp.sha256],
+    ['mode', mode],
+    ['withheld', stamp.withheld ? true : undefined],
+    ['left_out', leftOut > 0 ? leftOut : undefined],
+  ];
+}
+
+function frontMatter(page: Page, request: ExportRequest): string[] {
   const filed = page.frontmatter;
   const shown: (readonly [string, unknown])[] = [
     ['title', page.title],
@@ -21,6 +51,7 @@ function frontMatter(page: Page): string[] {
     ['tags', filed['tags']],
     ['verified_by', filed['verified_by']],
     ['verified_until', filed['verified_until']],
+    ...stampOf(page, request),
   ];
   const empty = (value: unknown) =>
     value === undefined || value === null || (Array.isArray(value) && value.length === 0);
@@ -105,7 +136,13 @@ function expanded(bodyMd: string, walk: Walk): string {
     .join('\n');
 }
 
-export function exportMarkdown(page: Page, sources: Sources): string {
+function bodyOf(page: Page, sources: Sources, request: ExportRequest): string {
+  if (request.mode === 'original') return page.bodyMd;
+  if (request.mode === 'marked') return markedText(page.bodyMd, request.marks);
   const body = expanded(page.bodyMd, { sources, depth: 0, seen: new Set([page.id]) });
-  return `${[...frontMatter(page), body].join('\n').trimEnd()}\n`;
+  return `${body.trimEnd()}\n`;
+}
+
+export function exportMarkdown(page: Page, sources: Sources, request: ExportRequest): string {
+  return [...frontMatter(page, request), bodyOf(page, sources, request)].join('\n');
 }

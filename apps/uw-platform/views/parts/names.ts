@@ -33,6 +33,8 @@ export const pageNames = {
   wikiReview: 'Needs Review',
   wikiPolicies: 'Policies',
   pageSuggestion: 'Suggested Change',
+  pageReviewSet: 'Review Set',
+  pageReviewNew: 'Suggest Changes',
   logOut: 'Log Out',
   collections: 'Collections',
   collectionSettings: 'Settings',

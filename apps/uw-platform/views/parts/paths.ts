@@ -128,6 +128,18 @@ export function wikiPoliciesPath(): string {
   return '/wiki/policies';
 }
 
+export function pageReviewSetPath(pageId: string, reviewSetId: string): string {
+  return `${pagePath(pageId)}/review-sets/${segment(reviewSetId)}`;
+}
+
+export function pageReviewNewPath(pageId: string): string {
+  return `${pagePath(pageId)}/review-sets/new`;
+}
+
+export function pageMarkedExportPath(pageId: string): string {
+  return `${pageExportPath(pageId)}?mode=marked`;
+}
+
 export function pageVersionPath(pageId: string, version: number): string {
   return `${pagePath(pageId)}/versions/${String(version)}`;
 }

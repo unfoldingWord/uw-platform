@@ -296,7 +296,7 @@ describe.skipIf(!testServer)(
         pageId: page['pageId'],
         version: 1,
         status: 'draft',
-        suggestionId: null,
+        reviewSetId: null,
       });
     });
 

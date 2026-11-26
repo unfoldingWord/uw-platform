@@ -243,7 +243,7 @@ async function agentSuggestsAndPersonConfirms(db: Database): Promise<void> {
   const edit = { ...input, bodyMd: 'Rewritten by an agent.', expectedVersion: 2 };
   const held = await writePageAsAgent(db, agent, edit, request);
   expect(held).toMatchObject({ ok: true, page: { version: 2, bodyMd: 'Proposed.' } });
-  expect(held.ok && held.suggestionId).toEqual(expect.any(String));
+  expect(held.ok && held.reviewSetId).toEqual(expect.any(String));
 }
 
 async function confirmRechecksTheTarget(db: Database): Promise<void> {

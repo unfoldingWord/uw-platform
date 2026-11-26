@@ -275,15 +275,17 @@ Three things are kept distinct, because collapsing them is how document systems 
 
 A suggestion is anchored so it survives edits to the rest of the document, with a quoted-text fallback so the same anchor resolves against exported markdown. A **review set** bundles suggestions into a named unit, such as "Board review 2026-09-01" or "Counsel redline of the Chad MOU", that is accepted or rejected as a whole and produces exactly one new version and one audit record.
 
-**Agents suggest; they do not overwrite.** On policy, charter, contract and work order pages an agent's write becomes a suggestion set. The in-place write does not exist for those types.
+**Agents suggest; they do not overwrite.** On policy, charter, contract and work order pages an agent's write becomes a review set of suggested changes. The in-place write does not exist for those types, and no agent can save the body of any gated page directly.
 
-**Built so far, for policies and charters (ADR 0035).** An agent's save to an active policy or charter runs every check a save runs and is then held as a **suggestion set**: the whole proposed title, properties and text over the version it was based on. Each agent holds at most one pending set per page; saving again replaces it. The page says a change waits and links to a review screen that shows the text and the properties as a line diff, with Accept and Reject for someone who may write the page. Accepting saves the set as exactly one new version, through the same checks as any save; rejecting changes nothing. Both are recorded on the set, which the database then keeps as it was decided. A set whose base is no longer the page's version can only be rejected. Each save by the agent bumps the set's revision, and a decision names the revision the person read, so nobody accepts text they did not see; the same decision sent twice is answered once. Anchored suggestions inside one document, named review sets and revision marks in exports are not built yet.
+**Built so far (ADR 0035, ADR 0037).** A **suggested change** is an insertion, a deletion, a replacement or a comment, anchored to a span of one version by its offsets and by a quote of the text with 32 characters either side; where the offsets no longer hold the quote finds the span again, and where the quote is gone or appears twice the change is reported as orphaned rather than placed by a guess. A **review set** gathers suggested changes over one base version under a name. Changes in one set never overlap. A person who may write the page accepts a set, which applies every change in one save, exactly one new version and one audit row, or rejects it, which writes the audit row and changes nothing; the database keeps a decided set, its changes and its audit row as they were. A set whose base is no longer the page's version can only be rejected, a decision names the revision the person read, and the same decision sent twice is answered once.
+
+An agent's save to an active policy or charter runs every check a save runs and is then held as the agent's one pending review set: the text as word-level suggested changes against the stored text, with a new title or new properties carried on the set. Saving again replaces the set's changes. A person can suggest changes too, from the page's More menu: they edit a copy of the text, which becomes suggested changes word by word, or paste a marked export back. The page lists every review set waiting on it, and the review set screen shows each change, the text as it would read once accepted, and Accept and Reject. Any two versions of a page can be compared line by line or word by word on the version screen. Suggestion sets an agent made before review sets (whole proposed text, decided as a whole) are still decided on their own screen; none is made now.
 
 Revision state survives every export:
 
-- **Markdown** carries revision marks as CriticMarkup, plain text that is diffable and readable in any editor. Three modes: marked, accepted (clean current text) and original.
+- **Markdown** carries revision marks as CriticMarkup, plain text that is diffable and readable in any editor. Three modes, chosen with `?mode=` on the export: `accepted` (the clean current text, the default), `marked` (the current text with every pending suggested change marked, which reads back into the same suggested changes) and `original` (the stored text the marks are over). Every export is stamped with its source as `slug@version`, the export date, a sha256 that resolves against the stored version and its mode, and an edited export fails the check against that version. Built.
 - **PDF** has three modes: clean, redline (insertions underlined, deletions struck, change bars, numbered margin notes), and clean with a revision appendix listing every change with its date, actor, versions and rationale. Contracts, work orders and policies default to clean with appendix, so a document sent for signature states on its face what changed since the last executed version.
-- **DOCX** maps the marks to Word tracked changes for counterparties who redline in Word. Importing their file lands their edits as a suggestion set, never as an overwrite.
+- **DOCX** maps the marks to Word tracked changes for counterparties who redline in Word. Importing their file lands their edits as a review set, never as an overwrite. Not built yet.
 - **Data exports** carry the version, the as-of time and the source hash.
 
 Issue: #197.
@@ -298,7 +300,7 @@ Every policy a person can read is listed on the Policies screen with its level, 
 
 Charters use the organization's NISO format (Need, Idea, Strategy, Outcomes, with Risks and Roadmap) as a validated template, so they stay machine-readable at every level. The six are level-two headings in the charter's body, in that order; a save without them is refused and names the missing ones.
 
-Policies, charters and decision pages are gated: an agent's new page lands as suggested, and a person confirms it from the page, which runs the same checks as a save. An agent's save to an active policy or charter is held as a suggestion set for a person (Suggested changes, above).
+Policies, charters and decision pages are gated: an agent's new page lands as suggested, and a person confirms it from the page, which runs the same checks as a save. An agent's save to an active policy or charter is held as a review set for a person (Suggested changes, above).
 
 A **decision page** records context, decision and consequences as level-two headings, the date it was decided, what it applies to (a node, a product or the organization) and what earlier decision pages it supersedes.
 
@@ -815,7 +817,19 @@ Each id is stable and names its proof: scenarios in `sim/scenarios/` and tests a
 | PO-4 | A charter's body carries the NISO sections in order, and a decision page's Context, Decision and Consequences; a save without them is refused with the missing ones named. | Must |
 | PO-5 | A template policy is copied into what is made from it with its source and version, a drift report shows copies behind their source, and a person adopts an update as one new version. | Must |
 | PO-6 | Each policy's level, target, enforcement, dates and conflicts are shown to a person on its page and on the Policies screen. | Must |
-| PO-7 | An agent's save to an active policy or charter is held as one suggestion set per agent, which a person accepts as one new version or rejects; a decided set never changes (ADR 0035). | Must |
+| PO-7 | An agent's save to an active policy or charter is held for a person, never written: since ADR 0037 as one review set per agent, before it as one suggestion set (ADR 0035); a decided set never changes. | Must |
+
+**Suggested changes (SC)**
+
+| ID | Requirement | Priority |
+|---|---|---|
+| SC-1 | A suggested change is anchored by offsets and by a quote with context; it re-anchors by quote and is reported orphaned, never guessed, when the quote is missing or ambiguous (ADR 0037). | Must |
+| SC-2 | Accepting a review set makes exactly one new version and one audit row; rejecting makes one audit row and no version; a decided set, its changes and its audit row never change. | Must |
+| SC-3 | Only a person who may write the page decides a review set; a set over an older version can only be rejected; overlapping changes in one set are refused. | Must |
+| SC-4 | No agent principal can replace a gated page's body directly; an agent's save to an active policy or charter becomes word-level suggested changes. | Must |
+| SC-5 | Markdown export has `marked`, `accepted` and `original` modes, each stamped with `slug@version`, date, mode and a sha256 of the stored version; a marked export reads back into the same suggested changes, and a changed export fails verification. | Must |
+| SC-6 | Any two versions of a page can be compared word by word on screen. | Must |
+| SC-7 | PDF redline and revision-appendix modes, and DOCX tracked changes in and out. | Should |
 
 #### Open questions
 
@@ -1274,7 +1288,7 @@ Issue: #123 (assistant bots); #98 and #99 for agents working the software workfl
 - **A binder** is an ordered set of pages printed as one PDF with a cover, a contents list and continuous numbering: the board packet, a grant report with appendices, the audit binder, a quarterly portfolio review. It is named by a list of pages or by a root page and its readable descendants. A page the requester cannot read is left out silently. A binder is produced in the background and kept as an export.
 - **An export expires after seven days.** A download is behind sign-in, goes only to the person the export was made for, and checks their grants again as they are at that moment. There is no signed public link.
 - **Agents can make a PDF and cannot send one.** The `render_pdf` verb answers with an export's id and hashes, never the bytes, and takes no recipient.
-- **Revision modes** come with suggested changes (section 3, Core): clean, redline, and clean with a revision appendix.
+- **Revision modes** come with suggested changes (section 3, Core): clean, redline, and clean with a revision appendix. Markdown export already carries the marks (ADR 0037); the PDF redline and appendix modes are not built yet.
 - **Scheduled output:** month-end statements, the quarterly board packet, annual donor statements and compliance artifacts are produced on a schedule, archived under retention and logged like a publish.
 - **A PDF is an output, never a record.** Markdown and typed records are the record. The only PDFs that are records are counterparty-signed documents, kept with a hash and signer because they came from outside.
 

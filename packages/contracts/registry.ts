@@ -33,6 +33,16 @@ import {
   suggestionSetStatusSchema,
 } from './suggestions.ts';
 import {
+  acceptReviewSetCommandSchema,
+  pageExportModeSchema,
+  proposeReviewSetCommandSchema,
+  rejectReviewSetCommandSchema,
+  reviewSetStatusSchema,
+  suggestedChangeInputSchema,
+  suggestedChangeKindSchema,
+  textAnchorSchema,
+} from './review-sets.ts';
+import {
   adoptTemplateUpdateCommandSchema,
   charterFrontmatterSchema,
   charterSectionSchema,
@@ -349,6 +359,14 @@ export const schemaRegistry: Record<string, ZodType> = {
   'suggestion-set-status': suggestionSetStatusSchema,
   'accept-suggestion-command': acceptSuggestionCommandSchema,
   'reject-suggestion-command': rejectSuggestionCommandSchema,
+  'suggested-change-kind': suggestedChangeKindSchema,
+  'review-set-status': reviewSetStatusSchema,
+  'page-export-mode': pageExportModeSchema,
+  'text-anchor': textAnchorSchema,
+  'suggested-change-input': suggestedChangeInputSchema,
+  'propose-review-set-command': proposeReviewSetCommandSchema,
+  'accept-review-set-command': acceptReviewSetCommandSchema,
+  'reject-review-set-command': rejectReviewSetCommandSchema,
   'template-source': templateSourceSchema,
   'copy-template-policy-command': copyTemplatePolicyCommandSchema,
   'adopt-template-update-command': adoptTemplateUpdateCommandSchema,

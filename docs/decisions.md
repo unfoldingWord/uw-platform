@@ -705,6 +705,8 @@ A policy's page and the Policies screen show its level, target, enforcement, dat
 
 **Consequences.** Contract and work order pages, when they exist, declare `agentSuggests` and get the same path. Anchored suggestions, named review sets and revision marks in markdown, PDF and DOCX remain #197's.
 
+**Changes / changed by.** Changed by 0037: an agent's save to an active policy or charter is now a review set of suggested changes, and anchored suggestions, review sets and markdown marks are built there. Suggestion sets already pending are still decided as here.
+
 ---
 
 ## 0036 A measure runs a pinned package in a sandbox, after a trial and an activation by a person
@@ -738,6 +740,41 @@ A policy's page and the Policies screen show its level, target, enforcement, dat
 **Consequences.** A measure that needs a key waits until a measure can use a credential by reference (ADR 0020), which is an open question. Tools that print only text cannot be measures until a text runtime is reviewed. A run is done under the activating person's authority, a trial under that of the person who pressed Run trial, re-read at each step since no request outlives the press (recorded in `docs/exceptions.md`), each resource read again under that authority in its own step and skipped when it is no longer readable, and a measure pauses when its activator loses `admin` on the area. A paused measure, unless retired, is activated again by an admin pressing Activate, who becomes its activator. A person's edit or restore of an active measure or dashboard, or an agent's save of one, returns it to `suggested` and pauses the measure in the same transaction. A run belongs to the activated version it was asked under and stops, without pausing the measure, once a later version is activated. At most four runs hold a sandbox at once, trials and requested runs included; a run that finds no free slot waits queued and the minute job starts it when one frees, and a scheduled run whose job cannot be created is retried each minute for up to an hour after its slot. A resource step that fails past its retries is recorded failed and the run goes on, and every run closes from what it observed against what it planned, so a run that leaves a resource unmeasured is never ok. A started run with no progress for an hour is closed as stalled. A stored export records the areas of every dashboard, measure and resource its panels drew from, so downloading it later needs read on each of them. Activation judges only the trial observations the activating admin may read, and needs at least one ok among them. A resource serves portfolios, programs and projects only; serving a product page waits for a collection that lists products. Raw output is deleted after 13 months by the nightly job, not by a bucket lifecycle rule. Panels move onto the chart spec when #199 is built.
 
 **Changes / changed by.** None.
+
+---
+
+## 0037 Suggested changes are anchored spans grouped in review sets, accepted as one save, and carried through markdown export as CriticMarkup
+
+*2026-11-26. Builds on 0035 and 0028. Changes 0035. Part of #197.*
+
+**Decision.** Six rulings.
+- **Words.** A **suggested change** is an insertion, deletion, replacement or comment anchored to a span of one page version; a **review set** is a named group of them decided together. "Revision" stays the Iterate run's draft page.
+- **Anchors.** Each change records W3C-style text position (start and end offsets into the base version's body, in UTF-16 code units, as JavaScript counts them) and a text-quote selector (the exact text and up to 32 characters before and after). `resolveAnchor` keeps the position while the text there still matches its quote, otherwise finds the quote with its context, otherwise the exact text alone, and reports the anchor as orphaned when what it looks for is missing or appears more than once. A proposal with an orphaned anchor is refused with `anchor_orphaned`; one whose changes overlap is refused with `changes_overlap`. Two insertions at one point overlap; an insertion at either end of a span does not.
+- **Tables.** The pages module owns `page_review_sets` (page, name, base version, an optional proposed title and properties, status, author, request id, revision, who decided, when, the version made), `page_suggested_changes` (the set, its position, kind, anchor, proposed text, note, author) and `page_review_decisions`, an append-only audit row per decision. Migration 0076 refuses changing or deleting a decided set; adding, changing or removing the changes of a decided set; and any UPDATE or DELETE of a decision, as 0072 does for suggestion sets.
+- **Deciding.** `accept_review_set` locks the page, then the set, applies every change but comments to the base text and saves the result through `updateWithin` with the base as the expected version: exactly one `page_versions` row and one decision row, in one transaction. `reject_review_set` writes the decision row and no version. Both are for a person who may write the area, name the revision they read, and answer a replayed request once; a set over an older version can only be rejected. Only the page routes and the review set screen import them (`review-decisions-only-from-page-routes`).
+- **Agents.** An agent's `write_page` to an active policy or charter becomes the agent's one pending review set: the body as word-level suggested changes against the stored body (jsdiff's `diffWordsWithSpace`), and a changed title or properties carried on the set and applied with it. A later save replaces the set's changes and bumps its revision. No agent principal can save a gated page's body directly: the agent writer diverts or refuses, and the person save path now refuses any principal that is not a person on a gated type. `write_page` answers `reviewSetId` instead of `suggestionId` (contract 15.0.0). People propose review sets with `propose_review_set`, or from the page: an edited copy of the text, diffed word by word, or a pasted marked export.
+- **Export.** `GET /api/pages/:pageId/export?mode=marked|accepted|original`, default `accepted`. `accepted` is the clean current text with embeds written out; `original` is the stored text verbatim, the text a marked export's marks are over; `marked` is the stored text with the changes of every pending review set over the current version in CriticMarkup, a comment as `{==span==}{>>note<<}` and a note on any other change as a following `{>>note<<}`, leaving out a change that overlaps one already marked and counting it in `left_out`. Every export's front matter is stamped with `source: slug@version`, `exported` (`formatDate`), `sha256` (`pageVersionHash` of the version as shown to the exporter, as the PDF footer does) and `mode`. `parseMarked` reads CriticMarkup back into the text under the marks and the same suggested changes; `verifyExport` recomputes the hash from the stored version and checks the source, the title and the text under the marks, so an edited file or a later version fails.
+
+**Why.**
+- **A version is history, a suggestion is not (PRD, Suggested changes).** Keeping changes in their own rows, applied only by a save, keeps `page_versions` at one row per save and makes a decided set and its audit row permanent.
+- **Position first, quote second.** Offsets are exact while nothing moves; the quote is what survives an edit elsewhere or a trip through a plain-text file. Refusing on a missing or doubled quote is cheaper than accepting text into the wrong place.
+- **Accepting is a save.** Going through `updateWithin` keeps every save check and the one-version-per-save history, so a review set can never write something a person's save could not (0035).
+- **Word-level changes are what a person reads.** A whole-document set showed a line diff and could only be taken whole; word changes show exactly what an agent altered and still decide as one unit.
+- **CriticMarkup is plain text.** It diffs, survives any editor and reads back without a binary format; the hash ties the file to the version it came from.
+- **jsdiff** (`diff`, BSD-3-Clause, pure JavaScript, typed) runs on Workers and in Node and replaces hand-writing a word LCS beside `pages/diff.ts`.
+
+**Rejected.**
+- Suggested changes as rows of `page_versions`, or a pending version. Versions are immutable history.
+- Keeping the agent's whole-document suggestion set for the body. It cannot be anchored, exported as marks or reviewed change by change.
+- Rebasing a stale set onto the new version automatically. A person would accept changes placed by a guess.
+- Guessing among several matches for a quote. An orphaned anchor is reported.
+- Expanding embeds in `marked` and `original` exports. Embedded text is not the page's own and would shift every offset; only `accepted` writes them out.
+- A hash over the exported file. The source hash must resolve against the stored version in every mode, as the PDF footer's does; the file is checked by recomputing.
+- A separate import command. `propose_review_set` takes anchors, and the page's form reads a marked export into them.
+
+**Consequences.** Offsets count UTF-16 code units, so a client counting code points must convert. A page whose own text contains CriticMarkup delimiters reads back wrongly from a marked export; nothing escapes them. A review set leaves slug, parent and status alone. Suggestion sets pending before this change stay decidable on their screen, and nothing makes new ones. PDF redline and appendix modes, DOCX tracked changes and their import, and marks shown inline in the read view remain #197's.
+
+**Changes / changed by.** Changes 0035: an agent's save to an active policy or charter is now a review set.
 
 # Part 2. Workflow design decisions
 

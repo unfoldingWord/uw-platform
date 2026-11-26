@@ -512,6 +512,20 @@
       "when": 1795721363511,
       "tag": "0074_measures",
       "breakpoints": true
+    },
+    {
+      "idx": 75,
+      "version": "7",
+      "when": 1795725432817,
+      "tag": "0075_page_review_sets",
+      "breakpoints": true
+    },
+    {
+      "idx": 76,
+      "version": "7",
+      "when": 1795725437164,
+      "tag": "0076_page_review_sets_settled",
+      "breakpoints": true
     }
   ]
 }

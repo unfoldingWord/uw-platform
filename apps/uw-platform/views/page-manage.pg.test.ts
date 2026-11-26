@@ -197,15 +197,37 @@ async function anOlderVersionIsComparedAndRestored(db: Database): Promise<void> 
   expect(document.querySelector('[data-page-body]')?.textContent).toContain('Keep receipts.');
   expect(document.querySelector('[data-changes] del')?.textContent).toBe('Keep receipts.');
   expect(document.querySelector('[data-changes] ins')?.textContent).toBe('Keep every receipt.');
-  expect(document.querySelector('main form')).toBeNull();
+  expect(document.querySelector('main form[method="post"]')).toBeNull();
   expect((await getHtml(db, made.viewer, `/pages/${made.pageId}/versions/9`)).status).toBe(404);
   const asEditor = documentOf((await getHtml(db, made.editor, path)).text);
-  expect(asEditor.querySelector('main form button')?.textContent).toContain('Restore this version');
+  expect(asEditor.querySelector('main form[method="post"] button')?.textContent).toContain(
+    'Restore this version',
+  );
   const refused = await postForm(db, made.viewer, path, form({ expectedVersion: '2' }), ORIGIN);
   expect(refused.status).toBe(404);
   const restored = await postForm(db, made.editor, path, form({ expectedVersion: '2' }), ORIGIN);
   expect(restored.headers.get('location')).toBe(`/pages/${made.pageId}?saved=3`);
   expect((await read(db, made.editor, made.pageId)).bodyMd).toBe('Ask first.\n\nKeep receipts.');
+  await anyTwoVersionsCompareWordByWord(db, made.viewer, made.pageId);
+}
+
+async function anyTwoVersionsCompareWordByWord(db: Database, viewer: string, pageId: string) {
+  const words = await getHtml(db, viewer, `/pages/${pageId}/versions/3?against=2&diff=words`);
+  expect(words.status).toBe(200);
+  expect(await screenProblems(words.text)).toEqual([]);
+  const document = documentOf(words.text);
+  expect(document.querySelector('main')?.textContent).toContain('From version 2 to version 3');
+  const removed = [...document.querySelectorAll('[data-word-changes] del')].map(
+    (d) => d.textContent,
+  );
+  const added = [...document.querySelectorAll('[data-word-changes] ins')].map((d) => d.textContent);
+  expect(added.join('')).toBe('receipts');
+  expect(removed.join('')).toContain('every');
+  expect(document.querySelector('[data-word-changes]')?.textContent).toBe(
+    'Ask first.\n\nKeep every receiptreceipts.',
+  );
+  const lines = document.querySelector('a[data-diff-mode="lines"]')?.getAttribute('href');
+  expect(lines).toBe(`/pages/${pageId}/versions/3?against=2&diff=lines`);
 }
 
 async function theReadViewLinksToAllOfIt(db: Database): Promise<void> {

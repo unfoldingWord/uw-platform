@@ -1,0 +1,12 @@
+{
+  "kind": "insertion",
+  "anchor": {
+    "start": 4,
+    "end": 10,
+    "exact": "adults",
+    "prefix": "Two ",
+    "suffix": " are present."
+  },
+  "text": "two",
+  "note": null
+}

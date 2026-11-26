@@ -5,6 +5,7 @@ import {
   jdAreaSchema,
   lapsedPagesReplySchema,
   pageCategoriesReplySchema,
+  pageExportModeSchema,
   pageFavouriteReplySchema,
   pageIndexReplySchema,
   pageTitlesReplySchema,
@@ -29,8 +30,8 @@ import { lapsedPages, reviewDueFor } from './verification.ts';
 import { pageHistory, pageVersion } from './history.ts';
 import { listPages, titleIndex } from './listing.ts';
 import { recentPages } from './recent.ts';
-import { exportMarkdown } from '../markdown/export.ts';
-import { embedSources, renderPage } from './render-page.ts';
+import { pageExportText } from './export-page.ts';
+import { renderPage } from './render-page.ts';
 import { backlinksOf } from './links.ts';
 import { searchWithSnippets } from './search.ts';
 import { readPage } from './store.ts';
@@ -119,10 +120,11 @@ const one: Read = async (c, { db, actor, at }) => {
 
 const exported: Read = async (c, { db, actor, at }) => {
   const pageId = z.uuid().safeParse(c.req.param('pageId'));
+  const mode = pageExportModeSchema.default('accepted').safeParse(c.req.query('mode'));
+  if (!mode.success) return refuse(c, 'malformed_command');
   const page = pageId.success ? await readPage(db, actor, pageId.data, at) : null;
   if (page === null) return refuse(c, 'page_not_found');
-  const sources = await embedSources(db, actor, page.bodyMd, at);
-  const text = exportMarkdown(page, (id) => sources.get(id) ?? { kind: 'missing' });
+  const text = await pageExportText({ db, actor, at }, page, mode.data);
   c.set('outcome', 'accepted');
   return c.body(text, 200, {
     'content-type': 'text/markdown; charset=utf-8',

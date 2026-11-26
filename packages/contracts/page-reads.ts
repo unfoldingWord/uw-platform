@@ -159,6 +159,7 @@ export const pageCommandAcceptedSchema = z.object({
   requestId: z.uuid(),
   pageId: z.uuid(),
   version: z.number().int().min(1),
+  reviewSetId: z.uuid().optional(),
 });
 
 export const pageCommandRefusedSchema = z.object({

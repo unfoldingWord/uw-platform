@@ -28,6 +28,8 @@ import {
 import { ConfirmControl, confirmable } from '../parts/confirm-control.tsx';
 import { PolicyFormsSection } from '../parts/policy-forms.tsx';
 import { pendingSuggestions, type PendingSuggestion } from '../../pages/suggestions.ts';
+import { pendingReviewSets, type PendingReviewSet } from '../../pages/review-sets.ts';
+import { ReviewSetsWaiting } from '../parts/review-sets-waiting.tsx';
 import { verificationOf } from '../../pages/verification.ts';
 import { PolicyConflicts, SuggestionsWaiting, policyFacts } from '../parts/policy-facts.tsx';
 import { personOfProfilePage } from '../../people/profile-body.ts';
@@ -143,6 +145,7 @@ type Extras = {
   readonly measures: Child;
   readonly policy: PolicyReading | null;
   readonly suggestions: readonly PendingSuggestion[];
+  readonly reviewSets: readonly PendingReviewSet[];
   readonly targets: readonly PolicyTarget[];
   readonly refused: string | null;
 };
@@ -165,6 +168,7 @@ function Notices(props: { readonly shown: ShownPage; readonly extras: Extras }) 
       ) : null}
       <Lapsed shown={shown} at={extras.at} />
       <SuggestionsWaiting pageId={shown.page.id} suggestions={extras.suggestions} />
+      <ReviewSetsWaiting pageId={shown.page.id} sets={extras.reviewSets} />
       {extras.policy === null ? null : <PolicyConflicts conflicts={extras.policy.conflicts} />}
       {extras.drafted ? (
         <Note>There is an unsaved draft of this page. You are reading it as last saved.</Note>
@@ -332,6 +336,7 @@ type Stored = Pick<
   | 'measures'
   | 'policy'
   | 'suggestions'
+  | 'reviewSets'
   | 'targets'
 >;
 
@@ -344,6 +349,7 @@ const nothingStored: Stored = {
   measures: null,
   policy: null,
   suggestions: [],
+  reviewSets: [],
   targets: [],
 };
 
@@ -393,6 +399,7 @@ async function storedExtras(
     owner: await ownerOf(database.db, page),
     ...(await policyExtras(database.db, { actor, at: screen.at }, shown)),
     suggestions: await pendingSuggestions(database.db, actor, page, screen.at),
+    reviewSets: await pendingReviewSets(database.db, actor, page, screen.at),
   };
 }
 

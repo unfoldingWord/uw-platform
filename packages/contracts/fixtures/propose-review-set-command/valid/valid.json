@@ -1,0 +1,21 @@
+{
+  "command": "propose_review_set",
+  "requestId": "00000000-0000-4000-8000-0000000000a1",
+  "pageId": "00000000-0000-4000-8000-0000000000a3",
+  "baseVersion": 3,
+  "name": "Board review 2026-12-01",
+  "changes": [
+    {
+      "kind": "deletion",
+      "anchor": {
+        "start": 4,
+        "end": 10,
+        "exact": "adults",
+        "prefix": "Two ",
+        "suffix": " are present."
+      },
+      "text": "",
+      "note": null
+    }
+  ]
+}
