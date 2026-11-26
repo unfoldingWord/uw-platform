@@ -26,12 +26,8 @@ export const directMessagesOf: DirectMessagesFactory = ({ env, database, fetch }
     newId: () => crypto.randomUUID(),
   };
   const { keys } = credentialsDepsOf(env, database.db, platform);
-  return platformDirectMessages({
-    db: database.db,
-    keys,
-    site,
-    fetcher: fetch,
-    timers: systemTimers,
-    clock: systemClock,
-  });
+  return platformDirectMessages(
+    { db: database.db, keys, site, fetcher: fetch, timers: systemTimers, clock: systemClock },
+    directMessagesNotWired,
+  );
 };
