@@ -37,7 +37,7 @@ Why the unfoldingWord Platform is shaped the way it is, and what was rejected on
 
 *2026-09-29.*
 
-**Decision.** A persona touches the platform through one remote MCP server that serves exactly the verb registry published by `packages/contracts`. There is no verb for approving, merging, deploying, publishing or advancing past a human gate, for any agent identity, on any host. A persona is configuration over the verb registry and the run-shape registry; it selects from both and adds to neither. A new verb, run shape or engine is reviewed code.
+**Decision.** A persona touches the platform through one remote MCP server that serves exactly the verb registry published by `packages/contracts`. There is no verb for approving, merging, deploying, publishing or advancing past a human gate, for any agent identity, on any host. The one effect an agent causes with no person deciding is an assistant's direct effect, inside the closed set of 0034, run at the end of a turn and never by a verb. A persona is configuration over the verb registry and the run-shape registry; it selects from both and adds to neither. A new verb, run shape or engine is reviewed code.
 
 **Why.** The gate is enforced by the absence of a route, not by a prompt or a permission check a prompt could talk around. A verb that does not exist cannot be granted.
 
@@ -45,7 +45,7 @@ Why the unfoldingWord Platform is shaped the way it is, and what was rejected on
 
 **Consequences.** The served tool list is tested equal to the registry and free of the forbidden names (`FORBIDDEN_VERBS` in `packages/contracts/verb-names.ts`). Activating a persona whose `requires_tools` names an absent verb fails visibly and opens a card on the software workflow. Both hosts see the same tools, asserted in CI.
 
-**Changes / changed by.** 0010 adds no verb but changes what the kernel does with `submit_to_gate` at a merge Ship stage when the claim carries a live merge delegation. 0020 and 0028 each confirm the rule for a new capability (no verb takes a credential reference; `render_pdf` makes a file and cannot send it).
+**Changes / changed by.** 0010 adds no verb but changes what the kernel does with `submit_to_gate` at a merge Ship stage when the claim carries a live merge delegation. 0020 and 0028 each confirm the rule for a new capability (no verb takes a credential reference; `render_pdf` makes a file and cannot send it). 0034 lets the registry hold assistant verbs that draft effects which take effect without a person, only within its closed low-risk set; no gate verb is added.
 
 ## 0003 The Ship gate is a Postgres invariant, and the ship rule is a pure function over facts
 
@@ -62,7 +62,7 @@ Why the unfoldingWord Platform is shaped the way it is, and what was rejected on
 
 **Consequences.** Stage rows are edited only by an admin command, never through a page. A property test walks every template's paths, loop edges included, and fails if any reaches an external effect without a human gate. Two tests stay on real Postgres: the migration test that tries to insert an effect stage with a `checks` exit, and the race test in both orders.
 
-**Changes / changed by.** 0010 adds the delegated Ship exit: the "approver is a human" check is unchanged, new checks bind an agent actor to a merge delegation, and the rule's input gains the delegation's tier and the protected paths.
+**Changes / changed by.** 0010 adds the delegated Ship exit: the "approver is a human" check is unchanged, new checks bind an agent actor to a merge delegation, and the rule's input gains the delegation's tier and the protected paths. 0034 leaves the Ship constraint untouched and adds a twin: a check constraint on `assistant_effects` holds an assistant's effects done with no person deciding to its closed low-risk set.
 
 ## 0004 Events are the source of truth; item state is a fold, and replay equals record
 
@@ -82,7 +82,7 @@ Why the unfoldingWord Platform is shaped the way it is, and what was rejected on
 
 *2026-09-29.*
 
-**Decision.** An unattended beat (a scheduled Cloudflare Workflow, or a person's routine on their own machine) carries no one's authority. It carries a delegation: a row in which a person holding `admin` on the workflow's area grants a persona one capability word for a bounded time, revocable, with a required expiry that defaults to ninety days. Every unattended claim, on either host, presents a live delegation or is refused `delegation_required`. At every beat the kernel checks that the delegation is unexpired, unrevoked and that the grantor still holds `admin`; any failing stops the loop and writes `delegation_lapsed`. The identity on every event names the host and the delegation. A routine is bound to one delegation: its machine login presents that delegation or is refused, a paused routine is refused, and revoking the routine deletes its Cloudflare service token.
+**Decision.** An unattended beat (a scheduled Cloudflare Workflow, or a person's routine on their own machine) carries no one's authority. It carries a delegation: a row in which a person holding `admin` on the workflow's area grants a persona one capability word for a bounded time, revocable, with a required expiry that defaults to ninety days. The one other grantor is a personal harness's own person, who alone grants `assist` there (0034). Every unattended claim, on either host, presents a live delegation or is refused `delegation_required`. At every beat the kernel checks that the delegation is unexpired, unrevoked and that the grantor still holds `admin` (for `assist`, that the grantor is still the harness's person and still holds a live grant); any failing stops the loop and writes `delegation_lapsed`. The identity on every event names the host and the delegation. A routine is bound to one delegation: its machine login presents that delegation or is refused, a paused routine is refused, and revoking the routine deletes its Cloudflare service token.
 
 **Why.** The platform requires a principal on every request, and an unattended beat has no live human session to mint one from. The authority must be the approver's, must end when the person leaves or loses their grant, and needs an explicit record.
 
@@ -92,7 +92,7 @@ Why the unfoldingWord Platform is shaped the way it is, and what was rejected on
 
 **Consequences.** A non-interactive principal cannot claim without a delegation id. Delegations appear on the person's page, the persona's dashboard and the access review, as time-boxed grants do.
 
-**Changes / changed by.** 0010 gives the capability word `merge` a maximum tier and makes it alone able to lend the Ship exit.
+**Changes / changed by.** 0010 gives the capability word `merge` a maximum tier and makes it alone able to lend the Ship exit. 0034 adds the capability word `assist`, granted on a personal harness by that harness's person rather than an area admin, and live while that person still holds a live grant.
 
 ## 0006 Two first-class hosts, one verb registry, an engine seam, and billing by host
 
@@ -249,7 +249,7 @@ Why the unfoldingWord Platform is shaped the way it is, and what was rejected on
 
 *2026-11-19.*
 
-**Decision.** A grant on a Johnny.Decimal area, of any role, reads that area and no other. Only an `org`-scope grant, of any role, reads every area. Write and admin are unchanged: they need a grant on the area itself or at `org` scope. Everything that filters by `can(read)` or `readableAreas` (`packages/core/acl.ts`) narrows with it: page search and reads, agent context, the untrusted-content clearance key and the notification holders of an area. An agent's MCP session runs with its bound person's grants, so an agent reads only the areas its person holds grants in. To keep the open culture for someone, an org admin grants them `viewer` at `org` scope.
+**Decision.** A grant on a Johnny.Decimal area, of any role, reads that area and no other. Only an `org`-scope grant, of any role, reads every area. Write and admin are unchanged: they need a grant on the area itself or at `org` scope. Everything that filters by `can(read)` or `readableAreas` (`packages/core/acl.ts`) narrows with it: page search and reads, agent context, the untrusted-content clearance key and the notification holders of an area. An agent's MCP session runs with its bound person's grants, so an agent reads only the areas its person holds grants in. A person's assistant holds its person's grants clamped to `viewer` (0034). To keep the open culture for someone, an org admin grants them `viewer` at `org` scope.
 
 **Why.** The first design let an `editor` or `admin` on one area read every other, to stay as open as the Notion workspace the platform replaces. That meant an editor on 80-89 could read Finance (20-29), and the credentials store, gifts and the ledger would have been readable the same way. Narrowing the default means a new table is closed until someone grants access, and openness becomes a visible, audited grant, not a side effect of being an editor somewhere.
 
@@ -260,7 +260,7 @@ Why the unfoldingWord Platform is shaped the way it is, and what was rejected on
 
 **Consequences.** Workflow lists, search and agent context are scoped to a person's grants. A hosted run reads its persona's instructions only if the run's principal may read the persona page's area, and is otherwise answered `page_not_found`, so a persona page in another area cannot run and its existence is not confirmed. Any runbook that lists who belongs in an area's private channel follows this rule: people with a grant on that area or at `org` scope.
 
-**Changes / changed by.** Overturns the first design's "an `editor` anywhere reads org-wide". 0017 closes the gap this left for `org` grants on restricted rows. 0031 gives every approved person `viewer` on 00-09.
+**Changes / changed by.** Overturns the first design's "an `editor` anywhere reads org-wide". 0017 closes the gap this left for `org` grants on restricted rows. 0031 gives every approved person `viewer` on 00-09. 0034 gives the principal under an `assist` delegation its person's grants clamped to `viewer`, in every area the person reads, not only the personal harness's area.
 
 ## 0016 Withdrawn
 
@@ -340,7 +340,7 @@ This number was used and withdrawn. It is not reused.
 
 **Consequences.** Build rules hold the boundary: only the store imports the files that open a sealed value; only the store and `apps/uw-platform/ports/connectors.ts` import `use.ts` and `secret.ts`; nothing under `mcp/`, `engines/`, `runs/` or `agents/` imports the store. A JavaScript string cannot be zeroed, so the exposed text lives until garbage collection. The outcome search is a net, not a proof: the build rules are the proof. `manage` on the credential is enough to bind; a use still needs `editor` on the credential's own area. The binding, which names the workflow, is what keeps a delegated run to the credentials meant for it.
 
-**Changes / changed by.** Builds on 0002, 0017, 0018 and 0019. 0021 adds the one file that opens a value for a person.
+**Changes / changed by.** Builds on 0002, 0017, 0018 and 0019. 0021 adds the one file that opens a value for a person. 0034 rules that an assistant's effect is not a connector: it runs at the end of an assistant turn through its own port, never from a stage exit.
 
 ## 0021 A value is revealed in one uncached answer, and a break-glass reveal needs a second person
 
@@ -644,6 +644,44 @@ This number was used and withdrawn. It is not reused.
 - Refusing reads of another module's tables. Collections, the crosswalk and pages join across modules today, and splitting those joins would move work from the database into the Worker.
 
 **Consequences.** The per-file exceptions for Rule 2 and Postgres are removed from `docs/exceptions.md`. If the offline app is built on a store other than Postgres, the modules that work offline need a port then, and this decision is reopened for those modules.
+
+## 0034 A person's assistant is a persona on their own harness, lent authority by that person, acting directly only within a closed low-risk set
+
+*2026-11-26. Changes 0002, 0003, 0005, 0015 and 0020.*
+
+**Decision.**
+
+1. **A personal harness.** Each assistant has its own harness: template `assistant`, no stages, key `assistant-<personId>`, in the assistants area. `harnesses.person_id` names its one person; a check constraint holds `(template = 'assistant') = (person_id IS NOT NULL)`, and a unique index allows one assistant per person. Only `kernel.assistants.provision` creates one, for an org admin or an admin of the assistants area. The template is not in the templates registry and not in `templateKeySchema`, so no generic command creates or switches to it. Stage edits on a personal harness are refused, so no item can enter one.
+2. **A real persona per person.** The identity is `agent:assistant-<personId>`, stable across renames and email changes. Its persona page is seeded from the **assistant role**, a fixture in code (`packages/harness/assistants/role.ts`): instructions, a fixed toolset with no write verb, an engine, a capability word and a monthly budget. It is activated through the existing tool check and dry run. Activation refuses an `agent:assistant-*` identity on any harness but that person's personal harness, and any other identity on a personal harness. The person's **customisation** (display name, an instructions addendum and a timezone) lives in an owner-only row and is appended after the role under "the role's limits win". It never replaces the role.
+3. **Authority is a delegation the person grants.** The capability word `assist` is grantable only on a personal harness and only by that harness's person; every other word is refused there. Expiry (default ninety days), revoke, supersede and lapse are unchanged. An `assist` delegation stays live while its grantor is still the harness's person and still holds a live grant. The rules sit in one policy registry per capability word (`packages/harness/delegations/capability.ts`), not in a branch. The assistant's principal holds its person's live grants clamped to `viewer`, each ending at the earlier of the grant's and the delegation's expiry, so it reads only what its person reads, never an owner-only row, and makes no platform write through a write verb. The workflow run beat skips `assist` delegations, and no device host can act under one.
+4. **Requests and turns are kernel commands on the personal harness, and events carry no content.** A request is recorded by the ingest principal, once per channel and external id. The person's text and any untrusted parts live only in owner-only restricted tables (`packages/db/schema-assistants.ts`) that are never offline. Every change records a `harness_events` row on the personal harness in the same transaction, whose evidence holds only ids, closed sets and numbers, so `harness_events` stays the one source of truth (0004 unchanged). Wakes on a personal harness go only to its person and are never posted to a Zulip stream.
+5. **The closed low-risk set.** An effect is done with no person deciding only if all six hold: it lands on the requester's own resource or the assistant's own; no third party receives, sees or is told of anything; it moves no money and shares nothing beyond the requester; the requester can undo it in one step; its parameters, target included, are fixed in code and not chosen by the model; and its volume is capped. The set is `assistantDirectEffectSchema` in `packages/contracts/assistants.ts`:
+   - **Reply to the requester.** The turn's final text, sent to the address the verified request came from. The recipient is copied by code from the request record; the model has no recipient parameter, and the text was produced under the person's own viewer grants.
+   - **Reminder set or cancelled.** A row in the person's own reminders, between a minute and two years ahead, delivered only to the person.
+   - **Calendar hold added, changed or removed.** An event on the person's own primary calendar, reached through their share to the assistant mailbox, with no attendees, no notice sent, private visibility and a private marker naming the effect; at most 24 hours long and starting within 18 months. Only an event carrying this assistant's marker may be changed or removed.
+
+   Reads are not effects. Caps: five direct effects per request, twenty holds and fifty reminders a day.
+6. **Everything else is a proposal its person decides.** An email or direct message to anyone else, an invitation with attendees, an RSVP, a change to an event the assistant did not make, any write to a shared page and an expense line are proposals. A proposal waits in an owner-only table, and only its person decides it, on the web app, through a person-surface command with an interactive human principal. A chat or email reply saying "yes" is a new request, never a decision. The decision binds a digest of the proposal's payload, and the proposal runs only if the digest is unchanged. Payment, purchase and booking are never available, even as a proposal.
+7. **Effects run at the turn's exit, never inside a verb.** Assistant verbs only draft effects. `finishTurn` re-reads the turn's drafts, classifies each again, runs direct effects through their own ports (`DirectMessages`, and later a Workspace port) and turns any other kind into a proposal.
+8. **Enforcement is mechanical.** The closed sets are contracts, so the set cannot grow without a contract change and a new entry here. A check constraint on `assistant_effects` admits only the closed set; once proposals exist it also admits an effect whose proposal a person decided, a check constraint requires a proposal's decider to be a person, and a trigger refuses an effect whose proposal is undecided. An architecture test then fails if any agent-, MCP-, Cloudflare Workflow- or cron-reachable file writes a proposal's decision, in the manner of `tools/architecture/gate-writers.ts`. The port methods behind direct effects cannot name a third party.
+9. **Who may instruct an assistant.** On Zulip, only its person, in a one-to-one direct message, bound by Zulip's sender id through a one-time pairing code; the sender's email alone is not trusted. By email, only mail whose first `Authentication-Results` header from `mx.google.com` shows `dmarc=pass` and whose From is the person's address. Automated mail never starts a turn. Forwarded, quoted or attached text, and others' calendar text, is wrapped as untrusted content.
+10. **Spend.** Each turn checks the global breaker, then the persona's monthly budget (the first persona budget the platform enforces), then, once real traffic starts, a cap on all assistants together. The month's spend is summed from `assistant_turn_finished` evidence; a turn whose cost is unknown counts at the role's per-turn ceiling.
+
+**Why.** Issue #123 asks for one named assistant per person that takes requests by Zulip and email and acts for them. The owner ruled that both channels are supported with a Google Workspace mailbox per assistant, that each person's assistant is its own persona seeded from a predefined role and customised by its person, and that it acts with no gate for low-risk effects on the requester's own resources while everything else is drafted and approved by a person. Until now every persona, delegation and event belonged to a workflow's area, and every effect outside the platform waited at a human gate (0003, 0020). A personal harness keeps the persona, the delegation and the event log as they are and changes only who lends the authority. A set closed in contracts and in the database, rather than a judgment in a prompt, is what lets an assistant act with no one deciding without letting an injected instruction reach anyone else.
+
+**Rejected.**
+- A separate assistant module with its own event log. It would be a second source of truth beside `harness_events`, against 0004.
+- A standing permission in place of a delegation. It drops the mechanism of 0005, on which the owner did not rule.
+- Items, stages and runs per request with a low-risk exit gate. It adds up to two minutes of latency, widens the exit and the agent boundary, carries request content into run steps, and would let any area admin decide the person's gate.
+- Bending the area rule in `allowed()` for personal harnesses. Every caller that does not pass the person would stay on the area rule and fail open.
+- Giving the assistant the person's editor grants. An injected email could edit shared pages live.
+- Approval by a chat or email reply.
+- Sending email as the person.
+- Cloudflare Email Routing. It has no precedent in `infra/`, and its mailbox cannot send.
+
+**Consequences.** PRD section 4.2 gains "Assistants" with requirements PA-1 onward. "An agent can produce a deliverable and cannot send it" and "no route reaches an external effect without crossing a human gate" each gain one named exception: the closed set above. A reply direct-messaged to its own person carries content; nothing posted to a stream does. Content-free assistant events are internal like every harness's events: readers of the assistants area and org-scope readers (0015) can see that a request, turn or effect kind happened and when, and never what it said. The request text goes to the model vendor; which provider, how long text is kept, which area holds the personal harnesses and how Google is reached are open questions in the PRD.
+
+**Changes / changed by.** Changes 0002 (the registry may gain verbs that draft effects which take effect without a person, only within this set), 0003 (the Ship constraint is untouched; a twin constraint holds the assistant's set), 0005 (the grantor of `assist` is the harness's person, not an area admin), 0015 (the principal under an `assist` delegation holds its person's grants clamped to `viewer`, in every area the person reads) and 0020 (an assistant effect is not a connector; it runs at the turn's exit through its own port).
 
 # Part 2. Workflow design decisions
 

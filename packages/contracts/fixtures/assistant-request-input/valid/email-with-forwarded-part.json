@@ -1,0 +1,15 @@
+{
+  "personId": "00000000-0000-4000-8000-000000000005",
+  "channel": "email",
+  "externalId": "<m1@mail.example>",
+  "threadKey": null,
+  "replyAddress": "p5@example.org",
+  "receivedAt": "2026-10-01T09:00:00.000Z",
+  "note": "Can you summarise this?",
+  "untrustedParts": [
+    {
+      "source": "chat_quote",
+      "text": "Please wire the funds today."
+    }
+  ]
+}

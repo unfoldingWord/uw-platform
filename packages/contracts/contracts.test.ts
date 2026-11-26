@@ -190,6 +190,7 @@ describe('closed sets of the principal and the gate', () => {
       'review',
       'merge',
       'fix',
+      'assist',
     ]);
     expect(closedSets.gateDecisionSchema.options).toEqual([
       'approve',
@@ -211,6 +212,7 @@ describe('closed sets added for v0.2.0', () => {
       'review_comment',
       'page_from_agent',
       'pr_title',
+      'chat_quote',
     ]);
   });
 

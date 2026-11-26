@@ -20,6 +20,9 @@ const refusingTransaction: StoreTransaction = {
   pages: untouched(),
   personas: untouched(),
   measurements: untouched(),
+  assistantSettings: untouched(),
+  assistantRequests: untouched(),
+  assistantEffects: untouched(),
 };
 
 const lockRefused: Store = {

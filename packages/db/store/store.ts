@@ -1,6 +1,11 @@
 import { advisoryLock, advisoryLockShared } from '../advisory-locks.ts';
 import type { AnyDatabase, AnyExecutor } from '../any-database.ts';
 import { appliedMigrations } from '../migration-ledger.ts';
+import {
+  bindAssistantEffects,
+  bindAssistantRequests,
+  bindAssistantSettings,
+} from './assistants.ts';
 import { bindDelegations } from './delegations.ts';
 import { bindDrafts } from './drafts.ts';
 import { bindEvents } from './events.ts';
@@ -49,6 +54,9 @@ function bind(executor: AnyExecutor): DrizzleTransaction {
     pages: bindPages(executor),
     personas: bindPersonas(executor),
     measurements: bindMeasurements(executor),
+    assistantSettings: bindAssistantSettings(executor),
+    assistantRequests: bindAssistantRequests(executor),
+    assistantEffects: bindAssistantEffects(executor),
   };
   executors.set(tx, executor);
   return tx;

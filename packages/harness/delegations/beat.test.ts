@@ -1,7 +1,8 @@
 import type { Grant, Identity } from '@uw/contracts';
 import { describe, expect, it } from 'vitest';
 import { beatPrincipal, personaMatches } from './beat.ts';
-import type { Delegation } from '../ports.ts';
+import type { Delegation, Grants, StoreTransaction } from '../ports.ts';
+import { livenessOf } from './live.ts';
 
 const delegationId = '00000000-0000-4000-8000-0000000d0001';
 
@@ -87,5 +88,53 @@ describe('KN-16 the beat principal is bounded by the grant and the delegation', 
     expect(principal.grants.map((grant) => [grant.role, grant.scopeKind, grant.scopeArea])).toEqual(
       [['editor', 'jd_area', '80-89']],
     );
+  });
+});
+
+const assistPerson = '00000000-0000-4000-8000-000000000105';
+
+function assistOn(harnessPerson: string | null): {
+  readonly tx: StoreTransaction;
+  readonly delegation: Delegation;
+} {
+  const delegation: Delegation = {
+    ...delegationOf(`agent:assistant-${assistPerson}`),
+    personId: assistPerson,
+    capability: 'assist',
+  };
+  const harness = { id: delegation.harnessId, jdArea: '90-99', personId: harnessPerson };
+  const tx = { harnesses: { read: { byId: async () => harness } } } as unknown as StoreTransaction;
+  return { tx, delegation };
+}
+
+function grantsOf(held: readonly Grant[]): { readonly grants: Grants } {
+  return { grants: { resolveIn: async () => held } as unknown as Grants };
+}
+
+const editorOn = (area: string): Grant => ({
+  grantId: '00000000-0000-4000-8000-0000000d0004',
+  role: 'editor',
+  scopeKind: 'jd_area',
+  scopeArea: area,
+  expiresAt: null,
+});
+
+describe('PA-1 an assist delegation lives on its person, not on an area admin', () => {
+  it('is live while the harness person still holds a grant, though not an admin', async () => {
+    const { tx, delegation } = assistOn(assistPerson);
+    const liveness = await livenessOf(tx, grantsOf([editorOn('10-19')]), delegation, at);
+    expect(liveness).toMatchObject({ live: true, grants: [editorOn('10-19')] });
+  });
+
+  it('lapses as grant_lost when the person holds no grant', async () => {
+    const { tx, delegation } = assistOn(assistPerson);
+    const liveness = await livenessOf(tx, grantsOf([]), delegation, at);
+    expect(liveness).toMatchObject({ live: false, why: 'grant_lost' });
+  });
+
+  it('lapses as grant_lost when the harness is not the grantor person', async () => {
+    const { tx, delegation } = assistOn('00000000-0000-4000-8000-000000000106');
+    const liveness = await livenessOf(tx, grantsOf([editorOn('10-19')]), delegation, at);
+    expect(liveness).toMatchObject({ live: false, why: 'grant_lost' });
   });
 });

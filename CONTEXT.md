@@ -167,7 +167,7 @@ A job an agent does, defined as configuration: an identity, a harness subscripti
 _Avoid_: agent (an agent is the identity a persona runs as), bot, worker, role
 
 **Activation**:
-A person with `admin` on the harness's area turning a `suggested` persona page `active`, at the version they saw, after the tool check and the **dry run**. The only way a persona runs. It flips the page's status, writes the `personas` projection and records `persona_activated` in one transaction.
+A person with `admin` on the harness's area turning a `suggested` persona page `active`, at the version they saw, after the tool check and the **dry run**. The only way a persona runs. It flips the page's status, writes the `personas` projection and records `persona_activated` in one transaction. On a **personal harness**, only the **assistant role**'s identity for that harness's person may be activated.
 _Avoid_: enable, publish, deploy (those are gate words), confirm (that is for learnings and skills)
 
 **Dry run**:
@@ -195,7 +195,7 @@ The fenced `harness-scout` block that opens the answer of a scout step: the prem
 _Avoid_: scout result, triage outcome
 
 **Delegation**:
-A row that lets unattended work run: a person holding `admin` on the harness's area grants a persona one capability word for a bounded time. Every **beat** (an unattended claim, on any host) presents a live delegation or is refused.
+A row that lets unattended work run: a person holding `admin` on the harness's area grants a persona one capability word for a bounded time. Every **beat** (an unattended claim, on any host) presents a live delegation or is refused. An **assist** delegation is granted by the personal harness's person, not an area admin.
 _Avoid_: schedule, cron, impersonation, service token (that is how a routine authenticates; the delegation is what lets it act)
 
 **Lease**:
@@ -225,7 +225,7 @@ The pure core in `packages/harness`: the stage machine, the ship rule, the fold 
 _Avoid_: engine (that is the model-vendor seam), core (that is `packages/core`), service, backend
 
 **Port**:
-An interface the kernel needs from the world: Clock, Ids, Store, Grants, GitHubFacts, Connectors, ModelEngine, Hub, Notifier, Runs. Each has a platform adapter, a test adapter and one contract test run against both.
+An interface the kernel needs from the world: Clock, Ids, Store, Grants, GitHubFacts, Connectors, ModelEngine, Hub, Notifier, Runs, DirectMessages. Each has a platform adapter, a test adapter and one contract test run against both.
 _Avoid_: interface (too general), driver, provider, memory adapter (the test adapter for Store is real Postgres)
 
 **Adapter**:
@@ -241,7 +241,7 @@ The kernel on test adapters, run in Node: `sim/`. `pnpm sim -- <scenario>` runs 
 _Avoid_: simulator, harness (that is the pipeline), test bed
 
 **World**:
-What a scenario runs in: one embedded Postgres with the real migrations, the ten test adapters, one clock, and the kernel built over them. Built by `createWorld()`.
+What a scenario runs in: one embedded Postgres with the real migrations, the eleven test adapters, one clock, and the kernel built over them. Built by `createWorld()`.
 _Avoid_: fixture (that is data), context, environment
 
 **Scenario**:
@@ -701,6 +701,60 @@ _Avoid_: widget, client app, SPA
 **Fragment refresh**:
 Re-rendering `<main>` from the server after a wake, merged into the page without a reload.
 _Avoid_: hot reload, polling (that is the hub's fallback)
+
+## Assistants
+
+**Assistant**:
+A person's own persona, `agent:assistant-<personId>`, one per person, working only for that person, on that person's **personal harness**. Its display name is the person's choice.
+_Avoid_: bot, personal agent, secretary, role
+
+**Personal harness**:
+A harness whose `person_id` is set: an `assistant` harness with no stages, holding one person's assistant persona, its **assist** delegation and its content-free events. Its person, not the area's admins, lends it authority and decides its **proposals**.
+_Avoid_: private workflow, my harness
+
+**Assistant role**:
+The predefined persona fixture every assistant starts from: instructions, toolset, engine, model and monthly budget, versioned in code.
+_Avoid_: role (alone), template persona, preset
+
+**Customisation**:
+The person's owner-only overlay on the assistant role: display name, instructions addendum (at most 8,000 characters) and timezone. It is appended after the role and never removes the role's rules.
+_Avoid_: settings, profile, prompt
+
+**Assist**:
+The capability word a person grants their own assistant on their personal harness. It reaches no stage.
+_Avoid_: assistant delegation (say "an `assist` delegation"), enablement, standing
+
+**Request**:
+One instruction from an assistant's person, by Zulip direct message or email. The person's own text is the instruction. Anything forwarded, quoted or attached is untrusted content. Stored owner-only.
+_Avoid_: command (that is a person's action on a harness), message (alone), ticket, conversation
+
+**Assistant turn**:
+One model loop answering one request. Not a **run**: it has no item and no stage.
+_Avoid_: run, session, job
+
+**Direct effect**:
+An effect in the closed low-risk set (ADR 0034), done at the end of a turn with no person deciding.
+_Avoid_: auto-action, safe action, low-risk action (say "direct effect")
+
+**Proposal**:
+An effect outside the closed set, drafted by an assistant, which runs only after its person decides it on the web app.
+_Avoid_: draft (that is a private copy of a harness's stages, or a working draft of a page), suggestion, pending action
+
+**Reminder**:
+A note to an assistant's person, due at an instant, delivered only to that person.
+_Avoid_: alarm (that word belongs to the silence alarm), task, due date
+
+**Pairing**:
+Binding a person's Zulip account to their assistant by sending it a one-time code from My Assistant.
+_Avoid_: linking, verification
+
+**Assistant mailbox**:
+The assistant's own Google Workspace address, from which it receives forwarded mail and sends replies.
+_Avoid_: service account, bot email
+
+**Workspace key**:
+The platform secret the Google adapter signs tokens with, usable only for assistant mailboxes.
+_Avoid_: service account, OAuth token
 
 ## The repo and the build
 

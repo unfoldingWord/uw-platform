@@ -161,3 +161,27 @@ export type { OpenDraft, StageControlsView } from './views/controls.ts';
 export type { AgentSummary, AgentsView, StandingPermission } from './views/agents.ts';
 export type { RunInput, RunMark, RunSpend, RunSummary, RunsView, RunView } from './views/runs.ts';
 export type { ActivationCheck, ActivationCheckKey } from './personas/checks.ts';
+export {
+  ASSISTANT_TOOLSET,
+  ASSISTANT_TURN_LIMIT,
+  assistantPersonaDraft,
+  assistantRole,
+  assistantTemplate,
+  classifyEffect,
+} from './assistants/index.ts';
+export type {
+  AssistantCommands,
+  AssistantLoop,
+  AssistantRole,
+  BeginInput,
+  CustomiseInput,
+  Delivered,
+  EffectClass,
+  Finished,
+  FinishInput,
+  ProvisionInput,
+  RecordedRequest,
+  RequestInput,
+  Turn,
+} from './assistants/index.ts';
+export type { PersonaFixture, PersonaPageDraft } from './templates/personas.ts';

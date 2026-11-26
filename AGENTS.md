@@ -194,7 +194,8 @@ A change to a shared root (rule 4) or a fixed decision (section 1) is named in t
 
 - No agent identity can approve, merge, deploy, publish or advance an item past a human gate, on any host, by any route, except the delegated Ship exit below, where the approver is the granting person and the database refuses any other agent-written decision. A change that makes it possible otherwise is wrong whatever else it does.
 - The delegated Ship exit (`recordDelegatedDecision` in `packages/harness/gates/delegated-ship.ts`, ADR 0010) is the one agent-reachable path that writes a gate decision. It writes the granting person as approver, the agent as actor and the delegation's id, for a merge only, up to the delegation's tier, never for a protected path, inside the transaction that locks and re-reads the delegation and the grantor's grants; the merge itself runs later from the minute job, which checks it all again. A second such path is wrong whatever else it does.
-- No route, tool or Cloudflare Workflow step is added without `can()` on the harness's area as its scope.
+- A person's assistant acts without a person's decision only within the closed set of ADR 0034, held by the `assistant_effects` check constraint; every other assistant effect waits for its person.
+- No route, tool or Cloudflare Workflow step is added without `can()` on the harness's area as its scope, or, for an assistant verb or step, the live `assist` delegation of its person's harness.
 - No vendor SDK outside its engine directory. No subscription credential stored on the platform. No secret in a wrangler file, a workflow file or the repository.
 - Everything that happens to a harness is an event in `harness_events`; a failure is an event with a closed-set reason, shown as state in place, never as raw exception text.
 - A control goes busy before the first `await` in its handler. An async re-read never overwrites a known value with a stale one.

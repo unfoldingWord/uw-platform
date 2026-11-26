@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { assistantEvidence } from './assistant-evidence.ts';
 import {
   capabilityWordSchema,
   connectorSchema,
@@ -362,7 +363,7 @@ const harnessEvidence = {
     ),
   template_activated: z.strictObject({
     template: slugSchema,
-    stages: z.array(stage).min(1),
+    stages: z.array(stage),
     repository: repositorySchema.nullable(),
     shadow: z.boolean().default(false),
   }),
@@ -403,6 +404,7 @@ export const eventEvidenceSchemas = {
   ...runEvidence,
   ...gateEvidence,
   ...harnessEvidence,
+  ...assistantEvidence,
 };
 
 export type EvidenceName = keyof typeof eventEvidenceSchemas;

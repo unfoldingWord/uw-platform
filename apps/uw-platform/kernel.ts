@@ -1,6 +1,7 @@
 import {
   createKernel,
   type Clock,
+  type DirectMessages,
   type Hub,
   type Kernel,
   type ModelEngine,
@@ -13,6 +14,7 @@ import type { GitHubAccess } from './github/refresh.ts';
 import { systemClock } from './ports/clock.ts';
 import { platformConnectors, type ReviewGitHub, type ShipGitHub } from './ports/connectors.ts';
 import { platformGitHubFacts } from './ports/github-facts.ts';
+import { directMessagesNotWired } from './ports/direct-messages.not-wired.ts';
 import { githubFactsNotWired } from './ports/github-facts.not-wired.ts';
 import { platformGrants } from './ports/grants.ts';
 import { grantsNotWired } from './ports/grants.not-wired.ts';
@@ -32,11 +34,14 @@ type KernelWiring = {
   readonly modelEngine: ModelEngine;
   readonly runs: Runs;
   readonly notifier: Notifier;
+  readonly directMessages: DirectMessages;
 };
 
 export type LiveWiring = { readonly hub: Hub; readonly runs: Runs; readonly notifier: Notifier };
 
-type HostWiring = Partial<Pick<KernelWiring, 'modelEngine' | 'runs' | 'notifier'>>;
+type HostWiring = Partial<
+  Pick<KernelWiring, 'modelEngine' | 'runs' | 'notifier' | 'directMessages'>
+>;
 
 export function hubWiring(hub: Hub, host: HostWiring = {}): KernelWiring {
   return {
@@ -47,6 +52,7 @@ export function hubWiring(hub: Hub, host: HostWiring = {}): KernelWiring {
     modelEngine: host.modelEngine ?? modelEngineNotWired,
     runs: host.runs ?? runsNotWired,
     notifier: host.notifier ?? notifierNotWired,
+    directMessages: host.directMessages ?? directMessagesNotWired,
   };
 }
 
@@ -80,6 +86,7 @@ export function platformPorts(
     hub: wiring.hub,
     notifier: wiring.notifier,
     runs: wiring.runs,
+    directMessages: wiring.directMessages,
   };
 }
 

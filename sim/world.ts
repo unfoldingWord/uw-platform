@@ -2,6 +2,7 @@ import { createEmbeddedDatabase, type EmbeddedDatabase } from '@uw/db/embedded';
 import { createKernel, type Grants, type Kernel, type Runs, type Store } from '@uw/harness';
 import { createSimClock, type SimClock } from './adapters/clock.ts';
 import { createSimConnectors, type SimConnectors } from './adapters/connectors.ts';
+import { createSimDirectMessages, type SimDirectMessages } from './adapters/direct-messages.ts';
 import { createSimGitHubFacts, type SimGitHubFacts } from './adapters/github-facts.ts';
 import { createSimGrants } from './adapters/grants.ts';
 import { createSimHub, type SimHub } from './adapters/hub.ts';
@@ -24,6 +25,7 @@ type SimAdapters = {
   readonly hub: SimHub;
   readonly notifier: SimNotifier;
   readonly runs: Runs;
+  readonly directMessages: SimDirectMessages;
 };
 
 export type World = {
@@ -46,6 +48,7 @@ function simAdapters(database: EmbeddedDatabase, start: Date): SimAdapters {
     hub: createSimHub(),
     notifier: createSimNotifier(),
     runs: createSimRuns(),
+    directMessages: createSimDirectMessages(),
   };
 }
 

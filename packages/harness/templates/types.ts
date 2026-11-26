@@ -12,5 +12,6 @@ export type TemplateStage = WalkStage & {
 export type Template = {
   readonly key: string;
   readonly title: string;
+  readonly personal?: boolean;
   readonly stages: readonly TemplateStage[];
 };

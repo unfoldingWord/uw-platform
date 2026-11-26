@@ -1,0 +1,21 @@
+{
+  "eventId": "00000000-0000-4000-8000-0000000000e1",
+  "harnessId": "00000000-0000-4000-8000-0000000000a1",
+  "itemId": null,
+  "name": "assistant_turn_finished",
+  "position": 1,
+  "at": "2026-10-01T09:00:00.000Z",
+  "actor": "agent:system",
+  "evidence": {
+    "requestId": "00000000-0000-4000-8000-0000000000f1",
+    "turnId": "00000000-0000-4000-8000-0000000000f2",
+    "outcome": "turn_limit",
+    "turns": 12,
+    "inputTokens": 0,
+    "outputTokens": 0,
+    "costMicros": null,
+    "tools": []
+  },
+  "traceId": "00000000-0000-4000-8000-0000000000c1",
+  "requestId": null
+}

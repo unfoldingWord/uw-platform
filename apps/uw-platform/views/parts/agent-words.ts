@@ -117,6 +117,7 @@ const capabilityWords: Readonly<Record<CapabilityWord, string>> = {
   fix: 'Fix',
   iterate: 'Iterate',
   merge: 'Merge',
+  assist: 'Assist',
 };
 
 export const doesWords: Readonly<Record<CapabilityWord, string>> = {
@@ -126,6 +127,7 @@ export const doesWords: Readonly<Record<CapabilityWord, string>> = {
   fix: 'Fixes the findings on a pull request',
   iterate: 'Reads the measurements and drafts a revision',
   merge: 'Merges low-risk changes',
+  assist: 'Answers its person, and acts only within the closed low-risk set',
 };
 
 export const checkWords: Readonly<Record<ActivationCheckKey, string>> = {

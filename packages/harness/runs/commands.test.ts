@@ -97,6 +97,7 @@ function touchingPorts(touched: string[]): Ports {
       stop: touch('runs'),
       status: touch('runs'),
     },
+    directMessages: { send: touch('directMessages') },
   };
 }
 

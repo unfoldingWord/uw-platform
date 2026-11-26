@@ -1,5 +1,6 @@
 import type { Principal } from '@uw/contracts';
 import type { Caller } from '../caller.ts';
+import { policyOf } from '../delegations/capability.ts';
 import { readAllEvents } from '../items/record.ts';
 import { accepted, refused, type KernelOutcome } from '../outcome.ts';
 import type { Delegation, Ports, StoreTransaction } from '../ports.ts';
@@ -83,7 +84,10 @@ async function planIn(ports: BeatPorts, tx: StoreTransaction, at: Date): Promise
   const filter = { personId: null, persona: null, harnessId: null };
   const live = await tx.delegations.read.live(filter, at);
   const working = live
-    .filter((delegation) => delegation.capability !== 'none')
+    .filter(
+      (delegation) =>
+        delegation.capability !== 'none' && policyOf(delegation.capability).workflowBeat,
+    )
     .sort((a, b) => a.id.localeCompare(b.id));
   const plans: Planned[] = [];
   for (const delegation of working) {

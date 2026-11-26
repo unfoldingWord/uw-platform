@@ -93,6 +93,7 @@ export const harnessSchema = z.strictObject({
   requiredChecks: requiredChecksSchema.default([]),
   protectedPaths: protectedPathsSchema.default([]),
   fixClaim: z.boolean().default(false),
+  personId: z.uuid().nullable().default(null),
 });
 
 export const stageSchema = z.strictObject({

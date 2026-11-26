@@ -63,3 +63,11 @@ export function formatMonth(month: string): string {
   const first = parseDate(`${month}-01`);
   return `${MONTH_NAMES[first.getUTCMonth()] ?? ''} ${first.getUTCFullYear()}`;
 }
+
+export function knownTimeZone(name: string): boolean {
+  try {
+    return new Intl.DateTimeFormat('en', { timeZone: name }).resolvedOptions().timeZone !== '';
+  } catch {
+    return false;
+  }
+}

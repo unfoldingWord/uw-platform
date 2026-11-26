@@ -1,4 +1,5 @@
 import type {
+  AssistantChannel,
   ClosingRef,
   Connector,
   CostBasis,
@@ -242,8 +243,22 @@ export type Wake = {
   readonly recipients: readonly WakeRecipient[];
   readonly at: Date;
   readonly traceId: string;
+  readonly personal: boolean;
 };
 export type Notifier = { notify(wake: Wake): Promise<WakeDelivery> };
+
+export type DirectMessage = {
+  readonly requestId: string;
+  readonly effectId: string;
+  readonly channel: AssistantChannel;
+  readonly replyAddress: string;
+  readonly threadKey: string | null;
+  readonly text: string;
+  readonly traceId: string;
+};
+export type DirectDelivery =
+  { readonly outcome: 'sent' } | { readonly outcome: 'not_paired' | 'dropped' };
+export type DirectMessages = { send(message: DirectMessage): Promise<DirectDelivery> };
 
 export type RunState = 'running' | 'hibernated' | 'stopped' | 'completed' | 'failed';
 export type RunAction = 'start' | 'hibernate' | 'resume' | 'stop';
@@ -275,6 +290,7 @@ export type Ports = {
   readonly hub: Hub;
   readonly notifier: Notifier;
   readonly runs: Runs;
+  readonly directMessages: DirectMessages;
 };
 
 export type PortName = keyof Ports;
@@ -290,6 +306,7 @@ const portKeys: Readonly<Record<PortName, true>> = {
   hub: true,
   notifier: true,
   runs: true,
+  directMessages: true,
 };
 
 export const portNames = Object.keys(portKeys) as readonly PortName[];

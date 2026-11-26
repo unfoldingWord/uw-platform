@@ -3,6 +3,7 @@ import {
   formatDate,
   formatDuration,
   formatInstant,
+  knownTimeZone,
   formatMonth,
   isoDateSchema,
   parseDate,
@@ -88,5 +89,15 @@ describe('#206 formatMonth names a calendar month', () => {
   it('names the month and year of a calendar month', () => {
     expect(formatMonth('2026-10')).toBe('October 2026');
     expect(() => formatMonth('2026-13')).toThrow(RangeError);
+  });
+});
+
+describe('knownTimeZone accepts only an IANA time zone', () => {
+  it.each(['UTC', 'Africa/Nairobi', 'America/Chicago'])('accepts %s', (name) => {
+    expect(knownTimeZone(name)).toBe(true);
+  });
+
+  it.each(['Mars/Olympus', 'not a zone', ''])('refuses %j', (name) => {
+    expect(knownTimeZone(name)).toBe(false);
   });
 });

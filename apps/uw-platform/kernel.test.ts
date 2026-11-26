@@ -9,6 +9,7 @@ import { fixtureApp, fixtureTransport } from './github/testing/app-key.ts';
 import { fixtureGitHub } from './github/testing/fixture-github.ts';
 import { hubWiring, platformKernel, platformPorts, runWiring } from './kernel.ts';
 import { systemClock } from './ports/clock.ts';
+import { directMessagesNotWired } from './ports/direct-messages.not-wired.ts';
 import { githubFactsNotWired } from './ports/github-facts.not-wired.ts';
 import { grantsNotWired } from './ports/grants.not-wired.ts';
 import { hubNotWired } from './ports/hub.not-wired.ts';
@@ -29,6 +30,7 @@ const portNames = [
   'hub',
   'notifier',
   'runs',
+  'directMessages',
 ];
 
 const expected = {
@@ -41,6 +43,7 @@ const expected = {
   hub: hubNotWired,
   notifier: notifierNotWired,
   runs: runsNotWired,
+  directMessages: directMessagesNotWired,
 };
 
 const pulls = '/repos/unfoldingWord/uw-platform/pulls/7';

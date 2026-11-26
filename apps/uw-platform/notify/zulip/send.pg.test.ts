@@ -42,6 +42,7 @@ function wake(jdArea: JdArea): Wake {
     recipients: [{ personId: ana, present: false }],
     at,
     traceId,
+    personal: false,
   };
 }
 
@@ -112,6 +113,24 @@ async function harnessTopic(db: Database): Promise<void> {
   ]);
 }
 
+async function personalLapse(db: Database): Promise<void> {
+  const { notifier, recorded } = await rig(db, false);
+  const lapse: Wake = {
+    ...wake('80-89'),
+    itemId: null,
+    itemRef: null,
+    topic: 'assistant',
+    reason: 'delegation_lapsed',
+    link: homeLink,
+    personal: true,
+  };
+  expect(await notifier.notify(lapse)).toEqual({
+    push: [{ personId: ana, decision: 'sent' }],
+    zulip: 'not_posted',
+  });
+  expect(zulipForms(recorded.calls)).toEqual([]);
+}
+
 describe.skipIf(!testServer)('the platform notifier posts to Zulip', () => {
   it('NT-3 a Zulip outage drops the wake, logs it, and push still sends', () =>
     withAppDatabase(outage));
@@ -119,4 +138,6 @@ describe.skipIf(!testServer)('the platform notifier posts to Zulip', () => {
     withAppDatabase(mappedChannel));
   it("NT-4 a harness-level lapse posts to the harness's topic", () =>
     withAppDatabase(harnessTopic));
+  it('PA-1 a wake on a personal harness reaches its person and is never posted to a stream', () =>
+    withAppDatabase(personalLapse));
 });

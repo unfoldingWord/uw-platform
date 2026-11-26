@@ -62,7 +62,7 @@ function pushDecision(
 
 function zulipDecision(state: SimState, wake: Wake, failing: boolean): ZulipDecision {
   if (!state.zulip) return 'not_configured';
-  if (!POSTING_REASONS.has(wake.reason)) return 'not_posted';
+  if (wake.personal || !POSTING_REASONS.has(wake.reason)) return 'not_posted';
   if (failing) return 'dropped';
   state.posts.push({ topic: wake.topic, reason: wake.reason, traceId: wake.traceId });
   return 'posted';

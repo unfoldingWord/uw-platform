@@ -39,6 +39,9 @@ function tracking(tx: StoreTransaction, appended: HarnessEvent[]): StoreTransact
     pages: tx.pages,
     personas: tx.personas,
     measurements: tx.measurements,
+    assistantSettings: tx.assistantSettings,
+    assistantRequests: tx.assistantRequests,
+    assistantEffects: tx.assistantEffects,
   };
   originals.set(tracked, tx);
   return tracked;

@@ -5,11 +5,13 @@ import {
   integer,
   jsonb,
   text,
+  unique,
   uniqueIndex,
   uuid,
   type AnyPgColumn,
 } from 'drizzle-orm/pg-core';
-import { JD_AREA_PATTERN, REPOSITORY_PATTERN, SLUG_PATTERN, matches } from './checks.ts';
+import { ASSISTANT_TEMPLATE_KEY } from '@uw/contracts';
+import { JD_AREA_PATTERN, REPOSITORY_PATTERN, SLUG_PATTERN, matches, oneOf } from './checks.ts';
 import { instant } from './columns.ts';
 import { declareTable } from './declarations.ts';
 import { people } from './schema-platform.ts';
@@ -51,6 +53,7 @@ export const harnesses = declareTable(
       .array()
       .notNull()
       .default(sql`'{dependabot[bot]}'::text[]`),
+    personId: uuid('person_id').references(() => people.id),
   },
   internalSync,
   (t) => [
@@ -69,6 +72,14 @@ export const harnesses = declareTable(
     uniqueIndex('harnesses_repository_once')
       .on(sql`lower(${t.repository})`)
       .where(sql`${t.repository} IS NOT NULL`),
+    check(
+      'harnesses_personal_template',
+      sql`(${oneOf(t.template, [ASSISTANT_TEMPLATE_KEY])}) = (${t.personId} IS NOT NULL)`,
+    ),
+    uniqueIndex('harnesses_one_assistant_per_person')
+      .on(t.personId)
+      .where(sql`${t.personId} IS NOT NULL`),
+    unique('harnesses_id_person').on(t.id, t.personId),
   ],
 );
 

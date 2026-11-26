@@ -7,7 +7,11 @@ export const TURN_LIMIT = 40;
 export type ToolReply = { readonly output: unknown; readonly isError: boolean };
 export type ToolCaller = { call(verb: VerbName, input: unknown): Promise<ToolReply> };
 
-type LoopRequest = Omit<TurnRequest, 'messages'> & { readonly prompt: string };
+type LoopRequest = Omit<TurnRequest, 'messages'> & {
+  readonly prompt: string;
+  readonly history?: readonly TurnMessage[];
+  readonly turnLimit?: number;
+};
 type LoopUsage = {
   readonly inputTokens: number;
   readonly outputTokens: number;
@@ -85,8 +89,9 @@ export async function runToolLoop(
   request: LoopRequest,
   onTurn: () => Promise<void>,
 ): Promise<LoopResult> {
-  const { prompt, ...rest } = request;
-  const messages: TurnMessage[] = [{ role: 'user', text: prompt }];
+  const { prompt, history, turnLimit, ...rest } = request;
+  const limit = Math.min(turnLimit ?? TURN_LIMIT, TURN_LIMIT);
+  const messages: TurnMessage[] = [...(history ?? []), { role: 'user', text: prompt }];
   const usage = { inputTokens: 0, outputTokens: 0, costMicros: 0 };
   const tally: Tally = { usage, provider: null, model: request.model, tools: [], turns: 0 };
   for (;;) {
@@ -95,7 +100,7 @@ export async function runToolLoop(
     await onTurn();
     if (result.stopReason === 'refused') return finished(tally, 'refused', result.text);
     if (result.toolCalls.length === 0) return finished(tally, 'ended', result.text);
-    if (tally.turns >= TURN_LIMIT) return finished(tally, 'turn_limit', null);
+    if (tally.turns >= limit) return finished(tally, 'turn_limit', null);
     calling(tally, result.toolCalls);
     messages.push({ role: 'assistant', text: result.text, toolCalls: result.toolCalls });
     for (const call of result.toolCalls) messages.push(await answer(tools, call));

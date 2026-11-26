@@ -19,5 +19,6 @@
   ],
   "protectedPaths": [],
   "fixClaim": false,
-  "botAuthors": ["dependabot[bot]"]
+  "botAuthors": ["dependabot[bot]"],
+  "personId": null
 }

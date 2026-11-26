@@ -34,6 +34,7 @@ function wake(
     recipients,
     at: new Date(start.getTime() + minutes * 60_000),
     traceId,
+    personal: false,
   };
 }
 

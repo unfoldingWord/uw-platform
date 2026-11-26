@@ -16,6 +16,7 @@ import { describeStoreObservability } from './store-observability.ts';
 import { describeStoreItemsEpic } from './store-items-epic.ts';
 import { describeStoreNotReady } from './store-not-ready.ts';
 import { describeStorePersonas, type PageVersionRow } from './store-personas.ts';
+import { describeStoreAssistants } from './store-assistants.ts';
 
 export type StoreShape = { readonly concurrentConnections: boolean };
 
@@ -32,6 +33,9 @@ export type StoreSubject = {
 const refusalTimeout = 2_000;
 
 const transactionMembers = [
+  'assistantEffects',
+  'assistantRequests',
+  'assistantSettings',
   'delegations',
   'gateDecisions',
   'harnessEvents',
@@ -298,6 +302,7 @@ export function describeStoreContract(
     describeStoreItemsEpic(adapter, subject);
     describeStoreNotReady(adapter, subject);
     describeStoreObservability(adapter, subject);
+    describeStoreAssistants(adapter, subject);
   });
 }
 

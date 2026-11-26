@@ -8,4 +8,5 @@ export const lockKeys = {
   breaker: () => 'harness-breaker',
   runPersona: (persona: string) => `harness-run-persona:${persona}`,
   zulipTopics: (harnessId: string) => `zulip-topics:${harnessId}`,
+  assistantRequest: (requestId: string) => `assistant-request:${requestId}`,
 };

@@ -1,3 +1,4 @@
+import { createAssistantCommands, type AssistantCommands } from './assistants/index.ts';
 import { createDelegationCommands, type DelegationCommands } from './delegations/commands.ts';
 import { createDraftCommands, type DraftCommands } from './stages/drafts/commands.ts';
 import { createGateCommands, type GateCommands } from './gates/commands.ts';
@@ -37,6 +38,7 @@ export type Kernel = {
   readonly runs: RunCommands;
   readonly breaker: BreakerCommands;
   readonly alarms: AlarmCommands;
+  readonly assistants: AssistantCommands;
   readonly health: () => Promise<KernelHealth>;
 };
 
@@ -70,6 +72,7 @@ export function createKernel(ports: Ports): Kernel {
     runs: createRunCommands(live),
     breaker: createBreakerCommands(live),
     alarms: createAlarmCommands(live),
+    assistants: createAssistantCommands(live),
     health: async () => ({
       now: live.clock.now(),
       appliedMigrations: await live.store.appliedMigrations(),

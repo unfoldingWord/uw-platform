@@ -44,6 +44,7 @@ function wakeFor(
     recipients,
     at: new Date(start.getTime() + offsetMinutes * minute),
     traceId: 'b4000000-0000-4000-8000-000000000004',
+    personal: false,
   };
 }
 

@@ -48,6 +48,7 @@ function harnessesGateway(harness: Harness): HarnessesGateway {
       byId: async (id) => (id === harness.id ? harness : null),
       byKey: unused,
       byRepository: unused,
+      byPerson: unused,
       list: unused,
     },
     write: {

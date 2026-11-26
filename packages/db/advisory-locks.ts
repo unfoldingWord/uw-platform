@@ -17,6 +17,7 @@ export const lockKeyPrefixes: readonly string[] = [
   'harness-breaker',
   'harness-run-persona:',
   'zulip-topics:',
+  'assistant-request:',
 ];
 
 export function githubRepoKey(repoId: number): string {

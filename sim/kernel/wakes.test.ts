@@ -46,6 +46,7 @@ const wakeKeys = [
   'itemRef',
   'jdArea',
   'link',
+  'personal',
   'reason',
   'recipients',
   'topic',

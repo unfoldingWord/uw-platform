@@ -14,6 +14,17 @@ import {
 } from './agent-commands.ts';
 import { jdAreaSchema, jdCategorySchema, jdIdSchema } from './areas.ts';
 import {
+  assistantChannelSchema,
+  assistantDirectEffectSchema,
+  assistantEffectFailureSchema,
+  assistantEffectKindSchema,
+  assistantRequestInputSchema,
+  assistantSettingFieldSchema,
+  assistantSettingsSchema,
+  assistantTurnRefusalSchema,
+  untrustedPartSchema,
+} from './assistants.ts';
+import {
   bindCredentialCommandSchema,
   confirmRevealCommandSchema,
   createCredentialCommandSchema,
@@ -413,4 +424,13 @@ export const schemaRegistry: Record<string, ZodType> = {
   'binder-request': binderRequestSchema,
   'pdf-target': pdfTargetSchema,
   'pdf-export-reply': pdfExportReplySchema,
+  'assistant-channel': assistantChannelSchema,
+  'assistant-direct-effect': assistantDirectEffectSchema,
+  'assistant-effect-kind': assistantEffectKindSchema,
+  'assistant-turn-refusal': assistantTurnRefusalSchema,
+  'assistant-effect-failure': assistantEffectFailureSchema,
+  'assistant-setting-field': assistantSettingFieldSchema,
+  'untrusted-part': untrustedPartSchema,
+  'assistant-request-input': assistantRequestInputSchema,
+  'assistant-settings': assistantSettingsSchema,
 };

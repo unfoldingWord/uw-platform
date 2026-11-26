@@ -484,6 +484,13 @@
       "when": 1795625801881,
       "tag": "0070_persona_stock_verdict_text",
       "breakpoints": true
+    },
+    {
+      "idx": 71,
+      "version": "7",
+      "when": 1795640791301,
+      "tag": "0071_assistants",
+      "breakpoints": true
     }
   ]
 }

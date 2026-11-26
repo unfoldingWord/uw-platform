@@ -1,0 +1,11 @@
+{
+  "personId": "00000000-0000-4000-8000-000000000005",
+  "channel": "zulip_dm",
+  "externalId": "101",
+  "threadKey": "dm",
+  "replyAddress": "zulip:5005",
+  "receivedAt": "2026-10-01T09:00:00.000Z",
+  "note": "What's on my schedule today?",
+  "untrustedParts": [],
+  "recipient": "x@example.com"
+}

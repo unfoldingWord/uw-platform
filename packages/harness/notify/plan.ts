@@ -69,6 +69,7 @@ function peopleFor(
   scope: { readonly harness: Harness; readonly item: ItemContext | null; readonly at: Date },
 ): readonly string[] {
   const { event } = trigger;
+  if (scope.harness.personId !== null) return [scope.harness.personId];
   return recipientsOf({
     trigger,
     ...scope,
@@ -93,6 +94,7 @@ function draftOf(trigger: Trigger, context: WakeContext, holders: Holders, at: D
     harnessKey: harness.key,
     harnessTitle: harness.title,
     jdArea: harness.jdArea,
+    personal: harness.personId !== null,
   };
   const unlinked = item !== null && item.linkable;
   const identity = { itemId, ...where(harness, item), reason, link, unlinked };

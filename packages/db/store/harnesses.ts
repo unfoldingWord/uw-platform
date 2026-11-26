@@ -1,10 +1,15 @@
-import { repositorySchema } from '@uw/contracts';
-import { and, asc, eq, sql } from 'drizzle-orm';
+import { repositorySchema, type Harness } from '@uw/contracts';
+import { and, asc, eq, sql, type SQL } from 'drizzle-orm';
 import type { AnyExecutor } from '../any-database.ts';
 import { harnesses } from '../schema.ts';
 import { refusing } from './refusal.ts';
 import { toHarness } from './rows.ts';
 import type { HarnessesGateway } from './types.ts';
+
+async function firstWhere(executor: AnyExecutor, condition: SQL): Promise<Harness | null> {
+  const rows = await executor.select().from(harnesses).where(condition);
+  return rows[0] ? toHarness(rows[0]) : null;
+}
 
 function updateHarness(
   executor: AnyExecutor,
@@ -24,22 +29,13 @@ function updateHarness(
 export function bindHarnesses(executor: AnyExecutor): HarnessesGateway {
   return {
     read: {
-      byId: async (harnessId) => {
-        const rows = await executor.select().from(harnesses).where(eq(harnesses.id, harnessId));
-        return rows[0] ? toHarness(rows[0]) : null;
-      },
-      byKey: async (key) => {
-        const rows = await executor.select().from(harnesses).where(eq(harnesses.key, key));
-        return rows[0] ? toHarness(rows[0]) : null;
-      },
+      byId: (harnessId) => firstWhere(executor, eq(harnesses.id, harnessId)),
+      byKey: (key) => firstWhere(executor, eq(harnesses.key, key)),
       byRepository: async (repository) => {
         if (!repositorySchema.safeParse(repository).success) return null;
-        const rows = await executor
-          .select()
-          .from(harnesses)
-          .where(sql`lower(${harnesses.repository}) = lower(${repository})`);
-        return rows[0] ? toHarness(rows[0]) : null;
+        return firstWhere(executor, sql`lower(${harnesses.repository}) = lower(${repository})`);
       },
+      byPerson: (personId) => firstWhere(executor, eq(harnesses.personId, personId)),
       list: async () => {
         const rows = await executor.select().from(harnesses).orderBy(asc(harnesses.key));
         return rows.map(toHarness);

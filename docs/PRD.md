@@ -386,7 +386,7 @@ Issue: #206 (directory collection), #208 (profiles), #207 (migration). Rules: AD
 
 The Agents module is how AI takes part in the platform's work: the MCP surface and its verb registry, agent identities and personas, institutional memory and skills. Section 4.2 describes it in full, because every module uses it.
 
-Issue: #123 (assistant bots); the rest under #244.
+Issue: #123 (assistants); the rest under #244.
 
 ### Workflow
 
@@ -465,7 +465,7 @@ Package -> Scope -> Plan -> Build -> Check -> Ship -> Validate -> Close
 
 #### Gates, the ship rule and risk tiers
 
-- **The Ship invariant.** A stage whose connector does anything in the world must exit on human approval. The database refuses any stage row that says otherwise, and every template is walked along every path and loop edge before it can go live, so no route reaches an external effect without crossing a human gate first (ADR 0003).
+- **The Ship invariant.** A stage whose connector does anything in the world must exit on human approval. The database refuses any stage row that says otherwise, and every template is walked along every path and loop edge before it can go live, so no route reaches an external effect without crossing a human gate first (ADR 0003). The one exception is a person's assistant acting for that person alone, within the closed low-risk set of section 4.2 (ADR 0034).
 - **The gate decision** is a person's: approve, reject (send back with findings), take over, or override (advance despite open findings, with a required reason that travels into the merge). It needs `admin` on the area. An agent's attempt changes nothing and is recorded. The approver's grants are re-read at the moment the decision is written, so a grant revoked after the page loaded refuses the decision.
 - **The ship rule** decides whether Ship may advance. It is a function of facts read from GitHub, the item's risk tier and domains, and the approver's principal. The item's own narrative is never an input. It answers advance, or refuse with every reason that applies; the closed set of reasons is `shipRefusalSchema` in `packages/contracts/ship-rule.ts`. Among the things it refuses: a pull request that is closed, draft or behind its base; a head that is not the one approved; checks that are not green or never ran; a `[skip ci]` marker; a closing keyword that would close an issue the item does not wrap; a frozen workflow.
 - **An approval carries across a base merge and not across a code change.** An approval on an earlier commit still counts when the only change since is a merge from base.
@@ -477,7 +477,7 @@ Package -> Scope -> Plan -> Build -> Check -> Ship -> Validate -> Close
 
 #### Delegations and the delegated Ship exit
 
-- **Unattended work runs only on a delegation** (ADR 0005). A delegation is a person's standing permission for one persona on one workflow, with one capability word, a required expiry and a way to revoke it. Granting one needs `admin` on the area.
+- **Unattended work runs only on a delegation** (ADR 0005). A delegation is a person's standing permission for one persona on one workflow, with one capability word, a required expiry and a way to revoke it. Granting one needs `admin` on the area, except `assist`, which only a personal harness's own person grants to their assistant (section 4.2, ADR 0034).
 - **Checked at every beat.** Each step of an unattended run re-checks that the delegation is unexpired, unrevoked, and that its person still holds `admin` on the area. A failure stops the run, records the lapse and wakes the person, or the area's other admins if that person no longer holds the grant.
 - **A scheduled routine is the same thing.** A person's own agent on a timer signs in non-interactively, so it must present a live delegation to claim. Every event it writes names the device, the persona and the delegation.
 - **The delegated Ship exit** (ADR 0010). A delegation with the `merge` capability lets an agent's submit at Ship merge without a person present, for low or standard items only, up to the tier the delegation names, and never for a change under a protected directory. The decision row records the granting person as approver, the agent as actor and the delegation. It covers a merge and nothing else: deploy and publish never run from a delegated exit. This is the one agent-reachable path that writes a gate decision; a second is wrong whatever else it does.
@@ -1147,7 +1147,7 @@ Issue: #153, #154, #155; the quarterly access review under #203. Rules: ADR 0015
 
 **One boundary.** Agents reach the platform only through the MCP surface, which serves one **verb** registry (`packages/contracts/verb-names.ts`). Verbs are small and single-purpose: search and read pages, write a page through the same validation a person's save takes, run an approved query, read a collection or a view, create a row or a task, resolve context, draft a journal entry, produce a PDF, and the verbs for working an item in a workflow. Queries are approved and parameterized; an agent never sends SQL.
 
-**The verbs that do not exist.** Approve, merge, deploy, publish and advance are not verbs, and neither are posting a journal entry, sending donor email, filing with an authority, changing a collection's definition, or anything that would let an agent pass a human gate (ADR 0002). An agent can produce a deliverable and cannot send it.
+**The verbs that do not exist.** Approve, merge, deploy, publish and advance are not verbs, and neither are posting a journal entry, sending donor email, filing with an authority, changing a collection's definition, or anything that would let an agent pass a human gate (ADR 0002). An agent can produce a deliverable and cannot send it. The one exception is a person's assistant, which may answer its own person and act on that person's own reminders and calendar, and nothing else, without a person deciding (Assistants, below; ADR 0034).
 
 **Identity.** An agent has its own identity, bound to a person, with grants never above that person's. Every write records the agent in version history and audit. Work that runs with no person at the keyboard runs only on an expiring, revocable **delegation** (ADR 0005).
 
@@ -1184,9 +1184,25 @@ Issue: #153, #154, #155; the quarterly access review under #203. Rules: ADR 0015
 
 **Untrusted content.** Text an agent reads from outside, an issue body, a pull request title, a web page, an email, is data and never instruction, and it is marked as such before it reaches a prompt.
 
-**Assistant bots.** A person can talk to the platform in chat and pick the same conversation up in the web app, because a conversation is keyed to its entity or item.
+**Assistants.** Each person can have one **assistant**: a named persona that works only for them. They write to it in a Zulip direct message or by email, and it answers them there.
 
-Issue: #123 (assistant bots); #98 and #99 for agents working the software workflow; the rest under #244. Rules: ADR 0002, ADR 0005, ADR 0006.
+- **Its own harness.** An org admin, or an admin of the assistants area, provisions it on the person's **personal harness**, which has no stages and holds no items. It starts from the **assistant role**, and the person adds a display name, their own instructions and a timezone. The role's limits win.
+- **Only its person lends it authority.** It acts only under an `assist` delegation the person grants on their own personal harness, which expires and can be revoked like any delegation. It reads only what its person reads, as a viewer, and makes no write to a shared page.
+- **Only its person instructs it.** A Zulip message counts only from the person's paired account, in a one-to-one message. An email counts only when it passes DMARC and comes from the person's own address. Forwarded, quoted or attached text is untrusted content, never an instruction.
+- **It acts directly only within a closed low-risk set.** It may reply to its person, set and cancel the person's reminders, and add, change or remove a private hold on the person's own calendar, with no attendees and no notice to anyone. Everything else (mail or a message to anyone else, an invitation, an RSVP, a change to someone else's event, a write to a shared page, an expense line) is a **proposal** that waits until the person decides it in the web app. A "yes" sent by chat or email is a new request, never a decision. Payment, purchase and booking are never available.
+- **What it says stays private.** Requests and replies are stored owner-only. The workflow's events record that a request, turn or effect happened, never what it said.
+- **Spend.** Each assistant has a monthly budget, and every turn also respects the platform's spend breaker. Without a live delegation, or over its budget, it makes no model call.
+
+**Assistants (PA)**
+
+| ID | Requirement | Priority |
+|---|---|---|
+| PA-1 | A person's assistant is a persona on their own harness, and only that person can lend it authority. | Must |
+| PA-2 | A request from the person is answered only to that person, and its text never enters the event log. | Must |
+| PA-3 | Without a live delegation, or over its monthly budget, an assistant makes no model call. | Must |
+| PA-4 | Forwarded or quoted text is fenced as untrusted, and no effect outside the closed low-risk set can be recorded. | Must |
+
+Issue: #123 (assistants); #98 and #99 for agents working the software workflow; the rest under #244. Rules: ADR 0002, ADR 0005, ADR 0006, ADR 0034.
 
 ### 4.3 PDF and documents
 
@@ -1396,3 +1412,13 @@ Each needs a person's decision. None blocks work that does not touch it.
 | 18 | Is the agent-execution layer the platform's own, or a hosted agent workspace that reaches the platform only through the MCP surface? Evaluated once communications and correlation are in place | Agents |
 | 19 | The licence the repository is released under | The whole platform |
 | 20 | Font Awesome Pro: is the licence confirmed, or do the free icons stay? | Design |
+| 21 | How does the platform reach Google for assistants: one domain-wide-delegated Workspace key allowed in code only for assistant mailboxes, or an OAuth token per assistant? A Workspace super-admin must accept the first | Assistants |
+| 22 | Which area holds the personal harnesses, and who reads it? Assumed: a dedicated assistants area where only org admins hold grants | Assistants |
+| 23 | May the content-free events of an assistant (that a request, turn or effect happened, and when) stay internal like every workflow's events, or do they need an owner-only log? Assumed: internal | Assistants |
+| 24 | What may one assistant spend a month, and all of them together? Assumed: USD 20 each, and together at most a fifth of the spend cap | Assistants, the spend breaker |
+| 25 | Which model provider may read requests that carry forwarded mail with other people's or donors' personal data? Assumed: a provider that keeps no data | Assistants |
+| 26 | How long are request text and replies kept? Assumed: 90 days, and the person may delete their own sooner | Assistants |
+| 27 | Does a due reminder still fire after the assistant's delegation has lapsed? Assumed: no; it is recorded as undelivered | Assistants |
+| 28 | One platform Zulip bot for every assistant, or one bot per person? Assumed: one bot, with the assistant's name in the reply | Assistants |
+| 29 | Does the Workspace licence cover one user per assistant, or are assistants aliases on one mailbox? | Assistants |
+| 30 | Does Gmail mark mail between users of the organization's own domain `dmarc=pass`? Until a staging probe shows it, email instructions stay behind a flag that is off in production | Assistants |

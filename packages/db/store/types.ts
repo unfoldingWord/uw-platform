@@ -23,6 +23,13 @@ import type {
   RunStepRecord,
   Stage,
 } from '@uw/contracts';
+import type {
+  AssistantEffectsGateway,
+  AssistantRequestsGateway,
+  AssistantSettingsGateway,
+} from './types-assistants.ts';
+
+export type * from './types-assistants.ts';
 
 type DataSourceKind = EventEvidence['measurement_recorded']['source'];
 
@@ -54,6 +61,7 @@ export type HarnessesGateway = {
     byId(harnessId: string): Promise<Harness | null>;
     byKey(key: string): Promise<Harness | null>;
     byRepository(repository: string): Promise<Harness | null>;
+    byPerson(personId: string): Promise<Harness | null>;
     list(): Promise<readonly Harness[]>;
   };
   readonly write: {
@@ -397,4 +405,7 @@ export type DrizzleTransaction = {
   readonly pages: PagesGateway;
   readonly personas: PersonasGateway;
   readonly measurements: MeasurementsGateway;
+  readonly assistantSettings: AssistantSettingsGateway;
+  readonly assistantRequests: AssistantRequestsGateway;
+  readonly assistantEffects: AssistantEffectsGateway;
 };

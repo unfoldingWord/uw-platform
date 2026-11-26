@@ -42,6 +42,7 @@ function notWiredPorts(): Ports {
       stop: () => notWiredCall('runs', 'stop'),
       status: () => notWiredCall('runs', 'status'),
     },
+    directMessages: { send: () => notWiredCall('directMessages', 'send') },
   };
 }
 
@@ -66,11 +67,12 @@ function throwingPorts(): Ports {
     hub: { wake: refuse, present: refuse },
     notifier: { notify: refuse },
     runs: { start: refuse, hibernate: refuse, resume: refuse, stop: refuse, status: refuse },
+    directMessages: { send: refuse },
   };
 }
 
 describe('DX-1 createKernel(ports)', () => {
-  it('builds over ten ports without calling one', () => {
+  it('builds over eleven ports without calling one', () => {
     expect(() => createKernel(throwingPorts())).not.toThrow();
   });
 

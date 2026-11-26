@@ -77,6 +77,14 @@ export const eventNames = [
   'done_when_missing',
   'silence_alarm',
   'template_changed',
+  'assistant_customised',
+  'assistant_request_recorded',
+  'assistant_turn_started',
+  'assistant_turn_refused',
+  'assistant_turn_finished',
+  'assistant_effect_started',
+  'assistant_effect_done',
+  'assistant_effect_failed',
 ] as const;
 
 export const eventNameSchema = z.enum(eventNames);

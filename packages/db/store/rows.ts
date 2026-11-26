@@ -48,6 +48,7 @@ export function toHarness(row: typeof harnesses.$inferSelect): Harness {
     protectedPaths: row.protectedPaths,
     fixClaim: row.fixClaim,
     botAuthors: row.botAuthors,
+    personId: row.personId,
   });
 }
 

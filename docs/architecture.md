@@ -148,7 +148,7 @@ Locks are taken in one order, and none after the first event append:
 6. **The run row.**
 7. **The append**, which takes the per-harness event lock inside the insert trigger.
 
-Paths with no stage to lock take a named key first: issue import (`github-issue:<id>`), persona activation, the GitHub read model (`github-repo:<id>`, in ascending id, before any `gh_*` row), Zulip topic linking, and the hosted beat's start. Where there is no row to lock, a unique constraint is the guard.
+Paths with no stage to lock take a named key first: issue import (`github-issue:<id>`), persona activation, the GitHub read model (`github-repo:<id>`, in ascending id, before any `gh_*` row), Zulip topic linking, the hosted beat's start, and an assistant's turn (`assistant-request:<id>`). Where there is no row to lock, a unique constraint is the guard.
 
 Every advisory lock is a string key hashed by one function, `advisoryLock` in `packages/db/advisory-locks.ts`. That file and `packages/harness/lock-keys.ts` are the registry of keys. `tools/architecture/lock-keys.test.ts` fails if one key is a prefix of another, if a key is unregistered, or if a numeric advisory lock appears anywhere.
 
@@ -264,7 +264,20 @@ After a commit, the kernel plans one wake per triggering event and sends them th
 
 A failed or unconfigured notification never changes a command's outcome.
 
-## 16. GitHub
+## 16. Assistants
+
+A person's **assistant** is a persona on that person's own **personal harness**, lent authority by that person and acting with no one deciding only within a closed low-risk set (ADR 0034). Its kernel module is `packages/harness/assistants/`, reached as `kernel.assistants`.
+
+- **The personal harness.** A `harnesses` row whose `person_id` is set, with template `assistant` and no stages. `provision` creates it through the same template activation as any workflow, for an org admin or an admin of the assistants area; the assistant template is not in the templates registry, so no generic command makes one. The database holds the template and the person together and allows one assistant per person (`packages/db/schema-harnesses.ts`). Stage edits on it are refused (`packages/harness/stages/guards.ts`), and persona activation refuses any identity but that person's assistant on it (`packages/harness/personas/harness-guard.ts`).
+- **Authority.** Each capability word has a policy in `packages/harness/delegations/capability.ts`: who grants it, on which kind of harness, and whether the run beat or a device may act under it. `assist` is granted by the harness's person, stays live while that person holds a live grant (`delegations/live.ts`), and is skipped by the run beat and refused to devices. The assistant's principal is built in `assistants/principal.ts`: the person's live grants, each clamped to `viewer` and ending no later than the delegation.
+- **A request and a turn.** `recordRequest` takes only the ingest or system principal and records a request once per channel and external id. `beginTurn` takes the system principal and, in one transaction under the `assistant-request:<id>` lock, refuses a turn already taken, then checks the live `assist` delegation, the active persona, the spend breaker and the persona's monthly budget, summed from `assistant_turn_finished` evidence. Each refusal is an `assistant_turn_refused` event, and no model is called. A turn's loop is the role's instructions with the person's customisation after them, the role's toolset, up to six earlier exchanges from the same thread, and a prompt of the person's note followed by every untrusted part in its fence. The caller runs it through the tool loop (`packages/harness/runs/tool-loop.ts`).
+- **The effect ledger.** `finishTurn` records the reply as a `reply_to_requester` row in `assistant_effects` under an idempotency key, sends it through the `DirectMessages` port after that transaction commits, then records the outcome and `assistant_turn_finished`. The recipient is copied from the request row; the model never names one. A key that is already recorded with no outcome is marked `outcome_unknown` and nothing is sent again. A check constraint on `assistant_effects` admits only the closed set in `packages/contracts/assistants.ts`.
+- **Where content lives.** Settings, requests and effects are owner-only restricted tables that are never offline (`packages/db/schema-assistants.ts`, `rowReadRules` in `packages/core/acl.ts`). No agent principal reads them; the kernel reads them for the platform, as the restricted-reads ledger records. Every assistant event is content-free: its evidence holds only ids, closed sets and numbers (`packages/contracts/assistant-evidence.ts`), and an invalid fixture proves a text field is refused.
+- **Wakes.** A wake on a personal harness goes only to its person and is marked personal (`packages/harness/notify/plan.ts`); the Zulip notifier never posts one to a stream (`apps/uw-platform/notify/zulip/send.ts`).
+
+**Not reached from the Worker yet.** No route, cron or ingest path calls `kernel.assistants`, and the platform's `DirectMessages` adapter is not wired (`apps/uw-platform/ports/direct-messages.not-wired.ts`). The behaviour runs in the sim, proven by the PA scenarios, and the database constraints are proven in `packages/db/assistant-tables.test.ts`. The channels, reminders, the calendar, proposals and the My Assistant screen are described in PRD section 4.2.
+
+## 17. GitHub
 
 GitHub is the source of every fact the Ship gate reads.
 
@@ -277,7 +290,7 @@ GitHub is the source of every fact the Ship gate reads.
 
 Green CI is not a guard on its own, because code in a pull request runs in CI. The guards are the Reviewer's approval on the head and the person who approves; workflow tokens are held without `checks: write` (`tools/ci/workflow-permissions.test.ts`).
 
-## 17. The UI layer
+## 18. The UI layer
 
 - **Tokens.** `packages/ui/tokens/*.css` is the one token system: the brand colours, the semantic theme over them, and the scales (`scales.css`, generated by `pnpm ui:tokens`). `packages/ui/app.css` declares a Tailwind 4 theme whose every value is a token, with Tailwind's defaults reset, so a value not in the tokens does not exist (ADR 0007, ADR 0011). Light and dark follow the system setting with a stored override.
 - **Shapes and parts.** `packages/ui/shapes/` holds the page shapes; `packages/ui/components/` holds the parts. A screen imports its shape and its parts and writes no layout or control classes of its own (ADR 0029). Charts are ECharts rendered to SVG (ADR 0012); icons are referenced by token (ADR 0013).
@@ -288,7 +301,7 @@ Green CI is not a guard on its own, because code in a pull request runs in CI. T
 
 The checks are under `tools/ui/`: tokens agree with the theme, no hex colour or arbitrary value outside the token files, Kindle orange only on a human action, each part defined once, and the one-way rule that screens take their layout from `packages/ui`.
 
-## 18. Secrets and health
+## 19. Secrets and health
 
 **Secrets** (ADR 0022). `withSecrets` (`apps/uw-platform/secrets.ts`, `apps/uw-ingest/secrets.ts`, over `packages/core/platform-secrets.ts`) runs at each Worker's entry and returns every secret as a plain string. A secret is read from its Cloudflare Secrets Store binding when one is declared and from the Worker secret otherwise, and a failed store read falls back loudly. `infra/secrets-store.json` lists each secret's owner and rotation date. No secret is in a wrangler file, a workflow file or the repository.
 
@@ -296,7 +309,7 @@ The checks are under `tools/ui/`: tokens agree with the theme, no hex colour or 
 
 **Logs.** Each request, queue batch, cron and run step logs structured JSON with a trace id (`packages/core/log.ts`, `packages/core/trace.ts`). Log shipping and retention are declared in `infra/logs/`.
 
-## 19. CI, deploy and release
+## 20. CI, deploy and release
 
 The procedure and who may do what are in `AGENTS.md`. The mechanics:
 
@@ -308,7 +321,7 @@ The procedure and who may do what are in `AGENTS.md`. The mechanics:
 
 Tests under `tools/ci/` hold the workflow files to these rules.
 
-## 20. Every rule is a check
+## 21. Every rule is a check
 
 A rule that lives only in prose drifts. Each of these has a check.
 
@@ -323,6 +336,7 @@ A rule that lives only in prose drifts. Each of these has a check.
 | No forbidden verb is registered | `packages/contracts/verbs.test.ts` |
 | Outside text reaches a model only as untrusted content | the types, and `tools/architecture/untrusted-content.test.ts` |
 | Ship exits only on human approval | the check constraint, `packages/db/ship-invariant.test.ts`, and the template walk at activation |
+| An assistant's effects with no person deciding stay in the closed low-risk set | the check constraint on `assistant_effects`, `packages/db/assistant-tables.test.ts` |
 | Replay equals record | `tools/properties/replay.test.ts` |
 | One writer per table | `tools/architecture/owners.test.ts` |
 | Every table declares classification and offline eligibility | `packages/db/declarations.test.ts` |
@@ -345,7 +359,7 @@ A rule that lives only in prose drifts. Each of these has a check.
 - *The no-comments and vendor-SDK rules outside `apps/`, `packages/` and `sim/`.* `tools/` and the root config files are not covered.
 - *`docs/exceptions.md` is complete.* No test compares it to the code.
 
-## 21. Where a change goes
+## 22. Where a change goes
 
 | Change | Place |
 |---|---|
@@ -370,11 +384,11 @@ A rule that lives only in prose drifts. Each of these has a check.
 
 Nothing in this part exists in the code. It records only what the platform's design has already fixed for the pieces still to come, so that work on them starts from one shape. The features themselves are in `PRD.md`.
 
-## 22. The public site and publishing
+## 23. The public site and publishing
 
 A third Worker, `uw-www`, serves the public site as pre-rendered HTML from R2 and KV with no database dependency, so the site survives a database outage. Publishing is a pipeline: a page is marked for publishing, an area admin approves, a queue renders markdown to HTML in the brand template and writes it to R2, and a publish log records exactly which page version is public. A preview is reachable behind Access before approval. The `publish` connector that this needs is declared and not wired.
 
-## 23. Desktop and offline
+## 24. Desktop and offline
 
 - **A desktop app** (Tauri, `apps/uw-desktop`) reuses the editor and a sync client, with a local SQLite store and, optionally, a folder of plain markdown files kept in step with it. The web app gets the same sync client behind its service worker later.
 - **What may leave the server is decided by the schema.** The sync manifest is generated from each table's and page type's `offlineEligibility`, which is already declared. A `never` row is never sent; it is not filtered by a client. Ledger, gift and donor data never sync.
@@ -382,7 +396,7 @@ A third Worker, `uw-www`, serves the public site as pre-rendered HTML from R2 an
 - **Selective sync** is by area, and the ACL applies at sync time.
 - **Provenance.** Every synced or imported fact carries its source and sync state, and a screen shows a failed sync rather than stale data.
 
-## 24. Modules and enablement
+## 25. Modules and enablement
 
 `packages/core/modules.ts` already declares some modules as data (key, areas, dependencies, what each owns), and the sidebar marks which entries are built (`apps/uw-platform/views/parts/names.ts`). Still planned:
 
@@ -390,7 +404,7 @@ A third Worker, `uw-www`, serves the public site as pre-rendered HTML from R2 an
 - **A boundary check.** A module may depend only on modules it declares, and reaches another only through a typed function or a verb, never by joining into its tables. A check over the schema and the import graph enforces it.
 - **Four things per module**: a runbook page, a data-export path, verification steps and its classification declaration.
 
-## 25. Finance, donors and field data
+## 26. Finance, donors and field data
 
 The design fixes these points; the schemas are not written.
 
@@ -403,11 +417,11 @@ The design fixes these points; the schemas are not written.
 
 Each lands under the existing rules: one owner module per table, a row read rule before the migration can land, and `can()` on every path.
 
-## 26. The chart primitive
+## 27. The chart primitive
 
 One chart part exists today. The plan is a declarative chart spec (type, a whitelisted query reference, encodings, formatting) in its own package, embedded by any page, view or PDF, with a `render_chart` verb for agents. Every chart states its lineage (query, as-of time, filters, excluded rows), ships a table of its own data and a CSV, and uses the one palette and the shared date and money formatters. The renderer is ECharts to SVG (ADR 0012).
 
-## 27. Backups, drift and stewardship
+## 28. Backups, drift and stewardship
 
 - **Backups**: point-in-time recovery on the database, nightly logical dumps, a nightly export of the page corpus, all to an object-locked bucket, and a weekly encrypted copy at a second provider.
 - **Restore drills** run on a schedule into a fresh database, are scored, and write their result as a page. An overdue drill turns the infrastructure health indicator red.
@@ -415,7 +429,7 @@ One chart part exists today. The plan is a declarative chart spec (type, a white
 - **Lifecycle**: dependency and CVE scanning with a remediation window, rotation dates with expiry alarms over `infra/secrets-store.json`, and cost tracking with an alert.
 - **An infrastructure steward persona** proposes this work as items with evidence. It may open pull requests and draft runbooks; it may not apply a migration to production, rotate a secret or change an Access policy.
 
-## 28. Observability
+## 29. Observability
 
 Four planes, joined by the trace id that already runs from the edge through queue messages and Cloudflare Workflow steps:
 

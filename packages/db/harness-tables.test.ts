@@ -56,6 +56,7 @@ const expectedColumns: Record<string, string[]> = {
     'fix_claim',
     'bot_authors',
     'title',
+    'person_id',
   ],
   harness_stages: [
     'id',

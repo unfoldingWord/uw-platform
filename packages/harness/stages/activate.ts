@@ -39,6 +39,7 @@ export type ActivateInput = {
   readonly botAuthors?: readonly string[];
   readonly requiredChecks: readonly RequiredCheck[];
   readonly protectedPaths?: readonly string[];
+  readonly personId?: string | null;
 };
 
 export type Activated = { readonly harness: Harness; readonly stages: readonly Stage[] };
@@ -57,8 +58,16 @@ function botsOf(input: ActivateInput): string[] {
   return [...(input.botAuthors ?? defaultBotAuthors)];
 }
 
+function personalRefusal(input: ActivateInput): Refused | null {
+  const personal = input.template.personal === true;
+  const named = (input.personId ?? null) !== null;
+  return named === personal ? null : refused('malformed_command', { why: 'personal_template' });
+}
+
 function inputRefusal(input: ActivateInput, external: readonly string[]): Refused | null {
   const { repository } = input;
+  const personal = personalRefusal(input);
+  if (personal !== null) return personal;
   if (repository !== null && !repositorySchema.safeParse(repository).success) {
     return refused('malformed_command', { repository });
   }
@@ -89,6 +98,7 @@ function harnessOf(input: ActivateInput, external: string[]): Harness {
     requiredChecks: [...input.requiredChecks],
     protectedPaths: [...(input.protectedPaths ?? [])],
     fixClaim: false,
+    personId: input.personId ?? null,
   };
 }
 
@@ -125,6 +135,11 @@ async function insertAll(
   });
 }
 
+const keyConstraints: ReadonlySet<string> = new Set([
+  'harnesses_key_unique',
+  'harnesses_one_assistant_per_person',
+]);
+
 export async function activateTemplate(
   ports: StagePorts,
   caller: Caller,
@@ -148,7 +163,7 @@ export async function activateTemplate(
   } catch (error) {
     const store = storeRefusalOf(error);
     if (store === null) throw error;
-    if (store.constraint === 'harnesses_key_unique') {
+    if (keyConstraints.has(store.constraint ?? '')) {
       return refused('harness_exists', { harnessKey: input.harnessKey });
     }
     if (store.constraint === 'harnesses_repository_once') {
