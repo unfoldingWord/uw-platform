@@ -2,6 +2,7 @@ import { readdirSync } from 'node:fs';
 import { JSDOM } from 'jsdom';
 import { describe, expect, it } from 'vitest';
 import type { Database } from '@uw/db/client';
+import { pageSuggestionSets } from '@uw/db/schema';
 import { rewriteItem, seedPage } from '@uw/db/test-seed';
 import { clock } from '../github/testing/ship-rig.ts';
 import { advanced, enqueuedItem, meteredRun, subscriptionRun } from '../testing/board-world.ts';
@@ -37,6 +38,30 @@ async function programRowIn(db: Database): Promise<string> {
     { role: 'viewer', area: '00-09' },
   ]);
   return rowIn(db, writer, { collection: 'program', jdArea: '80-89', title: 'Gateway languages' });
+}
+
+async function seedPersona(db: Database, harnessId: string, at: Date): Promise<void> {
+  await seedPage(db, {
+    id: personaPageId,
+    type: 'persona',
+    status: 'suggested',
+    jdArea: '80-89',
+    title: 'Builder',
+    bodyMd: '---\nname: builder\ndescription: Builder builds.\n---\nBuild the item.',
+    frontmatter: personaFrontmatter(harnessId),
+    slug: 'screens-persona',
+  });
+  await db.insert(pageSuggestionSets).values({
+    id: suggestionId,
+    pageId: personaPageId,
+    baseVersion: 1,
+    title: 'Builder',
+    frontmatter: personaFrontmatter(harnessId),
+    bodyMd: 'Build the item, then check it.',
+    proposedBy: 'agent:builder',
+    proposedAt: at,
+    status: 'pending',
+  });
 }
 
 async function seededWorld(db: Database): Promise<Seeded> {
@@ -75,16 +100,7 @@ async function seededWorld(db: Database): Promise<Seeded> {
     frontmatter: { confidence: 'assumed', as_of: '2026-01-01', supersedes: [], review_by: null },
     slug: 'screens-stale-learning',
   });
-  await seedPage(db, {
-    id: personaPageId,
-    type: 'persona',
-    status: 'suggested',
-    jdArea: '80-89',
-    title: 'Builder',
-    bodyMd: '---\nname: builder\ndescription: Builder builds.\n---\nBuild the item.',
-    frontmatter: personaFrontmatter(harnessId),
-    slug: 'screens-persona',
-  });
+  await seedPersona(db, harnessId, at);
   const credentialId = await credentialFor(db, world.kimEmail, clock);
   const exportIds = await seededExports(db, [world.kimEmail, world.viewerEmail]);
   return { ...world, runId, credentialId, exportIds, programRow: await programRowIn(db) };
@@ -112,6 +128,7 @@ async function seededExport(db: Database, email: string): Promise<string> {
 }
 
 const personaPageId = '00000000-0000-4000-8000-00000000be11';
+const suggestionId = '00000000-0000-4000-8000-00000000be12';
 
 function personaFrontmatter(harnessId: string) {
   return {
@@ -137,6 +154,7 @@ function pathOf(entry: ScreenEntry, world: Seeded, email: string): string {
     .replace(':runId', world.runId)
     .replace(':indicator', 'spend')
     .replace(':pageId', personaPageId)
+    .replace(':suggestionId', suggestionId)
     .replace(':category', '81')
     .replace(':area', '80-89')
     .replace(':version', '1')

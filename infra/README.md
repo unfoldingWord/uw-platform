@@ -52,7 +52,7 @@ Every response carries a `Server-Timing` header: `total`, `frame` (the sidebar a
 
 The classes `ClaudeCodeSandbox` and `CodexSandbox` (`apps/uw-platform/engines/sandbox/classes.ts`) start with the internet off and send every outbound HTTP request through one handler, which answers `403 egress refused` for anything but the model host and `mcp.internal` (S7-R47). `wrangler.go-live.toml` declares them for staging and production only: two `[[env.<name>.containers]]` blocks, the `CLAUDE_CODE_SANDBOX` and `CODEX_SANDBOX` Durable Object bindings, and the top-level `v2` migration that adds both as SQLite classes. A deploy with these blocks needs Docker on the runner to build the images.
 
-### The measure sandbox (ADR 0034)
+### The measure sandbox (ADR 0036)
 
 `containers/measure/Dockerfile` is the image a measure runs in: `ghcr.io/astral-sh/uv` at a pinned tag (uv and Python 3.12), a non-root `runner` user whose home is `/workspace`, and `containers/measure/runner.py`, which listens on port 3000 and has three commands. `lock` resolves the measure's `name==version` package into a requirements file with a SHA-256 hash for every package (on a trial run only). `install` builds a venv from that file with `--require-hashes --no-deps`. `run` starts the tool from the venv with its arguments as a list, never through a shell, in a clean environment, with a time limit and an output cap. The image holds no key, no token and no verb server.
 

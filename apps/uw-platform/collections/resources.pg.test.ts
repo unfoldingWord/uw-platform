@@ -113,7 +113,7 @@ async function provesLateSeeding(db: Database): Promise<void> {
   expect((await viewRow(db, WEBSITES_VIEW_ID))?.collectionId).toBe(stored?.id);
 }
 
-describe.skipIf(!testServer)('ADR 0034 the built-in Resources collection', () => {
+describe.skipIf(!testServer)('ADR 0036 the built-in Resources collection', () => {
   it('relates a site to the program and project it serves and lists websites by area', () =>
     withRig(provesResources));
 

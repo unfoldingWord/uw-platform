@@ -284,7 +284,7 @@ async function leavesOutHostTooLongToName(db: Database): Promise<void> {
   expect(read).toMatchObject({ refusedHosts: ['cdn.example.net'], refusedHostsMore: true });
 }
 
-describe.skipIf(!testServer)('ADR 0034 an agent reads figures, rows and previews by verbs', () => {
+describe.skipIf(!testServer)('ADR 0036 an agent reads figures, rows and previews by verbs', () => {
   it('gives resolve_context the latest metrics of the resources serving an entity', () =>
     withAppDatabase(givesEntityMeasures));
 

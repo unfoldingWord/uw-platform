@@ -22,7 +22,15 @@ import { pagePath, withBack } from './paths.ts';
 type Posted = ReadonlyMap<string, unknown>;
 
 type Outcome =
-  { readonly ok: true; readonly version: number } | { readonly ok: false; readonly reason: string };
+  | { readonly ok: true; readonly version: number }
+  | { readonly ok: false; readonly reason: string; readonly missing?: readonly string[] };
+
+function missingOf(result: object) {
+  const detail: unknown = 'detail' in result ? result.detail : null;
+  const missing: unknown =
+    typeof detail === 'object' && detail !== null && 'missing' in detail ? detail.missing : null;
+  return Array.isArray(missing) ? missing.filter((name) => typeof name === 'string') : [];
+}
 
 function text(posted: Posted, name: string): string | undefined {
   const value = posted.get(name);
@@ -98,7 +106,7 @@ async function saved(saving: Saving, page: Page, posted: Posted): Promise<Outcom
   });
   return result.ok
     ? { ok: true, version: result.page.version }
-    : { ok: false, reason: result.reason };
+    : { ok: false, reason: result.reason, missing: missingOf(result) };
 }
 
 type Done = {
@@ -128,7 +136,7 @@ export async function savePage(c: Context<AppEnv>): Promise<Response> {
   const back = backOf(text(posted, 'back'));
   const read = withBack(pagePath(pageId), back);
   if (!shown.canEdit) {
-    const refusal = { asText: false, back, refused: 'not_permitted', typed: null };
+    const refusal = { asText: false, back, refused: 'not_permitted', typed: null, missing: [] };
     return renderPageEdit(c, screen, pageId, refusal);
   }
   const database = c.get('database');
@@ -137,5 +145,12 @@ export async function savePage(c: Context<AppEnv>): Promise<Response> {
   if (outcome.ok) return afterSave(c, { page: shown.page, posted, read, back }, outcome.version);
   const typed = typedOf(shown.page, posted);
   const asText = text(posted, 'asText') === '1';
-  return renderPageEdit(c, screen, pageId, { asText, back, refused: outcome.reason, typed });
+  const missing = outcome.missing ?? [];
+  return renderPageEdit(c, screen, pageId, {
+    asText,
+    back,
+    refused: outcome.reason,
+    typed,
+    missing,
+  });
 }

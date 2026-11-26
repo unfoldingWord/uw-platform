@@ -34,7 +34,7 @@ CREATE TABLE "measure_runs" (
 	CONSTRAINT "measure_runs_version_counted" CHECK ("measure_runs"."measure_version" >= 1),
 	CONSTRAINT "measure_runs_tool_hash_form" CHECK ("measure_runs"."tool_hash" ~ '^[0-9a-f]{64}$'),
 	CONSTRAINT "measure_runs_kind_known" CHECK ("measure_runs"."kind" IN ('trial', 'scheduled', 'requested')),
-	CONSTRAINT "measure_runs_state_known" CHECK ("measure_runs"."state" IN ('queued', 'running', 'ok', 'partial', 'failed', 'not_wired')),
+	CONSTRAINT "measure_runs_state_known" CHECK ("measure_runs"."state" IN ('queued', 'running', 'ok', 'partial', 'failed', 'stalled', 'not_wired')),
 	CONSTRAINT "measure_runs_requested_by_identity" CHECK ("measure_runs"."requested_by" ~ '^(?:human:[A-Za-z0-9][A-Za-z0-9_-]*|agent:[a-z0-9][a-z0-9_-]*|agent:[A-Za-z0-9][A-Za-z0-9_-]*/[a-z0-9][a-z0-9-]{0,31}|agent:[A-Za-z0-9][A-Za-z0-9_-]*/[a-z0-9][a-z0-9-]{0,31} as [a-z0-9][a-z0-9_-]* via delegation:[A-Za-z0-9][A-Za-z0-9_-]*)$'),
 	CONSTRAINT "measure_runs_lock_sha256_form" CHECK ("measure_runs"."lock_sha256" ~ '^[0-9a-f]{64}$'),
 	CONSTRAINT "measure_runs_lock_hashed" CHECK (("measure_runs"."lock" IS NULL) = ("measure_runs"."lock_sha256" IS NULL)),
@@ -80,5 +80,5 @@ CREATE INDEX "measure_activations_due" ON "measure_activations" USING btree ("ne
 CREATE INDEX "measure_runs_by_measure" ON "measure_runs" USING btree ("measure_page_id","kind","created_at");--> statement-breakpoint
 CREATE UNIQUE INDEX "observations_one_per_run" ON "observations" USING btree ("run_id","resource_page_id");--> statement-breakpoint
 CREATE INDEX "observations_by_resource" ON "observations" USING btree ("measure_page_id","resource_page_id","observed_at");--> statement-breakpoint
-ALTER TABLE "page_versions" ADD CONSTRAINT "page_versions_type_known" CHECK ("page_versions"."type" IN ('skill', 'learning', 'persona', 'product', 'system_goal', 'product_strategy', 'data_sources', 'issue', 'platform', 'knowledge', 'entry', 'profile', 'portfolio', 'program', 'project', 'okr', 'resource', 'measure', 'dashboard'));--> statement-breakpoint
-ALTER TABLE "pages" ADD CONSTRAINT "pages_type_known" CHECK ("pages"."type" IN ('skill', 'learning', 'persona', 'product', 'system_goal', 'product_strategy', 'data_sources', 'issue', 'platform', 'knowledge', 'entry', 'profile', 'portfolio', 'program', 'project', 'okr', 'resource', 'measure', 'dashboard'));
+ALTER TABLE "page_versions" ADD CONSTRAINT "page_versions_type_known" CHECK ("page_versions"."type" IN ('skill', 'learning', 'persona', 'product', 'system_goal', 'product_strategy', 'data_sources', 'issue', 'platform', 'decision', 'knowledge', 'entry', 'profile', 'policy', 'portfolio', 'program', 'project', 'okr', 'charter', 'resource', 'measure', 'dashboard'));--> statement-breakpoint
+ALTER TABLE "pages" ADD CONSTRAINT "pages_type_known" CHECK ("pages"."type" IN ('skill', 'learning', 'persona', 'product', 'system_goal', 'product_strategy', 'data_sources', 'issue', 'platform', 'decision', 'knowledge', 'entry', 'profile', 'policy', 'portfolio', 'program', 'project', 'okr', 'charter', 'resource', 'measure', 'dashboard'));

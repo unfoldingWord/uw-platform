@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { jdAreaSchema, jdCategorySchema, jdIdSchema } from './areas.ts';
+import { errorReasonSchema } from './outcomes.ts';
 import { pageSchema, pageTypeSchema } from './pages.ts';
 
 const instant = z.iso.datetime();
@@ -158,6 +159,13 @@ export const pageCommandAcceptedSchema = z.object({
   requestId: z.uuid(),
   pageId: z.uuid(),
   version: z.number().int().min(1),
+});
+
+export const pageCommandRefusedSchema = z.object({
+  status: z.literal('error'),
+  requestId: z.uuid(),
+  reason: errorReasonSchema,
+  detail: z.record(z.string().max(60), z.union([z.string(), z.array(z.string())])),
 });
 
 export const pageCommentSchema = z.object({

@@ -34,7 +34,7 @@ function issuePaths(overrides: Record<string, unknown>): string[] {
   return parsed.success ? [] : parsed.error.issues.map((issue) => issue.path.join('.'));
 }
 
-describe('ADR 0034 a measure names a pinned tool and a command of plain arguments', () => {
+describe('ADR 0036 a measure names a pinned tool and a command of plain arguments', () => {
   it('accepts the GEO measure the PRD walks through', () => {
     expect(measureFrontmatterSchema.parse(geo)).toEqual(geo);
   });
@@ -88,7 +88,7 @@ describe('ADR 0034 a measure names a pinned tool and a command of plain argument
   });
 });
 
-describe('ADR 0034 a measure schedule is daily, weekly on a weekday or monthly on a day', () => {
+describe('ADR 0036 a measure schedule is daily, weekly on a weekday or monthly on a day', () => {
   it.each([{ every: 'day' }, { every: 'week', weekday: 0 }, { every: 'month', day: 28 }])(
     'accepts %j',
     (schedule) => {
@@ -107,7 +107,7 @@ describe('ADR 0034 a measure schedule is daily, weekly on a weekday or monthly o
   });
 });
 
-describe('ADR 0034 values are read by JSON pointer and metrics by a closed rule', () => {
+describe('ADR 0036 values are read by JSON pointer and metrics by a closed rule', () => {
   it('reads each value at an RFC 6901 JSON pointer', () => {
     const at = (path: string) => [{ key: 'score', name: 'Score', type: 'number', path }];
     expect(accepts({ values: at(''), metrics: [] })).toBe(true);
@@ -153,7 +153,7 @@ describe('ADR 0034 values are read by JSON pointer and metrics by a closed rule'
   });
 });
 
-describe('ADR 0034 a counting metric states its condition and no other does', () => {
+describe('ADR 0036 a counting metric states its condition and no other does', () => {
   const base = { key: 'meeting', name: 'Meeting', value: 'score' };
   const condition = { op: 'at_least', threshold: 90 };
 

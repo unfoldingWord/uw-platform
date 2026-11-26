@@ -34,7 +34,7 @@ const measureReasons: readonly (readonly [ErrorReason, number])[] = [
   ['run_too_soon', 429],
 ];
 
-describe('ADR 0034 a measure command refusal answers with the status its reason names', () => {
+describe('ADR 0036 a measure command refusal answers with the status its reason names', () => {
   it.each(measureReasons)('%s answers %i with the reason in the body', async (reason, status) => {
     const response = await refuser(reason).request('/');
     expect(response.status).toBe(status);

@@ -13,7 +13,7 @@ const bars = {
 
 const trend = { id: 'trend-1', label: 'Score over time, Door43', values: [60, 62, null, 40, 45] };
 
-describe('ADR 0034 panels draw bars with a target and a trend with breaks as token-only SVG', () => {
+describe('ADR 0036 panels draw bars with a target and a trend with breaks as token-only SVG', () => {
   it('draws one horizontal bar per resource and the target as a dashed line', () => {
     const svg = barsChartSvg(bars);
     expect(svg.startsWith('<svg')).toBe(true);

@@ -277,6 +277,8 @@ A suggestion is anchored so it survives edits to the rest of the document, with 
 
 **Agents suggest; they do not overwrite.** On policy, charter, contract and work order pages an agent's write becomes a suggestion set. The in-place write does not exist for those types.
 
+**Built so far, for policies and charters (ADR 0035).** An agent's save to an active policy or charter runs every check a save runs and is then held as a **suggestion set**: the whole proposed title, properties and text over the version it was based on. Each agent holds at most one pending set per page; saving again replaces it. The page says a change waits and links to a review screen that shows the text and the properties as a line diff, with Accept and Reject for someone who may write the page. Accepting saves the set as exactly one new version, through the same checks as any save; rejecting changes nothing. Both are recorded on the set, which the database then keeps as it was decided. A set whose base is no longer the page's version can only be rejected. Each save by the agent bumps the set's revision, and a decision names the revision the person read, so nobody accepts text they did not see; the same decision sent twice is answered once. Anchored suggestions inside one document, named review sets and revision marks in exports are not built yet.
+
 Revision state survives every export:
 
 - **Markdown** carries revision marks as CriticMarkup, plain text that is diffable and readable in any editor. Three modes: marked, accepted (clean current text) and original.
@@ -288,13 +290,21 @@ Issue: #197.
 
 #### The policy engine
 
-A **policy** is a page with a level (organization, portfolio, program, project or product), an enforcement (`required`, `default` or `template`), what it applies to, what it supersedes and when it takes effect. Resolution walks from the most specific level upward. A `required` policy at a higher level cannot be overridden below; a `default` yields to a descendant that supersedes it. A template is **copied** into the thing made from it, with its source and version recorded, so obligations never change silently; a drift report makes adopting a template update a deliberate act.
+A **policy** is a page with a level (organization, portfolio, program, project or product), an enforcement (`required`, `default` or `template`), what it applies to, what it supersedes and when it takes effect. Its level is the type of the page it applies to: a portfolio, program, project or product page, or none for the whole organization, so the two can never disagree. A policy that names a page that is not a live node or product, or one the writer cannot read, is refused.
 
-Charters use the organization's NISO format (Need, Idea, Strategy, Outcomes, with Risks and Roadmap) as a validated template, so they stay machine-readable at every level.
+Resolution walks from the most specific level upward: the item's product, the node it or its product is placed under, that node's program and portfolio, then the organization. A policy counts only between the date it takes effect and the date it ends. A `required` policy at a higher level cannot be overridden below; a `default` yields to a descendant that supersedes it. A policy that tries to supersede a `required` one, or one at its own level or above, changes nothing, and the attempt is recorded as a conflict. A `template` policy binds nothing and replaces nothing until it is copied. Every candidate on the chain takes part, however many there are. A template is **copied** into the thing made from it, with its source and version recorded, so obligations never change silently; a drift report makes adopting a template update a deliberate act. A person copies a template policy from its page, choosing a title, what the copy applies to, its enforcement and its start; the copy lands as suggested. The Policies screen lists every copy whose template has moved on, been retired or gone, and a copy behind its template offers to adopt the template's new text as one new version, only while the template is still an active template policy, and only at the version the person was shown.
 
-An agent loads the resolved policies, decisions and learnings for an entity through `resolve_context` before it acts (section 4.2).
+Every policy a person can read is listed on the Policies screen with its level, target, enforcement, dates, status and the number of conflicts it is part of. A policy's own page shows the same facts and names each conflict: which policy tried to replace which, and why the replacement had no effect.
 
-Issue: #243.
+Charters use the organization's NISO format (Need, Idea, Strategy, Outcomes, with Risks and Roadmap) as a validated template, so they stay machine-readable at every level. The six are level-two headings in the charter's body, in that order; a save without them is refused and names the missing ones.
+
+Policies, charters and decision pages are gated: an agent's new page lands as suggested, and a person confirms it from the page, which runs the same checks as a save. An agent's save to an active policy or charter is held as a suggestion set for a person (Suggested changes, above).
+
+A **decision page** records context, decision and consequences as level-two headings, the date it was decided, what it applies to (a node, a product or the organization) and what earlier decision pages it supersedes.
+
+An agent loads the resolved policies, decisions and learnings for an entity through `resolve_context` before it acts (section 4.2). It answers the policies in force for the item that the caller may read, most specific first, each with its level and enforcement, and the decision pages on the same chain, most specific and then newest first, leaving out any that a decision decided later supersedes (on the same day, unless both name each other).
+
+Issue: #243. Rules: ADR 0034, ADR 0035.
 
 #### Credentials store
 
@@ -795,6 +805,18 @@ Each id is stable and names its proof: scenarios in `sim/scenarios/` and tests a
 | UI-17 | Navigation items and page names are Title Case; all other copy is sentence case. | Must |
 | UI-18 | An admin names a workflow, and its key stays. | Must |
 
+**Policy engine (PO)**
+
+| ID | Requirement | Priority |
+|---|---|---|
+| PO-1 | A policy is a gated page with an enforcement, the node or product it applies to (none for the organization), what it supersedes, and when it holds; its level is read from what it applies to (ADR 0034). | Must |
+| PO-2 | Resolution walks from the product up to the organization: a `required` policy holds against any descendant, a `default` yields to a descendant that supersedes it, a policy counts only between its dates, and a refused supersession is recorded as a conflict. | Must |
+| PO-3 | `resolve_context` answers the policies in force and the decision pages for the item that the caller may read, most specific first. | Must |
+| PO-4 | A charter's body carries the NISO sections in order, and a decision page's Context, Decision and Consequences; a save without them is refused with the missing ones named. | Must |
+| PO-5 | A template policy is copied into what is made from it with its source and version, a drift report shows copies behind their source, and a person adopts an update as one new version. | Must |
+| PO-6 | Each policy's level, target, enforcement, dates and conflicts are shown to a person on its page and on the Policies screen. | Must |
+| PO-7 | An agent's save to an active policy or charter is held as one suggestion set per agent, which a person accepts as one new version or rejects; a decided set never changes (ADR 0035). | Must |
+
 #### Open questions
 
 A person still has to decide each of these.
@@ -1080,7 +1102,7 @@ The agent is any MCP client on the platform's `/mcp` surface, such as Claude Cod
 
 **Proven when:** the request above, given to an agent on staging, gives a working dashboard after one trial and one activation, with no code change and no GitHub workflow; the `unfoldingword.org` project page shows the same score as the rollup without being edited; a site that times out shows as not scored, with its reason, and changes no average; a reader who can read one program's sites cannot learn another program's sites, scores or count through a dashboard, an embed, a report card, an export or a verb; a run cannot reach any host but the package index and the site it measures; a new scoring version shows as a break in the trend.
 
-Issue: #189 (dashboards design), #199, #200, #260. Rules: ADR 0034.
+Issue: #189 (dashboards design), #199, #200, #260. Rules: ADR 0036.
 
 ### Dev
 

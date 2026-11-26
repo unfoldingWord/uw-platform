@@ -42,7 +42,7 @@ const sites: readonly Measured[] = [
   site(ids.c, []),
 ];
 
-describe('ADR 0034 metrics are worked out from observations by a closed set of rules', () => {
+describe('ADR 0036 metrics are worked out from observations by a closed set of rules', () => {
   it('averages the latest scores and never turns a failure into zero', () => {
     const figures = metricFigures({ metric: metric({ target: 75 }), value: score }, sites);
     expect(figures.figure).toBe(80);
@@ -84,7 +84,7 @@ describe('ADR 0034 metrics are worked out from observations by a closed set of r
   });
 });
 
-describe('ADR 0034 metrics read one value over time, never summing it', () => {
+describe('ADR 0036 metrics read one value over time, never summing it', () => {
   it('reads the previous value and the change since it', () => {
     const one = [site(ids.a, [ok(1, 70), ok(2, 80)])];
     const previous = metricFigures({ metric: metric({ rule: 'previous' }), value: score }, one);

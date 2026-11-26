@@ -35,7 +35,7 @@ describe('FD-9 the page-type registry', () => {
     expect(Object.keys(pageTypeRegistry)).toEqual([...pageTypes]);
   });
 
-  it('ADR 0034 registers resource, measure and dashboard, a resource as a collection row', () => {
+  it('ADR 0036 registers resource, measure and dashboard, a resource as a collection row', () => {
     expect(pageTypes.slice(-3)).toEqual(['resource', 'measure', 'dashboard']);
     expect(isCollectionPageType('resource')).toBe(true);
     expect(isCollectionPageType('measure')).toBe(false);
@@ -54,7 +54,7 @@ describe('FD-9 the page-type registry', () => {
   );
 
   it('knows no type outside the registry', () => {
-    expect(pageTypeDefinition('policy')).toBeUndefined();
+    expect(pageTypeDefinition('memo')).toBeUndefined();
     expect(pageTypeDefinition('constructor')).toBeUndefined();
   });
 });

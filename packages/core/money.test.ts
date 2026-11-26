@@ -56,7 +56,7 @@ describe('formatCount', () => {
   });
 });
 
-describe('ADR 0034 formatFigure', () => {
+describe('ADR 0036 formatFigure', () => {
   it('shows a measured figure with at most one decimal and grouped digits', () => {
     expect(formatFigure(66.6667)).toBe('66.7');
     expect(formatFigure(80)).toBe('80');

@@ -22,7 +22,7 @@ describe('the measures feature records the rules it bends and the issues it answ
   it('names the dashboards design issue and leaves no placeholder', () => {
     expect(prd).not.toContain('#NNN');
     expect(prd).toMatch(
-      /^Issue: #189 \(dashboards design\), #199, #200, #\w+\. Rules: ADR 0034\.$/m,
+      /^Issue: #189 \(dashboards design\), #199, #200, #\w+\. Rules: ADR 0036\.$/m,
     );
   });
 });

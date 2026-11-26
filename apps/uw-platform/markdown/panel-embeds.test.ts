@@ -5,7 +5,7 @@ import { placedPanels } from './panel-embeds.ts';
 const block = (kind: string) =>
   `\`\`\`panel\nkind: ${kind}\nmeasure: c0110000-0000-4000-8000-000000000001\n\`\`\`\n`;
 
-describe('ADR 0034 a panel block renders as a placeholder the page fills for each reader', () => {
+describe('ADR 0036 a panel block renders as a placeholder the page fills for each reader', () => {
   it('numbers each panel block in order and keeps its text inside, so the cache holds no figure', () => {
     const { html } = renderMarkdown(`Intro.\n\n${block('status')}\n${block('status')}`);
     const placed = placedPanels(html);

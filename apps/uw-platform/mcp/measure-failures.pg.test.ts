@@ -95,7 +95,7 @@ async function namesReportedFailureInSave(db: Database): Promise<void> {
   expect(failureProblems(again)).toHaveLength(2);
 }
 
-describe.skipIf(!testServer)('ADR 0034 a failure the tool reports while exiting 0', () => {
+describe.skipIf(!testServer)('ADR 0036 a failure the tool reports while exiting 0', () => {
   it('fails the observation with its reason and keeps no value, never a zero', () =>
     withAppDatabase(failsWhatToolReports));
 

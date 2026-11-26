@@ -1,0 +1,11 @@
+{
+  "enforcement": "default",
+  "applies_to": "7f1c6a52-3e7b-4b9a-9a51-6a0f2c1d8e40",
+  "supersedes": ["0b6f2d4e-91a3-4c57-8e2d-3f5a7b9c1d20"],
+  "effective_from": "2026-12-01",
+  "effective_until": "2027-12-01",
+  "copied_from": {
+    "page_id": "5d2e8f1a-6b4c-4e9d-8a7f-2c3b1e0d9f61",
+    "version": 2
+  }
+}

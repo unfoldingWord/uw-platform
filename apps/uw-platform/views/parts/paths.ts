@@ -112,6 +112,22 @@ export function pageManagePath(pageId: string): string {
   return `${pagePath(pageId)}/manage`;
 }
 
+export function pageSuggestionPath(pageId: string, suggestionId: string): string {
+  return `${pagePath(pageId)}/suggestions/${segment(suggestionId)}`;
+}
+
+export function pageConfirmPath(pageId: string): string {
+  return `${pagePath(pageId)}/confirm`;
+}
+
+export function pagePolicyPath(pageId: string): string {
+  return `${pagePath(pageId)}/policy`;
+}
+
+export function wikiPoliciesPath(): string {
+  return '/wiki/policies';
+}
+
 export function pageVersionPath(pageId: string, version: number): string {
   return `${pagePath(pageId)}/versions/${String(version)}`;
 }

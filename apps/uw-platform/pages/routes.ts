@@ -1,11 +1,16 @@
 import { Hono, type Context } from 'hono';
 import {
+  acceptSuggestionCommandSchema,
+  adoptTemplateUpdateCommandSchema,
+  rejectSuggestionCommandSchema,
   confirmPageCommandSchema,
+  copyTemplatePolicyCommandSchema,
   movePageCommandSchema,
   createPageCommandSchema,
   nameCategoryCommandSchema,
   setAreaHomeCommandSchema,
   pageCommandAcceptedSchema,
+  pageCommandRefusedSchema,
   updatePageCommandSchema,
   type CreatePageCommand,
   type UpdatePageCommand,
@@ -24,6 +29,9 @@ import { searchScreen } from '../views/screens/search.tsx';
 import { createFromForm, wikiNewScreen } from '../views/screens/wiki-new.tsx';
 import { wikiAreaScreen } from '../views/screens/wiki-area.tsx';
 import { wikiReviewScreen } from '../views/screens/wiki-review.tsx';
+import { wikiPoliciesScreen } from '../views/screens/wiki-policies.tsx';
+import { postPolicyForm } from '../views/parts/policy-forms.tsx';
+import { decideSuggestion, pageSuggestionScreen } from '../views/screens/page-suggestion.tsx';
 import { wikiScreen } from '../views/screens/wiki.tsx';
 import { setAreaHome } from './area-homes.ts';
 import { nameCategory } from './categories.ts';
@@ -31,6 +39,8 @@ import { confirmPage } from './confirm.ts';
 import { connectDraft } from './draft-handlers.ts';
 import { downloadFile, listPageFiles, uploadFile } from './file-handlers.ts';
 import { movePage } from './move.ts';
+import { adoptTemplateUpdate, copyTemplatePolicy } from './policy-templates.ts';
+import { acceptSuggestion, rejectSuggestion } from './suggestion-decisions.ts';
 import {
   dropFavourite,
   handleComment,
@@ -51,6 +61,42 @@ type Run = (
 ) => Promise<{ readonly requestId: string; readonly result: PageResult | PageRefusal } | null>;
 
 const handlers = new Map<string, Run>([
+  [
+    'accept_suggestion',
+    async (db, actor, body, traceId, at) => {
+      const parsed = acceptSuggestionCommandSchema.safeParse(body);
+      if (!parsed.success) return null;
+      const result = await acceptSuggestion(db, actor, parsed.data, traceId, at);
+      return { requestId: parsed.data.requestId, result };
+    },
+  ],
+  [
+    'reject_suggestion',
+    async (db, actor, body, traceId, at) => {
+      const parsed = rejectSuggestionCommandSchema.safeParse(body);
+      if (!parsed.success) return null;
+      const result = await rejectSuggestion(db, actor, parsed.data, traceId, at);
+      return { requestId: parsed.data.requestId, result };
+    },
+  ],
+  [
+    'copy_template_policy',
+    async (db, actor, body, traceId, at) => {
+      const parsed = copyTemplatePolicyCommandSchema.safeParse(body);
+      if (!parsed.success) return null;
+      const result = await copyTemplatePolicy(db, actor, parsed.data, traceId, at);
+      return { requestId: parsed.data.requestId, result };
+    },
+  ],
+  [
+    'adopt_template_update',
+    async (db, actor, body, traceId, at) => {
+      const parsed = adoptTemplateUpdateCommandSchema.safeParse(body);
+      if (!parsed.success) return null;
+      const result = await adoptTemplateUpdate(db, actor, parsed.data, traceId, at);
+      return { requestId: parsed.data.requestId, result };
+    },
+  ],
   [
     'create_page',
     async (db, actor, body, traceId, at) => {
@@ -131,6 +177,25 @@ async function handleNameCategory(c: Context<AppEnv>): Promise<Response> {
   );
 }
 
+function refusedWith(
+  c: Context<AppEnv>,
+  requestId: string,
+  result: PageRefusal | { readonly ok: false; readonly reason: PageRefusal['reason'] },
+): Response {
+  const detail = 'detail' in result ? result.detail : {};
+  if (Object.keys(detail).length === 0) {
+    return reply(c, { status: 'error', requestId, reason: result.reason });
+  }
+  const refused = pageCommandRefusedSchema.parse({
+    status: 'error',
+    requestId,
+    reason: result.reason,
+    detail,
+  });
+  c.set('outcome', result.reason);
+  return c.json(refused, 422);
+}
+
 async function handleCommand(c: Context<AppEnv>): Promise<Response> {
   const run = handlers.get(c.req.param('name') ?? '');
   if (!run) return refuse(c, 'not_wired');
@@ -142,7 +207,7 @@ async function handleCommand(c: Context<AppEnv>): Promise<Response> {
   const outcome = await run(database.db, actor, body, c.get('traceId'), c.get('now'));
   if (outcome === null) return malformed(c, body);
   const { requestId, result } = outcome;
-  if (!result.ok) return reply(c, { status: 'error', requestId, reason: result.reason });
+  if (!result.ok) return refusedWith(c, requestId, result);
   c.set('outcome', 'accepted');
   const saved = {
     status: 'accepted',
@@ -151,6 +216,26 @@ async function handleCommand(c: Context<AppEnv>): Promise<Response> {
     version: result.page.version,
   };
   return c.json(pageCommandAcceptedSchema.parse(saved), 200);
+}
+
+async function confirmFromForm(c: Context<AppEnv>): Promise<Response> {
+  const database = c.get('database');
+  const actor = c.get('principal');
+  const pageId = c.req.param('pageId') ?? '';
+  if (database === null || actor === null) return refuse(c, 'unauthenticated');
+  const posted = await c.req.parseBody();
+  const command = confirmPageCommandSchema.safeParse({
+    command: 'confirm_page',
+    requestId: posted['requestId'],
+    pageId,
+    expectedVersion: Number(posted['expectedVersion']),
+  });
+  if (!command.success) return refuse(c, 'malformed_command');
+  const done = await confirmPage(database.db, actor, command.data, c.get('traceId'), c.get('now'));
+  const mark = done.ok
+    ? `saved=${String(done.page.version)}`
+    : `refused=${encodeURIComponent(done.reason)}`;
+  return c.redirect(`/pages/${encodeURIComponent(pageId)}?${mark}`, 303);
 }
 
 function wikiReads(routes: Hono<AppEnv>): void {
@@ -195,6 +280,7 @@ function wikiScreenRoutes(): Hono<AppEnv> {
   routes.use('/new', formGuard);
   routes.get('/new', wikiNewScreen);
   routes.get('/review', wikiReviewScreen);
+  routes.get('/policies', wikiPoliciesScreen);
   routes.get('/areas/:area', wikiAreaScreen);
   routes.post('/new', createFromForm);
   routes.get('/:category', wikiCategoryScreen);
@@ -209,6 +295,13 @@ function pageScreenRoutes(): Hono<AppEnv> {
   routes.use('/:pageId/manage', formGuard);
   routes.get('/:pageId/manage', pageManageScreen);
   routes.post('/:pageId/manage', managePage);
+  routes.use('/:pageId/confirm', formGuard);
+  routes.post('/:pageId/confirm', confirmFromForm);
+  routes.use('/:pageId/policy', formGuard);
+  routes.post('/:pageId/policy', postPolicyForm);
+  routes.use('/:pageId/suggestions/:suggestionId', formGuard);
+  routes.get('/:pageId/suggestions/:suggestionId', pageSuggestionScreen);
+  routes.post('/:pageId/suggestions/:suggestionId', decideSuggestion);
   routes.use('/:pageId/versions/:version', formGuard);
   routes.get('/:pageId/versions/:version', pageVersionScreen);
   routes.post('/:pageId/versions/:version', restoreVersion);

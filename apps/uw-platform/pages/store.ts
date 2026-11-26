@@ -1,7 +1,6 @@
 import { and, eq, sql } from 'drizzle-orm';
 import {
   isCollectionPageType,
-  pageSchema,
   type CreatePageCommand,
   type ErrorReason,
   type Page,
@@ -11,17 +10,21 @@ import {
 import { can } from '@uw/core/acl';
 import type { Principal } from '@uw/core/principal';
 import { advisoryLock, advisoryLocks } from '@uw/db/advisory-locks';
-import type { Database, Executor, Transaction } from '@uw/db/client';
+import type { Database, Transaction } from '@uw/db/client';
 import { pages, pageVersions } from '@uw/db/schema';
 import { pgConstraint, pgErrorCode } from '@uw/db/errors';
+import { contentRefusal } from './content-checks.ts';
 import { derivedFrontmatter, personaLanding } from './derive.ts';
 import { filedOutsideItsArea } from './filing.ts';
 import { isGatedType, returnsToSuggested } from './gating.ts';
+import { readPage, toPage, type PageRow } from './page-row.ts';
+import { parentRefusal } from './parents.ts';
 import { embedsItself, rebuildLinks, resolveBody } from './links.ts';
 import { provenanceOf, type ExternalWriter } from './provenance.ts';
 import { REPLAY_INDEX, replayOf } from './replay.ts';
-import { withoutWithheld } from './property-rules.ts';
 import { checkFrontmatter } from './validate.ts';
+
+export { readPage, toPage } from './page-row.ts';
 
 export const owns = [
   'pages',
@@ -34,10 +37,12 @@ export const owns = [
   'page_comments',
   'area_homes',
   'page_renders',
+  'page_suggestion_sets',
 ] as const;
 
 export type PageResult =
-  { readonly ok: true; readonly page: Page } | { readonly ok: false; readonly reason: ErrorReason };
+  | { readonly ok: true; readonly page: Page; readonly suggestionId?: string }
+  | { readonly ok: false; readonly reason: ErrorReason };
 
 export type PageRefusal = {
   readonly ok: false;
@@ -49,12 +54,17 @@ export type PageEffects = {
   readonly leftActive: (tx: Transaction, page: Page) => Promise<void>;
 };
 
-type CheckedSave = {
+export type Divert = (
+  tx: Transaction,
+  stored: Page,
+  full: UpdatePageCommand,
+) => Promise<PageResult | PageRefusal> | null;
+
+export type CheckedSave = {
   readonly command: Omit<UpdatePageCommand, 'status'>;
   readonly statusFor: (stored: Page) => PageStatus | PageRefusal;
+  readonly divert?: Divert;
 };
-
-type PageRow = typeof pages.$inferSelect;
 
 const UNIQUE_VIOLATION = '23505';
 const PAGE_PRIMARY_KEY = 'pages_pkey';
@@ -84,34 +94,6 @@ const issueMirror: PageRefusal = {
 
 function activates(type: string, from: PageStatus | null, to: PageStatus): boolean {
   return to === 'active' && from !== 'active' && isGatedType(type);
-}
-
-export function toPage(row: PageRow): Page {
-  return pageSchema.parse({
-    id: row.id,
-    type: row.type,
-    jdArea: row.jdArea,
-    slug: row.slug,
-    title: row.title,
-    parentId: row.parentId,
-    frontmatter: row.frontmatter,
-    bodyMd: row.bodyMd,
-    version: row.version,
-    status: row.status,
-  });
-}
-
-export async function readPage(
-  db: Executor,
-  actor: Principal,
-  pageId: string,
-  at: Date,
-): Promise<Page | null> {
-  const [row] = await db.select().from(pages).where(eq(pages.id, pageId));
-  if (!row) return null;
-  const page = toPage(row);
-  if (!can(actor, 'read', { kind: 'area', area: page.jdArea }, at)) return null;
-  return withoutWithheld(db, actor, page, row.collectionId, at);
 }
 
 export type SnapshotSource = { readonly traceId: string; readonly requestId: string | null };
@@ -211,6 +193,33 @@ function keptFrontmatter(stored: Page, command: CheckedSave['command']): Checked
     : command;
 }
 
+type Checked = Pick<CreatePageCommand, 'parentId' | 'bodyMd' | 'type'> & {
+  readonly frontmatter: Readonly<Record<string, unknown>>;
+};
+
+async function creationRefusal(
+  db: Database,
+  actor: Principal,
+  checked: Checked,
+  at: Date,
+): Promise<PageResult | PageRefusal | null> {
+  if (checked.parentId !== null && (await readPage(db, actor, checked.parentId, at)) === null) {
+    return refused('parent_not_found');
+  }
+  return contentRefusal(db, actor, checked, at);
+}
+
+async function saveRefusal(
+  tx: Transaction,
+  actor: Principal,
+  full: UpdatePageCommand & { readonly type: string },
+  at: Date,
+): Promise<PageResult | PageRefusal | null> {
+  const blocked = await parentRefusal(tx, actor, full, at);
+  if (blocked !== null) return refused(blocked);
+  return contentRefusal(tx, actor, full, at);
+}
+
 export async function createPageAs(
   db: Database,
   actor: Principal,
@@ -231,9 +240,8 @@ export async function createPageAs(
   if (!can(actor, 'write', { kind: 'area', area: command.jdArea }, at)) {
     return refused('not_permitted');
   }
-  if (command.parentId !== null && (await readPage(db, actor, command.parentId, at)) === null) {
-    return refused('parent_not_found');
-  }
+  const unfit = await creationRefusal(db, actor, { ...command, ...check }, at);
+  if (unfit !== null) return unfit;
   try {
     return await db.transaction(async (tx) => {
       const landing = { status: command.status, stored: null, prior: null, writer: request.writer };
@@ -260,34 +268,6 @@ export async function createPageAs(
   } catch (error) {
     return pageConflict(error);
   }
-}
-
-async function ancestorChainReaches(
-  tx: Transaction,
-  parentId: string,
-  pageId: string,
-): Promise<boolean> {
-  const rows = await tx.execute(sql`
-    WITH RECURSIVE chain(id, parent_id) AS (
-      SELECT id, parent_id FROM pages WHERE id = ${parentId}
-      UNION
-      SELECT p.id, p.parent_id FROM pages p JOIN chain c ON p.id = c.parent_id
-    )
-    SELECT 1 FROM chain WHERE id = ${pageId} LIMIT 1`);
-  return rows.length > 0;
-}
-
-export async function parentRefusal(
-  tx: Transaction,
-  actor: Principal,
-  command: Pick<UpdatePageCommand, 'pageId' | 'parentId'>,
-  at: Date,
-): Promise<ErrorReason | null> {
-  if (command.parentId === null) return null;
-  if (command.parentId === command.pageId) return 'parent_cycle';
-  if ((await readPage(tx, actor, command.parentId, at)) === null) return 'parent_not_found';
-  if (await ancestorChainReaches(tx, command.parentId, command.pageId)) return 'parent_cycle';
-  return null;
 }
 
 async function writeUpdate(
@@ -418,9 +398,29 @@ async function updateInTransaction(tx: Transaction, save: Save): Promise<PageRes
   if (typeof chosen !== 'string') return chosen;
   const full = await derivedSave(tx, stored, chosen, keptFrontmatter(stored, command));
   if ('ok' in full) return full;
-  const blocked = await parentRefusal(tx, actor, full, at);
-  if (blocked !== null) return refused(blocked);
+  return finishSave(tx, save, stored, full);
+}
+
+async function finishSave(
+  tx: Transaction,
+  save: Save,
+  stored: Page,
+  full: UpdatePageCommand,
+): Promise<PageResult | PageRefusal> {
+  const unfit = await saveRefusal(tx, save.actor, { ...full, type: stored.type }, save.at);
+  if (unfit !== null) return unfit;
+  const diverted = save.checked.divert?.(tx, stored, full) ?? null;
+  if (diverted !== null) return diverted;
   return withEffects(tx, save, stored, await writeLinked(tx, save, stored, full));
+}
+
+export function updateWithin(
+  tx: Transaction,
+  actor: Principal,
+  checked: CheckedSave,
+  request: { readonly traceId: string; readonly at: Date },
+): Promise<PageResult | PageRefusal> {
+  return updateInTransaction(tx, { actor, checked, ...request });
 }
 
 async function saveChecked(db: Database, save: Save): Promise<PageResult | PageRefusal> {

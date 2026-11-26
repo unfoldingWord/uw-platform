@@ -5,11 +5,11 @@ import type { Principal } from '@uw/core/principal';
 import type { Database, Transaction } from '@uw/db/client';
 import { advisoryLock, advisoryLocks } from '@uw/db/advisory-locks';
 import { pageFiles, pages } from '@uw/db/schema';
+import { parentRefusal } from './parents.ts';
 import { replayOf } from './replay.ts';
 import {
   lockedPage,
   pageConflict,
-  parentRefusal,
   snapshot,
   toPage,
   type PageRefusal,

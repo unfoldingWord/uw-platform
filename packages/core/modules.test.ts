@@ -46,9 +46,15 @@ describe('the module registry', () => {
 });
 
 describe('the module registry claims every page type and verb once', () => {
-  it('declares every registered page type once: knowledge, entry and profile under core, the cascade under strategy, resources, measures and dashboards under charts, the rest under agents', () => {
-    expect(moduleOf('core').page_types).toEqual(['knowledge', 'entry', 'profile']);
-    expect(moduleOf('strategy').page_types).toEqual(['portfolio', 'program', 'project', 'okr']);
+  it('declares every registered page type once: knowledge, entry, profile and policy under core, the cascade and charters under strategy, resources, measures and dashboards under charts, the rest, decisions among them, under agents', () => {
+    expect(moduleOf('core').page_types).toEqual(['knowledge', 'entry', 'profile', 'policy']);
+    expect(moduleOf('strategy').page_types).toEqual([
+      'portfolio',
+      'program',
+      'project',
+      'okr',
+      'charter',
+    ]);
     expect(moduleOf('charts').page_types).toEqual(['resource', 'measure', 'dashboard']);
     expect(
       ['agents', 'core', 'strategy', 'charts'].flatMap((key) => moduleOf(key).page_types),
@@ -70,7 +76,7 @@ describe('the module registry claims every page type and verb once', () => {
     );
   });
 
-  it('ADR 0034 gives charts the measures tables, none of them offline', () => {
+  it('ADR 0036 gives charts the measures tables, none of them offline', () => {
     expect(moduleOf('charts')).toMatchObject({
       tables: ['measure_activations', 'measure_runs', 'observations'],
       depends_on: ['core', 'strategy'],

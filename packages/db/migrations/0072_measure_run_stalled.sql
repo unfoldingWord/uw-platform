@@ -1,2 +1,0 @@
-ALTER TABLE "measure_runs" DROP CONSTRAINT "measure_runs_state_known";--> statement-breakpoint
-ALTER TABLE "measure_runs" ADD CONSTRAINT "measure_runs_state_known" CHECK ("measure_runs"."state" IN ('queued', 'running', 'ok', 'partial', 'failed', 'stalled', 'not_wired'));

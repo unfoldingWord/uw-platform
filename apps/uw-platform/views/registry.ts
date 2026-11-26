@@ -110,6 +110,16 @@ export const screens: readonly ScreenEntry[] = [
     path: '/pages/:pageId/versions/:version',
   },
   {
+    name: 'page-suggestion',
+    file: 'apps/uw-platform/views/screens/page-suggestion.tsx',
+    path: '/pages/:pageId/suggestions/:suggestionId',
+  },
+  {
+    name: 'wiki-policies',
+    file: 'apps/uw-platform/views/screens/wiki-policies.tsx',
+    path: '/wiki/policies',
+  },
+  {
     name: 'credentials',
     file: 'apps/uw-platform/views/screens/credentials.tsx',
     path: '/credentials',

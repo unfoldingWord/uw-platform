@@ -116,8 +116,8 @@ describe('#198 render_pdf in the verb registry', () => {
   });
 });
 
-describe('ADR 0034 the measure verbs in the verb registry', () => {
-  it('ADR 0034 lets an editor save and run a measure, and a viewer read and preview', () => {
+describe('ADR 0036 the measure verbs in the verb registry', () => {
+  it('ADR 0036 lets an editor save and run a measure, and a viewer read and preview', () => {
     const grants = measureVerbs.map((name) => [name, findVerb(name)?.grant?.role]);
     expect(grants).toEqual([
       ['save_measure', 'editor'],
@@ -130,12 +130,12 @@ describe('ADR 0034 the measure verbs in the verb registry', () => {
     ]);
   });
 
-  it('ADR 0034 has no verb that starts a trial, activates or makes a dashboard active', () => {
+  it('ADR 0036 has no verb that starts a trial, activates or makes a dashboard active', () => {
     const words = verbRegistry.filter((entry) => /trial|activat/.test(entry.name));
     expect(words).toEqual([]);
   });
 
-  it('ADR 0034 gives run_measure no field that could name a tool, a command or a host', () => {
+  it('ADR 0036 gives run_measure no field that could name a tool, a command or a host', () => {
     const input = verbIo.run_measure.input;
     const measureId = '00000000-0000-4000-8000-000000000001';
     expect(input.safeParse({ measureId }).success).toBe(true);
@@ -144,7 +144,7 @@ describe('ADR 0034 the measure verbs in the verb registry', () => {
     }
   });
 
-  it('ADR 0034 saves a measure from typed fields, never from frontmatter the agent writes', () => {
+  it('ADR 0036 saves a measure from typed fields, never from frontmatter the agent writes', () => {
     const input = verbIo.save_measure.input;
     const fields = Object.keys(z.toJSONSchema(input).properties ?? {});
     expect(fields).toContain('measure');

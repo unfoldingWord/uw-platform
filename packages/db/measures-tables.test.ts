@@ -126,7 +126,7 @@ const activationRefusals: readonly (readonly [string, Row, string])[] = [
 ];
 
 function rowRules(db: () => AnyDatabase): void {
-  it('ADR 0034 records a trial, an ok and a failed observation, and an activation', async () => {
+  it('ADR 0036 records a trial, an ok and a failed observation, and an activation', async () => {
     await addObservation(db(), '00000000-0000-4000-8000-0000003400e1');
     await addObservation(db(), '00000000-0000-4000-8000-0000003400e2', {
       resource: measure,
@@ -139,29 +139,29 @@ function rowRules(db: () => AnyDatabase): void {
     await addActivation(db());
   });
 
-  it('ADR 0034 keeps one observation per resource per run', async () => {
+  it('ADR 0036 keeps one observation per resource per run', async () => {
     const again = addObservation(db(), '00000000-0000-4000-8000-0000003400e9');
     expect(await refusal(again)).toEqual({ code: '23505', constraint: 'observations_one_per_run' });
   });
 
-  it.each(runRefusals)('ADR 0034 refuses a run with %s', async (_name, change, constraint) => {
+  it.each(runRefusals)('ADR 0036 refuses a run with %s', async (_name, change, constraint) => {
     const id = '00000000-0000-4000-8000-0000003400d9';
     expect(await refusal(addRun(db(), id, change))).toEqual({ code: '23514', constraint });
   });
 
-  it.each(observationRefusals)('ADR 0034 refuses %s', async (_name, change, constraint) => {
+  it.each(observationRefusals)('ADR 0036 refuses %s', async (_name, change, constraint) => {
     const row = { resource: measure, ...change };
     const id = '00000000-0000-4000-8000-0000003400e8';
     expect(await refusal(addObservation(db(), id, row))).toEqual({ code: '23514', constraint });
   });
 
-  it.each(activationRefusals)('ADR 0034 refuses %s', async (_name, change, constraint) => {
+  it.each(activationRefusals)('ADR 0036 refuses %s', async (_name, change, constraint) => {
     await db().execute(sql`DELETE FROM measure_activations`);
     expect(await refusal(addActivation(db(), change))).toEqual({ code: '23514', constraint });
   });
 }
 
-describe('ADR 0034 the measures tables', () => {
+describe('ADR 0036 the measures tables', () => {
   it('declares the activations, runs and observations internal and never offline', () => {
     const declared = [schema.measureActivations, schema.measureRuns, schema.observationRecords];
     expect(declared.map(declarationOf)).toEqual(

@@ -6,7 +6,7 @@ import { categoryCounts, pagesInCategory } from '../../pages/categories.ts';
 import { lapsedCount } from '../../pages/verification.ts';
 import type { Branch } from './frame.tsx';
 import { areasWithin, platformAreas } from './names.ts';
-import { pagePath, wikiAreaPath, wikiPath, wikiReviewPath } from './paths.ts';
+import { pagePath, wikiAreaPath, wikiPath, wikiPoliciesPath, wikiReviewPath } from './paths.ts';
 
 export const PAGES_SHOWN = 25;
 
@@ -118,8 +118,14 @@ function reviewRow(lapsed: number | undefined): readonly NavItem[] {
   return [{ label: 'Needs review', href: wikiReviewPath(), depth: 1, count }];
 }
 
+const policiesRow: NavItem = { label: 'Policies', href: wikiPoliciesPath(), depth: 1 };
+
 export function branchOf(groups: readonly Group[], here: Here): Branch {
-  const items = [...groups.flatMap((group) => groupRows(group, here)), ...reviewRow(here.lapsed)];
+  const items = [
+    ...groups.flatMap((group) => groupRows(group, here)),
+    policiesRow,
+    ...reviewRow(here.lapsed),
+  ];
   return { under: wikiPath(), items };
 }
 

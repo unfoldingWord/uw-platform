@@ -111,7 +111,7 @@ describe('AB-2 a role-gated verb is offered only to a principal whose owner hold
   });
 });
 
-describe('ADR 0034 the measure guides name the failure path and the canonical address', () => {
+describe('ADR 0036 the measure guides name the failure path and the canonical address', () => {
   const tools = toolsFor(agent([editorIn('80-89')]), at);
   const described = (name: string) => tools.find((tool) => tool.name === name)?.description ?? '';
 

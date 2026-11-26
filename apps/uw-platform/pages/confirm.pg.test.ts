@@ -279,6 +279,6 @@ describe.skipIf(!testServer)('a person confirms a learning or a skill', () => {
   it('PE-8 a persona is not confirmed but activated', () =>
     withAppDatabase(personaIsActivatedNotConfirmed));
 
-  it('ADR 0034 a measure or a dashboard is not confirmed but activated by its own command', () =>
+  it('ADR 0036 a measure or a dashboard is not confirmed but activated by its own command', () =>
     withAppDatabase(measuresAreActivatedNotConfirmed));
 });

@@ -22,7 +22,8 @@
     "testing/credentials-scene.ts",
     "testing/measure-world.ts",
     "testing/measure-app.ts",
-    "testing/measure-scene.ts"
+    "testing/measure-scene.ts",
+    "testing/context-rig.ts"
   ],
   "exclude": ["node_modules"]
 }

@@ -5,7 +5,7 @@ import { OUTCOME_TEXT } from './command-form.ts';
 const requestId = 'f0000000-0000-4000-8000-000000000001';
 const measureId = 'a0000000-0000-4000-8000-000000000001';
 
-describe('ADR 0034 the measure controls send the person commands', () => {
+describe('ADR 0036 the measure controls send the person commands', () => {
   it.each(['run_measure_trial', 'run_measure_now'])(
     'builds %s from the page version',
     (command) => {
@@ -55,7 +55,7 @@ describe('ADR 0034 the measure controls send the person commands', () => {
   });
 });
 
-describe('ADR 0034 Activate makes the ticked dashboards active in the same step', () => {
+describe('ADR 0036 Activate makes the ticked dashboards active in the same step', () => {
   it('activates a measure with the dashboards the person ticked', () => {
     const card = 'd0000000-0000-4000-8000-000000000001';
     const board = 'd0000000-0000-4000-8000-000000000002';

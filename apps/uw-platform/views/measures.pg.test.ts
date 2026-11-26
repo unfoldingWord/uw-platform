@@ -319,7 +319,7 @@ async function drawsHandEmbeddedDashboards(db: Database): Promise<void> {
   await embedsInPrint(world);
 }
 
-describe.skipIf(!testServer)('ADR 0034 dashboards, report cards and measures on screen', () => {
+describe.skipIf(!testServer)('ADR 0036 dashboards, report cards and measures on screen', () => {
   it('draws every panel kind for each reader, leaving out what the reader cannot read', () =>
     withAppDatabase(drawsEveryPanel));
 

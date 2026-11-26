@@ -22,7 +22,7 @@ describe('WB-12 the copy check reads the brand beside an address', () => {
     expect(await brandProblems('<p>unfoldingWord</p><i>help@unfoldingword.org</i>')).toEqual([]);
   });
 
-  it('ADR 0034 passes a site address or host shown as data, and still reads the copy beside it', async () => {
+  it('ADR 0036 passes a site address or host shown as data, and still reads the copy beside it', async () => {
     expect(
       await brandProblems('<td>https://www.unfoldingword.org/</td><td>unfoldingword.org</td>'),
     ).toEqual([]);

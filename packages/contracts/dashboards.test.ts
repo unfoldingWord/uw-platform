@@ -16,7 +16,7 @@ const measure = '00000000-0000-4000-8000-0000000034a1';
 const page = '00000000-0000-4000-8000-0000000034b1';
 const requestId = '00000000-0000-4000-8000-0000000034c1';
 
-describe('ADR 0034 a dashboard context selects resources and never grants', () => {
+describe('ADR 0036 a dashboard context selects resources and never grants', () => {
   it.each([
     { kind: 'organization', resource_kind: 'website' },
     { kind: 'page', page_id: page, descendants: true },
@@ -44,7 +44,7 @@ describe('ADR 0034 a dashboard context selects resources and never grants', () =
   });
 });
 
-describe('ADR 0034 a panel is one of six native kinds', () => {
+describe('ADR 0036 a panel is one of six native kinds', () => {
   it.each([
     { kind: 'figure', measure, metric: 'latest_score', title: 'Average score' },
     { kind: 'bars', measure, metric: 'latest_score' },
@@ -72,7 +72,7 @@ describe('ADR 0034 a panel is one of six native kinds', () => {
   });
 });
 
-describe('ADR 0034 the person commands of a measure and a dashboard', () => {
+describe('ADR 0036 the person commands of a measure and a dashboard', () => {
   it('names Run trial, Activate, Run now and dashboard activation as platform commands', () => {
     for (const name of [
       'run_measure_trial',
@@ -85,7 +85,7 @@ describe('ADR 0034 the person commands of a measure and a dashboard', () => {
   });
 });
 
-describe('ADR 0034 the bodies of the measure and dashboard commands', () => {
+describe('ADR 0036 the bodies of the measure and dashboard commands', () => {
   it('runs a trial or a run now at the version the person saw', () => {
     const trial = {
       command: 'run_measure_trial',
@@ -129,7 +129,7 @@ describe('ADR 0034 the bodies of the measure and dashboard commands', () => {
   });
 });
 
-describe('ADR 0034 a measure or dashboard command carries only the fields it names', () => {
+describe('ADR 0036 a measure or dashboard command carries only the fields it names', () => {
   it('refuses a field the command does not name, so a body cannot carry a lock or a status', () => {
     const base = { requestId, expectedVersion: 1 };
     const run = { ...base, command: 'run_measure_now', measureId: measure, lock: 'x==1' };

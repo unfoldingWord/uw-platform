@@ -47,13 +47,23 @@ export type EditOptions = {
   readonly back: string | null;
   readonly refused: string | null;
   readonly typed: Typed | null;
+  readonly missing: readonly string[];
 };
 
-function refusalText(reason: string, title: string): string {
+function listed(names: readonly string[]): string {
+  if (names.length <= 1) return names.join('');
+  return `${names.slice(0, -1).join(', ')} and ${names.at(-1) ?? ''}`;
+}
+
+function refusalText(reason: string, title: string, missing: readonly string[]): string {
   const numbering = jdRefusalText(reason, title);
   if (numbering !== null) return `Not saved: ${numbering}`;
   if (reason === 'stale_version') {
     return 'Someone saved a newer version. Your text is kept below; copy what you need, then reload to edit the newest version.';
+  }
+  if (reason === 'sections_missing') {
+    const heading = missing.length === 1 ? 'heading' : 'headings';
+    return `Not saved: add the ${heading} ${listed(missing)}, each starting with ##, in the order the page type sets.`;
   }
   return `Not saved: ${reasonText(reason)}.`;
 }
@@ -193,7 +203,9 @@ function EditNotes(props: { readonly options: EditOptions; readonly page: Page }
   const title = options.typed?.title ?? page.title;
   return (
     <>
-      {options.refused === null ? null : <Note>{refusalText(options.refused, title)}</Note>}
+      {options.refused === null ? null : (
+        <Note>{refusalText(options.refused, title, options.missing)}</Note>
+      )}
       {options.asText ? (
         <Note>Text you type here is kept only until you leave. Save before going back.</Note>
       ) : null}
@@ -248,7 +260,9 @@ function readOnlyScreen(c: Context<AppEnv>, shown: ShownPage, options: EditOptio
     c,
     pageSpec(shown, pageNames.pageEdit),
     <DocumentShape head={{ eyebrow: markOf(page), title: page.title }}>
-      {options.refused === null ? null : <Note>{refusalText(options.refused, page.title)}</Note>}
+      {options.refused === null ? null : (
+        <Note>{refusalText(options.refused, page.title, options.missing)}</Note>
+      )}
       <ReadOnly page={page} read={read} />
     </DocumentShape>,
   );
@@ -281,5 +295,11 @@ export async function pageEditScreen(c: Context<AppEnv>): Promise<Response> {
   if (read.status !== 'accepted') return notFound(c);
   const back = backOf(c.req.query('back'));
   const asText = c.req.query('as') === 'text';
-  return renderPageEdit(c, screen, pageId, { asText, back, refused: null, typed: null });
+  return renderPageEdit(c, screen, pageId, {
+    asText,
+    back,
+    refused: null,
+    typed: null,
+    missing: [],
+  });
 }
