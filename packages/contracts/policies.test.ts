@@ -57,6 +57,25 @@ describe('PO-4 a charter follows the NISO template', () => {
   });
 });
 
+describe('PO-4 a heading inside a fenced example is not a section', () => {
+  it('closes a fence only on the same mark at least as long as the one that opened it', () => {
+    const example = [
+      '~~~~',
+      '~~~',
+      '## Need',
+      '## Idea',
+      '## Strategy',
+      '## Outcomes',
+      '## Risks',
+      '## Roadmap',
+      '~~~~',
+    ].join('\n');
+    expect(charterSections(example).missing).toHaveLength(6);
+    expect(charterSections(`\`\`\`\n~~~\n\`\`\`\n${niso}`).missing).toEqual([]);
+    expect(charterSections(`   ## Need\n${niso.replace('## Need', '')}`).missing).toEqual([]);
+  });
+});
+
 describe('PO-1 a policy names how it binds and when it holds', () => {
   it('defaults to the whole organization, superseding nothing, with no end', () => {
     expect(

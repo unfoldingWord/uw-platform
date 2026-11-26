@@ -4,6 +4,7 @@ import { can } from '@uw/core/acl';
 import type { Principal } from '@uw/core/principal';
 import type { Database, Transaction } from '@uw/db/client';
 import { pages } from '@uw/db/schema';
+import { contentRefusal } from './content-checks.ts';
 import { lockedPage, snapshot, toPage, type PageRefusal, type PageResult } from './store.ts';
 
 type Confirmation = {
@@ -40,6 +41,8 @@ async function confirmIn(
   if (!can(actor, 'write', { kind: 'area', area: stored.jdArea }, at))
     return refused('not_permitted');
   if (stored.status !== 'suggested') return refused('not_permitted', { why: 'not_suggested' });
+  const unfit = await contentRefusal(tx, actor, stored, at);
+  if (unfit !== null) return unfit;
   const [row] = await tx
     .update(pages)
     .set({ status: 'active', version: sql`${pages.version} + 1`, updatedAt: sql`now()` })

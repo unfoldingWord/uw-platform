@@ -10,6 +10,7 @@ import {
   nameCategoryCommandSchema,
   setAreaHomeCommandSchema,
   pageCommandAcceptedSchema,
+  pageCommandRefusedSchema,
   updatePageCommandSchema,
   type CreatePageCommand,
   type UpdatePageCommand,
@@ -171,6 +172,25 @@ async function handleNameCategory(c: Context<AppEnv>): Promise<Response> {
   );
 }
 
+function refusedWith(
+  c: Context<AppEnv>,
+  requestId: string,
+  result: PageRefusal | { readonly ok: false; readonly reason: PageRefusal['reason'] },
+): Response {
+  const detail = 'detail' in result ? result.detail : {};
+  if (Object.keys(detail).length === 0) {
+    return reply(c, { status: 'error', requestId, reason: result.reason });
+  }
+  const refused = pageCommandRefusedSchema.parse({
+    status: 'error',
+    requestId,
+    reason: result.reason,
+    detail,
+  });
+  c.set('outcome', result.reason);
+  return c.json(refused, 422);
+}
+
 async function handleCommand(c: Context<AppEnv>): Promise<Response> {
   const run = handlers.get(c.req.param('name') ?? '');
   if (!run) return refuse(c, 'not_wired');
@@ -182,7 +202,7 @@ async function handleCommand(c: Context<AppEnv>): Promise<Response> {
   const outcome = await run(database.db, actor, body, c.get('traceId'), c.get('now'));
   if (outcome === null) return malformed(c, body);
   const { requestId, result } = outcome;
-  if (!result.ok) return reply(c, { status: 'error', requestId, reason: result.reason });
+  if (!result.ok) return refusedWith(c, requestId, result);
   c.set('outcome', 'accepted');
   const saved = {
     status: 'accepted',

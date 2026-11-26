@@ -2,7 +2,13 @@ import { describe, expect, it } from 'vitest';
 import { principalSchema, type Page, type PageStatus, type Principal } from '@uw/contracts';
 import type { Database } from '@uw/db/client';
 import { cascadePlacements, pageLinks } from '@uw/db/schema';
-import { seedGrant, seedPage, seedPerson, type SeedPage } from '@uw/db/test-seed';
+import {
+  rewritePageStatus,
+  seedGrant,
+  seedPage,
+  seedPerson,
+  type SeedPage,
+} from '@uw/db/test-seed';
 import { personOn } from '../testing/kernel.ts';
 import { testServer, withAppDatabase } from '../testing/postgres.ts';
 import { writePageAsAgent } from './agent-write.ts';
@@ -240,7 +246,28 @@ async function agentSuggestsAndPersonConfirms(db: Database): Promise<void> {
   expect(held.ok && held.suggestionId).toEqual(expect.any(String));
 }
 
+async function confirmRechecksTheTarget(db: Database): Promise<void> {
+  const person = await editor(db);
+  await seedCascade(db);
+  const made = await create(db, person, { ...pointedAt(NODE.project), status: 'suggested' });
+  if (!made.ok) throw new Error(made.reason);
+  await rewritePageStatus(db, NODE.project, 'retired');
+  const confirm = {
+    command: 'confirm_page' as const,
+    requestId: crypto.randomUUID(),
+    pageId: made.page.id,
+    expectedVersion: made.page.version,
+  };
+  expect(await confirmPage(db, person, confirm, crypto.randomUUID(), ON)).toMatchObject({
+    ok: false,
+    reason: 'applies_to_not_found',
+  });
+}
+
 describe.skipIf(!testServer)('PO-1 policy and charter pages are checked on save', () => {
+  it('refuses to confirm a policy whose target was retired while it waited', () =>
+    withAppDatabase(confirmRechecksTheTarget));
+
   it('refuses a policy that applies to a page that is not a node or a product', () =>
     withAppDatabase(targetMustBeANodeOrProduct));
 

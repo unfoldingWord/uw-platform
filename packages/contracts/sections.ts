@@ -3,17 +3,38 @@ export type Sections<T extends string> = {
   readonly missing: readonly T[];
 };
 
-const FENCE = /^\s*(```|~~~)/;
-const SECTION_HEADING = /^##\s+(.+?)\s*#*\s*$/;
+const OPENING_FENCE = /^ {0,3}(`{3,}|~{3,})/;
+const SECTION_HEADING = /^ {0,3}##\s+(.+?)\s*#*\s*$/;
 
 type Heading = { readonly title: string; readonly line: number };
 
+type Fence = { readonly mark: string; readonly length: number };
+
+const CLOSING_FENCE = /^ {0,3}(`{3,}|~{3,})\s*$/;
+
+function closes(line: string, fence: Fence): boolean {
+  const run = CLOSING_FENCE.exec(line)?.[1];
+  return run !== undefined && run.charAt(0) === fence.mark && run.length >= fence.length;
+}
+
+function opens(line: string): Fence | null {
+  const run = OPENING_FENCE.exec(line)?.[1];
+  if (run === undefined) return null;
+  const mark = run.charAt(0);
+  if (mark === '`' && line.slice(line.indexOf(run) + run.length).includes('`')) return null;
+  return { mark, length: run.length };
+}
+
 function headingsOf(lines: readonly string[]): readonly Heading[] {
   const found: Heading[] = [];
-  let fenced = false;
+  let fence: Fence | null = null;
   lines.forEach((line, index) => {
-    if (FENCE.test(line)) fenced = !fenced;
-    const match = fenced ? null : SECTION_HEADING.exec(line);
+    if (fence !== null) {
+      if (closes(line, fence)) fence = null;
+      return;
+    }
+    fence = opens(line);
+    const match = fence === null ? SECTION_HEADING.exec(line) : null;
     if (match?.[1] !== undefined) found.push({ title: match[1].toLowerCase(), line: index });
   });
   return found;
