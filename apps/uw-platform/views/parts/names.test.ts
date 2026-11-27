@@ -21,6 +21,7 @@ const prototypeSidebar = [
   'Strategic Cascade',
   'Meetings',
   'JD Crosswalk',
+  'Measures & Dashboards',
   'Internal Operations & Administration',
   'My Assistant',
   'Finance',

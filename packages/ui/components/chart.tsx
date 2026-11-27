@@ -15,7 +15,8 @@ const tokenClasses: Readonly<Record<string, { readonly fill: string; readonly st
 
 const tokenClassFor = new Map(Object.entries(tokenClasses));
 
-const tokenColour = (role: 'accent' | 'text-2' | 'text-3' | 'line'): string => `token-${role}`;
+export const tokenColour = (role: 'accent' | 'text-2' | 'text-3' | 'line'): string =>
+  `token-${role}`;
 
 const styleElement = /<style\b[^>]*>[\s\S]*?<\/style>/g;
 const tag = /<([a-zA-Z]+)\b([^>]*?)(\/?)>/g;
@@ -65,7 +66,7 @@ function escapeAttribute(text: string): string {
   return text.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
 }
 
-function renderSvg(option: EChartsCoreOption, width: number, height: number): string {
+export function renderSvg(option: EChartsCoreOption, width: number, height: number): string {
   const chart = init(null, null, { renderer: 'svg', ssr: true, width, height });
   chart.setOption(option);
   const svg = chart.renderToSVGString();

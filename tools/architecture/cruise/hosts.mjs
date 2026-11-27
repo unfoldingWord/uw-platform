@@ -75,7 +75,7 @@ export const hostRules = [
   {
     name: 'persona-activation-only-in-the-person-surface',
     comment:
-      'Only an admin makes a persona active, so the kernel and its package index carry no activation: the activation module is built only by the person activation, the app test helpers, the simulator and tests (S10-R18). The one exception is the assistant provisioner activation, which flips only the suggested persona of a personal assistant harness, only for agent:assistant-provisioner (ADR 0040, docs/exceptions.md).',
+      'Only an admin makes a persona active, so the kernel and its package index carry no activation: the activation module is built only by the person activation, the app test helpers, the simulator and tests (S10-R18). The one exception is the assistant provisioner activation, which flips only the suggested persona of a personal assistant harness, only for agent:assistant-provisioner (ADR 0041, docs/exceptions.md).',
     severity: 'error',
     from: {
       pathNot: [
@@ -140,6 +140,22 @@ export const hostRules = [
     severity: 'error',
     from: { pathNot: ['^apps/uw-platform/pages/routes\\.ts$', testFile] },
     to: { path: '^apps/uw-platform/pages/confirm\\.ts$' },
+  },
+  {
+    name: 'measure-activation-only-from-measure-routes',
+    comment:
+      'Only a person runs the trial of a measure or makes a measure or a dashboard active, so only the measure command routes, the app test helpers and tests import the trial and the activation, and no agent host, cron or Workflow reaches them.',
+    severity: 'error',
+    from: { pathNot: ['^apps/uw-platform/measures/routes\\.ts$', appTesting, testFile] },
+    to: { path: '^apps/uw-platform/measures/(trial|activation)\\.ts$' },
+  },
+  {
+    name: 'gated-flip-only-from-measure-activation',
+    comment:
+      'The flip that turns a suggested measure or dashboard active is reached only from the measure activation and tests, so no verb or agent page writer makes a gated page active.',
+    severity: 'error',
+    from: { pathNot: ['^apps/uw-platform/measures/activation\\.ts$', testFile] },
+    to: { path: '^apps/uw-platform/pages/gated-flip\\.ts$' },
   },
   {
     name: 'suggestion-decisions-only-from-page-routes',

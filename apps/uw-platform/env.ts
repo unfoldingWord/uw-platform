@@ -86,6 +86,44 @@ export type PdfExportStart = { readonly exportId: string; readonly traceId: stri
 export type PdfExportBinding = {
   create(options: { readonly id: string; readonly params: PdfExportStart }): Promise<unknown>;
 };
+type MeasureRunStart = { readonly runId: string; readonly traceId: string };
+type MeasureRunBinding = {
+  create(options: { readonly id: string; readonly params: MeasureRunStart }): Promise<unknown>;
+};
+type MeasureContainerJob = {
+  readonly runId: string;
+  readonly runtime: 'uvx';
+  readonly packageSpec: string;
+  readonly lock: string | null;
+  readonly command: readonly string[];
+  readonly address: string;
+  readonly timeoutMs: number;
+  readonly outputLimitBytes: number;
+};
+type MeasureContainerResult = {
+  readonly exitCode: number | null;
+  readonly timedOut: boolean;
+  readonly stdout: string;
+  readonly stderrTail: string;
+  readonly refusedHosts: readonly string[];
+  readonly lock: string;
+  readonly toolVersion: string | null;
+};
+type MeasureContainerInstall = Pick<
+  MeasureContainerJob,
+  'runId' | 'runtime' | 'packageSpec' | 'lock'
+>;
+type MeasureContainerStub = {
+  egressFetch(request: Request): Promise<Response>;
+  install(job: MeasureContainerInstall): Promise<MeasureContainerResult>;
+  measure(job: MeasureContainerJob): Promise<MeasureContainerResult>;
+  release(): Promise<void>;
+};
+export type MeasureContainerNamespace = {
+  idFromName(name: string): unknown;
+  idFromString(id: string): unknown;
+  get(id: unknown): MeasureContainerStub;
+};
 
 export type AssistantTurnStart = { readonly requestId: string; readonly traceId: string };
 export type AssistantTurnBinding = {
@@ -141,6 +179,8 @@ export type Bindings = {
   HARNESS_RUN?: WorkflowBinding;
   HYPERDRIVE?: HyperdriveBinding;
   INGEST_DLQ?: QueueProducer<unknown>;
+  MEASURE_RUN?: MeasureRunBinding;
+  MEASURE_SANDBOX?: MeasureContainerNamespace;
   OPENAI_API_KEY?: string;
   PAGE_DRAFT?: DraftNamespace;
   PDF_EXPORT?: PdfExportBinding;

@@ -1,3 +1,4 @@
+import { entityMeasures } from '../../measures/entity-measures.ts';
 import { contextPages } from '../../pages/context.ts';
 import { contextDecisions } from '../../pages/decisions.ts';
 import { contextPolicies, policyChainFor } from '../../pages/policies.ts';
@@ -43,6 +44,7 @@ export const resolveContext = gatedHandler({
     const chain = await policyChainFor(db, scope);
     const policies = await contextPolicies(db, principal, chain, at, invalid('policy'));
     const decisions = await contextDecisions(db, principal, chain, at, invalid('decision'));
+    const measures = await entityMeasures({ db, actor: principal, at }, scope.itemPageId);
     return {
       status: 'accepted',
       output: {
@@ -51,6 +53,7 @@ export const resolveContext = gatedHandler({
         learnings: [...pages.learnings],
         policies: [...policies],
         decisions: [...decisions],
+        measures: [...measures],
       },
     };
   },

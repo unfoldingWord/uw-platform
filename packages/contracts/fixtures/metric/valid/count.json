@@ -1,0 +1,10 @@
+{
+  "key": "meeting",
+  "name": "Meeting the target",
+  "value": "score",
+  "rule": "count_meeting",
+  "condition": {
+    "op": "at_least",
+    "threshold": 90
+  }
+}

@@ -33,8 +33,8 @@ describe('PA-10 mail to my assistant', () => {
     expect(declined.safeParse({ why: 'spam' }).success).toBe(false);
   });
 
-  it('was published at contract version 14.22.0 and is kept in every later version', () => {
-    const published = lock.versions.find((entry) => entry.version === '14.22.0');
+  it('was published at contract version 14.23.0 and is kept in every later version', () => {
+    const published = lock.versions.find((entry) => entry.version === '14.23.0');
     expect(published?.sets['assistant-mail-refusal']).toEqual([
       ...assistantMailRefusalSchema.options,
     ]);

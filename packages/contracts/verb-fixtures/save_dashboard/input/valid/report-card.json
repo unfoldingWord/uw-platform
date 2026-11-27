@@ -1,0 +1,19 @@
+{
+  "dashboardId": "00000000-0000-4000-8000-0000000034d1",
+  "expectedVersion": 3,
+  "jdArea": "30-39",
+  "title": "GEO Report Card",
+  "slug": "geo-report-card",
+  "intro": "",
+  "context": {
+    "kind": "host",
+    "descendants": true
+  },
+  "panels": [
+    {
+      "kind": "list",
+      "measure": "00000000-0000-4000-8000-0000000034a1",
+      "value": "fixes"
+    }
+  ]
+}

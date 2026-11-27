@@ -13,6 +13,7 @@ import { seedAreaHome } from '../../pages/area-homes.ts';
 import { writeView } from '../view-rows.ts';
 import { dashboardHome } from './dashboard.ts';
 import { directoryCollection } from './directory.ts';
+import { resourcesCollection } from './resources.ts';
 import type { BuiltIn } from './seed-types.ts';
 import {
   okrCollection,
@@ -31,6 +32,7 @@ export const builtIns: readonly BuiltIn[] = [
   projectCollection,
   tasksCollection,
   directoryCollection,
+  resourcesCollection,
 ];
 
 function builtInDefinitions(): readonly CollectionDefinition[] {

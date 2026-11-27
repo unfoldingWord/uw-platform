@@ -42,6 +42,7 @@ export const pageNames = {
   crosswalk: 'JD Crosswalk',
   person: 'Person',
   myAssistant: 'My Assistant',
+  measures: 'Measures & Dashboards',
 } as const;
 
 const smallWord = /^[a-z]/;
@@ -75,7 +76,8 @@ export type BuiltModule =
   | 'tasks'
   | 'directory'
   | 'crosswalk'
-  | 'myAssistant';
+  | 'myAssistant'
+  | 'measures';
 export type PlatformArea = {
   readonly code: string;
   readonly name: string;
@@ -94,6 +96,7 @@ export const platformAreas: readonly PlatformArea[] = [
       { label: 'Strategic Cascade', icon: 'layer-group', built: 'collections' },
       { label: 'Meetings', icon: 'calendar' },
       { label: 'JD Crosswalk', icon: 'table-cells', built: 'crosswalk' },
+      { label: 'Measures & Dashboards', icon: 'chart-column', built: 'measures' },
     ],
   },
   {
@@ -162,6 +165,7 @@ export const moduleCodes: Readonly<Record<BuiltModule, string>> = {
   directory: '00.05',
   crosswalk: '00',
   myAssistant: '10',
+  measures: '00',
 };
 
 export const noModules = 'No modules enabled for this area';

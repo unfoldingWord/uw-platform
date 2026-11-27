@@ -1,0 +1,7 @@
+{
+  "key": "latest_score",
+  "name": "GEO score",
+  "value": "score",
+  "rule": "latest",
+  "target": 90
+}

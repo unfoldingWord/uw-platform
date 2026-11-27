@@ -2,6 +2,7 @@ import type { Tool } from '@modelcontextprotocol/sdk/types.js';
 import { z } from 'zod';
 import {
   isForbiddenVerbName,
+  verbGuides,
   verbRegistry,
   type Principal,
   type VerbDefinition,
@@ -28,10 +29,15 @@ function objectSchema(verb: string, schema: Record<string, unknown>): ObjectSche
   return { ...schema, type: 'object' };
 }
 
+function describedVerb(verb: VerbDefinition): string {
+  const guide = verbGuides[verb.name];
+  return guide === undefined ? verb.summary : `${verb.summary}\n\n${guide}`;
+}
+
 function toolOf(verb: VerbDefinition): Tool {
   return {
     name: verb.name,
-    description: verb.summary,
+    description: describedVerb(verb),
     inputSchema: objectSchema(verb.name, z.toJSONSchema(verb.input, { io: 'input' })),
     outputSchema: objectSchema(verb.name, z.toJSONSchema(verb.output, { io: 'output' })),
   };

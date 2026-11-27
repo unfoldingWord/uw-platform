@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatCount, formatMoney, parseMoney } from './money.ts';
+import { formatCount, formatFigure, formatMoney, parseMoney } from './money.ts';
 
 describe('WB-11 money is formatted once from integer minor units', () => {
   it('WB-11 formats US dollars with grouping and two decimals', () => {
@@ -77,5 +77,14 @@ describe('PA-19 a decimal price read as minor units', () => {
       expect(parseMoney(amount, currency)).toBeNull();
     }
     expect(parseMoney('842.100', 'USD')).toEqual({ amountMinor: 84_210, currency: 'USD' });
+  });
+});
+
+describe('ADR 0036 formatFigure', () => {
+  it('shows a measured figure with at most one decimal and grouped digits', () => {
+    expect(formatFigure(66.6667)).toBe('66.7');
+    expect(formatFigure(80)).toBe('80');
+    expect(formatFigure(-2.25)).toBe('-2.3');
+    expect(formatFigure(12345.6)).toBe('12,345.6');
   });
 });

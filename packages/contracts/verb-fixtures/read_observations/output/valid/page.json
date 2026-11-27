@@ -1,0 +1,19 @@
+{
+  "observations": [
+    {
+      "observationId": "00000000-0000-4000-8000-0000000034e1",
+      "runId": "00000000-0000-4000-8000-0000000034e1",
+      "runKind": "scheduled",
+      "resourceId": "00000000-0000-4000-8000-0000000034f1",
+      "measureVersion": 2,
+      "observedAt": "2026-11-25T09:00:00.000Z",
+      "toolVersion": "4.19.10",
+      "outcome": "ok",
+      "reason": null,
+      "values": {
+        "score": 84
+      }
+    }
+  ],
+  "nextCursor": null
+}

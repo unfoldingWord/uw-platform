@@ -17,6 +17,7 @@ import { provisionDue } from '../assistants/provisioning/provisioner.ts';
 import type { ProvisionerDeps } from '../assistants/provisioning/types.ts';
 import { sweepAssistantMail } from './assistant-mail.ts';
 import { runDelegatedExits } from './delegated-exits.ts';
+import { startDueMeasures } from './measures.ts';
 import { cronLogger, type CronDeps, type CronJob } from './job.ts';
 
 const SWEEP_LIMIT = 200;
@@ -242,6 +243,9 @@ async function guardedSteps(minute: Minute): Promise<void> {
   await guarded(minute, 'assistant-provisioning', provision);
   await guarded(minute, 'assistant-mail', mail);
   await guarded(minute, 'silence', silence);
+  await guarded(minute, 'measures', (each) =>
+    startDueMeasures(each.database, each.env, each.deps, each.logger),
+  );
 }
 
 async function minuteWith(

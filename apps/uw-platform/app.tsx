@@ -16,6 +16,7 @@ import { platformDeps, type AppDeps, type AppEnv } from './deps.ts';
 import { withFrameHealth } from './health/frame-health.ts';
 import { healthScreenRoutes, probeRoutes } from './health/routes.tsx';
 import { mcpRoutes } from './mcp/routes.ts';
+import { measureRoutes, measureScreenRoutes } from './measures/routes.ts';
 import { pushRoutes } from './notify/routes.ts';
 import { observe, serverTiming } from './observe.ts';
 import { mountCollections } from './collections/routes.ts';
@@ -30,6 +31,8 @@ function mountContent(app: Hono<AppEnv>): void {
   mountCollections(app);
   mountCrosswalk(app);
   mountExports(app);
+  app.route('/api/measures', measureRoutes());
+  app.route('/measures', measureScreenRoutes());
 }
 
 function mountPersonCommands(app: Hono<AppEnv>, deps: AppDeps): void {

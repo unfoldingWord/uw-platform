@@ -3,6 +3,7 @@ import { expireAssistantProposalsJob } from './assistant-proposal-expiry.ts';
 import { redactAssistantHistoryJob } from './assistant-retention.ts';
 import { sweepGitHubJob } from './github-sweep.ts';
 import type { CronJob } from './job.ts';
+import { expireMeasureRawJob } from './measures.ts';
 import { minuteJob } from './minute.ts';
 import { expirePdfExportsJob } from './pdf-expiry.ts';
 import { pruneRequestsJob } from './request-retention.ts';
@@ -13,6 +14,7 @@ export const MINUTE_CRON = '* * * * *';
 const nightlyJob: CronJob = async (env, deps) => {
   await pruneRequestsJob(env, deps);
   await expirePdfExportsJob(env, deps);
+  await expireMeasureRawJob(env, deps);
   await sweepGitHubJob(env, deps);
   await deleteTurnedOffAssistantsJob(env, deps);
   await redactAssistantHistoryJob(env, deps);

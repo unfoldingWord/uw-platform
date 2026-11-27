@@ -18,7 +18,8 @@ import type { AppEnv } from '../../deps.ts';
 import { pagesInCategory } from '../../pages/categories.ts';
 import { copyPage } from '../../pages/copy.ts';
 import { movePage } from '../../pages/move.ts';
-import { updatePage, type PageRefusal, type PageResult } from '../../pages/store.ts';
+import { measurePauses } from '../../measures/activations.ts';
+import { updatePageWith, type PageRefusal, type PageResult } from '../../pages/store.ts';
 import { renderScreen, screenKernel, screenRefusal, type ScreenKernel } from '../parts/frame.tsx';
 import { pageNames } from '../parts/names.ts';
 import { pageLink, pageScreenSpec, shownPage, type ShownPage } from '../parts/page-shown.ts';
@@ -265,7 +266,11 @@ async function statusSet(c: Context<AppEnv>, managed: Managed, posted: Posted): 
   });
   if (!command.success || database === null) return malformed;
   const { actor, traceId } = managed.screen.caller;
-  return updatePage(database.db, actor, command.data, traceId, managed.screen.at);
+  return updatePageWith(database.db, actor, command.data, {
+    traceId,
+    at: managed.screen.at,
+    effects: measurePauses,
+  });
 }
 
 const DAY_MS = 86_400_000;
@@ -292,7 +297,11 @@ async function verified(c: Context<AppEnv>, managed: Managed, posted: Posted): P
     status: page.status,
   });
   if (!command.success) return malformed;
-  return updatePage(database.db, actor, command.data, traceId, managed.screen.at);
+  return updatePageWith(database.db, actor, command.data, {
+    traceId,
+    at: managed.screen.at,
+    effects: measurePauses,
+  });
 }
 
 async function copied(c: Context<AppEnv>, managed: Managed, posted: Posted): Promise<Outcome> {

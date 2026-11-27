@@ -1,7 +1,11 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
-const images = ['infra/containers/claude-code/Dockerfile', 'infra/containers/codex/Dockerfile'];
+const images = [
+  'infra/containers/claude-code/Dockerfile',
+  'infra/containers/codex/Dockerfile',
+  'infra/containers/measure/Dockerfile',
+];
 const secretName = /KEY|TOKEN|SECRET|OAUTH|AUTH/i;
 const instruction = /^(?<name>[A-Z]+)\s+(?<rest>.*)$/;
 const rootUser = /^(?:root|0)(?::|$)/;

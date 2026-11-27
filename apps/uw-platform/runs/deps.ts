@@ -16,6 +16,7 @@ import { reviewerAppsOf } from '../github/reviewer-apps.ts';
 import { platformGitHubTransport } from '../github/transport.ts';
 import { directMessagesOf } from '../assistants/direct-messages.ts';
 import { hubWiring, platformKernel, runWiring } from '../kernel.ts';
+import type { MeasureRunBinding } from '../measures/sandbox.ts';
 import { systemClock } from '../ports/clock.ts';
 import { hubOf } from '../ports/hub.ts';
 import { notifierOf } from '../ports/notifier.ts';
@@ -48,6 +49,7 @@ export type RunDeps = {
   readonly files: FileStore | null;
   readonly pdf?: PdfRenderer | null;
   readonly pdfExport?: PdfExportBinding | null;
+  readonly measureRun?: MeasureRunBinding | null;
   readonly origin?: string;
 };
 
@@ -131,6 +133,7 @@ export function runDepsOf(env: Bindings, traceId: string): OpenedRunDeps {
     files: env.FILES === undefined ? null : bucketFiles(env.FILES),
     pdf: pdfRendererOf(env, logger),
     pdfExport: env.PDF_EXPORT ?? null,
+    measureRun: env.MEASURE_RUN ?? null,
     origin: env.APP_ORIGIN ?? '',
   };
   return { deps, release: () => database.release() };

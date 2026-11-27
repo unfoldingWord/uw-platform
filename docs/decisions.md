@@ -37,7 +37,7 @@ Why the unfoldingWord Platform is shaped the way it is, and what was rejected on
 
 *2026-09-29.*
 
-**Decision.** A persona touches the platform through one remote MCP server that serves exactly the verb registry published by `packages/contracts`. There is no verb for approving, merging, deploying, publishing or advancing past a human gate, for any agent identity, on any host. The one effect an agent causes with no person deciding is an assistant's direct effect, inside the closed set of 0036, run at the end of a turn and never by a verb. A persona is configuration over the verb registry and the run-shape registry; it selects from both and adds to neither. A new verb, run shape or engine is reviewed code.
+**Decision.** A persona touches the platform through one remote MCP server that serves exactly the verb registry published by `packages/contracts`. There is no verb for approving, merging, deploying, publishing or advancing past a human gate, for any agent identity, on any host. The one effect an agent causes with no person deciding is an assistant's direct effect, inside the closed set of 0037, run at the end of a turn and never by a verb. A persona is configuration over the verb registry and the run-shape registry; it selects from both and adds to neither. A new verb, run shape or engine is reviewed code.
 
 **Why.** The gate is enforced by the absence of a route, not by a prompt or a permission check a prompt could talk around. A verb that does not exist cannot be granted.
 
@@ -45,7 +45,7 @@ Why the unfoldingWord Platform is shaped the way it is, and what was rejected on
 
 **Consequences.** The served tool list is tested equal to the registry and free of the forbidden names (`FORBIDDEN_VERBS` in `packages/contracts/verb-names.ts`). Activating a persona whose `requires_tools` names an absent verb fails visibly and opens a card on the software workflow. Both hosts see the same tools, asserted in CI.
 
-**Changes / changed by.** 0010 adds no verb but changes what the kernel does with `submit_to_gate` at a merge Ship stage when the claim carries a live merge delegation. 0020 and 0028 each confirm the rule for a new capability (no verb takes a credential reference; `render_pdf` makes a file and cannot send it). 0036 lets the registry hold assistant verbs that draft effects which take effect without a person, only within its closed low-risk set; no gate verb is added.
+**Changes / changed by.** 0010 adds no verb but changes what the kernel does with `submit_to_gate` at a merge Ship stage when the claim carries a live merge delegation. 0020 and 0028 each confirm the rule for a new capability (no verb takes a credential reference; `render_pdf` makes a file and cannot send it). 0037 lets the registry hold assistant verbs that draft effects which take effect without a person, only within its closed low-risk set; no gate verb is added.
 
 ## 0003 The Ship gate is a Postgres invariant, and the ship rule is a pure function over facts
 
@@ -62,7 +62,7 @@ Why the unfoldingWord Platform is shaped the way it is, and what was rejected on
 
 **Consequences.** Stage rows are edited only by an admin command, never through a page. A property test walks every template's paths, loop edges included, and fails if any reaches an external effect without a human gate. Two tests stay on real Postgres: the migration test that tries to insert an effect stage with a `checks` exit, and the race test in both orders.
 
-**Changes / changed by.** 0010 adds the delegated Ship exit: the "approver is a human" check is unchanged, new checks bind an agent actor to a merge delegation, and the rule's input gains the delegation's tier and the protected paths. 0036 leaves the Ship constraint untouched and adds a twin: a check constraint on `assistant_effects` holds an assistant's effects done with no person deciding to its closed low-risk set.
+**Changes / changed by.** 0010 adds the delegated Ship exit: the "approver is a human" check is unchanged, new checks bind an agent actor to a merge delegation, and the rule's input gains the delegation's tier and the protected paths. 0037 leaves the Ship constraint untouched and adds a twin: a check constraint on `assistant_effects` holds an assistant's effects done with no person deciding to its closed low-risk set.
 
 ## 0004 Events are the source of truth; item state is a fold, and replay equals record
 
@@ -82,7 +82,7 @@ Why the unfoldingWord Platform is shaped the way it is, and what was rejected on
 
 *2026-09-29.*
 
-**Decision.** An unattended beat (a scheduled Cloudflare Workflow, or a person's routine on their own machine) carries no one's authority. It carries a delegation: a row in which a person holding `admin` on the workflow's area grants a persona one capability word for a bounded time, revocable, with a required expiry that defaults to ninety days. The one other grantor is a personal harness's own person, who alone grants `assist` there (0036). Every unattended claim, on either host, presents a live delegation or is refused `delegation_required`. At every beat the kernel checks that the delegation is unexpired, unrevoked and that the grantor still holds `admin` (for `assist`, that the grantor is still the harness's person and still holds a live grant); any failing stops the loop and writes `delegation_lapsed`. The identity on every event names the host and the delegation. A routine is bound to one delegation: its machine login presents that delegation or is refused, a paused routine is refused, and revoking the routine deletes its Cloudflare service token.
+**Decision.** An unattended beat (a scheduled Cloudflare Workflow, or a person's routine on their own machine) carries no one's authority. It carries a delegation: a row in which a person holding `admin` on the workflow's area grants a persona one capability word for a bounded time, revocable, with a required expiry that defaults to ninety days. The one other grantor is a personal harness's own person, who alone grants `assist` there (0037). Every unattended claim, on either host, presents a live delegation or is refused `delegation_required`. At every beat the kernel checks that the delegation is unexpired, unrevoked and that the grantor still holds `admin` (for `assist`, that the grantor is still the harness's person and still holds a live grant); any failing stops the loop and writes `delegation_lapsed`. The identity on every event names the host and the delegation. A routine is bound to one delegation: its machine login presents that delegation or is refused, a paused routine is refused, and revoking the routine deletes its Cloudflare service token.
 
 **Why.** The platform requires a principal on every request, and an unattended beat has no live human session to mint one from. The authority must be the approver's, must end when the person leaves or loses their grant, and needs an explicit record.
 
@@ -92,11 +92,11 @@ Why the unfoldingWord Platform is shaped the way it is, and what was rejected on
 
 **Consequences.** A non-interactive principal cannot claim without a delegation id. Delegations appear on the person's page, the persona's dashboard and the access review, as time-boxed grants do.
 
-**Changes / changed by.** 0010 gives the capability word `merge` a maximum tier and makes it alone able to lend the Ship exit. 0036 adds the capability word `assist`, granted on a personal harness by that harness's person rather than an area admin, and live while that person still holds a live grant.
+**Changes / changed by.** 0010 gives the capability word `merge` a maximum tier and makes it alone able to lend the Ship exit. 0037 adds the capability word `assist`, granted on a personal harness by that harness's person rather than an area admin, and live while that person still holds a live grant.
 
 ## 0006 Two first-class hosts, one verb registry, an engine seam, and billing by host
 
-*2026-09-29, confirmed 2026-11-17. Changed by 0038.*
+*2026-09-29, confirmed 2026-11-17. Changed by 0039.*
 
 **Decision.** A persona runs on either of two hosts with the same verbs and the same gates: a Cloudflare Workflow inside the platform, or a staff member's own Claude Code or Codex on their own machine over remote MCP. Neither is a special mode. The model vendor sits behind one seam, with each engine in its own directory under `apps/uw-platform/engines/` (the registry there is the list); a vendor SDK is imported in exactly one directory. Billing is a property of the host, not the persona. A platform-hosted run is metered on the organization's API keys through AI Gateway under one spend cap. An external run is the person's own subscription, with tokens self-reported, labelled as contributed time and never counted against the API budget. Hosted Builder is off by default; the always-on tier (scout passes, Iterate, intake, validators, and Reviewer by default) runs on `openrouter-messages` on a cheap open model, which makes that engine the platform's baseline model service. `high`-tier items add a second reviewer identity on another model provider.
 
@@ -249,7 +249,7 @@ Why the unfoldingWord Platform is shaped the way it is, and what was rejected on
 
 *2026-11-19.*
 
-**Decision.** A grant on a Johnny.Decimal area, of any role, reads that area and no other. Only an `org`-scope grant, of any role, reads every area. Write and admin are unchanged: they need a grant on the area itself or at `org` scope. Everything that filters by `can(read)` or `readableAreas` (`packages/core/acl.ts`) narrows with it: page search and reads, agent context, the untrusted-content clearance key and the notification holders of an area. An agent's MCP session runs with its bound person's grants, so an agent reads only the areas its person holds grants in. A person's assistant holds its person's grants clamped to `viewer` (0036). To keep the open culture for someone, an org admin grants them `viewer` at `org` scope.
+**Decision.** A grant on a Johnny.Decimal area, of any role, reads that area and no other. Only an `org`-scope grant, of any role, reads every area. Write and admin are unchanged: they need a grant on the area itself or at `org` scope. Everything that filters by `can(read)` or `readableAreas` (`packages/core/acl.ts`) narrows with it: page search and reads, agent context, the untrusted-content clearance key and the notification holders of an area. An agent's MCP session runs with its bound person's grants, so an agent reads only the areas its person holds grants in. A person's assistant holds its person's grants clamped to `viewer` (0037). To keep the open culture for someone, an org admin grants them `viewer` at `org` scope.
 
 **Why.** The first design let an `editor` or `admin` on one area read every other, to stay as open as the Notion workspace the platform replaces. That meant an editor on 80-89 could read Finance (20-29), and the credentials store, gifts and the ledger would have been readable the same way. Narrowing the default means a new table is closed until someone grants access, and openness becomes a visible, audited grant, not a side effect of being an editor somewhere.
 
@@ -260,7 +260,7 @@ Why the unfoldingWord Platform is shaped the way it is, and what was rejected on
 
 **Consequences.** Workflow lists, search and agent context are scoped to a person's grants. A hosted run reads its persona's instructions only if the run's principal may read the persona page's area, and is otherwise answered `page_not_found`, so a persona page in another area cannot run and its existence is not confirmed. Any runbook that lists who belongs in an area's private channel follows this rule: people with a grant on that area or at `org` scope.
 
-**Changes / changed by.** Overturns the first design's "an `editor` anywhere reads org-wide". 0017 closes the gap this left for `org` grants on restricted rows. 0031 gives every approved person `viewer` on 00-09. 0036 gives the principal under an `assist` delegation its person's grants clamped to `viewer`, in every area the person reads, not only the personal harness's area.
+**Changes / changed by.** Overturns the first design's "an `editor` anywhere reads org-wide". 0017 closes the gap this left for `org` grants on restricted rows. 0031 gives every approved person `viewer` on 00-09. 0037 gives the principal under an `assist` delegation its person's grants clamped to `viewer`, in every area the person reads, not only the personal harness's area.
 
 ## 0016 Withdrawn
 
@@ -325,7 +325,7 @@ This number was used and withdrawn. It is not reused.
 
 ## 0020 A connector uses a credential by reference, as the run's person
 
-*2026-11-20. Changed by 0037.*
+*2026-11-20. Changed by 0038.*
 
 **Decision.** One function, `useCredential` in `apps/uw-platform/credentials/use.ts`, is the only way a value leaves the store for use. The caller names a credential by reference with the workflow, connector, run and acting principal, and passes a function to call; it never receives bytes or text. The store does not trust the grants on the principal: it looks up the run's person, refuses one who is not active, and reads that person's live grants at the moment of use, and again at the final check of 0019. The value exists as a `Secret` for the length of one call; only `exposeSecret` gives the text back, and afterwards the bytes are zeroed. Everywhere else (a string, JSON, a log line, an event, a page) a `Secret` renders `[secret]` and does not throw. What the caller's function returns is searched for the value before it is handed back, and an outcome that carries it or cannot be walked is refused `value_in_outcome`; a function that throws is answered `connector_failed` with no text. Binding and unbinding need `manage` and are logged. Nothing is cached. No verb is added and no verb takes a reference: a reference is named in configuration a person writes, never in a tool call. A use is a row in the credential access log, not a workflow event.
 
@@ -340,7 +340,7 @@ This number was used and withdrawn. It is not reused.
 
 **Consequences.** Build rules hold the boundary: only the store imports the files that open a sealed value; only the store and `apps/uw-platform/ports/connectors.ts` import `use.ts` and `secret.ts`; nothing under `mcp/`, `engines/`, `runs/` or `agents/` imports the store. A JavaScript string cannot be zeroed, so the exposed text lives until garbage collection. The outcome search is a net, not a proof: the build rules are the proof. `manage` on the credential is enough to bind; a use still needs `editor` on the credential's own area. The binding, which names the workflow, is what keeps a delegated run to the credentials meant for it.
 
-**Changes / changed by.** Builds on 0002, 0017, 0018 and 0019. 0021 adds the one file that opens a value for a person. 0036 rules that an assistant's effect is not a connector: it runs at the end of an assistant turn through its own port, never from a stage exit.
+**Changes / changed by.** Builds on 0002, 0017, 0018 and 0019. 0021 adds the one file that opens a value for a person. 0037 rules that an assistant's effect is not a connector: it runs at the end of an assistant turn through its own port, never from a stage exit.
 
 ## 0021 A value is revealed in one uncached answer, and a break-glass reveal needs a second person
 
@@ -707,13 +707,45 @@ A policy's page and the Policies screen show its level, target, enforcement, dat
 
 ---
 
-## 0036 A person's assistant is a persona on their own harness, lent authority by that person, acting directly only within a closed low-risk set
+## 0036 A measure runs a pinned package in a sandbox, after a trial and an activation by a person
 
-*2026-11-26. Changes 0002, 0003, 0005, 0015 and 0020. Changed by 0037, 0038, 0039, 0040, 0041, 0042 and 0043.*
+*2026-11-25.*
+
+**Decision.** Six rulings.
+- **Measuring is data, not a pull request.** A measure is a page that names a runtime from a closed set, an exactly pinned package, a command as an argument list with only `{address}` and `{host}` filled in, its resources, its schedule, and how its values are read from JSON output. An agent can write one. A new runtime is reviewed code; a new tool within a runtime is not.
+- **An agent authors through typed verbs.** The agent is any MCP client on `/mcp`; there is no chat box. It saves a measure with `save_measure` and a dashboard with `save_dashboard`, whose fields are typed in the tool list and whose replies name every problem with its field. It never writes frontmatter or panel YAML; the platform writes the page.
+- **A person runs the trial and a person activates.** Run trial and Activate are platform commands needing `admin` on the measure's area, not harness commands, since a measure belongs to an area and not to a harness. No verb starts either, and no verb makes a dashboard active. A change to the tool, package, command or resources returns the measure to `suggested` and needs a new trial.
+- **What runs is exactly what the trial ran.** The trial records the dependency lock with hashes; activation fixes it; every run installs with hashes required.
+- **The sandbox reaches only what it measures.** The measure container has the internet off; the egress proxy allows the package index while installing, then only the origin of the resource being measured and that origin's `www.` sibling (apex and `www.`, same scheme and port), never a private address, and records every refusal. A site's address is recorded as its canonical one, after its redirects. A measure holds no credential.
+- **Observations are typed records, and a failure is never zero.** One owner table holds every measure's observations, with values validated against the measure's version, read through the measures module and its verbs; the database refuses values on a failed observation. A failed observation is kept with a closed-set reason and left out of every figure. A tool that exits 0 but reports a failure is caught by the measure's optional failure path, a JSON pointer such as `/error`: anything there but null, false or empty text makes the observation failed, with no values. Dashboards are pages of a closed set of native panels, drawn with the existing chart part; no custom HTML or script runs in them.
+
+**Why.** The first dashboard asked for (GEO scores of the organization's websites) was built outside the platform as a scheduled GitHub workflow that committed a JSON file, read by an artifact page that ran a query as each reader. That made a repository the database and a chat artifact the screen, and kept the numbers out of every other page. A person asking for a dashboard should get it without a code change, and its numbers should be platform records that any page, export or agent can read under the same access rules.
+
+**Rejected.**
+- A reviewed adapter in code for every new measurement. Each dashboard would wait for a pull request and a deploy, which is the reason the first one was built elsewhere.
+- Running the tool in GitHub Actions and reading the results from the repository. It makes a repository the record, puts the schedule outside the platform, and gives the numbers no area, classification or access check.
+- An agent starting the trial itself. It would run third-party code chosen by an agent with no person having seen the package, version or hosts.
+- Letting the tool reach any host. A measure could be used to fetch arbitrary addresses from the platform's network.
+- Following a redirect to any host, or allowing every subdomain of the resource's domain. The `www.` sibling covers the commonest redirect (apex to `www.` and back) and nothing broader; a site that redirects elsewhere is recorded at its canonical address.
+- Treating a tool's exit code as the only sign of failure. `geo audit` exits 0 with a score of 0 when it cannot fetch a site, and that 0 would count as a score.
+- A table per measure. Runtime DDL breaks "Drizzle is the only schema" (ADR 0023).
+- Custom HTML dashboards in the first version. They need an isolated origin and a sandboxed renderer, and every panel the first dashboards need is native.
+- The agent writing measure frontmatter and panel YAML with `write_page`. A save refused as `invalid_frontmatter` tells the agent nothing it can fix by, and YAML written by a model is the commonest failure.
+- A record collection over observations in the first version. It needs a new row source, a property source for JSON values and a collection created inside activation; the panels, the JSON route, CSV and the verbs cover the first dashboards.
+- Waiting On You entries for measures. Waiting On You is a view over harnesses and a measure has none; the measure's page and a Measures screen show what waits.
+- Waiting for the chart spec of section 26 (#199) before drawing panels.
+
+**Consequences.** A measure that needs a key waits until a measure can use a credential by reference (ADR 0020), which is an open question. Tools that print only text cannot be measures until a text runtime is reviewed. A run is done under the activating person's authority, a trial under that of the person who pressed Run trial, re-read at each step since no request outlives the press (recorded in `docs/exceptions.md`), each resource read again under that authority in its own step and skipped when it is no longer readable, and a measure pauses when its activator loses `admin` on the area. A paused measure, unless retired, is activated again by an admin pressing Activate, who becomes its activator. A person's edit or restore of an active measure or dashboard, or an agent's save of one, returns it to `suggested` and pauses the measure in the same transaction. A run belongs to the activated version it was asked under and stops, without pausing the measure, once a later version is activated. At most four runs hold a sandbox at once, trials and requested runs included; a run that finds no free slot waits queued and the minute job starts it when one frees, and a scheduled run whose job cannot be created is retried each minute for up to an hour after its slot. A resource step that fails past its retries is recorded failed and the run goes on, and every run closes from what it observed against what it planned, so a run that leaves a resource unmeasured is never ok. A started run with no progress for an hour is closed as stalled. A stored export records the areas of every dashboard, measure and resource its panels drew from, so downloading it later needs read on each of them. Activation judges only the trial observations the activating admin may read, and needs at least one ok among them. A resource serves portfolios, programs and projects only; serving a product page waits for a collection that lists products. Raw output is deleted after 13 months by the nightly job, not by a bucket lifecycle rule. Panels move onto the chart spec when #199 is built.
+
+**Changes / changed by.** None.
+
+## 0037 A person's assistant is a persona on their own harness, lent authority by that person, acting directly only within a closed low-risk set
+
+*2026-11-26. Changes 0002, 0003, 0005, 0015 and 0020. Changed by 0038, 0039, 0040, 0041, 0042, 0043 and 0044.*
 
 **Decision.**
 
-1. **A personal harness.** Each assistant has its own harness: template `assistant`, no stages, key `assistant-<personId>`, in the assistants area. `harnesses.person_id` names its one person; a check constraint holds `(template = 'assistant') = (person_id IS NOT NULL)`, and a unique index allows one assistant per person. Only `kernel.assistants.provision` creates one, for an org admin or an admin of the assistants area (amended by 0040: the person turns their own assistant on with `kernel.assistants.enable`, and `provision` is reached by no route). The template is not in the templates registry and not in `templateKeySchema`, so no generic command creates or switches to it. Stage edits on a personal harness are refused, so no item can enter one.
+1. **A personal harness.** Each assistant has its own harness: template `assistant`, no stages, key `assistant-<personId>`, in the assistants area. `harnesses.person_id` names its one person; a check constraint holds `(template = 'assistant') = (person_id IS NOT NULL)`, and a unique index allows one assistant per person. Only `kernel.assistants.provision` creates one, for an org admin or an admin of the assistants area (amended by 0041: the person turns their own assistant on with `kernel.assistants.enable`, and `provision` is reached by no route). The template is not in the templates registry and not in `templateKeySchema`, so no generic command creates or switches to it. Stage edits on a personal harness are refused, so no item can enter one.
 2. **A real persona per person.** The identity is `agent:assistant-<personId>`, stable across renames and email changes. Its persona page is seeded from the **assistant role**, a fixture in code (`packages/harness/assistants/role.ts`): instructions, a fixed toolset with no write verb, an engine, a capability word and a monthly budget. It is activated through the existing tool check and dry run. Activation refuses an `agent:assistant-*` identity on any harness but that person's personal harness, and any other identity on a personal harness. The person's **customisation** (display name, an instructions addendum and a timezone) lives in an owner-only row and is appended after the role under "the role's limits win". It never replaces the role.
 3. **Authority is a delegation the person grants.** The capability word `assist` is grantable only on a personal harness and only by that harness's person; every other word is refused there. Expiry (default ninety days), revoke, supersede and lapse are unchanged. An `assist` delegation stays live while its grantor is still the harness's person and still holds a live grant. The rules sit in one policy registry per capability word (`packages/harness/delegations/capability.ts`), not in a branch. The assistant's principal holds its person's live grants clamped to `viewer`, each ending at the earlier of the grant's and the delegation's expiry, so it reads only what its person reads, never an owner-only row, and makes no platform write through a write verb. The workflow run beat skips `assist` delegations, and no device host can act under one.
 4. **Requests and turns are kernel commands on the personal harness, and events carry no content.** A request is recorded by the ingest principal, once per channel and external id. The person's text and any untrusted parts live only in owner-only restricted tables (`packages/db/schema-assistants.ts`) that are never offline. Every change records a `harness_events` row on the personal harness in the same transaction, whose evidence holds only ids, closed sets and numbers, so `harness_events` stays the one source of truth (0004 unchanged). Wakes on a personal harness go only to its person and are never posted to a Zulip stream.
@@ -743,15 +775,15 @@ A policy's page and the Policies screen show its level, target, enforcement, dat
 
 **Consequences.** PRD section 4.2 gains "Assistants" with requirements PA-1 onward. "An agent can produce a deliverable and cannot send it" and "no route reaches an external effect without crossing a human gate" each gain one named exception: the closed set above. A reply direct-messaged to its own person carries content; nothing posted to a stream does. Content-free assistant events are internal like every harness's events: readers of the assistants area and org-scope readers (0015) can see that a request, turn or effect kind happened and when, and never what it said. The request text goes to the model vendor; which provider, how long text is kept, which area holds the personal harnesses and how Google is reached are open questions in the PRD.
 
-**Changes / changed by.** Changes 0002 (the registry may gain verbs that draft effects which take effect without a person, only within this set), 0003 (the Ship constraint is untouched; a twin constraint holds the assistant's set), 0005 (the grantor of `assist` is the harness's person, not an area admin), 0015 (the principal under an `assist` delegation holds its person's grants clamped to `viewer`, in every area the person reads) and 0020 (an assistant effect is not a connector; it runs at the turn's exit through its own port). Changed by 0046 (the read-only research verbs) and 0048 (a turn reads the role from code, not the stored persona body).
+**Changes / changed by.** Changes 0002 (the registry may gain verbs that draft effects which take effect without a person, only within this set), 0003 (the Ship constraint is untouched; a twin constraint holds the assistant's set), 0005 (the grantor of `assist` is the harness's person, not an area admin), 0015 (the principal under an `assist` delegation holds its person's grants clamped to `viewer`, in every area the person reads) and 0020 (an assistant effect is not a connector; it runs at the turn's exit through its own port). Changed by 0047 (the read-only research verbs) and 0049 (a turn reads the role from code, not the stored persona body).
 
-## 0037 One Zulip bot per person, paired by email or a one-time code, its key sealed by KMS
+## 0038 One Zulip bot per person, paired by email or a one-time code, its key sealed by KMS
 
-*2026-11-26. Changes 0020 and 0036. Changed by 0040.*
+*2026-11-26. Changes 0020 and 0037. Changed by 0041.*
 
 **Decision.**
 
-1. **Each assistant is its own Zulip bot.** The owner ruled one bot per person (issue #123, decision 3), replacing the single shared bot 0036's design assumed. The platform creates each bot through Zulip's admin API, signed in as one org-admin service account (`ZULIP_ADMIN_EMAIL`, `ZULIP_ADMIN_API_KEY`), as an outgoing-webhook bot whose endpoint is `uw-ingest`'s `/webhooks/zulip-assistant`. It deactivates the bot when its person turns the assistant off and reactivates it when they turn it back on (`apps/uw-platform/assistants/zulip/provision.ts`). The person picks the bot's name.
+1. **Each assistant is its own Zulip bot.** The owner ruled one bot per person (issue #123, decision 3), replacing the single shared bot 0037's design assumed. The platform creates each bot through Zulip's admin API, signed in as one org-admin service account (`ZULIP_ADMIN_EMAIL`, `ZULIP_ADMIN_API_KEY`), as an outgoing-webhook bot whose endpoint is `uw-ingest`'s `/webhooks/zulip-assistant`. It deactivates the bot when its person turns the assistant off and reactivates it when they turn it back on (`apps/uw-platform/assistants/zulip/provision.ts`). The person picks the bot's name.
 2. **A bot's secrets never enter the Secrets Store.** Its API key is sealed with the credentials KMS key under its own encryption context (`purpose: assistant_bot_key`, the harness id and the bot's user id), so a key sealed for one bot opens for no other bot and no credential (0020's envelope, `apps/uw-platform/credentials/envelope.ts`). Its webhook token is kept only as a SHA-256 digest. Both live in `assistant_zulip_bots`, owned by `apps/uw-platform/assistants/zulip/`.
 3. **`uw-ingest` verifies each delivery against its own bot.** The new source `zulip-assistant` reads the delivery's `bot_email`, looks up that active bot's token digest over Hyperdrive and compares digests in constant time; the delivery id is `zulip-assistant:<bot user id>:<message id>`, so one group message reaching two bots is not a replay. The stream bot's source, path and `ZULIP_WEBHOOK_TOKEN` are unchanged.
 4. **A binding is the person's verified address, held by the kernel.** `assistant_bindings` holds one address per assistant and channel, and one assistant per address (a unique index). It is written only by `kernel.assistants`: `bindAddress`, for the system principal, when provisioning finds the person's Zulip account by their email and nothing is bound yet; and `completePairing`, for the ingest principal, when the account sends back the one-time code its person started on the platform (`startPairing`, for the person only, interactive and holding a live grant). A code lives ten minutes, is stored only as a digest, and is spent by five wrong tries. Each pairing records `assistant_paired`, `assistant_pairing_started` or `assistant_pairing_refused`, with only the channel and a closed-set reason.
@@ -761,23 +793,23 @@ A policy's page and the Policies screen show its level, target, enforcement, dat
 **Why.** The owner chose one bot per person so each assistant has its own name and identity in Zulip. Per-bot keys need a store that grows with people, and the Secrets Store is capped per account. Binding by Zulip user id, not email, keeps a masked or changed email from redirecting replies, and the one-time code covers a person whose Zulip email differs from their platform email.
 
 **Rejected.**
-- One shared platform bot (0036's design default). Overruled by the owner.
+- One shared platform bot (0037's design default). Overruled by the owner.
 - A path per bot (`/webhooks/zulip-assistant/<id>`). A bot's id is not known until it is created, and the webhook URL is set at creation.
 - Polling each bot's event queue. Workers have no long-lived process, and Zulip drops idle queues.
 - Storing bot keys in the Secrets Store or the credentials vault rows. The store is capped, and the vault's rows are area-scoped credentials a person reveals, not platform keys.
 
-**Changes / changed by.** Changes 0020 (its envelope also seals assistant bot keys, under their own context) and 0036 (item 9: the pairing is by email at provisioning or by a one-time code, and each assistant has its own bot). 0044 runs its staging probes as `pnpm probe:assistants` and the walk in `infra/README.md`.
+**Changes / changed by.** Changes 0020 (its envelope also seals assistant bot keys, under their own context) and 0037 (item 9: the pairing is by email at provisioning or by a one-time code, and each assistant has its own bot). 0045 runs its staging probes as `pnpm probe:assistants` and the walk in `infra/README.md`.
 
-## 0038 An assistant's turn is a Cloudflare Workflow named by its request, on zero-retention OpenRouter, inside its own spend pool
+## 0039 An assistant's turn is a Cloudflare Workflow named by its request, on zero-retention OpenRouter, inside its own spend pool
 
-*2026-11-26. Changes 0006 and 0036.*
+*2026-11-26. Changes 0006 and 0037.*
 
 **Decision.**
 
-1. **One Workflow per request.** A recorded request starts the `AssistantTurn` Workflow (`apps/uw-platform/assistants/turn/`) with the request id as its instance id, so a redelivered message cannot start a second one. A request whose start was lost (the queue gave up) is started by the minute cron two minutes after it was recorded, for up to a day. Its steps are `attempt` (one `attemptId` per instance, kept by the Workflow), `begin`, `loop` and `finish`. Every retry and restart of an instance replays the same turn (0036 item 10); a second instance for the same request is refused `turn_taken` and sends nothing. The `loop` step has no retries, so a model loop is never paid twice by a retry; a loop that fails is finished as outcome `failed`, its cost unknown and counted at the per-turn ceiling, and the person is told once. Delivery runs inside `finish`, through `finishTurn`, which claims, sends and settles the reply under its delivery lease; the step retries while another attempt's send holds the lease.
+1. **One Workflow per request.** A recorded request starts the `AssistantTurn` Workflow (`apps/uw-platform/assistants/turn/`) with the request id as its instance id, so a redelivered message cannot start a second one. A request whose start was lost (the queue gave up) is started by the minute cron two minutes after it was recorded, for up to a day. Its steps are `attempt` (one `attemptId` per instance, kept by the Workflow), `begin`, `loop` and `finish`. Every retry and restart of an instance replays the same turn (0037 item 10); a second instance for the same request is refused `turn_taken` and sends nothing. The `loop` step has no retries, so a model loop is never paid twice by a retry; a loop that fails is finished as outcome `failed`, its cost unknown and counted at the per-turn ceiling, and the person is told once. Delivery runs inside `finish`, through `finishTurn`, which claims, sends and settles the reply under its delivery lease; the step retries while another attempt's send holds the lease.
 2. **A host that serves only the assistant.** The loop reaches the platform through an in-process MCP server under the turn's clamped assistant principal (host `assistant`), offered only the role's read verbs and the `assistant` verb group. The `assistant` group is served on no other host. Its verbs take the turn's request and turn id from the host, never from the model.
 3. **Zero-retention OpenRouter only.** Assistant turns run on the platform's OpenRouter engine, pinned to the role's provider with no fallback, and every assistant request asks OpenRouter to route only to zero-data-retention endpoints (`provider.zdr`, `data_collection: deny`) on top of the account's ZDR lock. An engine that cannot honour that refuses the turn. Running on a person's own Claude subscription stays rejected (0006): the owner offered it only if the platform already supported it, and it does not.
-4. **A separate assistants pool.** Assistants do not spend the platform's AI cap. Their pool for the month is the sum of the budgets of every assistant with a live `assist` delegation, each USD 20 unless an org admin set that person's (`set_assistant_budget`, the `assistant_budgets` table, `assistant_budget_set`), held under `ASSISTANT_SPEND_CAP_MINOR` when that is set. A turn is refused `assistants_capped` once the pool's month, counted like one assistant's, reaches it. The breaker subtracts the assistants' known spend from the gateway's reading. Every turn still respects the breaker's level and freshness, as 0036 says.
+4. **A separate assistants pool.** Assistants do not spend the platform's AI cap. Their pool for the month is the sum of the budgets of every assistant with a live `assist` delegation, each USD 20 unless an org admin set that person's (`set_assistant_budget`, the `assistant_budgets` table, `assistant_budget_set`), held under `ASSISTANT_SPEND_CAP_MINOR` when that is set. A turn is refused `assistants_capped` once the pool's month, counted like one assistant's, reaches it. The breaker subtracts the assistants' known spend from the gateway's reading. Every turn still respects the breaker's level and freshness, as 0037 says.
 5. **Stale turns are closed.** A turn left open by a dead host is closed by the minute cron an hour after it started: as `abandoned` with no usage when no reply was claimed, releasing its reservation, or with the reply settled `outcome_unknown` once its lease has passed. A late finish for an abandoned turn is refused and sends nothing.
 
 **Why.** The owner asked that a direct message to a person's bot produce a model-written reply end to end, on the platform's ZDR-locked OpenRouter account, with assistants in their own monthly pool of USD 20 each outside the platform cap (issue #123, decisions 7, 12 and 13), and that a crash never leave a turn reserved (review R11). A Workflow gives checkpointed steps that survive a Worker restart, and the request id as instance id makes the start idempotent without a table.
@@ -791,35 +823,35 @@ A policy's page and the Policies screen show its level, target, enforcement, dat
 
 **Consequences.** `ASSISTANT_TURN` is bound in staging and production, in `wrangler.toml` and `wrangler.go-live.toml`. Preview has no Workflows, so a direct message there is recorded and its turn is not started (`not_wired` in the log). An abandoned turn counts no cost in the pool, so a dead host's model calls are spent but uncounted for that month. Whether assistants should keep running while the platform breaker pauses the platform's agents is open for the owner.
 
-**Changes / changed by.** Changes 0006 (a third hosted shape, the assistant turn, billed to the platform's OpenRouter account) and 0036 (item 10: the cap on all assistants together is the pool above, outside the platform cap). Changed by 0045 (review fixes).
+**Changes / changed by.** Changes 0006 (a third hosted shape, the assistant turn, billed to the platform's OpenRouter account) and 0037 (item 10: the cap on all assistants together is the pool above, outside the platform cap). Changed by 0046 (review fixes).
 
-## 0039 The platform reaches Google with one domain-wide-delegated service account, allowlisted in code before it signs
+## 0040 The platform reaches Google with one domain-wide-delegated service account, allowlisted in code before it signs
 
-*2026-11-26. Changes 0036. Changed by 0040, 0041, 0042, 0043 and 0047.*
+*2026-11-26. Changes 0037. Changed by 0041, 0042, 0043, 0044 and 0048.*
 
 **Decision.**
 
 1. **One service account with domain-wide delegation.** The owner ruled it (issue #123, decision 1): one Google Cloud service account, its JSON key held as the platform secret `GOOGLE_WORKSPACE_KEY` in the Secrets Store (0022), uw-platform only, approved once by a Workspace super-admin for the scopes `gmail.modify`, `calendar.events`, `calendar.freebusy` and `admin.directory.user`. No person grants the platform their own Google consent, and no refresh token is stored.
 2. **An allowlist in code, checked before signing.** `apps/uw-platform/assistants/google/token.ts` refuses, before it signs an assertion, any subject or scope outside one table: an active assistant mailbox (`assistant_mailboxes`) may be the subject for Gmail; an active person whose address is in `GOOGLE_WORKSPACE_DOMAIN` may be the subject for the calendar; only the one `GOOGLE_WORKSPACE_ADMIN_SUBJECT` may be the subject for the directory. Every other combination answers `not_allowed` and nothing reaches Google.
-3. **The calendar is reached as the person, not through a share.** The owner ruled that the account impersonates each person for Calendar, replacing 0036's design in which people shared their calendar with their assistant's mailbox. Calendar calls are keyed by the person's id; the adapter resolves the address from `people` and refuses anyone who is not active in the domain.
+3. **The calendar is reached as the person, not through a share.** The owner ruled that the account impersonates each person for Calendar, replacing 0037's design in which people shared their calendar with their assistant's mailbox. Calendar calls are keyed by the person's id; the adapter resolves the address from `people` and refuses anyone who is not active in the domain.
 4. **A hold is the assistant's own, provably.** A hold is a private event on the person's primary calendar, inserted with `sendUpdates=none`, no attendees and a private extended property naming the harness and the hold; its Google event id is the hold id's hex, so a retried insert meets Google's conflict and places nothing new. Removal reads the event first and deletes only one carrying this assistant's marker. Free/busy is asked only for addresses that are active people in the domain.
 5. **A plain `fetch` client.** No Google SDK is added (AGENTS.md section 5): `googleapis` and `google-auth-library` depend on Node's HTTP stack and do not run on Workers, so the client is `fetch` plus `jose` (already a dependency) for RS256, with a five-second timeout per call. Access tokens are cached in the isolate's memory per service account, subject and scope set until five minutes before they expire; an access token is minted from a platform secret, not a vault credential, so 0020's rule against caching opened credential values does not reach it. A 401 forgets the cached token and mints once more.
 
 **Why.** The owner chose domain-wide delegation so that assistants work for everyone without each person granting consent, and asked that calendar access act as the person. The allowlist keeps the key from acting as anyone the platform has not named, and a hold's marker keeps an assistant from editing events it did not make.
 
 **Rejected.**
-- A share from each person's calendar to their assistant's mailbox (0036's design). Overruled by the owner; it also needed a probe per person.
+- A share from each person's calendar to their assistant's mailbox (0037's design). Overruled by the owner; it also needed a probe per person.
 - An OAuth token per person or per assistant. It needs a consent flow and stored refresh tokens, and the owner chose delegation.
 - The Google Node client libraries. They do not run on Workers.
 - Caching tokens across isolates (KV or the cache API). An extra token request per cold isolate is cheap, and a shared cache would hold live tokens outside memory.
 
 **Consequences.** A leaked key can act as any user in the domain for the delegated scopes; Google cannot limit delegation to some users. The mitigations are the allowlist, the four scopes, key rotation and Workspace audit alerts on unexpected subjects. Scope names, the token exchange, the conflict on a reused event id and the free/busy shape come from Google's published API, not a live call; staging confirms them before go-live.
 
-**Changes / changed by.** Changes 0036 (calendar holds are placed acting as the person through domain-wide delegation, not through the person's share to the assistant mailbox). 0044 runs its staging probes as `pnpm probe:assistants` and the walk in `infra/README.md`.
+**Changes / changed by.** Changes 0037 (calendar holds are placed acting as the person through domain-wide delegation, not through the person's share to the assistant mailbox). 0045 runs its staging probes as `pnpm probe:assistants` and the walk in `infra/README.md`.
 
-## 0040 A person turns their own assistant on and off; a narrow provisioner principal makes its accounts, numbered from 10.51
+## 0041 A person turns their own assistant on and off; a narrow provisioner principal makes its accounts, numbered from 10.51
 
-*2026-11-27. Changes 0036, 0037 and 0039.*
+*2026-11-27. Changes 0037, 0038 and 0040.*
 
 **Decision.**
 
@@ -827,10 +859,10 @@ A policy's page and the Policies screen show its level, target, enforcement, dat
 2. **The person picks the name, which is the address.** The name is the mailbox's local part exactly, `<name>@<GOOGLE_WORKSPACE_DOMAIN>`, with no suffix, and the Zulip bot's name (owner decision 9): lowercase letters, digits, dots and hyphens, 2 to 30 characters, no `..`, not a reserved mailbox name (`assistantNameRefusal`). It is refused when another live assistant holds it (a unique partial index) or when Google Workspace holds it as a user or an alias (Admin SDK `users.get`, which resolves aliases, asked before the kernel and again when the user is inserted: a conflict there is recorded `name_taken`).
 3. **Numbers in area 10-19, lowest free from 10.51, reused after final deletion.** The platform kernel passes `assistantsArea = '10-19'` from trusted code (`apps/uw-platform/assistants/area.ts`), closing review R5. `enable` takes the lowest number from 10.51 upward that no assistant holds (10.99, then 10.100 and on; owner decision 10), under the advisory lock `jd-allocation:10`, keeps it while the assistant is turned off, and frees it only at final deletion. The wiki's suggester counts assistant numbers as taken in category 10, and the personal harness's title carries the number ("10.51 Barnabas").
 4. **A narrow provisioner principal.** The platform's steps run as `agent:assistant-provisioner`: kind agent, no person, no grants, not interactive, a platform identity no persona can take (`assistantProvisionerPrincipal`, `isProvisionerPrincipal`). Only it may bind a Zulip address at provisioning (`bindAddress`, which was the system principal's), activate the suggested assistant persona on that person's personal harness (`activatePersona`, through the same tool check and dry run as any activation, and only an `assistant` persona for that harness's person), record provisioning outcomes and retire an assistant. It cannot grant `assist`; only the person can.
-5. **Resumable, idempotent steps.** `apps/uw-platform/assistants/provisioning/` keeps one progress row per assistant, keyed to the account's version, and runs the steps for its goal. Turned on: the Workspace user (`users.insert` in `GOOGLE_ASSISTANT_OU`, a random password generated and sent once and stored nowhere, an external id naming the harness so a retry adopts its own user and a stranger's address is refused), the Zulip bot (0037), the persona, then waiting for the person's `assist` delegation. Turned off: suspend the user and deactivate the bot at once (owner decision 11). A failure is kept with a closed reason (`assistantProvisioningFailureSchema`), recorded once per account version and step as `assistant_provisioning_failed`, and retried with backoff by a guarded minute-cron step; the person's command drives the steps at once as well.
+5. **Resumable, idempotent steps.** `apps/uw-platform/assistants/provisioning/` keeps one progress row per assistant, keyed to the account's version, and runs the steps for its goal. Turned on: the Workspace user (`users.insert` in `GOOGLE_ASSISTANT_OU`, a random password generated and sent once and stored nowhere, an external id naming the harness so a retry adopts its own user and a stranger's address is refused), the Zulip bot (0038), the persona, then waiting for the person's `assist` delegation. Turned off: suspend the user and deactivate the bot at once (owner decision 11). A failure is kept with a closed reason (`assistantProvisioningFailureSchema`), recorded once per account version and step as `assistant_provisioning_failed`, and retried with backoff by a guarded minute-cron step; the person's command drives the steps at once as well.
 6. **Final deletion after 30 days.** A nightly cron step deletes the Workspace user of an assistant turned off 30 days ago (which frees the licence), leaves the bot deactivated, and calls `retire`, which clears the number and records `assistant_deleted`. Turning on again afterwards takes the lowest free number and makes a new Workspace user; the bot is reactivated and renamed.
 
-**Why.** The owner ruled that a person turns their own assistant on, picks its name, gets a Workspace user and a Zulip bot made automatically, numbered from 10.51 with numbers reused after deletion, and that turning off suspends both, deleting the user after 30 days (issue #123, decisions 4, 5, 9, 10 and 11). The build plan had an area admin provisioning each assistant (0036 item 1), which would make every person wait for an admin and let an admin choose someone's assistant. A narrow principal, rather than the system principal, keeps the steps that touch Google and Zulip from carrying the system's other powers, and the steps' idempotency lets a crashed Worker or a refused API call be retried without a second user, bot or number.
+**Why.** The owner ruled that a person turns their own assistant on, picks its name, gets a Workspace user and a Zulip bot made automatically, numbered from 10.51 with numbers reused after deletion, and that turning off suspends both, deleting the user after 30 days (issue #123, decisions 4, 5, 9, 10 and 11). The build plan had an area admin provisioning each assistant (0037 item 1), which would make every person wait for an admin and let an admin choose someone's assistant. A narrow principal, rather than the system principal, keeps the steps that touch Google and Zulip from carrying the system's other powers, and the steps' idempotency lets a crashed Worker or a refused API call be retried without a second user, bot or number.
 
 **Rejected.**
 - Running the steps as the person. A person holds no `admin.directory.user` right, and the steps must run unattended after the request ends.
@@ -842,18 +874,18 @@ A policy's page and the Policies screen show its level, target, enforcement, dat
 
 **Consequences.** `GOOGLE_ASSISTANT_OU` is a new variable; `GOOGLE_WORKSPACE_ADMIN_SUBJECT`, `ZULIP_ADMIN_EMAIL` and their secrets must be set before any assistant can be turned on in an environment; until then every step is recorded failed `workspace_not_wired` or `zulip_not_wired` and the person sees that. A name held by a Google group, not a user or alias, is found only when the user is inserted, and is recorded `name_taken`; the person turns the assistant off and back on with another name. The Admin SDK request shapes come from Google's published API, not a live call; staging confirms them before go-live.
 
-**Changes / changed by.** Changes 0036 (item 1: the person turns their own assistant on with `enable`, in area 10-19), 0037 (item 4: `bindAddress` is the provisioner's, not the system principal's) and 0039 (the directory is reached as the admin subject only by the provisioner, to insert, suspend, restore and delete assistant users). Changed by 0045 (review fixes); 0047 (a leaver's assistant is turned off by the provisioner, and an org admin can turn off any).
+**Changes / changed by.** Changes 0037 (item 1: the person turns their own assistant on with `enable`, in area 10-19), 0038 (item 4: `bindAddress` is the provisioner's, not the system principal's) and 0040 (the directory is reached as the admin subject only by the provisioner, to insert, suspend, restore and delete assistant users). Changed by 0046 (review fixes); 0048 (a leaver's assistant is turned off by the provisioner, and an org admin can turn off any).
 
-## 0041 My Assistant is the person's own screen; an assistant's text is kept one year and the person may delete it sooner
+## 0042 My Assistant is the person's own screen; an assistant's text is kept one year and the person may delete it sooner
 
-*2026-11-27. Changes 0036 and 0039.*
+*2026-11-27. Changes 0037 and 0040.*
 
 **Decision.**
 
-1. **One screen for the person, reached by everyone.** `/assistant` (My Assistant, Form shape, started from `new-agent.tsx`) is a module under area 10-19 in every sidebar. It reads `kernel.views.myAssistant`, which answers the person's own assistant in full, an org admin a named person's assistant without its content (accounts, number, budget and spend only; no settings, requests, effects, reminders or holds), and refuses anyone else. An admin's view is `/assistant?person=<id>` and carries the `set_assistant_budget` control (0038).
-2. **Every control posts to the person's own endpoint.** `/api/assistant/commands/<name>` (0040) gains `customise_assistant`, `renew_assist`, `revoke_assist`, `undo_assistant_effect` and `delete_my_assistant_history`. Each acts on the caller's own assistant, found from the caller, never from the body; an agent principal is refused before any work. Pairing is a server form (`POST /assistant/pairing`) because its answer is a code shown once.
-3. **Undo by the person.** `kernel.assistants.undoEffect` lets only the effect's person undo a `reminder_set` whose reminder is still set (it is cancelled and never fires) or a `calendar_hold_added` whose hold is held and not yet ended (the Workspace port removes it, then the hold is released with no releasing effect, which migration 0080 allows). Both record `assistant_effect_undone {effectId, kind}`. The person's undo is the person's own action, not an assistant effect, so it is outside ADR 0036's closed set and its caps.
-4. **Retention one year (owner decision 8).** `kernel.assistants.redactHistory` as the system principal, run by a nightly cron step, empties the note and untrusted parts of every request recorded more than 365 days ago, the payloads of that request's effects (reply text, reminder and hold drafts), the text of reminders closed and the titles of holds ended or released more than 365 days ago. As the person it does the same for their own assistant up to now, except a reminder still set or a hold still ahead. Each row keeps `redacted_at`, and check constraints hold that a redacted row carries no text and that a set reminder is never redacted. Each batch records `assistant_history_redacted {why, requests}` per harness. Events are never touched: they carry no text (0004, 0036).
+1. **One screen for the person, reached by everyone.** `/assistant` (My Assistant, Form shape, started from `new-agent.tsx`) is a module under area 10-19 in every sidebar. It reads `kernel.views.myAssistant`, which answers the person's own assistant in full, an org admin a named person's assistant without its content (accounts, number, budget and spend only; no settings, requests, effects, reminders or holds), and refuses anyone else. An admin's view is `/assistant?person=<id>` and carries the `set_assistant_budget` control (0039).
+2. **Every control posts to the person's own endpoint.** `/api/assistant/commands/<name>` (0041) gains `customise_assistant`, `renew_assist`, `revoke_assist`, `undo_assistant_effect` and `delete_my_assistant_history`. Each acts on the caller's own assistant, found from the caller, never from the body; an agent principal is refused before any work. Pairing is a server form (`POST /assistant/pairing`) because its answer is a code shown once.
+3. **Undo by the person.** `kernel.assistants.undoEffect` lets only the effect's person undo a `reminder_set` whose reminder is still set (it is cancelled and never fires) or a `calendar_hold_added` whose hold is held and not yet ended (the Workspace port removes it, then the hold is released with no releasing effect, which migration 0081 allows). Both record `assistant_effect_undone {effectId, kind}`. The person's undo is the person's own action, not an assistant effect, so it is outside ADR 0037's closed set and its caps.
+4. **Retention one year (owner decision 8).** `kernel.assistants.redactHistory` as the system principal, run by a nightly cron step, empties the note and untrusted parts of every request recorded more than 365 days ago, the payloads of that request's effects (reply text, reminder and hold drafts), the text of reminders closed and the titles of holds ended or released more than 365 days ago. As the person it does the same for their own assistant up to now, except a reminder still set or a hold still ahead. Each row keeps `redacted_at`, and check constraints hold that a redacted row carries no text and that a set reminder is never redacted. Each batch records `assistant_history_redacted {why, requests}` per harness. Events are never touched: they carry no text (0004, 0037).
 5. **A personal harness is listed only to its person and org admins.** `admittedHarnesses` (and so every harness list, the sidebar's Agent Queues and `readableHarness`) leaves out a personal harness for anyone but its person, an org admin and the system principal, even when they read area 10-19.
 
 **Why.** The owner asked for the whole feature to work for a real person, with request text and replies kept one year and the person able to delete their own sooner. Without a screen the person could turn the assistant on only by hand-made requests; without retention the owner-only tables would keep every request forever.
@@ -861,20 +893,20 @@ A policy's page and the Policies screen show its level, target, enforcement, dat
 **Rejected.**
 - Deleting old request rows. The rows anchor the content-free events, the effects and the reminders through foreign keys, and the effect keys keep a retried turn from acting twice.
 - Redacting a reminder still to come on delete-my-history. It would leave a reminder that fires with no text; the person cancels it with Undo instead.
-- Showing an admin the content. The tables are owner-only (0036); an admin needs only the budget.
+- Showing an admin the content. The tables are owner-only (0037); an admin needs only the budget.
 - A separate harness list filter in each view. One rule in `admittedHarnesses` covers every list and the single read.
 
 **Consequences.** The nightly retention redacts at most 20 batches of 500 requests a night, so a backlog drains over several nights. A hold the person removed in Google themselves cannot be undone from the screen (the port answers `not_own_hold`); it stays listed until it ends.
 
-**Changes / changed by.** Changes 0036 (item 4: assistant text is redacted after 365 days or on the person's request; a personal harness is hidden from area readers) and 0039 (a hold can be released by its person, with no releasing effect).
+**Changes / changed by.** Changes 0037 (item 4: assistant text is redacted after 365 days or on the person's request; a personal harness is hidden from area readers) and 0040 (a hold can be released by its person, with no releasing effect).
 
-## 0042 Mail instructs an assistant only from its person's own address, proven by Google's top authentication header, and is answered by email to that address alone
+## 0043 Mail instructs an assistant only from its person's own address, proven by Google's top authentication header, and is answered by email to that address alone
 
-*2026-11-27. Changes 0036 and 0039.*
+*2026-11-27. Changes 0037 and 0040.*
 
 **Decision.**
 
-1. **Mail in is swept, not pushed.** A guarded minute-cron step reads every active assistant mailbox through the Gmail API as that mailbox (the `gmail.modify` scope 0039 already allows it): at most 25 mailboxes a minute, the least recently swept first, ten messages each, within a 20-second budget. It reads Gmail's history since the mailbox's stored history id, or the unprocessed inbox of the last two days when the history id has expired or was never read, and labels each message it has handled `uw/processed`. The cursor advances only when the whole page was handled, so a pass cut short repeats safely; a request is recorded once per Gmail message id.
+1. **Mail in is swept, not pushed.** A guarded minute-cron step reads every active assistant mailbox through the Gmail API as that mailbox (the `gmail.modify` scope 0040 already allows it): at most 25 mailboxes a minute, the least recently swept first, ten messages each, within a 20-second budget. It reads Gmail's history since the mailbox's stored history id, or the unprocessed inbox of the last two days when the history id has expired or was never read, and labels each message it has handled `uw/processed`. The cursor advances only when the whole page was handled, so a pass cut short repeats safely; a request is recorded once per Gmail message id.
 2. **The sender verdict is pure and closed.** `emailSenderVerdict` returns `automated_sender` for mail marked automatic (`Auto-Submitted` other than `no`, `Precedence` bulk, junk, list or auto_reply, `List-Id`, `List-Unsubscribe`, `X-Autoreply`, `X-Autorespond`, an empty `Return-Path`) or sent from another assistant mailbox; then `other_sender` unless exactly one From header names exactly one address, the person's bound address; then `unverified_sender` unless the topmost `Authentication-Results` header was written by `mx.google.com` and shows `dmarc=pass` with `header.from` the person's domain, or `spf=pass` with `smtp.mailfrom` the person's exact address together with `dkim=pass` for the person's domain. A lower header is never read: any sender can write one, and Google adds its own on top.
 3. **Instructions behind a flag.** `kernel.assistants.admitMail` (system only) records the request, or records `assistant_mail_declined {why}` with no content and starts nothing. A passing mail is honoured only when `ASSISTANT_EMAIL_INSTRUCTIONS` is `on`; it is on in staging and off in production until a staging probe shows Gmail marks mail inside the domain as passing (PRD open question 30).
 4. **The person's words and the rest.** `splitForward` keeps the person's own words as the note and fences a forwarded original, an Outlook original, a quoted reply and quoted lines as `email_forwarded`; text attachments (plain, markdown, CSV, VTT, calendar) are fenced as `email_attachment`; other attachments are not read. The note is held to 20,000 characters and the fenced parts to the request's limits.
@@ -887,16 +919,16 @@ A policy's page and the Policies screen show its level, target, enforcement, dat
 - Gmail push through Pub/Sub into `uw-ingest`: a second verifier, a topic and a subscription to run, for a latency the minute cron already meets.
 - Trusting any `Authentication-Results` header that says pass: a sender can add one below Google's.
 - SPF alone: Google's shared sending servers would pass for any Google customer naming the person's address as envelope sender.
-- Replying to a forwarded sender or anyone in Cc: that is a message to someone else, a proposal under 0036.
+- Replying to a forwarded sender or anyone in Cc: that is a message to someone else, a proposal under 0037.
 - Sending as the person: the assistant sends only as its own mailbox.
 
 **Consequences.** Gmail's exact shapes (history 404 on an expired id, the label search spelling, the `Authentication-Results` Gmail writes on mail inside the domain) come from Google's published API, not a live call; the staging probes confirm them before the flag is turned on in production. A person whose own address changes keeps the old binding until their assistant is turned off and on. A declined mail retried after a failed label is recorded declined again.
 
-**Changes / changed by.** Changes 0036 (item 9: the email rule is the verdict above, SPF with DKIM accepted beside DMARC, and a declined mail is recorded without content) and 0039 (the assistant mailbox subject reads, labels and sends its own mail). 0044 runs its staging probes as `pnpm probe:assistants` and the walk in `infra/README.md`. Changed by 0045 (review fixes).
+**Changes / changed by.** Changes 0037 (item 9: the email rule is the verdict above, SPF with DKIM accepted beside DMARC, and a declined mail is recorded without content) and 0040 (the assistant mailbox subject reads, labels and sends its own mail). 0045 runs its staging probes as `pnpm probe:assistants` and the walk in `infra/README.md`. Changed by 0046 (review fixes).
 
-## 0043 An assistant proposes; only its person decides, on the digest they saw, and the decision runs once as that person
+## 0044 An assistant proposes; only its person decides, on the digest they saw, and the decision runs once as that person
 
-*2026-11-27. Changes 0036 and 0039.*
+*2026-11-27. Changes 0037 and 0040.*
 
 **Decision.**
 
@@ -907,22 +939,22 @@ A policy's page and the Policies screen show its level, target, enforcement, dat
 5. **The person is told twice.** The drafted event wakes the person (`proposal_waiting`, personal, web push) with the deep link `/assistant#proposal-<id>`, and the turn's reply names each pending proposal with the same link on the app origin. My Assistant shows each pending proposal in full with Accept (the human-action colour) and Decline; a proposal's statuses are `pending`, `accepted`, `declined` and `expired`, never a gate's "reject".
 6. **Meeting transcripts are their own untrusted source.** `meeting_transcript` fences a transcript pasted in a direct message (WebVTT, or three or more cue or time-stamped speaker lines) or attached to an email (`.vtt`, `.srt` or a text file of that shape). The PRD's "add a Zoom transcript to the project notes" is a page-addition proposal of the assistant's summary or the transcript.
 
-**Why.** The owner wants the whole feature working, and 0036 made everything outside the closed set wait for its person. A digest the database computes is the only one nobody can make disagree with its payload. Running the page addition through the normal save, as the person, keeps page history, links and checks exactly as for a person's own edit.
+**Why.** The owner wants the whole feature working, and 0037 made everything outside the closed set wait for its person. A digest the database computes is the only one nobody can make disagree with its payload. Running the page addition through the normal save, as the person, keeps page history, links and checks exactly as for a person's own edit.
 
 **Rejected.**
 - Reusing page suggestion sets or item gates: any area editor or admin could decide them, not only the person.
 - A kernel-side hash: the kernel has no crypto library and none could be added; a hash in the application could disagree with what is stored.
 - A whole-body snapshot for a page addition (refused on any later edit): an addition is meant to survive other edits.
-- Sending the email as the person: 0039 gives the platform Gmail only as the assistant mailbox.
+- Sending the email as the person: 0040 gives the platform Gmail only as the assistant mailbox.
 - A separate screen per proposal: the proposals live on My Assistant, which the deep link opens at the proposal.
 
 **Consequences.** Gmail's send as the assistant mailbox with a Reply-To, and the calendar insert with attendees and `sendUpdates=all`, are staging probes. A send whose outcome is unknown is recorded failed `outcome_unknown` and never retried. Expiry runs nightly; a proposal past its week is refused and shown expired before the job marks it.
 
-**Changes / changed by.** Changes 0036 (item 6: the proposal kinds, the decision path and the effect check are built as above) and 0039 (the Workspace port also sends a proposed mail as the assistant mailbox and an invitation as the person). Changed by 0045 (review fixes); 0047 (a proposal may address anyone, inside the organization or outside it, and every email copies its person and every invitation includes them; the person still sees every recipient before accepting).
+**Changes / changed by.** Changes 0037 (item 6: the proposal kinds, the decision path and the effect check are built as above) and 0040 (the Workspace port also sends a proposed mail as the assistant mailbox and an invitation as the person). Changed by 0046 (review fixes); 0048 (a proposal may address anyone, inside the organization or outside it, and every email copies its person and every invitation includes them; the person still sees every recipient before accepting).
 
-## 0044 Assistants go live through declared settings, staging probes run from a terminal, and one scenario walks a person's whole day
+## 0045 Assistants go live through declared settings, staging probes run from a terminal, and one scenario walks a person's whole day
 
-*2026-11-27. Changes 0037, 0039 and 0042 (only how their staging probes are run).*
+*2026-11-27. Changes 0038, 0040 and 0043 (only how their staging probes are run).*
 
 **Decision.**
 
@@ -940,11 +972,11 @@ A policy's page and the Policies screen show its level, target, enforcement, dat
 
 **Consequences.** Running the probes needs the service account key and the Zulip admin key on the admin's machine for the length of the run; the runbook says to delete the env file after. The probes cannot prove Workflow semantics, the webhook delivery or the DMARC result for forged mail from outside; those stay manual. A probe bot is left deactivated in the realm.
 
-**Changes / changed by.** Changes 0037, 0039 and 0042 only in how their staging probes are run: by `pnpm probe:assistants` and the walk in `infra/README.md`, "Going live with personal assistants".
+**Changes / changed by.** Changes 0038, 0040 and 0043 only in how their staging probes are run: by `pnpm probe:assistants` and the walk in `infra/README.md`, "Going live with personal assistants".
 
-## 0045 Review fixes: mail proven by its envelope, forwards fenced in any language, bots never adopted by name, and every failure settled
+## 0046 Review fixes: mail proven by its envelope, forwards fenced in any language, bots never adopted by name, and every failure settled
 
-*2026-11-27. Changes 0038 (the pool), 0040 (the Zulip bot and provisioning failures), 0042 (the sender verdict and the forward split) and 0043 (settling an accepted proposal).*
+*2026-11-27. Changes 0039 (the pool), 0041 (the Zulip bot and provisioning failures), 0043 (the sender verdict and the forward split) and 0044 (settling an accepted proposal).*
 
 **Decision.**
 
@@ -966,11 +998,11 @@ A policy's page and the Policies screen show its level, target, enforcement, dat
 
 **Consequences.** Whether Gmail writes its own header with SPF for the exact address on mail inside the domain, and removes a sender's `mx.google.com` header, is still a staging probe (s8.1, s11.1, s11.2); until then production keeps email instructions off. An SMTP relay allowed to send as any address in the domain with the person's address as envelope sender still passes; only the owner's choice above closes that. Existing bots keep their short names; only new bots take the suffix.
 
-**Changes / changed by.** Changes 0038, 0040, 0042 and 0043 as above.
+**Changes / changed by.** Changes 0039, 0041, 0043 and 0044 as above.
 
-## 0046 An assistant researches the web and flights read-only, through one port, behind an address guard, with counted calls and cited sources
+## 0047 An assistant researches the web and flights read-only, through one port, behind an address guard, with counted calls and cited sources
 
-*2026-11-27. Builds on 0036 (what an assistant may do alone) and 0039 (plain-fetch clients for outside services).*
+*2026-11-27. Builds on 0037 (what an assistant may do alone) and 0040 (plain-fetch clients for outside services).*
 
 **Decision.**
 
@@ -995,11 +1027,11 @@ A policy's page and the Policies screen show its level, target, enforcement, dat
 
 **Consequences.** DNS over HTTPS is checked before the Worker's own fetch resolves the name, so a name that changes its answer between the two (rebinding) is still refused only if Cloudflare's egress refuses private addresses; that, Brave's and Duffel's response shapes, the Browser Run `markdown` quick action on the binding and its answer shape are staging probes (s12.1 to s12.6). A test Duffel token answers only Duffel's test airline. Brave's plan terms (rate, storage of results) and Duffel's search-to-book terms are the owner's to accept.
 
-**Changes / changed by.** Adds to 0036 the research verbs, which reach no person and change nothing. Changed by 0048: a read needs an address this request offered, and a rendered page stays on its checked site.
+**Changes / changed by.** Adds to 0037 the research verbs, which reach no person and change nothing. Changed by 0049: a read needs an address this request offered, and a rendered page stays on its checked site.
 
-## 0047 A leaver's assistant is turned off by the platform, an org admin can turn off any, names are checked against groups, and every proposal copies its person
+## 0048 A leaver's assistant is turned off by the platform, an org admin can turn off any, names are checked against groups, and every proposal copies its person
 
-*2026-11-27. Changes 0039, 0040 and 0043.*
+*2026-11-27. Changes 0040, 0041 and 0044.*
 
 **Decision.**
 
@@ -1019,17 +1051,17 @@ A policy's page and the Policies screen show its level, target, enforcement, dat
 
 **Consequences.** The platform has no command that turns an active person's status to `disabled`; declining applies only to a pending person. Until one exists, a leaver offboarded by revoking grants and suspending them in Google keeps status `active`, so an org admin turns their assistant off from its admin view (PRD open question 32). The group scope must be added to domain-wide delegation and the admin subject given Groups: Read before staging probe s13.1 passes.
 
-**Changes / changed by.** Changes 0039's scope list (a fifth scope, for the admin subject only), 0040 (turning off is no longer only the person's own command) and 0043 (every proposed send includes its person). Changed by 0048: an org admin can now deactivate an active person.
+**Changes / changed by.** Changes 0040's scope list (a fifth scope, for the admin subject only), 0041 (turning off is no longer only the person's own command) and 0044 (every proposed send includes its person). Changed by 0049: an org admin can now deactivate an active person.
 
-## 0048 A research read takes only an offered address, a rendered page stays on its site, an org admin deactivates a leaver, and a turn follows the role in code
+## 0049 A research read takes only an offered address, a rendered page stays on its site, an org admin deactivates a leaver, and a turn follows the role in code
 
-*2026-11-27. Changes 0036, 0046 and 0047. Review fixes.*
+*2026-11-27. Changes 0037, 0047 and 0048. Review fixes.*
 
 **Decision.**
 
 1. **`read_web_page` reads only an address this request offered.** The kernel (`offeredOnly`, `packages/harness/assistants/research-sources.ts`) admits a read only when the address, normalised (scheme and host lower case, a bare host given `/`), is one of this request's search results or is written in the person's own note. Search results are kept in `assistant_requests.research_sources` (at most 50, written by `searchWeb` after Brave answers, cleared with the note when the request is redacted, held by `assistant_requests_redacted_empty`). Any other address is refused `not_permitted` with `address_not_offered`, before it is counted and before any port call, so neither the page fetch nor the DNS over HTTPS lookup of its host carries text the model composed. Addresses inside forwarded or quoted parts, inside pages read, and from another request are not offered.
 2. **A rendered page stays on the site that was checked.** The Browser Run markdown quick action carries `allowRequestPattern: ["^<checked origin>/"]` (`browser-rendering.ts`), so every request the headless browser makes, a redirect or a script's navigation included, must stay on the scheme, host and port the guard passed; anything else is aborted. The cited address is that checked one.
-3. **An org admin deactivates a person.** `deactivate_person` (`POST /api/acl/commands/deactivate_person`, platform command, contract 14.27.0) moves an `active` person to `disabled`, refuses the actor's own record, and is checked for org admin at the route and again inside the transaction with grants locked, like approve and decline; it writes `person_audit` with action `deactivate`. The person is refused at the edge on the next request, and the minute job's `assistant-leavers` step turns their assistant off (0047). Approving them again restores them. Access shows it to org admins as "Deactivate a person".
+3. **An org admin deactivates a person.** `deactivate_person` (`POST /api/acl/commands/deactivate_person`, platform command, contract 14.28.0) moves an `active` person to `disabled`, refuses the actor's own record, and is checked for org admin at the route and again inside the transaction with grants locked, like approve and decline; it writes `person_audit` with action `deactivate`. The person is refused at the edge on the next request, and the minute job's `assistant-leavers` step turns their assistant off (0048). Approving them again restores them. Access shows it to org admins as "Deactivate a person".
 4. **A turn's instructions come from the role in code.** `loopOf` builds the instructions from `assistantRoleBody(persona.identity)`, the same text a new persona page is seeded with, plus the person's addendum and the context. The stored persona page body is no longer read for an assistant's turn, so a change to the role reaches every assistant at once, including those provisioned before it.
 
 **Why.** Review found four gaps. A model that reads private pages and untrusted text in one turn could be told by an injected page to call `read_web_page` with private text in the address; the fence is only an instruction, so the kernel must decide which addresses exist. An address that came from Brave, or that the person typed, existed before the turn read anything private, so it cannot carry what the turn read. The headless browser loads the page again by itself and would follow a redirect or a script anywhere, unchecked. No command moved an active person out of `active`, so the leaver sweep could not fire for a real leaver. And an assistant provisioned before the research verbs had the verbs but not the rules for them.
@@ -1045,7 +1077,7 @@ A policy's page and the Policies screen show its level, target, enforcement, dat
 
 **Consequences.** The model must search before it reads a page the person did not name, which costs a search from the cap. A rendered page whose scripts load from another site renders without them and may come back thin or `unreadable`. Whether Browser Run accepts `allowRequestPattern` on the markdown quick action and aborts a cross-site navigation is staging probe s14.1; s14.2 and s14.3 walk the other two fixes. The stored persona page body is now a record of the seed, not the instructions.
 
-**Changes / changed by.** Changes 0036 (item 2: the role is read from code at every turn), 0046 (items 3 and 4: a read needs an offered address, and rendering is pinned to the checked site) and 0047 (its consequence: an active person can now be deactivated).
+**Changes / changed by.** Changes 0037 (item 2: the role is read from code at every turn), 0047 (items 3 and 4: a read needs an offered address, and rendering is pinned to the checked site) and 0048 (its consequence: an active person can now be deactivated).
 
 # Part 2. Workflow design decisions
 

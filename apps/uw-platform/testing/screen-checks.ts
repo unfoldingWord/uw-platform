@@ -98,9 +98,11 @@ function textNodes(node: Node): string[] {
   return blockTags.has(node.nodeName) ? [' ', ...inner, ' '] : inner;
 }
 
+const hostName = /\S+\.[a-z]{2,}\S*/gi;
+
 function proseOf(body: HTMLElement): string {
   return textNodes(body)
-    .map((text) => text.replaceAll(/\S+@\S+/g, ' '))
+    .map((text) => text.replaceAll(/\S+@\S+/g, ' ').replaceAll(hostName, ' '))
     .join('');
 }
 

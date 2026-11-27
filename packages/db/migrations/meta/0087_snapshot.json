@@ -1,6 +1,6 @@
 {
-  "id": "e028a1df-5d28-4427-82b0-c9a74e0c52fb",
-  "prevId": "fae1744b-04d5-4f94-97ca-51ff508f7659",
+  "id": "fae1744b-04d5-4f94-97ca-51ff508f7659",
+  "prevId": "68aa04e4-0af0-4faf-8290-93db9afbd2e7",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -3219,7 +3219,7 @@
       "checkConstraints": {
         "page_versions_type_known": {
           "name": "page_versions_type_known",
-          "value": "\"page_versions\".\"type\" IN ('skill', 'learning', 'persona', 'product', 'system_goal', 'product_strategy', 'data_sources', 'issue', 'platform', 'decision', 'knowledge', 'entry', 'profile', 'policy', 'portfolio', 'program', 'project', 'okr', 'charter')"
+          "value": "\"page_versions\".\"type\" IN ('skill', 'learning', 'persona', 'product', 'system_goal', 'product_strategy', 'data_sources', 'issue', 'platform', 'decision', 'knowledge', 'entry', 'profile', 'policy', 'portfolio', 'program', 'project', 'okr', 'charter', 'resource', 'measure', 'dashboard')"
         },
         "page_versions_status_known": {
           "name": "page_versions_status_known",
@@ -3625,7 +3625,7 @@
       "checkConstraints": {
         "pages_type_known": {
           "name": "pages_type_known",
-          "value": "\"pages\".\"type\" IN ('skill', 'learning', 'persona', 'product', 'system_goal', 'product_strategy', 'data_sources', 'issue', 'platform', 'decision', 'knowledge', 'entry', 'profile', 'policy', 'portfolio', 'program', 'project', 'okr', 'charter')"
+          "value": "\"pages\".\"type\" IN ('skill', 'learning', 'persona', 'product', 'system_goal', 'product_strategy', 'data_sources', 'issue', 'platform', 'decision', 'knowledge', 'entry', 'profile', 'policy', 'portfolio', 'program', 'project', 'okr', 'charter', 'resource', 'measure', 'dashboard')"
         },
         "pages_status_known": {
           "name": "pages_status_known",
@@ -3794,7 +3794,7 @@
       "checkConstraints": {
         "person_audit_action_known": {
           "name": "person_audit_action_known",
-          "value": "\"person_audit\".\"action\" IN ('approve', 'decline', 'deactivate')"
+          "value": "\"person_audit\".\"action\" IN ('approve', 'decline')"
         },
         "person_audit_actor_is_human": {
           "name": "person_audit_actor_is_human",
@@ -10064,6 +10064,531 @@
         "assistant_proposals_redacted_empty": {
           "name": "assistant_proposals_redacted_empty",
           "value": "\"assistant_proposals\".\"redacted_at\" IS NULL OR (\"assistant_proposals\".\"payload\" = '{}'::jsonb AND \"assistant_proposals\".\"status\" <> 'pending')"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.measure_activations": {
+      "name": "measure_activations",
+      "schema": "",
+      "columns": {
+        "measure_page_id": {
+          "name": "measure_page_id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "tool_hash": {
+          "name": "tool_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "lock": {
+          "name": "lock",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "lock_sha256": {
+          "name": "lock_sha256",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "activator_person_id": {
+          "name": "activator_person_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "area": {
+          "name": "area",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "activated_at": {
+          "name": "activated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "next_run_at": {
+          "name": "next_run_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "paused_reason": {
+          "name": "paused_reason",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "measure_activations_due": {
+          "name": "measure_activations_due",
+          "columns": [
+            {
+              "expression": "next_run_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "measure_activations_measure_page_id_pages_id_fk": {
+          "name": "measure_activations_measure_page_id_pages_id_fk",
+          "tableFrom": "measure_activations",
+          "tableTo": "pages",
+          "columnsFrom": ["measure_page_id"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "measure_activations_activator_person_id_people_id_fk": {
+          "name": "measure_activations_activator_person_id_people_id_fk",
+          "tableFrom": "measure_activations",
+          "tableTo": "people",
+          "columnsFrom": ["activator_person_id"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "measure_activations_version_counted": {
+          "name": "measure_activations_version_counted",
+          "value": "\"measure_activations\".\"version\" >= 1"
+        },
+        "measure_activations_tool_hash_form": {
+          "name": "measure_activations_tool_hash_form",
+          "value": "\"measure_activations\".\"tool_hash\" ~ '^[0-9a-f]{64}$'"
+        },
+        "measure_activations_lock_sha256_form": {
+          "name": "measure_activations_lock_sha256_form",
+          "value": "\"measure_activations\".\"lock_sha256\" ~ '^[0-9a-f]{64}$'"
+        },
+        "measure_activations_area_form": {
+          "name": "measure_activations_area_form",
+          "value": "\"measure_activations\".\"area\" ~ '^([0-9])0-\\1[9]$'"
+        },
+        "measure_activations_paused_reason_known": {
+          "name": "measure_activations_paused_reason_known",
+          "value": "\"measure_activations\".\"paused_reason\" IN ('changed', 'activator_lost_access', 'retired')"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.measure_runs": {
+      "name": "measure_runs",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "measure_page_id": {
+          "name": "measure_page_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "measure_version": {
+          "name": "measure_version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "tool_hash": {
+          "name": "tool_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "kind": {
+          "name": "kind",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "requested_by": {
+          "name": "requested_by",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "state": {
+          "name": "state",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "lock": {
+          "name": "lock",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "lock_sha256": {
+          "name": "lock_sha256",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "refused_hosts": {
+          "name": "refused_hosts",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'[]'::jsonb"
+        },
+        "area": {
+          "name": "area",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "started_at": {
+          "name": "started_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "finished_at": {
+          "name": "finished_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "measure_runs_by_measure": {
+          "name": "measure_runs_by_measure",
+          "columns": [
+            {
+              "expression": "measure_page_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "kind",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "measure_runs_measure_page_id_pages_id_fk": {
+          "name": "measure_runs_measure_page_id_pages_id_fk",
+          "tableFrom": "measure_runs",
+          "tableTo": "pages",
+          "columnsFrom": ["measure_page_id"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "measure_runs_version_counted": {
+          "name": "measure_runs_version_counted",
+          "value": "\"measure_runs\".\"measure_version\" >= 1"
+        },
+        "measure_runs_tool_hash_form": {
+          "name": "measure_runs_tool_hash_form",
+          "value": "\"measure_runs\".\"tool_hash\" ~ '^[0-9a-f]{64}$'"
+        },
+        "measure_runs_kind_known": {
+          "name": "measure_runs_kind_known",
+          "value": "\"measure_runs\".\"kind\" IN ('trial', 'scheduled', 'requested')"
+        },
+        "measure_runs_state_known": {
+          "name": "measure_runs_state_known",
+          "value": "\"measure_runs\".\"state\" IN ('queued', 'running', 'ok', 'partial', 'failed', 'stalled', 'not_wired')"
+        },
+        "measure_runs_requested_by_identity": {
+          "name": "measure_runs_requested_by_identity",
+          "value": "\"measure_runs\".\"requested_by\" ~ '^(?:human:[A-Za-z0-9][A-Za-z0-9_-]*|agent:[a-z0-9][a-z0-9_-]*|agent:[A-Za-z0-9][A-Za-z0-9_-]*/[a-z0-9][a-z0-9-]{0,31}|agent:[A-Za-z0-9][A-Za-z0-9_-]*/[a-z0-9][a-z0-9-]{0,31} as [a-z0-9][a-z0-9_-]* via delegation:[A-Za-z0-9][A-Za-z0-9_-]*)$'"
+        },
+        "measure_runs_lock_sha256_form": {
+          "name": "measure_runs_lock_sha256_form",
+          "value": "\"measure_runs\".\"lock_sha256\" ~ '^[0-9a-f]{64}$'"
+        },
+        "measure_runs_lock_hashed": {
+          "name": "measure_runs_lock_hashed",
+          "value": "(\"measure_runs\".\"lock\" IS NULL) = (\"measure_runs\".\"lock_sha256\" IS NULL)"
+        },
+        "measure_runs_refused_hosts_list": {
+          "name": "measure_runs_refused_hosts_list",
+          "value": "jsonb_typeof(\"measure_runs\".\"refused_hosts\") = 'array'"
+        },
+        "measure_runs_area_form": {
+          "name": "measure_runs_area_form",
+          "value": "\"measure_runs\".\"area\" ~ '^([0-9])0-\\1[9]$'"
+        },
+        "measure_runs_finished_has_time": {
+          "name": "measure_runs_finished_has_time",
+          "value": "\"measure_runs\".\"state\" NOT IN ('ok', 'partial', 'failed') OR \"measure_runs\".\"finished_at\" IS NOT NULL"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.observations": {
+      "name": "observations",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "run_id": {
+          "name": "run_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "measure_page_id": {
+          "name": "measure_page_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "measure_version": {
+          "name": "measure_version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "resource_page_id": {
+          "name": "resource_page_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "observed_at": {
+          "name": "observed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "tool_version": {
+          "name": "tool_version",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "values": {
+          "name": "values",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "outcome": {
+          "name": "outcome",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "reason": {
+          "name": "reason",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "raw_key": {
+          "name": "raw_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "raw_sha256": {
+          "name": "raw_sha256",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "raw_length": {
+          "name": "raw_length",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "area": {
+          "name": "area",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "observations_one_per_run": {
+          "name": "observations_one_per_run",
+          "columns": [
+            {
+              "expression": "run_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "resource_page_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "observations_by_resource": {
+          "name": "observations_by_resource",
+          "columns": [
+            {
+              "expression": "measure_page_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "resource_page_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "observed_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "observations_run_id_measure_runs_id_fk": {
+          "name": "observations_run_id_measure_runs_id_fk",
+          "tableFrom": "observations",
+          "tableTo": "measure_runs",
+          "columnsFrom": ["run_id"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "observations_measure_page_id_pages_id_fk": {
+          "name": "observations_measure_page_id_pages_id_fk",
+          "tableFrom": "observations",
+          "tableTo": "pages",
+          "columnsFrom": ["measure_page_id"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "observations_resource_page_id_pages_id_fk": {
+          "name": "observations_resource_page_id_pages_id_fk",
+          "tableFrom": "observations",
+          "tableTo": "pages",
+          "columnsFrom": ["resource_page_id"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "observations_version_counted": {
+          "name": "observations_version_counted",
+          "value": "\"observations\".\"measure_version\" >= 1"
+        },
+        "observations_outcome_known": {
+          "name": "observations_outcome_known",
+          "value": "\"observations\".\"outcome\" IN ('ok', 'failed')"
+        },
+        "observations_reason_known": {
+          "name": "observations_reason_known",
+          "value": "\"observations\".\"reason\" IN ('timed_out', 'tool_failed', 'output_not_json', 'output_unfit', 'unreachable', 'host_refused')"
+        },
+        "observations_ok_has_values": {
+          "name": "observations_ok_has_values",
+          "value": "\"observations\".\"outcome\" <> 'ok' OR (\"observations\".\"values\" IS NOT NULL AND \"observations\".\"reason\" IS NULL)"
+        },
+        "observations_failed_has_reason": {
+          "name": "observations_failed_has_reason",
+          "value": "\"observations\".\"outcome\" <> 'failed' OR (\"observations\".\"reason\" IS NOT NULL AND \"observations\".\"values\" IS NULL)"
+        },
+        "observations_values_object": {
+          "name": "observations_values_object",
+          "value": "jsonb_typeof(\"observations\".\"values\") = 'object'"
+        },
+        "observations_raw_hashed": {
+          "name": "observations_raw_hashed",
+          "value": "(\"observations\".\"raw_key\" IS NULL) = (\"observations\".\"raw_sha256\" IS NULL)"
+        },
+        "observations_raw_measured": {
+          "name": "observations_raw_measured",
+          "value": "(\"observations\".\"raw_key\" IS NULL) = (\"observations\".\"raw_length\" IS NULL)"
+        },
+        "observations_raw_length_counted": {
+          "name": "observations_raw_length_counted",
+          "value": "\"observations\".\"raw_length\" >= 0"
+        },
+        "observations_raw_sha256_form": {
+          "name": "observations_raw_sha256_form",
+          "value": "\"observations\".\"raw_sha256\" ~ '^[0-9a-f]{64}$'"
+        },
+        "observations_area_form": {
+          "name": "observations_area_form",
+          "value": "\"observations\".\"area\" ~ '^([0-9])0-\\1[9]$'"
         }
       },
       "isRLSEnabled": false

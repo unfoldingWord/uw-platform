@@ -117,6 +117,11 @@ name = "assistant-turn-staging"
 binding = "ASSISTANT_TURN"
 class_name = "AssistantTurn"
 
+[[env.staging.workflows]]
+name = "measure-run-staging"
+binding = "MEASURE_RUN"
+class_name = "MeasureRun"
+
 [[env.staging.containers]]
 class_name = "ClaudeCodeSandbox"
 image = "../containers/claude-code/Dockerfile"
@@ -129,6 +134,12 @@ image = "../containers/codex/Dockerfile"
 max_instances = 4
 instance_type = "basic"
 
+[[env.staging.containers]]
+class_name = "MeasureSandbox"
+image = "../containers/measure/Dockerfile"
+max_instances = 6
+instance_type = "basic"
+
 [[env.staging.durable_objects.bindings]]
 name = "CLAUDE_CODE_SANDBOX"
 class_name = "ClaudeCodeSandbox"
@@ -136,6 +147,10 @@ class_name = "ClaudeCodeSandbox"
 [[env.staging.durable_objects.bindings]]
 name = "CODEX_SANDBOX"
 class_name = "CodexSandbox"
+
+[[env.staging.durable_objects.bindings]]
+name = "MEASURE_SANDBOX"
+class_name = "MeasureSandbox"
 
 [env.production]
 name = "uw-platform"
@@ -223,6 +238,11 @@ name = "assistant-turn-production"
 binding = "ASSISTANT_TURN"
 class_name = "AssistantTurn"
 
+[[env.production.workflows]]
+name = "measure-run-production"
+binding = "MEASURE_RUN"
+class_name = "MeasureRun"
+
 [[env.production.containers]]
 class_name = "ClaudeCodeSandbox"
 image = "../containers/claude-code/Dockerfile"
@@ -235,6 +255,12 @@ image = "../containers/codex/Dockerfile"
 max_instances = 4
 instance_type = "basic"
 
+[[env.production.containers]]
+class_name = "MeasureSandbox"
+image = "../containers/measure/Dockerfile"
+max_instances = 6
+instance_type = "basic"
+
 [[env.production.durable_objects.bindings]]
 name = "CLAUDE_CODE_SANDBOX"
 class_name = "ClaudeCodeSandbox"
@@ -242,6 +268,10 @@ class_name = "ClaudeCodeSandbox"
 [[env.production.durable_objects.bindings]]
 name = "CODEX_SANDBOX"
 class_name = "CodexSandbox"
+
+[[env.production.durable_objects.bindings]]
+name = "MEASURE_SANDBOX"
+class_name = "MeasureSandbox"
 
 [env.preview]
 workers_dev = true
@@ -299,6 +329,10 @@ deleted_classes = ["HarnessHub", "ClaudeCodeSandbox", "CodexSandbox", "PageDraft
 tag = "v5"
 new_sqlite_classes = ["HarnessHub", "ClaudeCodeSandbox", "CodexSandbox", "PageDraft"]
 
+[[env.staging.migrations]]
+tag = "v6"
+new_sqlite_classes = ["MeasureSandbox"]
+
 [[env.production.migrations]]
 tag = "v1"
 new_sqlite_classes = ["HarnessHub"]
@@ -318,3 +352,7 @@ deleted_classes = ["HarnessHub", "ClaudeCodeSandbox", "CodexSandbox", "PageDraft
 [[env.production.migrations]]
 tag = "v5"
 new_sqlite_classes = ["HarnessHub", "ClaudeCodeSandbox", "CodexSandbox", "PageDraft"]
+
+[[env.production.migrations]]
+tag = "v6"
+new_sqlite_classes = ["MeasureSandbox"]

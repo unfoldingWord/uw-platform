@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { jdAreaSchema } from './areas.ts';
 import { roleSchema } from './closed-sets.ts';
+import { collectionPageTypes } from './pages.ts';
 
 export const collectionKeySchema = z
   .string()
@@ -207,7 +208,7 @@ export const collectionDefinitionSchema = z
     name: label,
     jdArea: jdAreaSchema,
     rowSource: rowSourceSchema,
-    pageType: z.enum(['entry', 'portfolio', 'program', 'project', 'okr']).nullable(),
+    pageType: z.enum(collectionPageTypes).nullable(),
     description: z.string().max(1000).default(''),
     locked: z.boolean().default(false),
     properties: z.array(propertyDefinitionSchema).min(1).max(100),

@@ -1,0 +1,29 @@
+{
+  "dashboardId": "00000000-0000-4000-8000-0000000034d1",
+  "expectedVersion": null,
+  "jdArea": "30-39",
+  "title": "Website GEO Scores",
+  "slug": "website-geo-scores",
+  "intro": "How every website we maintain scores.",
+  "context": {
+    "kind": "organization",
+    "resource_kind": "website"
+  },
+  "panels": [
+    {
+      "kind": "figure",
+      "measure": "00000000-0000-4000-8000-0000000034a1",
+      "metric": "latest_score",
+      "title": "Average score"
+    },
+    {
+      "kind": "bars",
+      "measure": "00000000-0000-4000-8000-0000000034a1",
+      "metric": "latest_score"
+    },
+    {
+      "kind": "status",
+      "measure": "00000000-0000-4000-8000-0000000034a1"
+    }
+  ]
+}

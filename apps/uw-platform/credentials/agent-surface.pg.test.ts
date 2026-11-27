@@ -146,6 +146,7 @@ function argumentsOf(): Readonly<Record<VerbName, readonly unknown[]>> {
     ],
     record_run_step: [ids],
     get_health: [{ harnessId }],
+    ...measureArguments(),
     set_reminder: [{ text: name, dueAt: '2027-01-01T09:00:00Z' }],
     cancel_reminder: [{ reminderId: credentialId }],
     list_reminders: [{}],
@@ -154,6 +155,18 @@ function argumentsOf(): Readonly<Record<VerbName, readonly unknown[]>> {
     hold_time: [{ title: name, start: '2027-01-01T09:00:00Z', end: '2027-01-01T10:00:00Z' }],
     release_hold: [{ holdId: credentialId }],
     ...proposalArguments(),
+  };
+}
+
+function measureArguments() {
+  return {
+    save_measure: [{ measureId: credentialId }],
+    save_dashboard: [{ dashboardId: credentialId }],
+    run_measure: [{ measureId: credentialId }],
+    read_measure_run: [{ measureId: credentialId, runId: null }],
+    read_metric: [{ measureId: credentialId, metric: 'score' }],
+    read_observations: [{ measureId: credentialId }],
+    preview_dashboard: [{ dashboardId: credentialId, hostPageId: null }],
   };
 }
 

@@ -33,6 +33,13 @@ export const verbNames = [
   'search_web',
   'read_web_page',
   'find_flights',
+  'save_measure',
+  'save_dashboard',
+  'run_measure',
+  'read_measure_run',
+  'read_metric',
+  'read_observations',
+  'preview_dashboard',
 ] as const;
 
 export const FORBIDDEN_VERBS = ['approve', 'merge', 'deploy', 'publish', 'advance'] as const;

@@ -1,6 +1,7 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { z } from 'zod';
 import { schemaRegistry } from './registry.ts';
 import { verbIo } from './verb-io.ts';
 import { FORBIDDEN_VERBS, verbNames, type VerbName } from './verb-names.ts';
@@ -24,6 +25,16 @@ function judge(name: VerbName, side: Side): void {
   expect(valid.filter((value) => !schema.safeParse(value).success)).toEqual([]);
   expect(invalid.filter((value) => schema.safeParse(value).success)).toEqual([]);
 }
+
+const measureVerbs = [
+  'save_measure',
+  'save_dashboard',
+  'run_measure',
+  'read_measure_run',
+  'read_metric',
+  'read_observations',
+  'preview_dashboard',
+];
 
 function names(): string[] {
   return verbRegistry.map((entry) => entry.name);
@@ -66,10 +77,11 @@ const registered = [
   'search_web',
   'read_web_page',
   'find_flights',
+  ...measureVerbs,
 ];
 
 describe('CT-2 the verb registry', () => {
-  it('registers the thirteen verbs of PRD section 8.2, attach_file, render_pdf, the four collection verbs and the thirteen assistant verbs', () => {
+  it('registers the thirteen verbs of PRD section 8.2, attach_file, render_pdf, the four collection verbs, the thirteen assistant verbs and the seven measure verbs', () => {
     expect(names()).toEqual(registered);
     expect(names()).toEqual([...verbNames]);
   });
@@ -135,11 +147,47 @@ describe('#198 render_pdf in the verb registry', () => {
   });
 });
 
+describe('ADR 0036 the measure verbs in the verb registry', () => {
+  it('ADR 0036 lets an editor save and run a measure, and a viewer read and preview', () => {
+    const grants = measureVerbs.map((name) => [name, findVerb(name)?.grant?.role]);
+    expect(grants).toEqual([
+      ['save_measure', 'editor'],
+      ['save_dashboard', 'editor'],
+      ['run_measure', 'editor'],
+      ['read_measure_run', 'viewer'],
+      ['read_metric', 'viewer'],
+      ['read_observations', 'viewer'],
+      ['preview_dashboard', 'viewer'],
+    ]);
+  });
+
+  it('ADR 0036 has no verb that starts a trial, activates or makes a dashboard active', () => {
+    const words = verbRegistry.filter((entry) => /trial|activat/.test(entry.name));
+    expect(words).toEqual([]);
+  });
+
+  it('ADR 0036 gives run_measure no field that could name a tool, a command or a host', () => {
+    const input = verbIo.run_measure.input;
+    const measureId = '00000000-0000-4000-8000-000000000001';
+    expect(input.safeParse({ measureId }).success).toBe(true);
+    for (const field of ['package', 'command', 'address', 'host', 'kind']) {
+      expect(input.safeParse({ measureId, [field]: 'x' }).success).toBe(false);
+    }
+  });
+
+  it('ADR 0036 saves a measure from typed fields, never from frontmatter the agent writes', () => {
+    const input = verbIo.save_measure.input;
+    const fields = Object.keys(z.toJSONSchema(input).properties ?? {});
+    expect(fields).toContain('measure');
+    expect(fields).not.toContain('frontmatter');
+  });
+});
+
 describe('CT-2 the verb manifest is contract data', () => {
   it('is plain JSON-serialisable contract data', () => {
     const manifest = verbManifest();
     expect(JSON.parse(JSON.stringify(manifest))).toEqual(manifest);
-    expect(manifest).toHaveLength(32);
+    expect(manifest).toHaveLength(39);
   });
 
   it('serialises the registry with its Zod schemas stripped', () => {

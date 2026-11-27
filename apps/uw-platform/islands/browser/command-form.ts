@@ -63,6 +63,11 @@ export const OUTCOME_TEXT: Readonly<Record<string, string>> = {
   set_assistant_budget: 'Budget set',
   decide_assistant_proposal: 'Decided',
   disable_person_assistant: 'Turned off',
+  run_measure_trial:
+    'Trial started, or queued until a sandbox is free. Reload to see each outcome.',
+  activate_measure: 'Activated. It runs on its schedule.',
+  run_measure_now: 'Run started, or queued until a sandbox is free. Reload to see each outcome.',
+  activate_dashboard: 'This dashboard is active.',
 };
 
 const outcomes: ReadonlyMap<string, string> = new Map(Object.entries(OUTCOME_TEXT));

@@ -9,7 +9,9 @@ import {
   pageTypeRegistry,
   personaFrontmatterSchema,
 } from './page-types.ts';
-import { pageTypes } from './pages.ts';
+import { dashboardFrontmatterSchema } from './dashboards.ts';
+import { measureFrontmatterSchema } from './measures.ts';
+import { isCollectionPageType, pageTypes } from './pages.ts';
 
 const persona = {
   identity: 'agent:builder',
@@ -29,8 +31,16 @@ function acceptsPersona(overrides: Record<string, unknown>): boolean {
 }
 
 describe('FD-9 the page-type registry', () => {
-  it('registers exactly the eight v1 page types', () => {
+  it('registers exactly the page types pageTypes names, in its order', () => {
     expect(Object.keys(pageTypeRegistry)).toEqual([...pageTypes]);
+  });
+
+  it('ADR 0036 registers resource, measure and dashboard, a resource as a collection row', () => {
+    expect(pageTypes.slice(-3)).toEqual(['resource', 'measure', 'dashboard']);
+    expect(isCollectionPageType('resource')).toBe(true);
+    expect(isCollectionPageType('measure')).toBe(false);
+    expect(pageTypeDefinition('measure')?.frontmatter).toBe(measureFrontmatterSchema);
+    expect(pageTypeDefinition('dashboard')?.frontmatter).toBe(dashboardFrontmatterSchema);
   });
 
   it.each(pageTypes)(

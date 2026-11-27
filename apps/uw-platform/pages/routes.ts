@@ -49,7 +49,8 @@ import {
   listComments,
 } from './social-handlers.ts';
 import { pageReads } from './read-handlers.ts';
-import { createPage, updatePage, type PageRefusal, type PageResult } from './store.ts';
+import { measurePauses } from '../measures/activations.ts';
+import { createPage, updatePageWith, type PageRefusal, type PageResult } from './store.ts';
 
 type Run = (
   db: Database,
@@ -112,7 +113,11 @@ const handlers = new Map<string, Run>([
       const parsed = updatePageCommandSchema.safeParse(body);
       if (!parsed.success) return null;
       const command: UpdatePageCommand = parsed.data;
-      const result = await updatePage(db, actor, command, traceId, at);
+      const result = await updatePageWith(db, actor, command, {
+        traceId,
+        at,
+        effects: measurePauses,
+      });
       return { requestId: command.requestId, result };
     },
   ],

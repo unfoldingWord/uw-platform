@@ -101,6 +101,7 @@ async function queuedReadsBack(db: Database): Promise<void> {
     request: { target: asked.request },
     requestedBy: made.requester.identity,
     personId: made.requester.personId,
+    areas: ['30-39', '40-49'],
   });
 }
 
@@ -132,7 +133,14 @@ async function finishedReadyAndFailed(db: Database): Promise<void> {
   await finishExport(
     db,
     ready.exportId,
-    { kind: 'ready', r2Key: key, sourceSha256: HASH, fileSha256: FILE_HASH, bytes: 1234 },
+    {
+      kind: 'ready',
+      r2Key: key,
+      sourceSha256: HASH,
+      fileSha256: FILE_HASH,
+      bytes: 1234,
+      areas: ['30-39', '40-49'],
+    },
     made.at,
   );
   await finishExport(db, failed.exportId, { kind: 'failed', reason: 'pdf_render_failed' }, made.at);

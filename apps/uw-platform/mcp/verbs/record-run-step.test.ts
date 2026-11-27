@@ -101,7 +101,7 @@ describe('record_run_step names every key it takes', () => {
         text: JSON.stringify({
           status: 'error',
           reason: 'malformed_command',
-          detail: { fields: ['(root)'] },
+          detail: { fields: ['(root)'], issues: ['(root): Unrecognized key: "cost_minor"'] },
         }),
       },
     ]);

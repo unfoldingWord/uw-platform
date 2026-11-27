@@ -22,6 +22,7 @@ import {
 import type { ZodType } from 'zod';
 import { assistantSchemas, assistantShapes } from './assistant-body.ts';
 import { collectionSchemas, collectionShapes } from './collection-body.ts';
+import { measureSchemas, measureShapes } from './measure-body.ts';
 
 export type CommandFields = Readonly<Record<string, string>>;
 
@@ -29,6 +30,7 @@ const schemas = new Map<string, ZodType>([
   ...Object.entries(harnessCommandSchemas),
   ...collectionSchemas,
   ...assistantSchemas,
+  ...measureSchemas,
   ['grant_role', grantRoleCommandSchema],
   ['revoke_role', revokeRoleCommandSchema],
   ['approve_person', approvePersonCommandSchema],
@@ -180,6 +182,7 @@ function stageRuleOf(row: ReadonlyMap<string, string>): Readonly<Record<string, 
 const shapes: ReadonlyMap<string, Shape> = new Map<string, Shape>([
   ...collectionShapes,
   ...assistantShapes,
+  ...measureShapes,
   ['open_workflow_draft', none],
   ['set_stage_rules', (given) => ({ stages: rowsOf(given).map(stageRuleOf) })],
   ['set_shadow', switched('shadow')],

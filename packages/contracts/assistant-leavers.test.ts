@@ -26,9 +26,9 @@ describe('PA-20 an org admin turns off a person’s assistant', () => {
     );
   });
 
-  it('was published at 14.26.0 with the command name locked', () => {
+  it('was published at 14.27.0 with the command name locked', () => {
     expect(lock.versions.map((version) => version.version)).toContain(CONTRACT_VERSION);
-    const entry = lock.versions.find((version) => version.version === '14.26.0');
+    const entry = lock.versions.find((version) => version.version === '14.27.0');
     const sets: Record<string, readonly string[]> = entry?.sets ?? {};
     expect(sets['platform-command-name']).toContain('disable_person_assistant');
   });
@@ -44,9 +44,9 @@ describe('PA-20 an org admin deactivates a leaver, and PA-19 a read needs an off
     expect(schemaRegistry['deactivate-person-command']).toBe(deactivatePersonCommandSchema);
   });
 
-  it('is published at 14.27.0 with the command and the refusal locked', () => {
-    expect(CONTRACT_VERSION).toBe('14.27.0');
-    const entry = lock.versions.find((version) => version.version === '14.27.0');
+  it('is published at 14.28.0 with the command and the refusal locked', () => {
+    expect(CONTRACT_VERSION).toBe('14.28.0');
+    const entry = lock.versions.find((version) => version.version === '14.28.0');
     const sets: Record<string, readonly string[]> = entry?.sets ?? {};
     expect(sets['platform-command-name']).toContain('deactivate_person');
     expect(sets['assistant-research-refusal']).toContain('address_not_offered');

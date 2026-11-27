@@ -51,3 +51,9 @@ const counts = new Intl.NumberFormat('en-US');
 export function formatCount(count: number): string {
   return counts.format(count);
 }
+
+const figures = new Intl.NumberFormat('en-US', { maximumFractionDigits: 1 });
+
+export function formatFigure(value: number): string {
+  return figures.format(value);
+}

@@ -1,0 +1,9 @@
+{
+  "measureId": "00000000-0000-4000-8000-0000000034a1",
+  "metric": "latest_score",
+  "context": {
+    "kind": "page",
+    "page_id": "00000000-0000-4000-8000-0000000034d1",
+    "descendants": true
+  }
+}

@@ -4,8 +4,14 @@ import { runScheduled } from './cron/scheduled.ts';
 import { consumeIngestBatch } from './queue/worker.ts';
 import { withSecrets, type WorkerEnv } from './secrets.ts';
 
-export { ClaudeCodeSandbox, CodexSandbox, ContainerProxy } from './engines/sandbox/classes.ts';
+export {
+  ClaudeCodeSandbox,
+  CodexSandbox,
+  ContainerProxy,
+  MeasureSandbox,
+} from './engines/sandbox/classes.ts';
 export { HarnessHub } from './live/harness-hub.ts';
+export { MeasureRun } from './measures/workflow.ts';
 export { PageDraft } from './pages/draft-hub.ts';
 export { AssistantTurn } from './assistants/turn/workflow.ts';
 export { PdfExportRun } from './pdf/workflow.ts';

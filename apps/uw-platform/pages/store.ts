@@ -1,7 +1,6 @@
 import { and, eq, sql } from 'drizzle-orm';
 import {
   isCollectionPageType,
-  pageSchema,
   type CreatePageCommand,
   type ErrorReason,
   type Page,
@@ -11,18 +10,21 @@ import {
 import { can } from '@uw/core/acl';
 import type { Principal } from '@uw/core/principal';
 import { advisoryLock, advisoryLocks } from '@uw/db/advisory-locks';
-import type { Database, Executor, Transaction } from '@uw/db/client';
+import type { Database, Transaction } from '@uw/db/client';
 import { pages, pageVersions } from '@uw/db/schema';
 import { pgConstraint, pgErrorCode } from '@uw/db/errors';
 import { contentRefusal } from './content-checks.ts';
 import { derivedFrontmatter, personaLanding } from './derive.ts';
 import { filedOutsideItsArea } from './filing.ts';
-import { isGatedType } from './gating.ts';
+import { isGatedType, returnsToSuggested } from './gating.ts';
+import { readPage, toPage, type PageRow } from './page-row.ts';
+import { parentRefusal } from './parents.ts';
 import { embedsItself, rebuildLinks, resolveBody } from './links.ts';
 import { provenanceOf, type ExternalWriter } from './provenance.ts';
 import { REPLAY_INDEX, replayOf } from './replay.ts';
-import { withoutWithheld } from './property-rules.ts';
 import { checkFrontmatter } from './validate.ts';
+
+export { readPage, toPage } from './page-row.ts';
 
 export const owns = [
   'pages',
@@ -48,6 +50,10 @@ export type PageRefusal = {
   readonly detail: Readonly<Record<string, string | readonly string[]>>;
 };
 
+export type PageEffects = {
+  readonly leftActive: (tx: Transaction, page: Page) => Promise<void>;
+};
+
 export type Divert = (
   tx: Transaction,
   stored: Page,
@@ -59,8 +65,6 @@ export type CheckedSave = {
   readonly statusFor: (stored: Page) => PageStatus | PageRefusal;
   readonly divert?: Divert;
 };
-
-type PageRow = typeof pages.$inferSelect;
 
 const UNIQUE_VIOLATION = '23505';
 const PAGE_PRIMARY_KEY = 'pages_pkey';
@@ -90,34 +94,6 @@ const issueMirror: PageRefusal = {
 
 function activates(type: string, from: PageStatus | null, to: PageStatus): boolean {
   return to === 'active' && from !== 'active' && isGatedType(type);
-}
-
-export function toPage(row: PageRow): Page {
-  return pageSchema.parse({
-    id: row.id,
-    type: row.type,
-    jdArea: row.jdArea,
-    slug: row.slug,
-    title: row.title,
-    parentId: row.parentId,
-    frontmatter: row.frontmatter,
-    bodyMd: row.bodyMd,
-    version: row.version,
-    status: row.status,
-  });
-}
-
-export async function readPage(
-  db: Executor,
-  actor: Principal,
-  pageId: string,
-  at: Date,
-): Promise<Page | null> {
-  const [row] = await db.select().from(pages).where(eq(pages.id, pageId));
-  if (!row) return null;
-  const page = toPage(row);
-  if (!can(actor, 'read', { kind: 'area', area: page.jdArea }, at)) return null;
-  return withoutWithheld(db, actor, page, row.collectionId, at);
 }
 
 export type SnapshotSource = { readonly traceId: string; readonly requestId: string | null };
@@ -294,34 +270,6 @@ export async function createPageAs(
   }
 }
 
-async function ancestorChainReaches(
-  tx: Transaction,
-  parentId: string,
-  pageId: string,
-): Promise<boolean> {
-  const rows = await tx.execute(sql`
-    WITH RECURSIVE chain(id, parent_id) AS (
-      SELECT id, parent_id FROM pages WHERE id = ${parentId}
-      UNION
-      SELECT p.id, p.parent_id FROM pages p JOIN chain c ON p.id = c.parent_id
-    )
-    SELECT 1 FROM chain WHERE id = ${pageId} LIMIT 1`);
-  return rows.length > 0;
-}
-
-export async function parentRefusal(
-  tx: Transaction,
-  actor: Principal,
-  command: Pick<UpdatePageCommand, 'pageId' | 'parentId'>,
-  at: Date,
-): Promise<ErrorReason | null> {
-  if (command.parentId === null) return null;
-  if (command.parentId === command.pageId) return 'parent_cycle';
-  if ((await readPage(tx, actor, command.parentId, at)) === null) return 'parent_not_found';
-  if (await ancestorChainReaches(tx, command.parentId, command.pageId)) return 'parent_cycle';
-  return null;
-}
-
 async function writeUpdate(
   tx: Transaction,
   actor: Principal,
@@ -401,6 +349,7 @@ type Save = {
   readonly checked: CheckedSave;
   readonly traceId: string;
   readonly at: Date;
+  readonly effects?: PageEffects;
 };
 
 async function writeLinked(
@@ -419,6 +368,17 @@ async function writeLinked(
 
 function statusOf(checked: CheckedSave, stored: Page): PageStatus | PageRefusal {
   return stored.type === PROFILE ? collectionRow : checked.statusFor(stored);
+}
+
+async function withEffects(
+  tx: Transaction,
+  save: Save,
+  stored: Page,
+  saved: PageResult,
+): Promise<PageResult> {
+  const left = saved.ok && stored.status === 'active' && saved.page.status !== 'active';
+  if (left && save.effects !== undefined) await save.effects.leftActive(tx, saved.page);
+  return saved;
 }
 
 async function updateInTransaction(tx: Transaction, save: Save): Promise<PageResult | PageRefusal> {
@@ -450,7 +410,8 @@ async function finishSave(
   const unfit = await saveRefusal(tx, save.actor, { ...full, type: stored.type }, save.at);
   if (unfit !== null) return unfit;
   const diverted = save.checked.divert?.(tx, stored, full) ?? null;
-  return diverted === null ? writeLinked(tx, save, stored, full) : diverted;
+  if (diverted !== null) return diverted;
+  return withEffects(tx, save, stored, await writeLinked(tx, save, stored, full));
 }
 
 export function updateWithin(
@@ -476,24 +437,39 @@ export function updateCheckedPage(
   db: Database,
   actor: Principal,
   checked: CheckedSave,
-  traceId: string,
-  at: Date,
+  request: UpdateRequest,
 ): Promise<PageResult | PageRefusal> {
-  return saveChecked(db, { actor, checked, traceId, at });
+  return saveChecked(db, { actor, checked, ...request });
 }
 
-export async function updatePage(
+export type UpdateRequest = {
+  readonly traceId: string;
+  readonly at: Date;
+  readonly effects?: PageEffects;
+};
+
+export function updatePageWith(
+  db: Database,
+  actor: Principal,
+  command: UpdatePageCommand,
+  request: UpdateRequest,
+): Promise<PageResult | PageRefusal> {
+  const statusFor = (stored: Page): PageStatus | PageRefusal => {
+    if (stored.type === ISSUE_MIRROR) return issueMirror;
+    if (returnsToSuggested(stored.type, stored.status, command.status)) return 'suggested';
+    return activates(stored.type, stored.status, command.status)
+      ? activationRequired
+      : command.status;
+  };
+  return saveChecked(db, { actor, checked: { command, statusFor }, ...request });
+}
+
+export function updatePage(
   db: Database,
   actor: Principal,
   command: UpdatePageCommand,
   traceId: string,
   at: Date,
 ): Promise<PageResult | PageRefusal> {
-  const statusFor = (stored: Page): PageStatus | PageRefusal => {
-    if (stored.type === ISSUE_MIRROR) return issueMirror;
-    return activates(stored.type, stored.status, command.status)
-      ? activationRequired
-      : command.status;
-  };
-  return saveChecked(db, { actor, checked: { command, statusFor }, traceId, at });
+  return updatePageWith(db, actor, command, { traceId, at });
 }

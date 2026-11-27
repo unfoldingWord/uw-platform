@@ -65,11 +65,19 @@ async function viewTitles(db: Database, actor: Principal, key: string, viewId: s
 async function provesSeeding(db: Database) {
   await ensureBuiltIns(db, collectionsAt);
   const keys = (await allCollections(db)).map((s) => s.definition.key);
-  expect(keys).toEqual(['directory', 'okr', 'portfolio', 'program', 'project', 'tasks']);
+  expect(keys).toEqual([
+    'directory',
+    'okr',
+    'portfolio',
+    'program',
+    'project',
+    'resource',
+    'tasks',
+  ]);
   const views = builtIns.reduce((n, b) => n + b.views.length, 0);
   const program = builtIns.find((b) => b.id.endsWith('4'))?.views.length ?? 0;
   const project = builtIns.find((b) => b.id.endsWith('5'))?.views.length ?? 0;
-  expect([program + project, views]).toEqual([16, 26]);
+  expect([program + project, views]).toEqual([16, 28]);
 }
 
 async function provesMyTasks(db: Database, { ana, ben }: Rig) {
@@ -173,7 +181,7 @@ describe('#206 the built-in collections', () => {
 });
 
 describe.skipIf(!testServer)('#206 seeding the built-in collections', () => {
-  it('seeds six collections and their views once, through the same definitions', () =>
+  it('seeds seven collections and their views once, through the same definitions', () =>
     withRig(provesSeeding));
 });
 

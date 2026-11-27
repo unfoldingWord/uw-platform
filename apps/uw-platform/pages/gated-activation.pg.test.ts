@@ -34,9 +34,24 @@ const frontmatterByType = new Map<PageType, CreatePageCommand['frontmatter']>([
   ],
   ['platform', { dispatch_allowed: ['unfoldingWord/tc-admin-app'] }],
   ['product', { owner: `human:${EDITOR.id}`, summary: 'A product page.' }],
+  [
+    'measure',
+    {
+      runtime: 'uvx',
+      package: 'geo-optimizer-skill==4.19.10',
+      command: ['geo', 'audit', '--url', '{address}', '--format', 'json'],
+      resources: { view: 'c0110000-0000-4000-8000-000000000701' },
+      schedule: { every: 'month', day: 1 },
+      values: [],
+      metrics: [],
+      report_card: null,
+    },
+  ],
+  ['dashboard', { context: { kind: 'organization', resource_kind: 'website' } }],
 ]);
 
 const gated: readonly PageType[] = ['persona', 'learning', 'skill', 'platform'];
+const neverActiveByPageApi: readonly PageType[] = [...gated, 'measure', 'dashboard'];
 const activationRequired = { ok: false, reason: 'activation_required', detail: {} };
 
 function frontmatterOf(type: PageType): CreatePageCommand['frontmatter'] {
@@ -129,25 +144,29 @@ async function stored(db: Database, pageId: string) {
 describe.skipIf(!testServer)(
   'AB-5 AB-8 a gated page never becomes active through the page API',
   () => {
-    it.each(gated)('refuses creating a %s page as active and writes nothing', (type) =>
-      withAppDatabase(async (db) => {
-        const person = await editor(db);
-        const { pageId, created } = create(db, person, type, 'active');
-        expect(await created).toEqual(activationRequired);
-        expect(await stored(db, pageId)).toEqual({ row: null, versions: 0 });
-      }),
+    it.each(neverActiveByPageApi)(
+      'refuses creating a %s page as active and writes nothing',
+      (type) =>
+        withAppDatabase(async (db) => {
+          const person = await editor(db);
+          const { pageId, created } = create(db, person, type, 'active');
+          expect(await created).toEqual(activationRequired);
+          expect(await stored(db, pageId)).toEqual({ row: null, versions: 0 });
+        }),
     );
 
-    it.each(gated)('refuses moving a suggested %s page to active and leaves it suggested', (type) =>
-      withAppDatabase(async (db) => {
-        const person = await editor(db);
-        const pageId = await seededAs(db, type, 'suggested');
-        expect(await update(db, person, pageId, type, 'active')).toEqual(activationRequired);
-        expect(await stored(db, pageId)).toEqual({
-          row: { status: 'suggested', version: 1 },
-          versions: 0,
-        });
-      }),
+    it.each(neverActiveByPageApi)(
+      'refuses moving a suggested %s page to active and leaves it suggested',
+      (type) =>
+        withAppDatabase(async (db) => {
+          const person = await editor(db);
+          const pageId = await seededAs(db, type, 'suggested');
+          expect(await update(db, person, pageId, type, 'active')).toEqual(activationRequired);
+          expect(await stored(db, pageId)).toEqual({
+            row: { status: 'suggested', version: 1 },
+            versions: 0,
+          });
+        }),
     );
   },
 );

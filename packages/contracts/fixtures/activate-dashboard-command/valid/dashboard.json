@@ -1,0 +1,6 @@
+{
+  "command": "activate_dashboard",
+  "requestId": "00000000-0000-4000-8000-0000000034c1",
+  "dashboardId": "00000000-0000-4000-8000-0000000034b1",
+  "expectedVersion": 1
+}

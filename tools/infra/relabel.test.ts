@@ -43,9 +43,9 @@ describe('the phase-one config that deletes the Durable Object classes', () => {
       expect(envOf(after, name)).toEqual(envOf(live, name));
   });
 
-  it('the release config then applies the recreate step after the delete', () => {
+  it('the release config then applies the recreate step after the delete, then the measure sandbox', () => {
     const steps = envOf(live, 'production').migrations?.map((step) => step.tag);
-    expect(steps).toEqual(['v1', 'v2', 'v3', 'v4', 'v5']);
+    expect(steps).toEqual(['v1', 'v2', 'v3', 'v4', 'v5', 'v6']);
   });
 
   it('rewrites the file it is given in place, as CI does on its own checkout', () => {

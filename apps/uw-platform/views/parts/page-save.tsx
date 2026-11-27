@@ -10,7 +10,8 @@ import type { AppEnv } from '../../deps.ts';
 import { draftsOf } from '../../pages/drafts.ts';
 import { renumbered, withJdId } from '../../pages/jd-ids.ts';
 import { movePage } from '../../pages/move.ts';
-import { updatePage } from '../../pages/store.ts';
+import { measurePauses } from '../../measures/activations.ts';
+import { updatePageWith } from '../../pages/store.ts';
 import { renderPageEdit, type Typed } from '../screens/page-edit.tsx';
 import { notFound } from '../screens/not-found.tsx';
 import { screenKernel, screenRefusal, type ScreenKernel } from './frame.tsx';
@@ -98,7 +99,11 @@ async function saved(saving: Saving, page: Page, posted: Posted): Promise<Outcom
   });
   if (!command.success) return { ok: false, reason: 'malformed_command' };
   const { actor, traceId } = saving.screen.caller;
-  const result = await updatePage(saving.db, actor, command.data, traceId, saving.screen.at);
+  const result = await updatePageWith(saving.db, actor, command.data, {
+    traceId,
+    at: saving.screen.at,
+    effects: measurePauses,
+  });
   return result.ok
     ? { ok: true, version: result.page.version }
     : { ok: false, reason: result.reason, missing: missingOf(result) };

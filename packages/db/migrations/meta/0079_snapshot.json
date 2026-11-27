@@ -1,6 +1,6 @@
 {
-  "id": "d6f1fbf7-5213-4949-9fca-88e84cbe2ca3",
-  "prevId": "533d17ec-bf83-48eb-9eb9-b6899008448f",
+  "id": "533d17ec-bf83-48eb-9eb9-b6899008448f",
+  "prevId": "6f9dd3e9-b10d-46ef-ac5f-6f021d0f54b4",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -739,7 +739,7 @@
       "checkConstraints": {
         "harness_events_name_known": {
           "name": "harness_events_name_known",
-          "value": "\"harness_events\".\"name\" IN ('item_created', 'item_claimed', 'item_released', 'item_reordered', 'lease_renewed', 'lease_expired', 'branch_abandoned', 'branch_adopted', 'stage_advanced', 'loop_edge_taken', 'premise_held', 'risk_derived', 'label_removed', 'run_started', 'run_step_recorded', 'run_failed', 'run_hibernated', 'run_resumed', 'run_stopped', 'run_completed', 'run_prompted', 'submitted_to_gate', 'checks_passed', 'checks_failed', 'gate_approved', 'gate_rejected', 'gate_taken_over', 'gate_overridden', 'gate_refused_to_agent', 'ship_refused', 'connector_succeeded', 'connector_refused', 'delegation_granted', 'delegation_revoked', 'delegation_lapsed', 'delegation_required', 'stage_edit_refused', 'stage_edited', 'stage_removed', 'workflow_draft_opened', 'workflow_draft_saved', 'workflow_draft_taken_over', 'workflow_draft_discarded', 'workflow_published', 'template_activated', 'harness_paused', 'harness_resumed', 'hosted_builder_set', 'learning_attached', 'nothing_learned', 'comment_recorded', 'zulip_topic_linked', 'breaker_holding', 'breaker_pausing', 'breaker_open', 'persona_activation_failed', 'persona_activated', 'measurement_recorded', 'handed_to_person', 'review_verdict_recorded', 'shadow_verdict', 'shadow_lifted', 'shadow_turned_on', 'freeze_changed', 'finding_refuted', 'delegated_merge', 'delegated_exit_claimed', 'fix_claimed', 'fix_claim_set', 'title_set', 'epic_enqueued', 'done_when_missing', 'silence_alarm', 'template_changed', 'assistant_customised', 'assistant_request_recorded', 'assistant_turn_started', 'assistant_turn_refused', 'assistant_turn_finished', 'assistant_effect_started', 'assistant_effect_done', 'assistant_effect_failed', 'assistant_reminder_set', 'assistant_reminder_cancelled', 'assistant_reminder_fired', 'assistant_reminder_undelivered', 'assistant_pairing_started', 'assistant_paired', 'assistant_pairing_refused', 'assistant_budget_set', 'assistant_hold_placed', 'assistant_hold_released', 'assistant_enabled', 'assistant_disabled', 'assistant_provisioned', 'assistant_provisioning_failed', 'assistant_deleted')"
+          "value": "\"harness_events\".\"name\" IN ('item_created', 'item_claimed', 'item_released', 'item_reordered', 'lease_renewed', 'lease_expired', 'branch_abandoned', 'branch_adopted', 'stage_advanced', 'loop_edge_taken', 'premise_held', 'risk_derived', 'label_removed', 'run_started', 'run_step_recorded', 'run_failed', 'run_hibernated', 'run_resumed', 'run_stopped', 'run_completed', 'run_prompted', 'submitted_to_gate', 'checks_passed', 'checks_failed', 'gate_approved', 'gate_rejected', 'gate_taken_over', 'gate_overridden', 'gate_refused_to_agent', 'ship_refused', 'connector_succeeded', 'connector_refused', 'delegation_granted', 'delegation_revoked', 'delegation_lapsed', 'delegation_required', 'stage_edit_refused', 'stage_edited', 'stage_removed', 'workflow_draft_opened', 'workflow_draft_saved', 'workflow_draft_taken_over', 'workflow_draft_discarded', 'workflow_published', 'template_activated', 'harness_paused', 'harness_resumed', 'hosted_builder_set', 'learning_attached', 'nothing_learned', 'comment_recorded', 'zulip_topic_linked', 'breaker_holding', 'breaker_pausing', 'breaker_open', 'persona_activation_failed', 'persona_activated', 'measurement_recorded', 'handed_to_person', 'review_verdict_recorded', 'shadow_verdict', 'shadow_lifted', 'shadow_turned_on', 'freeze_changed', 'finding_refuted', 'delegated_merge', 'delegated_exit_claimed', 'fix_claimed', 'fix_claim_set', 'title_set', 'epic_enqueued', 'done_when_missing', 'silence_alarm', 'template_changed', 'assistant_customised', 'assistant_request_recorded', 'assistant_turn_started', 'assistant_turn_refused', 'assistant_turn_finished', 'assistant_effect_started', 'assistant_effect_done', 'assistant_effect_failed', 'assistant_reminder_set', 'assistant_reminder_cancelled', 'assistant_reminder_fired', 'assistant_reminder_undelivered', 'assistant_pairing_started', 'assistant_paired', 'assistant_pairing_refused', 'assistant_budget_set', 'assistant_hold_placed', 'assistant_hold_released')"
         },
         "harness_events_actor_is_identity": {
           "name": "harness_events_actor_is_identity",
@@ -3219,7 +3219,7 @@
       "checkConstraints": {
         "page_versions_type_known": {
           "name": "page_versions_type_known",
-          "value": "\"page_versions\".\"type\" IN ('skill', 'learning', 'persona', 'product', 'system_goal', 'product_strategy', 'data_sources', 'issue', 'platform', 'decision', 'knowledge', 'entry', 'profile', 'policy', 'portfolio', 'program', 'project', 'okr', 'charter')"
+          "value": "\"page_versions\".\"type\" IN ('skill', 'learning', 'persona', 'product', 'system_goal', 'product_strategy', 'data_sources', 'issue', 'platform', 'decision', 'knowledge', 'entry', 'profile', 'policy', 'portfolio', 'program', 'project', 'okr', 'charter', 'resource', 'measure', 'dashboard')"
         },
         "page_versions_status_known": {
           "name": "page_versions_status_known",
@@ -3625,7 +3625,7 @@
       "checkConstraints": {
         "pages_type_known": {
           "name": "pages_type_known",
-          "value": "\"pages\".\"type\" IN ('skill', 'learning', 'persona', 'product', 'system_goal', 'product_strategy', 'data_sources', 'issue', 'platform', 'decision', 'knowledge', 'entry', 'profile', 'policy', 'portfolio', 'program', 'project', 'okr', 'charter')"
+          "value": "\"pages\".\"type\" IN ('skill', 'learning', 'persona', 'product', 'system_goal', 'product_strategy', 'data_sources', 'issue', 'platform', 'decision', 'knowledge', 'entry', 'profile', 'policy', 'portfolio', 'program', 'project', 'okr', 'charter', 'resource', 'measure', 'dashboard')"
         },
         "pages_status_known": {
           "name": "pages_status_known",
@@ -9368,55 +9368,203 @@
       },
       "isRLSEnabled": false
     },
-    "public.assistant_accounts": {
-      "name": "assistant_accounts",
+    "public.measure_activations": {
+      "name": "measure_activations",
       "schema": "",
       "columns": {
-        "harness_id": {
-          "name": "harness_id",
+        "measure_page_id": {
+          "name": "measure_page_id",
           "type": "uuid",
           "primaryKey": true,
           "notNull": true
         },
-        "person_id": {
-          "name": "person_id",
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "tool_hash": {
+          "name": "tool_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "lock": {
+          "name": "lock",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "lock_sha256": {
+          "name": "lock_sha256",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "activator_person_id": {
+          "name": "activator_person_id",
           "type": "uuid",
           "primaryKey": false,
           "notNull": true
         },
-        "name": {
-          "name": "name",
+        "area": {
+          "name": "area",
           "type": "text",
           "primaryKey": false,
           "notNull": true
         },
-        "jd_id": {
-          "name": "jd_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "status": {
-          "name": "status",
-          "type": "text",
+        "activated_at": {
+          "name": "activated_at",
+          "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": true
         },
-        "disabled_at": {
-          "name": "disabled_at",
+        "next_run_at": {
+          "name": "next_run_at",
           "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": false
         },
-        "deleted_at": {
-          "name": "deleted_at",
-          "type": "timestamp with time zone",
+        "paused_reason": {
+          "name": "paused_reason",
+          "type": "text",
           "primaryKey": false,
           "notNull": false
+        }
+      },
+      "indexes": {
+        "measure_activations_due": {
+          "name": "measure_activations_due",
+          "columns": [
+            {
+              "expression": "next_run_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "measure_activations_measure_page_id_pages_id_fk": {
+          "name": "measure_activations_measure_page_id_pages_id_fk",
+          "tableFrom": "measure_activations",
+          "tableTo": "pages",
+          "columnsFrom": ["measure_page_id"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
-        "version": {
-          "name": "version",
+        "measure_activations_activator_person_id_people_id_fk": {
+          "name": "measure_activations_activator_person_id_people_id_fk",
+          "tableFrom": "measure_activations",
+          "tableTo": "people",
+          "columnsFrom": ["activator_person_id"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "measure_activations_version_counted": {
+          "name": "measure_activations_version_counted",
+          "value": "\"measure_activations\".\"version\" >= 1"
+        },
+        "measure_activations_tool_hash_form": {
+          "name": "measure_activations_tool_hash_form",
+          "value": "\"measure_activations\".\"tool_hash\" ~ '^[0-9a-f]{64}$'"
+        },
+        "measure_activations_lock_sha256_form": {
+          "name": "measure_activations_lock_sha256_form",
+          "value": "\"measure_activations\".\"lock_sha256\" ~ '^[0-9a-f]{64}$'"
+        },
+        "measure_activations_area_form": {
+          "name": "measure_activations_area_form",
+          "value": "\"measure_activations\".\"area\" ~ '^([0-9])0-\\1[9]$'"
+        },
+        "measure_activations_paused_reason_known": {
+          "name": "measure_activations_paused_reason_known",
+          "value": "\"measure_activations\".\"paused_reason\" IN ('changed', 'activator_lost_access', 'retired')"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.measure_runs": {
+      "name": "measure_runs",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "measure_page_id": {
+          "name": "measure_page_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "measure_version": {
+          "name": "measure_version",
           "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "tool_hash": {
+          "name": "tool_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "kind": {
+          "name": "kind",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "requested_by": {
+          "name": "requested_by",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "state": {
+          "name": "state",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "lock": {
+          "name": "lock",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "lock_sha256": {
+          "name": "lock_sha256",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "refused_hosts": {
+          "name": "refused_hosts",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'[]'::jsonb"
+        },
+        "area": {
+          "name": "area",
+          "type": "text",
           "primaryKey": false,
           "notNull": true
         },
@@ -9426,72 +9574,37 @@
           "primaryKey": false,
           "notNull": true
         },
-        "updated_at": {
-          "name": "updated_at",
+        "started_at": {
+          "name": "started_at",
           "type": "timestamp with time zone",
           "primaryKey": false,
-          "notNull": true
+          "notNull": false
+        },
+        "finished_at": {
+          "name": "finished_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
         }
       },
       "indexes": {
-        "assistant_accounts_jd_id_once": {
-          "name": "assistant_accounts_jd_id_once",
+        "measure_runs_by_measure": {
+          "name": "measure_runs_by_measure",
           "columns": [
             {
-              "expression": "jd_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "where": "\"assistant_accounts\".\"jd_id\" IS NOT NULL",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "assistant_accounts_name_once": {
-          "name": "assistant_accounts_name_once",
-          "columns": [
-            {
-              "expression": "name",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "where": "\"assistant_accounts\".\"status\" <> 'deleted'",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "assistant_accounts_person_once": {
-          "name": "assistant_accounts_person_once",
-          "columns": [
-            {
-              "expression": "person_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "assistant_accounts_disabled": {
-          "name": "assistant_accounts_disabled",
-          "columns": [
-            {
-              "expression": "status",
+              "expression": "measure_page_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
             },
             {
-              "expression": "disabled_at",
+              "expression": "kind",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "created_at",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -9504,12 +9617,12 @@
         }
       },
       "foreignKeys": {
-        "assistant_accounts_personal_harness_fk": {
-          "name": "assistant_accounts_personal_harness_fk",
-          "tableFrom": "assistant_accounts",
-          "tableTo": "harnesses",
-          "columnsFrom": ["harness_id", "person_id"],
-          "columnsTo": ["id", "person_id"],
+        "measure_runs_measure_page_id_pages_id_fk": {
+          "name": "measure_runs_measure_page_id_pages_id_fk",
+          "tableFrom": "measure_runs",
+          "tableTo": "pages",
+          "columnsFrom": ["measure_page_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -9518,102 +9631,177 @@
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {
-        "assistant_accounts_status_known": {
-          "name": "assistant_accounts_status_known",
-          "value": "\"assistant_accounts\".\"status\" IN ('enabled', 'disabled', 'deleted')"
+        "measure_runs_version_counted": {
+          "name": "measure_runs_version_counted",
+          "value": "\"measure_runs\".\"measure_version\" >= 1"
         },
-        "assistant_accounts_name_shape": {
-          "name": "assistant_accounts_name_shape",
-          "value": "\"assistant_accounts\".\"name\" ~ '^[a-z0-9][a-z0-9.-]{0,28}[a-z0-9]$' AND position('..' in \"assistant_accounts\".\"name\") = 0"
+        "measure_runs_tool_hash_form": {
+          "name": "measure_runs_tool_hash_form",
+          "value": "\"measure_runs\".\"tool_hash\" ~ '^[0-9a-f]{64}$'"
         },
-        "assistant_accounts_jd_id_range": {
-          "name": "assistant_accounts_jd_id_range",
-          "value": "\"assistant_accounts\".\"jd_id\" ~ '^10\\.(5[1-9]|[6-9][0-9]|[1-9][0-9]{2})$'"
+        "measure_runs_kind_known": {
+          "name": "measure_runs_kind_known",
+          "value": "\"measure_runs\".\"kind\" IN ('trial', 'scheduled', 'requested')"
         },
-        "assistant_accounts_jd_id_until_deleted": {
-          "name": "assistant_accounts_jd_id_until_deleted",
-          "value": "(\"assistant_accounts\".\"status\" = 'deleted') = (\"assistant_accounts\".\"jd_id\" IS NULL)"
+        "measure_runs_state_known": {
+          "name": "measure_runs_state_known",
+          "value": "\"measure_runs\".\"state\" IN ('queued', 'running', 'ok', 'partial', 'failed', 'stalled', 'not_wired')"
         },
-        "assistant_accounts_disabled_has_time": {
-          "name": "assistant_accounts_disabled_has_time",
-          "value": "(\"assistant_accounts\".\"status\" = 'enabled') = (\"assistant_accounts\".\"disabled_at\" IS NULL)"
+        "measure_runs_requested_by_identity": {
+          "name": "measure_runs_requested_by_identity",
+          "value": "\"measure_runs\".\"requested_by\" ~ '^(?:human:[A-Za-z0-9][A-Za-z0-9_-]*|agent:[a-z0-9][a-z0-9_-]*|agent:[A-Za-z0-9][A-Za-z0-9_-]*/[a-z0-9][a-z0-9-]{0,31}|agent:[A-Za-z0-9][A-Za-z0-9_-]*/[a-z0-9][a-z0-9-]{0,31} as [a-z0-9][a-z0-9_-]* via delegation:[A-Za-z0-9][A-Za-z0-9_-]*)$'"
         },
-        "assistant_accounts_deleted_has_time": {
-          "name": "assistant_accounts_deleted_has_time",
-          "value": "(\"assistant_accounts\".\"status\" = 'deleted') = (\"assistant_accounts\".\"deleted_at\" IS NOT NULL)"
+        "measure_runs_lock_sha256_form": {
+          "name": "measure_runs_lock_sha256_form",
+          "value": "\"measure_runs\".\"lock_sha256\" ~ '^[0-9a-f]{64}$'"
         },
-        "assistant_accounts_version_positive": {
-          "name": "assistant_accounts_version_positive",
-          "value": "\"assistant_accounts\".\"version\" >= 1"
+        "measure_runs_lock_hashed": {
+          "name": "measure_runs_lock_hashed",
+          "value": "(\"measure_runs\".\"lock\" IS NULL) = (\"measure_runs\".\"lock_sha256\" IS NULL)"
+        },
+        "measure_runs_refused_hosts_list": {
+          "name": "measure_runs_refused_hosts_list",
+          "value": "jsonb_typeof(\"measure_runs\".\"refused_hosts\") = 'array'"
+        },
+        "measure_runs_area_form": {
+          "name": "measure_runs_area_form",
+          "value": "\"measure_runs\".\"area\" ~ '^([0-9])0-\\1[9]$'"
+        },
+        "measure_runs_finished_has_time": {
+          "name": "measure_runs_finished_has_time",
+          "value": "\"measure_runs\".\"state\" NOT IN ('ok', 'partial', 'failed') OR \"measure_runs\".\"finished_at\" IS NOT NULL"
         }
       },
       "isRLSEnabled": false
     },
-    "public.assistant_provisioning": {
-      "name": "assistant_provisioning",
+    "public.observations": {
+      "name": "observations",
       "schema": "",
       "columns": {
-        "harness_id": {
-          "name": "harness_id",
+        "id": {
+          "name": "id",
           "type": "uuid",
           "primaryKey": true,
           "notNull": true
         },
-        "person_id": {
-          "name": "person_id",
+        "run_id": {
+          "name": "run_id",
           "type": "uuid",
           "primaryKey": false,
           "notNull": true
         },
-        "account_version": {
-          "name": "account_version",
+        "measure_page_id": {
+          "name": "measure_page_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "measure_version": {
+          "name": "measure_version",
           "type": "integer",
           "primaryKey": false,
           "notNull": true
         },
-        "step": {
-          "name": "step",
-          "type": "text",
+        "resource_page_id": {
+          "name": "resource_page_id",
+          "type": "uuid",
           "primaryKey": false,
           "notNull": true
         },
-        "status": {
-          "name": "status",
-          "type": "text",
+        "observed_at": {
+          "name": "observed_at",
+          "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": true
         },
-        "failure": {
-          "name": "failure",
+        "tool_version": {
+          "name": "tool_version",
           "type": "text",
           "primaryKey": false,
           "notNull": false
         },
-        "attempts": {
-          "name": "attempts",
+        "values": {
+          "name": "values",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "outcome": {
+          "name": "outcome",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "reason": {
+          "name": "reason",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "raw_key": {
+          "name": "raw_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "raw_sha256": {
+          "name": "raw_sha256",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "raw_length": {
+          "name": "raw_length",
           "type": "integer",
           "primaryKey": false,
-          "notNull": true
+          "notNull": false
         },
-        "next_at": {
-          "name": "next_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
+        "area": {
+          "name": "area",
+          "type": "text",
           "primaryKey": false,
           "notNull": true
         }
       },
       "indexes": {
-        "assistant_provisioning_next": {
-          "name": "assistant_provisioning_next",
+        "observations_one_per_run": {
+          "name": "observations_one_per_run",
           "columns": [
             {
-              "expression": "next_at",
+              "expression": "run_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "resource_page_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "observations_by_resource": {
+          "name": "observations_by_resource",
+          "columns": [
+            {
+              "expression": "measure_page_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "resource_page_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "observed_at",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -9626,12 +9814,30 @@
         }
       },
       "foreignKeys": {
-        "assistant_provisioning_personal_harness_fk": {
-          "name": "assistant_provisioning_personal_harness_fk",
-          "tableFrom": "assistant_provisioning",
-          "tableTo": "harnesses",
-          "columnsFrom": ["harness_id", "person_id"],
-          "columnsTo": ["id", "person_id"],
+        "observations_run_id_measure_runs_id_fk": {
+          "name": "observations_run_id_measure_runs_id_fk",
+          "tableFrom": "observations",
+          "tableTo": "measure_runs",
+          "columnsFrom": ["run_id"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "observations_measure_page_id_pages_id_fk": {
+          "name": "observations_measure_page_id_pages_id_fk",
+          "tableFrom": "observations",
+          "tableTo": "pages",
+          "columnsFrom": ["measure_page_id"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "observations_resource_page_id_pages_id_fk": {
+          "name": "observations_resource_page_id_pages_id_fk",
+          "tableFrom": "observations",
+          "tableTo": "pages",
+          "columnsFrom": ["resource_page_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -9640,25 +9846,49 @@
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {
-        "assistant_provisioning_step_known": {
-          "name": "assistant_provisioning_step_known",
-          "value": "\"assistant_provisioning\".\"step\" IN ('workspace_user', 'zulip_bot', 'persona', 'assist', 'suspend_user', 'deactivate_bot', 'delete_user')"
+        "observations_version_counted": {
+          "name": "observations_version_counted",
+          "value": "\"observations\".\"measure_version\" >= 1"
         },
-        "assistant_provisioning_status_known": {
-          "name": "assistant_provisioning_status_known",
-          "value": "\"assistant_provisioning\".\"status\" IN ('working', 'waiting', 'done', 'failed')"
+        "observations_outcome_known": {
+          "name": "observations_outcome_known",
+          "value": "\"observations\".\"outcome\" IN ('ok', 'failed')"
         },
-        "assistant_provisioning_failure_known": {
-          "name": "assistant_provisioning_failure_known",
-          "value": "\"assistant_provisioning\".\"failure\" IS NULL OR \"assistant_provisioning\".\"failure\" IN ('name_taken', 'workspace_refused', 'workspace_unavailable', 'workspace_not_wired', 'zulip_refused', 'zulip_rate_limited', 'zulip_unknown', 'zulip_not_wired', 'key_not_sealed', 'persona_refused', 'person_inactive')"
+        "observations_reason_known": {
+          "name": "observations_reason_known",
+          "value": "\"observations\".\"reason\" IN ('timed_out', 'tool_failed', 'output_not_json', 'output_unfit', 'unreachable', 'host_refused')"
         },
-        "assistant_provisioning_failed_has_reason": {
-          "name": "assistant_provisioning_failed_has_reason",
-          "value": "(\"assistant_provisioning\".\"status\" = 'failed') = (\"assistant_provisioning\".\"failure\" IS NOT NULL)"
+        "observations_ok_has_values": {
+          "name": "observations_ok_has_values",
+          "value": "\"observations\".\"outcome\" <> 'ok' OR (\"observations\".\"values\" IS NOT NULL AND \"observations\".\"reason\" IS NULL)"
         },
-        "assistant_provisioning_attempts_bounded": {
-          "name": "assistant_provisioning_attempts_bounded",
-          "value": "\"assistant_provisioning\".\"attempts\" BETWEEN 0 AND 100000"
+        "observations_failed_has_reason": {
+          "name": "observations_failed_has_reason",
+          "value": "\"observations\".\"outcome\" <> 'failed' OR (\"observations\".\"reason\" IS NOT NULL AND \"observations\".\"values\" IS NULL)"
+        },
+        "observations_values_object": {
+          "name": "observations_values_object",
+          "value": "jsonb_typeof(\"observations\".\"values\") = 'object'"
+        },
+        "observations_raw_hashed": {
+          "name": "observations_raw_hashed",
+          "value": "(\"observations\".\"raw_key\" IS NULL) = (\"observations\".\"raw_sha256\" IS NULL)"
+        },
+        "observations_raw_measured": {
+          "name": "observations_raw_measured",
+          "value": "(\"observations\".\"raw_key\" IS NULL) = (\"observations\".\"raw_length\" IS NULL)"
+        },
+        "observations_raw_length_counted": {
+          "name": "observations_raw_length_counted",
+          "value": "\"observations\".\"raw_length\" >= 0"
+        },
+        "observations_raw_sha256_form": {
+          "name": "observations_raw_sha256_form",
+          "value": "\"observations\".\"raw_sha256\" ~ '^[0-9a-f]{64}$'"
+        },
+        "observations_area_form": {
+          "name": "observations_area_form",
+          "value": "\"observations\".\"area\" ~ '^([0-9])0-\\1[9]$'"
         }
       },
       "isRLSEnabled": false

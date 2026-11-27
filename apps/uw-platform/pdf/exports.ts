@@ -42,7 +42,12 @@ export type RenderOutcome =
   | { readonly kind: 'failed'; readonly reason: ErrorReason };
 
 export type ExportOutcome =
-  | ({ readonly kind: 'ready'; readonly r2Key: string; readonly bytes: number } & ExportHashes)
+  | ({
+      readonly kind: 'ready';
+      readonly r2Key: string;
+      readonly bytes: number;
+      readonly areas: readonly string[];
+    } & ExportHashes)
   | { readonly kind: 'failed'; readonly reason: ErrorReason };
 
 export type ExportRecord = PdfExportReply & {
@@ -61,6 +66,7 @@ export type QueuedExport = {
   readonly request: unknown;
   readonly requestedBy: string;
   readonly personId: string | null;
+  readonly areas: readonly string[];
 };
 
 type Row = typeof pdfExports.$inferSelect;
@@ -107,7 +113,16 @@ function finished(outcome: ExportOutcome, at: Date) {
     return { status: 'failed' as const, failure: outcome.reason, finishedAt: at };
   }
   const { r2Key, sourceSha256, fileSha256, bytes } = outcome;
-  return { status: 'ready' as const, r2Key, sourceSha256, fileSha256, bytes, finishedAt: at };
+  const areas = [...outcome.areas];
+  return {
+    status: 'ready' as const,
+    r2Key,
+    sourceSha256,
+    fileSha256,
+    bytes,
+    areas,
+    finishedAt: at,
+  };
 }
 
 export async function finishExport(
@@ -144,6 +159,7 @@ export async function queuedExport(db: Executor, exportId: string): Promise<Queu
       request: pdfExports.request,
       requestedBy: pdfExports.requestedBy,
       personId: pdfExports.personId,
+      areas: pdfExports.areas,
     })
     .from(pdfExports)
     .where(and(eq(pdfExports.id, exportId), eq(pdfExports.status, 'queued')));
