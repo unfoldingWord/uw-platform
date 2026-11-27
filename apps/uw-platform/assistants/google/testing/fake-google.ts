@@ -52,7 +52,7 @@ export type FakeGoogle = {
   revokeScope(scope: string): void;
   failNext(status: number): void;
   failNextAt(path: string, status: number): void;
-  readonly directory: Pick<FakeDirectory, 'add' | 'user'>;
+  readonly directory: Pick<FakeDirectory, 'add' | 'addGroup' | 'user'>;
   readonly gmail: Pick<FakeGmail, 'deliver' | 'sent' | 'labelsOf' | 'expireHistory'>;
 };
 
@@ -280,6 +280,7 @@ function initialState(): State {
       EVENTS_SCOPE,
       FREEBUSY_SCOPE,
       `${SCOPE_ROOT}admin.directory.user`,
+      `${SCOPE_ROOT}admin.directory.group.readonly`,
     ]),
     users,
     tokens: new Map(),

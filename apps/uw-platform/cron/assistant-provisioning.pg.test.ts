@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import { createClient, type Database } from '@uw/db/client';
 import { createMigratedDatabase, testServer } from '@uw/db/test-database';
-import { seedGrant, seedPerson } from '@uw/db/test-seed';
+import { seedGrant, seedPerson, seedPersonStatus } from '@uw/db/test-seed';
 import { createKernel, type Kernel } from '@uw/harness';
 import { platformKernelSettings } from '../assistants/area.ts';
 import { directMessagesOf } from '../assistants/direct-messages.ts';
@@ -114,6 +114,34 @@ async function freesTheNumberAfterThirtyDays(db: Database, env: Bindings): Promi
   );
   expect(deleted.map((event) => event.evidence)).toEqual([{ jdId: '10.51' }]);
 }
+
+async function turnsOffALeaver(db: Database, env: Bindings): Promise<void> {
+  const ana = await anaOn(db);
+  const caller = { actor: ana, traceId: randomUUID(), requestId: null };
+  const on = await kernelAt(db, start).assistants.enable(caller, {
+    harnessId: randomUUID(),
+    name: 'barnabas',
+  });
+  if (on.status !== 'accepted') throw new Error(on.reason);
+  await seedPersonStatus(db, anaId, 'disabled');
+  const lines: Line[] = [];
+  await minuteJob(env, depsAt(new Date(start.getTime() + 60_000), lines));
+  const step = lines.filter((line) => line['step'] === 'assistant-leavers');
+  expect(step.map((line) => [line['outcome'], line['disabled']])).toEqual([
+    ['assistant_leavers_turned_off', 1],
+  ]);
+  const names = (await allEvents(db, on.value.harnessId)).map((event) => event.name);
+  expect(names).toContain('assistant_disabled');
+  const provisioned = (await allEvents(db, on.value.harnessId)).filter(
+    (event) => event.name === 'assistant_provisioned',
+  );
+  expect(provisioned.map((event) => event.evidence)).toEqual([{ goal: 'disabled' }]);
+}
+
+describe.skipIf(!testServer)("PA-20 the minute job turns off a leaver's assistant", () => {
+  it('turns off the assistant of a person no longer active and drives its suspension', () =>
+    withDatabase(turnsOffALeaver));
+});
 
 describe.skipIf(!testServer)('PA-14 the crons that provision and delete assistants', () => {
   it('drives an assistant turned on in the minute job and names a missing Workspace', () =>

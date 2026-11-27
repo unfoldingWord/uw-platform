@@ -1,6 +1,7 @@
 import {
   customiseAssistantCommandSchema,
   decideAssistantProposalCommandSchema,
+  disablePersonAssistantCommandSchema,
   deleteMyAssistantHistoryCommandSchema,
   disableAssistantCommandSchema,
   enableAssistantCommandSchema,
@@ -69,6 +70,7 @@ export const assistantShapes: ReadonlyMap<string, Shape> = new Map<string, Shape
       monthlyMinor: minorOf(given.get('monthlyDollars')),
     }),
   ],
+  ['disable_person_assistant', (given) => ({ personId: given.get('personId') })],
 ]);
 
 export const assistantSchemas: ReadonlyMap<string, ZodType> = new Map<string, ZodType>([
@@ -82,4 +84,5 @@ export const assistantSchemas: ReadonlyMap<string, ZodType> = new Map<string, Zo
   ['customise_assistant', customiseAssistantCommandSchema],
   ['set_assistant_budget', setAssistantBudgetCommandSchema],
   ['decide_assistant_proposal', decideAssistantProposalCommandSchema],
+  ['disable_person_assistant', disablePersonAssistantCommandSchema],
 ]);

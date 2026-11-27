@@ -118,8 +118,8 @@ describe('PA-19 the research verb inputs', () => {
 });
 
 describe('the research contract version', () => {
-  it('is published at 14.25.0 with the research sets locked', () => {
-    expect(CONTRACT_VERSION).toBe('14.25.0');
+  it('was published at 14.25.0 with the research sets locked', () => {
+    expect(lock.versions.map((version) => version.version)).toContain(CONTRACT_VERSION);
     const entry = lock.versions.find((version) => version.version === '14.25.0');
     const sets: Record<string, readonly string[]> = entry?.sets ?? {};
     expect(sets['untrusted-source']).toContain('flight_offer');

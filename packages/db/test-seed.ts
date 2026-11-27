@@ -42,6 +42,14 @@ export async function seedPerson(db: AnyExecutor, person: SeedPerson): Promise<v
   });
 }
 
+export async function seedPersonStatus(
+  db: AnyExecutor,
+  personId: string,
+  status: 'active' | 'pending' | 'disabled',
+): Promise<void> {
+  await db.update(people).set({ status }).where(eq(people.id, personId));
+}
+
 export async function seedGrant(db: AnyExecutor, grant: SeedGrant): Promise<void> {
   await db.insert(roleGrants).values({ ...grant });
 }

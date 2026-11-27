@@ -89,3 +89,17 @@ describe('PA-14 the Workspace directory client', () => {
     expect(newUserBody(barnabas, first)).toMatchObject({ changePasswordAtNextLogin: false });
   });
 });
+
+describe('PA-14 the Workspace directory client reads groups', () => {
+  it('finds a group by address or alias, and answers null for an address no group holds', async () => {
+    const { google, directory } = rig();
+    google.directory.addGroup('team@unfoldingword.org', ['barnabas@unfoldingword.org']);
+    expect(await directory.group('silas@unfoldingword.org')).toEqual({ ok: true, value: null });
+    expect(await directory.group('barnabas@unfoldingword.org')).toEqual({
+      ok: true,
+      value: { address: 'team@unfoldingword.org' },
+    });
+    const asked = google.requests().filter((request) => request.path.includes('/groups/'));
+    expect(asked.map((request) => request.method)).toEqual(['GET', 'GET']);
+  });
+});

@@ -194,6 +194,8 @@ export {
   webAddressRefusal,
   RESEARCH_PER_DAY,
   RESEARCH_PER_REQUEST,
+  attendingPerson,
+  copiedToPerson,
 } from './assistants/index.ts';
 export type {
   AssistantCommands,

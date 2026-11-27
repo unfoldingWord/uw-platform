@@ -1,10 +1,10 @@
-import { assistantAddressOf } from '@uw/contracts';
 import type { Principal } from '@uw/core/principal';
 import type { DatabaseHandle } from '../database.ts';
 import type { Bindings } from '../env.ts';
 import { hubWiring, platformKernel } from '../kernel.ts';
 import { hubNotWired } from '../ports/hub.not-wired.ts';
 import { workspaceOf } from '../assistants/workspace.ts';
+import { assistantNameTaken } from '../assistants/google/name-check.ts';
 import type { AssistantCommandDeps } from './person/assistant.ts';
 import { provisionerOf, workspaceSideOf } from '../assistants/provisioning/deps.ts';
 import { driveHarness } from '../assistants/provisioning/provisioner.ts';
@@ -35,8 +35,7 @@ export function assistantCommandDepsOf(host: AssistantCommandHost): AssistantCom
       if (account?.live === true && account.name === name) return false;
       const side = workspaceSideOf({ ...host, clock });
       if (side === null) return false;
-      const found = await side.directory.user(assistantAddressOf(name, side.domain));
-      return found.ok && found.value !== null && found.value.harnessId !== account?.harnessId;
+      return assistantNameTaken(side, name, account?.harnessId ?? null);
     },
     drive: async (harnessId) => {
       try {

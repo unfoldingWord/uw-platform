@@ -80,6 +80,7 @@ async function onlyThePersonDecides(scene: AssistantScene): Promise<void> {
   expect(scene.world.adapters.workspace.mails()[0]).toMatchObject({
     from: 'barnabas@unfoldingword.org',
     to: ['ben@example.org'],
+    cc: [scene.person.email],
   });
   expect(why(await decide(scene, scene.person, proposalId, 'accept'))).toBe('already_decided');
   expect(scene.world.adapters.workspace.mails()).toHaveLength(1);
@@ -160,7 +161,10 @@ async function invitesFromThePersonsCalendar(scene: AssistantScene): Promise<voi
   expect(events()).toEqual([]);
   value(await decide(scene, scene.person, proposalId, 'accept'));
   expect(events()).toHaveLength(1);
-  expect(events()[0]).toMatchObject({ title: 'Planning', attendees: ['ben@example.org'] });
+  expect(events()[0]).toMatchObject({
+    title: 'Planning',
+    attendees: ['ben@example.org', scene.person.email],
+  });
 }
 
 async function capsProposalsPerRequest(scene: AssistantScene): Promise<void> {

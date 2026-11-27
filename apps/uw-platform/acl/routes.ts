@@ -2,6 +2,7 @@ import { Hono, type Context } from 'hono';
 import {
   approvePersonCommandSchema,
   declinePersonCommandSchema,
+  disablePersonAssistantCommandSchema,
   grantRoleCommandSchema,
   revokeRoleCommandSchema,
   saveProfileBodyCommandSchema,
@@ -13,6 +14,7 @@ import type { Database } from '@uw/db/client';
 import type { Principal } from '@uw/core/principal';
 import type { AppEnv } from '../deps.ts';
 import { setAssistantBudget } from '../assistants/budget-command.ts';
+import { disablePersonAssistant } from '../assistants/turn-off-command.ts';
 import { malformed, readJson, toOutcome, type CommandResult } from '../http/commands.ts';
 import { refuse, reply } from '../http/outcomes.ts';
 import { approvePerson, declinePerson } from '../people/approval.ts';
@@ -82,6 +84,15 @@ const handlers = new Map<string, Run>([
       const parsed = setAssistantBudgetCommandSchema.safeParse(body);
       if (!parsed.success) return null;
       const result = await setAssistantBudget(db, actor, parsed.data, traceId, at);
+      return { requestId: parsed.data.requestId, result };
+    },
+  ],
+  [
+    'disable_person_assistant',
+    async (db, actor, body, traceId, at) => {
+      const parsed = disablePersonAssistantCommandSchema.safeParse(body);
+      if (!parsed.success) return null;
+      const result = await disablePersonAssistant(db, actor, parsed.data, traceId, at);
       return { requestId: parsed.data.requestId, result };
     },
   ],

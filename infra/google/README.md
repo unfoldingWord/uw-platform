@@ -6,7 +6,7 @@ The platform reaches Google with **one service account with domain-wide delegati
 
 - as a **person**, for that person's own calendar (`calendar.events`, `calendar.freebusy`);
 - as an **assistant mailbox** (`<name>@unfoldingword.org`), for that mailbox's mail (`gmail.modify`);
-- as **one admin account**, `GOOGLE_WORKSPACE_ADMIN_SUBJECT`, for the directory (`admin.directory.user`).
+- as **one admin account**, `GOOGLE_WORKSPACE_ADMIN_SUBJECT`, for the directory (`admin.directory.user`) and for reading groups (`admin.directory.group.readonly`), so a name a group already uses is refused up front.
 
 The code refuses, before it signs a token, any other subject or scope (`apps/uw-platform/assistants/google/token.ts`). Delegation itself cannot be narrowed to subjects in Google, so the audit alert in step 7 is the second line.
 
@@ -67,7 +67,7 @@ Then set its `owner` and `rotate_by` in `infra/secrets-store.json` and copy its 
 In admin.google.com:
 
 1. **Organizational unit.** Directory, Organizational units: create `/Assistants` (the value of `GOOGLE_ASSISTANT_OU`). Under Apps for that unit, turn off what an assistant does not need: Drive sharing outside the domain, Meet, Chat, YouTube, and any Marketplace apps. Under Gmail, Compliance, add a routing rule for the unit that **rejects mail from outside the domain**; an assistant then only hears from people inside the organization. Leave Calendar on.
-2. **Admin subject.** Create a dedicated account, for example `platform-assistants-admin@unfoldingword.org`, that is no person's own account. Account, Admin roles: create a custom role "Assistant provisioner" with Admin API privileges Users: Create, Read, Update (which covers suspend) and Delete, assigned to this account **for the `/Assistants` unit only**. This address is `GOOGLE_WORKSPACE_ADMIN_SUBJECT` in both wrangler files.
+2. **Admin subject.** Create a dedicated account, for example `platform-assistants-admin@unfoldingword.org`, that is no person's own account. Account, Admin roles: create a custom role "Assistant provisioner" with Admin API privileges Users: Create, Read, Update (which covers suspend) and Delete, assigned to this account **for the `/Assistants` unit only**, and Groups: Read for the whole domain (the name check must see every group's address and aliases). This address is `GOOGLE_WORKSPACE_ADMIN_SUBJECT` in both wrangler files.
 3. **Licences.** Billing: confirm enough Workspace licences. Every assistant that is on, or was turned off in the last 30 days, holds one; the nightly deletion frees it (owner decision 11). If automatic licensing is off, assign the licence to the unit.
 
 Check: the unit exists, the account shows the custom role scoped to the unit, and the licence count covers the people expected to turn an assistant on.
@@ -77,13 +77,13 @@ Check: the unit exists, the account shows the custom role scoped to the unit, an
 Security, Access and data control, API controls, Manage domain-wide delegation, Add new:
 
 - **Client ID:** the numeric id from step 2.
-- **OAuth scopes,** exactly these four, comma-separated:
+- **OAuth scopes,** exactly these five, comma-separated:
 
   ```
-  https://www.googleapis.com/auth/calendar.events,https://www.googleapis.com/auth/calendar.freebusy,https://www.googleapis.com/auth/gmail.modify,https://www.googleapis.com/auth/admin.directory.user
+  https://www.googleapis.com/auth/calendar.events,https://www.googleapis.com/auth/calendar.freebusy,https://www.googleapis.com/auth/gmail.modify,https://www.googleapis.com/auth/admin.directory.user,https://www.googleapis.com/auth/admin.directory.group.readonly
   ```
 
-Add nothing else: not `gmail.send` (the probe in step 9 shows whether `gmail.modify` is enough to send; add `gmail.send` only if it fails, and say so in the code's allowlist), not a group scope, not Drive. Check: the entry lists the client id with exactly four scopes.
+Add nothing else: not `gmail.send` (the probe in step 9 shows whether `gmail.modify` is enough to send; add `gmail.send` only if it fails, and say so in the code's allowlist), no group scope but the read-only one, not Drive. Check: the entry lists the client id with exactly five scopes, and probe s13.1 passes.
 
 ## 7. Audit alert
 
@@ -117,6 +117,8 @@ The same command also runs the research probes (`s12.*`, [`infra/README.md`](../
 Each line is `PASS`, `FAIL`, `SKIP` (a setting is missing, or the probe writes and `--write` was not given) or `MANUAL` (only a person on staging can check it; the line says how). The probe ids are the numbered entries of the assistants' staging-probes list, which names the exact request and the answer the code expects for each. The command exits 1 if any probe failed. A Google failure reads as the code reads it: `refused` is a 400, 401 or 403 (a scope not delegated, a subject Google does not know, a missing privilege), `unavailable` is anything else.
 
 For the sender probe (`s8.1`), first send a plain mail from the test person's own account to `PROBE_ASSISTANT_MAILBOX`; the verdict needs `spf=pass` with the person's exact address as `smtp.mailfrom` and `dmarc=pass` or `dkim=pass` for the domain (ADR 0045). For `s11.2`, also send one with a hand-written `Authentication-Results: mx.google.com; dmarc=pass header.from=<domain>` header (for example with `swaks --add-header`) and confirm it is declined. If it fails with `unverified_sender`, keep `ASSISTANT_EMAIL_INSTRUCTIONS = "off"` in production and tell the owner (owner rule; PRD open question 30).
+
+The group probe (`s13.1`) reads `groups.get` for a free probe address as the admin subject and expects 404; it fails `refused` when `admin.directory.group.readonly` is not delegated or the admin subject lacks Groups: Read. Until it passes, the name check cannot see groups, and a name a group holds is refused only later, when Google answers 409 to `users.insert` (`name_taken` on the Accounts line).
 
 Delete the key file and `$TMPDIR/uw-probe.env` afterwards.
 

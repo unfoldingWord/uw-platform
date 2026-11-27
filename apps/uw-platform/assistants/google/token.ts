@@ -24,12 +24,13 @@ export const GOOGLE_SCOPES = {
   calendarEvents: `${SCOPE_ROOT}calendar.events`,
   calendarFreeBusy: `${SCOPE_ROOT}calendar.freebusy`,
   directoryUser: `${SCOPE_ROOT}admin.directory.user`,
+  directoryGroupRead: `${SCOPE_ROOT}admin.directory.group.readonly`,
 } as const;
 
 const allowedScopes: ReadonlyMap<SubjectKind, ReadonlySet<string>> = new Map([
   ['assistant_mailbox', new Set<string>([GOOGLE_SCOPES.gmail])],
   ['person', new Set<string>([GOOGLE_SCOPES.calendarEvents, GOOGLE_SCOPES.calendarFreeBusy])],
-  ['admin', new Set<string>([GOOGLE_SCOPES.directoryUser])],
+  ['admin', new Set<string>([GOOGLE_SCOPES.directoryUser, GOOGLE_SCOPES.directoryGroupRead])],
 ]);
 
 const TOKEN_URL = 'https://oauth2.googleapis.com/token';

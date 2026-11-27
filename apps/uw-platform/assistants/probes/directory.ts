@@ -10,7 +10,7 @@ const SETTINGS = [
   'GOOGLE_ASSISTANT_OU',
   'PROBE_PERSON_EMAIL',
 ];
-const READS = ['s6.1'];
+const READS = ['s6.1', 's13.1'];
 const WRITES = ['s6.2', 's6.3', 's6.4'];
 
 function said<T>(answer: DirectoryAnswer<T>, value: (found: T) => string): string {
@@ -23,6 +23,13 @@ async function lookups(directory: Directory, rig: GoogleRig, suffix: string, adm
   const ok = known.ok && known.value !== null && free.ok && free.value === null;
   const detail = `admin subject ${said(known, (user) => (user === null ? 'not found' : 'found'))}, free address ${said(free, (user) => (user === null ? 'free' : 'taken'))}`;
   return checked('s6.1', ok, detail);
+}
+
+async function groupLookup(directory: Directory, rig: GoogleRig, suffix: string) {
+  const free = await directory.group(`uwprobefree${suffix}@${rig.domain}`);
+  const ok = free.ok && free.value === null;
+  const detail = `groups.get on a free address ${said(free, (group) => (group === null ? 'answered 404, free' : 'found a group'))}`;
+  return checked('s13.1', ok, detail);
 }
 
 async function inserted(directory: Directory, address: string, ou: string) {
@@ -80,7 +87,10 @@ export async function directoryProbes(deps: ProbeDeps): Promise<ProbeResult[]> {
     return [...READS, ...WRITES].map((id) => skipped(id, why));
   }
   const directory = googleDirectory({ tokens: rig.tokens, adminSubject: rig.admin });
-  const read = await lookups(directory, rig, deps.suffix, rig.admin);
-  if (!deps.write) return [read, ...WRITES.map((id) => skipped(id, WRITES_ONLY))];
-  return [read, ...(await lifecycle(directory, rig, deps, ou))];
+  const reads = [
+    await lookups(directory, rig, deps.suffix, rig.admin),
+    await groupLookup(directory, rig, deps.suffix),
+  ];
+  if (!deps.write) return [...reads, ...WRITES.map((id) => skipped(id, WRITES_ONLY))];
+  return [...reads, ...(await lifecycle(directory, rig, deps, ou))];
 }

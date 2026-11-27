@@ -27,6 +27,13 @@ import {
   type Retired,
 } from './account-lifecycle.ts';
 import {
+  disableFor,
+  disableLeavers,
+  type DisableForInput,
+  type LeaversInput,
+  type LeaversTurnedOff,
+} from './leavers.ts';
+import {
   activateAssistantPersona,
   type AssistantActivationInput,
 } from '../personas/assistant-activation.ts';
@@ -86,6 +93,8 @@ export type AssistantCommands = {
   provision(caller: Caller, input: ProvisionInput): Promise<KernelOutcome<Activated>>;
   enable(caller: Caller, input: EnableInput): Promise<KernelOutcome<Enabled>>;
   disable(caller: Caller, input: Record<string, never>): Promise<KernelOutcome<Disabled>>;
+  disableFor(caller: Caller, input: DisableForInput): Promise<KernelOutcome<Disabled>>;
+  disableLeavers(caller: Caller, input: LeaversInput): Promise<KernelOutcome<LeaversTurnedOff>>;
   retire(caller: Caller, input: RetireInput): Promise<KernelOutcome<Retired>>;
   recordProvisioning(caller: Caller, input: ProvisioningRecord): Promise<KernelOutcome<null>>;
   activatePersona(
@@ -139,6 +148,8 @@ export function createAssistantCommands(
     provision: (caller, input) => provision(ports, settings, caller, input),
     enable: (caller, input) => enable(ports, settings, caller, input),
     disable: (caller) => disable(ports, caller),
+    disableFor: (caller, input) => disableFor(ports, caller, input),
+    disableLeavers: (caller, input) => disableLeavers(ports, caller, input),
     retire: (caller, input) => retire(ports, caller, input),
     recordProvisioning: (caller, input) => recordProvisioning(ports, caller, input),
     activatePersona: (caller, input) => activateAssistantPersona(ports, caller, input),

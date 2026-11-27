@@ -76,6 +76,18 @@ const checks: readonly (readonly [string, string])[] = [
     's12.6',
     'Ask for a conference itinerary with ticket prices; confirm the reply cites each address and price, and that no Duffel order exists in the Duffel dashboard',
   ],
+  [
+    's13.2',
+    'In the admin console, try to add a user at an existing group’s address; confirm Google refuses it as already existing (409), which provisioning records as name_taken',
+  ],
+  [
+    's13.3',
+    'Accept a proposed email to an outside address and a proposed invitation; confirm the person is copied on the email once and listed on the invitation',
+  ],
+  [
+    's13.4',
+    'As an org admin, turn off a staff member’s assistant from its admin view; confirm within a minute its Workspace user is suspended and its bot inactive',
+  ],
 ];
 
 export function manualChecks(): ProbeResult[] {

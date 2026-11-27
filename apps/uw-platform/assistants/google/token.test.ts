@@ -82,6 +82,7 @@ describe('PA-8 the Workspace token minter signs a jwt-bearer assertion for an al
     const asked: readonly [string, readonly string[]][] = [
       ['ana@unfoldingword.org', [GOOGLE_SCOPES.gmail]],
       ['ana@unfoldingword.org', [GOOGLE_SCOPES.directoryUser]],
+      ['barnabas@unfoldingword.org', [GOOGLE_SCOPES.directoryGroupRead]],
       ['barnabas@unfoldingword.org', calendar],
       ['platform-admin@unfoldingword.org', calendar],
       ['stranger@unfoldingword.org', calendar],
@@ -185,5 +186,17 @@ describe('PA-8 a Google call re-mints a token Google no longer accepts', () => {
     });
     expect(answer.ok).toBe(true);
     expect(tokenCalls(google)).toHaveLength(1);
+  });
+});
+
+describe('PA-14 the Workspace token minter reads groups only as the admin subject', () => {
+  it('lets only the admin subject read groups', async () => {
+    const { deps } = rig();
+    const groups = [GOOGLE_SCOPES.directoryGroupRead];
+    expect((await accessToken(deps, 'platform-admin@unfoldingword.org', groups)).ok).toBe(true);
+    expect(await accessToken(deps, 'ana@unfoldingword.org', groups)).toEqual({
+      ok: false,
+      failure: 'not_allowed',
+    });
   });
 });

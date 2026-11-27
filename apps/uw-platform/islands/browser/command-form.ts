@@ -61,6 +61,7 @@ export const OUTCOME_TEXT: Readonly<Record<string, string>> = {
   delete_my_assistant_history: 'Deleted',
   set_assistant_budget: 'Budget set',
   decide_assistant_proposal: 'Decided',
+  disable_person_assistant: 'Turned off',
 };
 
 const outcomes: ReadonlyMap<string, string> = new Map(Object.entries(OUTCOME_TEXT));

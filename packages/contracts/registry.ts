@@ -32,7 +32,10 @@ import {
   untrustedPartSchema,
 } from './assistants.ts';
 import { assistantAccountSchemaRegistry } from './assistant-accounts-registry.ts';
-import { setAssistantBudgetCommandSchema } from './assistant-commands.ts';
+import {
+  disablePersonAssistantCommandSchema,
+  setAssistantBudgetCommandSchema,
+} from './assistant-commands.ts';
 import {
   bindCredentialCommandSchema,
   confirmRevealCommandSchema,
@@ -489,4 +492,5 @@ export const schemaRegistry: Record<string, ZodType> = {
   'assistant-pairing-refusal': assistantPairingRefusalSchema,
   'assistant-turn-outcome': assistantTurnOutcomeSchema,
   'set-assistant-budget-command': setAssistantBudgetCommandSchema,
+  'disable-person-assistant-command': disablePersonAssistantCommandSchema,
 };

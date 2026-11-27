@@ -110,7 +110,22 @@ function describeAccountReads(subject: AssistantsSubject): void {
   });
 }
 
+function describeLeavers(subject: AssistantsSubject): void {
+  it('PA-20 lists no enabled assistant whose person is still active, and refuses a wild limit', async () => {
+    const read = await rolledBack(subject, async (tx) => {
+      await ensurePersonal(tx);
+      await tx.assistantAccounts.write.insert(accountOf());
+      return tx.assistantAccounts.read.leavers(10);
+    });
+    expect(read.map((row) => row.harnessId)).not.toContain(uid(base));
+    await expect(rolledBack(subject, (tx) => tx.assistantAccounts.read.leavers(0))).rejects.toThrow(
+      RangeError,
+    );
+  });
+}
+
 export function describeStoreAssistantAccounts(subject: AssistantsSubject): void {
   describeAccountWrites(subject);
   describeAccountReads(subject);
+  describeLeavers(subject);
 }

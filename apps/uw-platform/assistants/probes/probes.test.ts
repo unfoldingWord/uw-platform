@@ -200,6 +200,7 @@ const automated = [
   's12.2',
   's12.3',
   's12.4',
+  's13.1',
 ];
 
 describe('go-live: the staging probes exercise each external assumption and report pass or fail', () => {
@@ -220,7 +221,9 @@ describe('go-live: the staging probes exercise each external assumption and repo
   it('lists what only a person on staging can check as manual, never as passed', async () => {
     const results = await probed(world(), true);
     const manual = results.filter((result) => result.status === 'manual').map((r) => r.id);
-    expect(manual).toEqual(expect.arrayContaining(['s3.7', 's4.2', 's4.3', 's9.4']));
+    expect(manual).toEqual(
+      expect.arrayContaining(['s3.7', 's4.2', 's4.3', 's9.4', 's13.2', 's13.3', 's13.4']),
+    );
     expect(results.find((result) => result.id === 's4.2')?.detail).toMatch(/Workflow/);
   });
 
@@ -267,6 +270,14 @@ describe('go-live: a probe whose answer departs from the recorded shape fails', 
   it('fails the ZDR probe when another provider answers', async () => {
     const results = await probed(world('Other Cloud'), false);
     expect(statusOf(results, 's4.1')).toBe('fail');
+  });
+
+  it('fails the group probe when the service account may not read groups', async () => {
+    const at = world();
+    at.google.revokeScope('https://www.googleapis.com/auth/admin.directory.group.readonly');
+    const results = await probed(at, false);
+    expect(statusOf(results, 's13.1')).toBe('fail');
+    expect(statusOf(results, 's6.1')).toBe('pass');
   });
 
   it('fails a Zulip probe when the realm refuses it, and says so in the report', async () => {

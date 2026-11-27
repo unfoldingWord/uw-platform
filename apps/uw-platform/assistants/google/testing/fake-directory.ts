@@ -15,11 +15,16 @@ type FakeDirectoryUser = {
 export type FakeDirectory = {
   route(method: string, path: string, issued: Issued, body: unknown): Reply | null;
   add(address: string, aliases?: readonly string[]): void;
+  addGroup(address: string, aliases?: readonly string[]): void;
   user(address: string): FakeDirectoryUser | null;
 };
 
 const USERS_PATH = '/admin/directory/v1/users';
+const GROUPS_PATH = '/admin/directory/v1/groups';
 const DIRECTORY_SCOPE = 'https://www.googleapis.com/auth/admin.directory.user';
+const GROUP_SCOPE = 'https://www.googleapis.com/auth/admin.directory.group.readonly';
+
+type FakeGroup = { readonly id: string; readonly email: string; readonly aliases: string[] };
 
 function error(status: number, message: string): Reply {
   return { status, body: { error: { code: status, message } } };
@@ -33,6 +38,7 @@ function shown(user: FakeDirectoryUser) {
 
 type Store = {
   readonly users: FakeDirectoryUser[];
+  readonly groups: FakeGroup[];
   readonly onCreate: (address: string) => void;
   next: number;
 };
@@ -87,10 +93,28 @@ function one(store: Store, method: string, key: string, body: unknown): Reply {
   return { status: 204, body: null };
 }
 
+function groupRoute(store: Store, method: string, path: string, issued: Issued): Reply {
+  if (!issued.scopes.includes(GROUP_SCOPE)) return error(403, 'Not Authorized');
+  if (method !== 'GET') return error(403, 'Insufficient Permission');
+  const key = decodeURIComponent(path.slice(GROUPS_PATH.length + 1));
+  const group = store.groups.find((one) => one.email === key || one.aliases.includes(key));
+  if (group === undefined) return error(404, 'Resource Not Found: groupKey');
+  return {
+    status: 200,
+    body: {
+      kind: 'admin#directory#group',
+      id: group.id,
+      email: group.email,
+      aliases: group.aliases,
+    },
+  };
+}
+
 export function createFakeDirectory(onCreate: (address: string) => void): FakeDirectory {
-  const store: Store = { users: [], onCreate, next: 0 };
+  const store: Store = { users: [], groups: [], onCreate, next: 0 };
   return {
     route: (method, path, issued, body) => {
+      if (path.startsWith(`${GROUPS_PATH}/`)) return groupRoute(store, method, path, issued);
       if (!path.startsWith(USERS_PATH)) return null;
       if (!issued.scopes.includes(DIRECTORY_SCOPE)) return error(403, 'Not Authorized');
       if (path === USERS_PATH)
@@ -99,6 +123,10 @@ export function createFakeDirectory(onCreate: (address: string) => void): FakeDi
     },
     add: (address, aliases = []) => {
       make(store, address, aliases, {});
+    },
+    addGroup: (address, aliases = []) => {
+      store.next += 1;
+      store.groups.push({ id: `0${String(store.next)}`, email: address, aliases: [...aliases] });
     },
     user: (address) => find(store, address),
   };

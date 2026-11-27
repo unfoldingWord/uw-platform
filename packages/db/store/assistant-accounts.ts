@@ -1,7 +1,7 @@
 import { ASSISTANT_JD_CATEGORY, assistantAccountStatusSchema, jdIdOfTitle } from '@uw/contracts';
 import { and, asc, eq, isNotNull, lte, ne, or, sql } from 'drizzle-orm';
 import type { AnyExecutor } from '../any-database.ts';
-import { assistantAccounts, pages } from '../schema.ts';
+import { assistantAccounts, pages, people } from '../schema.ts';
 import { refusing } from './refusal.ts';
 import type { AssistantAccountRow, AssistantAccountsGateway } from './types.ts';
 
@@ -67,6 +67,17 @@ async function disabledBefore(executor: AnyExecutor, before: Date, limit: number
   return rows.map(toAccount);
 }
 
+async function leavers(executor: AnyExecutor, limit: number) {
+  const rows = await executor
+    .select({ account: assistantAccounts })
+    .from(assistantAccounts)
+    .innerJoin(people, eq(people.id, assistantAccounts.personId))
+    .where(and(eq(assistantAccounts.status, 'enabled'), ne(people.status, 'active')))
+    .orderBy(asc(assistantAccounts.updatedAt), asc(assistantAccounts.harnessId))
+    .limit(bounded(limit));
+  return rows.map((row) => toAccount(row.account));
+}
+
 async function update(executor: AnyExecutor, row: AssistantAccountRow, expected: number) {
   const { name, jdId, status, disabledAt, deletedAt, version, updatedAt } = row;
   const updated = await executor
@@ -91,6 +102,7 @@ export function bindAssistantAccounts(executor: AnyExecutor): AssistantAccountsG
       nameHolder: (name) => nameHolder(executor, name),
       takenJdIds: () => takenJdIds(executor),
       disabledBefore: (before, limit) => disabledBefore(executor, before, limit),
+      leavers: (limit) => leavers(executor, limit),
     },
     write: {
       insert: (row) =>

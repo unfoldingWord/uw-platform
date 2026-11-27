@@ -37,7 +37,7 @@ function inviteFor(personId: string): CalendarInvite {
 }
 
 function describeMail(open: Open): void {
-  it("sends a proposed mail once from the assistant's own mailbox to exactly its recipients", async () => {
+  it("sends a proposed mail once from the assistant's own mailbox to its recipients, copying its person", async () => {
     const subject = await open();
     const ana = await subject.addPerson('ana@example.org');
     await subject.addMailbox(harnessId, ana, mailbox);
@@ -47,12 +47,23 @@ function describeMail(open: Open): void {
       {
         from: mailbox,
         to: ['ben@example.org'],
-        cc: ['cy@example.org'],
+        cc: ['cy@example.org', 'ana@example.org'],
         replyTo: 'ana@example.org',
         subject: 'Meeting notes',
         body: 'Here are the notes from today.',
       },
     ]);
+  });
+
+  it('sends to anyone, inside the organization or not, and copies its person only once', async () => {
+    const subject = await open();
+    const ana = await subject.addPerson('ana@example.org');
+    await subject.addMailbox(harnessId, ana, mailbox);
+    const mail = { ...mailFor(ana), to: ['stranger@elsewhere.net', 'Ana@example.org'], cc: [] };
+    await expect(subject.workspace.sendMail(mail)).resolves.toEqual({ outcome: 'sent' });
+    const [sent] = await subject.mails();
+    expect(sent?.to).toEqual(['stranger@elsewhere.net', 'Ana@example.org']);
+    expect(sent?.cc).toEqual([]);
   });
 
   it('refuses to send from an assistant with no active mailbox, and sends nothing', async () => {
@@ -66,7 +77,7 @@ function describeMail(open: Open): void {
 }
 
 function describeInvite(open: Open): void {
-  it("sends an invitation once from the person's own calendar to its attendees", async () => {
+  it("sends an invitation once from the person's own calendar to its attendees and its person", async () => {
     const subject = await open();
     const ana = await subject.addPerson('ana@example.org');
     const sent = await subject.workspace.sendInvite(inviteFor(ana));
@@ -79,10 +90,19 @@ function describeInvite(open: Open): void {
       title: 'Planning',
       startsAt: at('13:00'),
       endsAt: at('14:00'),
-      attendees: ['ben@example.org'],
+      attendees: ['ben@example.org', 'ana@example.org'],
       notified: true,
       hold: null,
     });
+  });
+
+  it('invites anyone and lists its person as an attendee only once', async () => {
+    const subject = await open();
+    const ana = await subject.addPerson('ana@example.org');
+    const invite = { ...inviteFor(ana), attendees: ['stranger@elsewhere.net', 'ana@example.org'] };
+    expect((await subject.workspace.sendInvite(invite)).outcome).toBe('invited');
+    const [event] = await subject.events(ana);
+    expect(event?.attendees).toEqual(['stranger@elsewhere.net', 'ana@example.org']);
   });
 
   it('refuses an invitation from a person who is not in the organization', async () => {

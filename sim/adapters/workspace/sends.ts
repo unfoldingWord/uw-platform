@@ -1,4 +1,10 @@
-import type { CalendarFailure, Workspace } from '@uw/harness';
+import {
+  attendingPerson,
+  copiedToPerson,
+  type CalendarFailure,
+  type CalendarInvite,
+  type Workspace,
+} from '@uw/harness';
 import { calendarOf, failure, troubled, type SimWorkspaceState } from './state.ts';
 
 export function mailIn(state: SimWorkspaceState): Workspace['sendMail'] {
@@ -9,16 +15,24 @@ export function mailIn(state: SimWorkspaceState): Workspace['sendMail'] {
     if (from === undefined) return { outcome: 'refused' };
     const failed: CalendarFailure | null = failure(state, mail.personId);
     if (failed !== null) return { outcome: failed };
+    const person = state.emails.get(mail.personId) ?? null;
     state.sent.set(mail.effectId, {
       from,
       to: [...mail.to],
-      cc: [...mail.cc],
-      replyTo: state.emails.get(mail.personId) ?? null,
+      cc: person === null ? [...mail.cc] : [...copiedToPerson(mail.to, mail.cc, person)],
+      replyTo: person,
       subject: mail.subject,
       body: mail.body,
     });
     return { outcome: 'sent' };
   };
+}
+
+function attendeesOf(state: SimWorkspaceState, invite: CalendarInvite): string[] {
+  const person = state.emails.get(invite.personId);
+  return person === undefined
+    ? [...invite.attendees]
+    : [...attendingPerson(invite.attendees, person)];
 }
 
 export function inviteIn(state: SimWorkspaceState): Workspace['sendInvite'] {
@@ -35,7 +49,7 @@ export function inviteIn(state: SimWorkspaceState): Workspace['sendInvite'] {
         startsAt: invite.startsAt,
         endsAt: invite.endsAt,
         description: invite.description,
-        attendees: [...invite.attendees],
+        attendees: attendeesOf(state, invite),
         organisedBySelf: true,
         visibility: 'default',
         notified: true,

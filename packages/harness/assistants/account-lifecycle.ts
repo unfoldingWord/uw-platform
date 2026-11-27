@@ -13,10 +13,10 @@ import { revokeIn } from '../delegations/commands.ts';
 import { draft, recordContext, recordHarnessEvents } from '../items/record.ts';
 import { lockKeys } from '../lock-keys.ts';
 import { accepted, refused, type KernelOutcome, type Refused } from '../outcome.ts';
-import type { AssistantAccountRow, Ports, StoreTransaction } from '../ports.ts';
+import type { AssistantAccountRow, Delegation, Ports, StoreTransaction } from '../ports.ts';
 import { actingPerson } from './accounts.ts';
 
-type AccountPorts = Pick<Ports, 'clock' | 'grants' | 'ids' | 'store'>;
+export type AccountPorts = Pick<Ports, 'clock' | 'grants' | 'ids' | 'store'>;
 
 export type Disabled = { readonly harnessId: string; readonly revoked: number };
 export type RetireInput = { readonly harnessId: string };
@@ -32,32 +32,40 @@ export type ProvisioningRecord =
 const DAY_MS = 86_400_000;
 const LIVE_READ_MOST = 20;
 
-async function revokeAssist(
-  ports: AccountPorts,
+export type Revoker = (tx: StoreTransaction, row: AssistantAccountRow, at: Date) => Promise<number>;
+
+export function assistDelegationsOf(
   tx: StoreTransaction,
-  caller: Caller,
   row: AssistantAccountRow,
   at: Date,
-): Promise<number> {
+): Promise<readonly Delegation[]> {
   const filter = {
     personId: row.personId,
     persona: assistantIdentityOf(row.personId),
     harnessId: row.harnessId,
   };
-  const live = await tx.delegations.read.firstLive(filter, at, LIVE_READ_MOST);
-  let revoked = 0;
-  for (const delegation of live.filter((one) => one.capability === 'assist')) {
-    const outcome = await revokeIn(ports, tx, caller, delegation.id, at);
-    if (outcome.status === 'accepted') revoked += 1;
-  }
-  return revoked;
+  return tx.delegations.read
+    .firstLive(filter, at, LIVE_READ_MOST)
+    .then((live) => live.filter((one) => one.capability === 'assist'));
 }
 
-async function disableIn(
+export function revokerAs(ports: AccountPorts, caller: Caller): Revoker {
+  return async (tx, row, at) => {
+    let revoked = 0;
+    for (const delegation of await assistDelegationsOf(tx, row, at)) {
+      const outcome = await revokeIn(ports, tx, caller, delegation.id, at);
+      if (outcome.status === 'accepted') revoked += 1;
+    }
+    return revoked;
+  };
+}
+
+export async function turnOffIn(
   ports: AccountPorts,
   tx: StoreTransaction,
   caller: Caller,
   personId: string,
+  revoke: Revoker,
 ): Promise<KernelOutcome<Disabled>> {
   const at = ports.clock.now();
   await tx.lock(lockKeys.assistantJdAllocation());
@@ -69,7 +77,7 @@ async function disableIn(
     return refused('stale_version', { harnessId: row.harnessId });
   }
   await tx.lock(lockKeys.assistantHarness(row.harnessId));
-  const revoked = await revokeAssist(ports, tx, caller, row, at);
+  const revoked = await revoke(tx, row, at);
   await recordHarnessEvents(tx, recordContext(ports, caller, at), row.harnessId, [
     draft('assistant_disabled', { revoked }),
   ]);
@@ -82,7 +90,8 @@ export async function disable(
 ): Promise<KernelOutcome<Disabled>> {
   const personId = actingPerson(caller);
   if (typeof personId !== 'string') return personId;
-  return ports.store.transaction((tx) => disableIn(ports, tx, caller, personId));
+  const revoke = revokerAs(ports, caller);
+  return ports.store.transaction((tx) => turnOffIn(ports, tx, caller, personId, revoke));
 }
 
 function provisionerRefusal(caller: Caller, harnessId: unknown): Refused | null {

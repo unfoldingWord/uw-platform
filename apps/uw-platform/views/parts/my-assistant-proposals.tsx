@@ -35,13 +35,17 @@ const statusTones: Readonly<Record<AssistantProposalStatus, BadgeTone>> = {
   expired: 'neutral',
 };
 
+function withYou(addresses: readonly string[]): string {
+  return addresses.length === 0 ? 'You' : `${addresses.join(', ')} and you`;
+}
+
 function emailLines(proposal: OverviewProposal): readonly Line[] {
   const mail = assistantProposalPayloadSchemas.email.safeParse(proposal.payload);
   if (!mail.success) return [];
   const cc = mail.data.cc ?? [];
   return [
     { label: 'To', value: mail.data.to.join(', ') },
-    ...(cc.length === 0 ? [] : [{ label: 'Copy to', value: cc.join(', ') }]),
+    { label: 'Copy to', value: withYou(cc) },
     { label: 'Subject', value: mail.data.subject },
     { label: 'Message', value: mail.data.body },
   ];
@@ -55,7 +59,7 @@ function inviteLines(proposal: OverviewProposal, zone: string): readonly Line[] 
   return [
     { label: 'Title', value: invite.data.title },
     { label: 'When', value: `${starts} to ${ends} (${zone})` },
-    { label: 'Invites', value: invite.data.attendees.join(', ') },
+    { label: 'Invites', value: withYou(invite.data.attendees) },
     ...(invite.data.description === undefined || invite.data.description === ''
       ? []
       : [{ label: 'Description', value: invite.data.description }]),
@@ -171,7 +175,7 @@ export function Proposals(props: { readonly overview: AssistantOverview }) {
   return (
     <Section
       title="Waiting for you"
-      sub={`${String(pending.length)} to decide. Nothing is sent or written until you accept it.`}
+      sub={`${String(pending.length)} to decide. Nothing is sent or written until you accept it. Every email copies you, and you are on every invitation.`}
     >
       {pending.length === 0 ? (
         <EmptyState

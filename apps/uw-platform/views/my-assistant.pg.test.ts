@@ -142,7 +142,9 @@ async function showsAnAdminTheBudgetOnly(db: Database): Promise<void> {
   expect(page.status).toBe(200);
   await sound(page);
   const document = documentOf(page);
-  expect(forms(document)).toEqual(['set_assistant_budget']);
+  expect(forms(document)).toEqual(['set_assistant_budget', 'disable_person_assistant']);
+  const off = document.querySelector('form[data-command="disable_person_assistant"]');
+  expect(off?.querySelector('input[name="personId"]')?.getAttribute('value')).toBe(anaId);
   const main = document.querySelector('main')?.textContent ?? '';
   expect(main).toContain('10.51');
   expect(main).not.toContain(asked);
@@ -199,6 +201,8 @@ async function showsAProposalInFullWithItsDecision(db: Database): Promise<void> 
   for (const shown of ['ben@example.org', 'Ruth 2 notes', 'Here are the notes.']) {
     expect(text).toContain(shown);
   }
+  const copy = [...card.querySelectorAll('p')].find((line) => line.textContent === 'Copy to');
+  expect(copy?.nextElementSibling?.textContent).toBe('You');
   const deciding = [...card.querySelectorAll('form[data-command]')];
   expect(deciding.map((form) => form.getAttribute('data-command'))).toEqual([
     'decide_assistant_proposal',
@@ -247,7 +251,7 @@ async function showsARefusedRequestAndWhy(db: Database): Promise<void> {
 }
 
 describe.skipIf(!testServer)('PA-12 proposals wait on My Assistant for the person', () => {
-  it('shows a pending proposal in full with Accept and Reject on its digest', () =>
+  it('shows a pending proposal in full, its person copied, with Accept and Reject on its digest', () =>
     withAppDatabase(showsAProposalInFullWithItsDecision));
 });
 
@@ -256,7 +260,7 @@ describe.skipIf(!testServer)('PA-7 the My Assistant screen', () => {
     withAppDatabase(showsThePersonEverything));
   it('offers someone with no assistant only the turn-on form with its name field', () =>
     withAppDatabase(offersTurningOnToSomeoneWithout));
-  it('shows an org admin the accounts and the budget control, and nobody else', () =>
+  it('shows an org admin the accounts, the budget control and turning it off, and nobody else', () =>
     withAppDatabase(showsAnAdminTheBudgetOnly));
   it('gives the person a one-time Zulip pairing code', () => withAppDatabase(givesAPairingCode));
   it('shows a request it refused, and why, at the link the wake gives', () =>

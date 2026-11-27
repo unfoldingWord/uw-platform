@@ -3,9 +3,13 @@ import { googleCall, type GoogleAnswer } from './rest.ts';
 import { GOOGLE_SCOPES, type TokenDeps } from './token.ts';
 
 const USERS = 'https://admin.googleapis.com/admin/directory/v1/users';
+const GROUPS = 'https://admin.googleapis.com/admin/directory/v1/groups';
 const HARNESS_TYPE = 'uw-assistant-harness';
 const PASSWORD_BYTES = 30;
 const directoryScope = [GOOGLE_SCOPES.directoryUser];
+const groupScope = [GOOGLE_SCOPES.directoryGroupRead];
+
+const groupSchema = z.object({ email: z.string().min(3).max(254) });
 
 const userSchema = z.object({
   id: z.string().min(1).max(100),
@@ -16,6 +20,8 @@ const userSchema = z.object({
     .max(50)
     .default([]),
 });
+
+type DirectoryGroup = { readonly address: string };
 
 export type DirectoryUser = {
   readonly id: string;
@@ -38,6 +44,7 @@ export type NewAssistantUser = {
 
 export type Directory = {
   user(key: string): Promise<DirectoryAnswer<DirectoryUser | null>>;
+  group(key: string): Promise<DirectoryAnswer<DirectoryGroup | null>>;
   insert(user: NewAssistantUser): Promise<DirectoryAnswer<DirectoryUser>>;
   setSuspended(key: string, suspended: boolean): Promise<DirectoryAnswer<null>>;
   remove(key: string): Promise<DirectoryAnswer<null>>;
@@ -81,6 +88,26 @@ export function newUserBody(user: NewAssistantUser, password: string) {
   };
 }
 
+function groupOf(body: unknown): DirectoryAnswer<DirectoryGroup> {
+  const parsed = groupSchema.safeParse(body);
+  if (!parsed.success) return { ok: false, failure: 'unavailable' };
+  return { ok: true, value: { address: parsed.data.email.toLowerCase() } };
+}
+
+async function groupLookup(
+  deps: DirectoryDeps,
+  key: string,
+): Promise<DirectoryAnswer<DirectoryGroup | null>> {
+  const answer = await googleCall(deps.tokens, {
+    subject: deps.adminSubject,
+    scopes: groupScope,
+    method: 'GET',
+    url: `${GROUPS}/${encodeURIComponent(key)}`,
+  });
+  if (answer.ok) return groupOf(answer.body);
+  return answer.failure === 'not_found' ? { ok: true, value: null } : failureOf(answer);
+}
+
 export function googleDirectory(deps: DirectoryDeps): Directory {
   const call = (method: 'GET' | 'POST' | 'PUT' | 'DELETE', url: string, body?: unknown) =>
     googleCall(deps.tokens, {
@@ -99,6 +126,7 @@ export function googleDirectory(deps: DirectoryDeps): Directory {
       const user = userOf(answer.body);
       return user === null ? { ok: false, failure: 'unavailable' } : { ok: true, value: user };
     },
+    group: (key) => groupLookup(deps, key),
     insert: async (user) => {
       const answer = await call('POST', USERS, newUserBody(user, randomPassword()));
       if (!answer.ok) return failureOf(answer);

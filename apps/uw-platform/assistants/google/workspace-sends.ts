@@ -1,4 +1,10 @@
-import type { MailSent, OutgoingMail, Workspace } from '@uw/harness';
+import {
+  attendingPerson,
+  copiedToPerson,
+  type MailSent,
+  type OutgoingMail,
+  type Workspace,
+} from '@uw/harness';
 import { insertInvite } from './calendar.ts';
 import { sendRaw } from './gmail.ts';
 import { claimSend, markSent, releaseSend } from './mail-sends.ts';
@@ -29,7 +35,7 @@ async function sent(deps: WorkspaceDeps, mail: OutgoingMail, sender: Sender): Pr
   const raw = proposalMime({
     from: sender.mailbox,
     to: mail.to,
-    cc: mail.cc,
+    cc: copiedToPerson(mail.to, mail.cc, sender.replyTo),
     replyTo: sender.replyTo,
     subject: mail.subject,
     text: mail.body,
@@ -59,6 +65,10 @@ export function sendMailOf(deps: WorkspaceDeps): Workspace['sendMail'] {
 export function sendInviteOf(deps: WorkspaceDeps): Workspace['sendInvite'] {
   return async (invite) => {
     const email = await personMailOf(deps.db, invite.personId, deps.domain);
-    return email === null ? { outcome: 'refused' } : insertInvite(deps.tokens, email, invite);
+    if (email === null) return { outcome: 'refused' };
+    return insertInvite(deps.tokens, email, {
+      ...invite,
+      attendees: attendingPerson(invite.attendees, email),
+    });
   };
 }

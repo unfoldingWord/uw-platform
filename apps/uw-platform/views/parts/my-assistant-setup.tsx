@@ -18,7 +18,7 @@ const BUDGET_ENDPOINT = '/api/acl/commands';
 const NAME_MOST = 30;
 
 const nameHint =
-  'Lowercase letters, digits, dots and hyphens, 2 to 30 characters. It becomes the mailbox address and the Zulip bot name.';
+  'Lowercase letters, digits, dots and hyphens, 2 to 30 characters. It becomes the mailbox address and the Zulip bot name, so a name a person, a group or another assistant already uses is taken.';
 
 const stepWords: Readonly<Record<AssistantProvisioningStep, string>> = {
   workspace_user: 'Creating its mailbox',
@@ -37,7 +37,7 @@ export function TurnOn(props: { readonly overview: AssistantOverview }) {
     <Section title="Turn on your assistant">
       {off ? (
         <p class="m-0 text-sm text-text-3">
-          {`You turned it off on ${formatDate(account.disabledAt)}. Turning it on within ${String(ASSISTANT_DELETE_AFTER_DAYS)} days restores its mailbox, its bot and its number.`}
+          {`It was turned off on ${formatDate(account.disabledAt)}. Turning it on within ${String(ASSISTANT_DELETE_AFTER_DAYS)} days restores its mailbox, its bot and its number.`}
         </p>
       ) : (
         <p class="m-0 text-sm text-text-3">
@@ -228,6 +228,27 @@ export function TurnOff() {
         done="Turned off."
       >
         <Button type="submit">Turn off your assistant</Button>
+      </PlatformCommandForm>
+    </Section>
+  );
+}
+
+export function AdminTurnOff(props: { readonly overview: AssistantOverview }) {
+  const { personId, account } = props.overview;
+  if (account?.status !== 'enabled') return null;
+  return (
+    <Section title="Turn off">
+      <p class="m-0 text-sm text-text-3">
+        {`For someone who has left or should no longer have an assistant. It ends its permission at once, and within a minute its mailbox and its bot are suspended. Its person can turn it on again within ${String(ASSISTANT_DELETE_AFTER_DAYS)} days; after that its mailbox is deleted.`}
+      </p>
+      <PlatformCommandForm
+        endpoint={BUDGET_ENDPOINT}
+        command="disable_person_assistant"
+        scope={`${personId}-off`}
+        done="Turned off."
+      >
+        <input type="hidden" name="personId" value={personId} />
+        <Button type="submit">Turn off this assistant</Button>
       </PlatformCommandForm>
     </Section>
   );

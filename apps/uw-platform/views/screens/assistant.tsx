@@ -9,7 +9,14 @@ import type { AppEnv } from '../../deps.ts';
 import { accountsSummary, type AccountsSummary } from '../../assistants/summary.ts';
 import { startZulipPairing } from '../../assistants/zulip/pairing-start.ts';
 import { renderScreen, screenKernel, screenRefusal, type ScreenKernel } from '../parts/frame.tsx';
-import { Accounts, Budget, Permission, TurnOff, TurnOn } from '../parts/my-assistant-setup.tsx';
+import {
+  Accounts,
+  AdminTurnOff,
+  Budget,
+  Permission,
+  TurnOff,
+  TurnOn,
+} from '../parts/my-assistant-setup.tsx';
 import { History, Reminders, Requests, Settings } from '../parts/my-assistant-work.tsx';
 import { Proposals } from '../parts/my-assistant-proposals.tsx';
 import { moduleCodes, pageNames } from '../parts/names.ts';
@@ -20,7 +27,7 @@ import { notFound } from './not-found.tsx';
 const lede =
   'Your own assistant: it answers your direct messages, sets your reminders and holds time on your calendar, only for you.';
 const adminLede =
-  'An admin sees this assistant’s accounts and budget, never what its person asked.';
+  'An admin sees this assistant’s accounts and budget, and can turn it off, never what its person asked.';
 
 type Shown = {
   readonly overview: AssistantOverview;
@@ -60,6 +67,7 @@ function AdminBody(props: { readonly shown: Shown }) {
     <>
       <Accounts overview={overview} summary={summary} />
       <Budget overview={overview} admin />
+      <AdminTurnOff overview={overview} />
     </>
   );
 }

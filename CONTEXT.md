@@ -853,8 +853,12 @@ The JD id an assistant holds in area 10-19, the lowest free one from 10.51 upwar
 _Avoid_: assistant id, slot
 
 **Turning on**, **turning off**:
-What only a person does to their own assistant. Turning on numbers it and starts **provisioning**; turning off suspends its mailbox, deactivates its bot and revokes its `assist` delegation at once. Turning back on within 30 days restores both.
+What a person does to their own assistant. Turning on numbers it and starts **provisioning**; turning off suspends its mailbox, deactivates its bot and revokes its `assist` delegation at once. Turning back on within 30 days restores both. Only the person turns it on; it is also turned off by the platform when its person is no longer active (a **leaver**), and by an org admin.
 _Avoid_: enable, activate (activation is a persona's), install
+
+**Leaver**:
+A person whose status is no longer `active`. Every minute the platform turns off a leaver's assistant through the same path as the person's own turning off.
+_Avoid_: offboarded, departed
 
 **Provisioning**:
 The platform's resumable steps after turning on or off: the Workspace user, the bot and its pairing, the active persona, then waiting for the `assist` delegation; or suspending the user and deactivating the bot. Each step is idempotent and run by `agent:assistant-provisioner`, a platform identity no persona can take.

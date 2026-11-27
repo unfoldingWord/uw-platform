@@ -19,6 +19,7 @@ export type AssistantAccountsGateway = {
     nameHolder(name: string): Promise<string | null>;
     takenJdIds(): Promise<readonly string[]>;
     disabledBefore(before: Date, limit: number): Promise<readonly AssistantAccountRow[]>;
+    leavers(limit: number): Promise<readonly AssistantAccountRow[]>;
   };
   readonly write: {
     insert(row: AssistantAccountRow): Promise<void>;

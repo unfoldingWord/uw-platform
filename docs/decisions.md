@@ -795,7 +795,7 @@ A policy's page and the Policies screen show its level, target, enforcement, dat
 
 ## 0039 The platform reaches Google with one domain-wide-delegated service account, allowlisted in code before it signs
 
-*2026-11-26. Changes 0036. Changed by 0040, 0041, 0042 and 0043.*
+*2026-11-26. Changes 0036. Changed by 0040, 0041, 0042, 0043 and 0047.*
 
 **Decision.**
 
@@ -842,7 +842,7 @@ A policy's page and the Policies screen show its level, target, enforcement, dat
 
 **Consequences.** `GOOGLE_ASSISTANT_OU` is a new variable; `GOOGLE_WORKSPACE_ADMIN_SUBJECT`, `ZULIP_ADMIN_EMAIL` and their secrets must be set before any assistant can be turned on in an environment; until then every step is recorded failed `workspace_not_wired` or `zulip_not_wired` and the person sees that. A name held by a Google group, not a user or alias, is found only when the user is inserted, and is recorded `name_taken`; the person turns the assistant off and back on with another name. The Admin SDK request shapes come from Google's published API, not a live call; staging confirms them before go-live.
 
-**Changes / changed by.** Changes 0036 (item 1: the person turns their own assistant on with `enable`, in area 10-19), 0037 (item 4: `bindAddress` is the provisioner's, not the system principal's) and 0039 (the directory is reached as the admin subject only by the provisioner, to insert, suspend, restore and delete assistant users). Changed by 0045 (review fixes).
+**Changes / changed by.** Changes 0036 (item 1: the person turns their own assistant on with `enable`, in area 10-19), 0037 (item 4: `bindAddress` is the provisioner's, not the system principal's) and 0039 (the directory is reached as the admin subject only by the provisioner, to insert, suspend, restore and delete assistant users). Changed by 0045 (review fixes); 0047 (a leaver's assistant is turned off by the provisioner, and an org admin can turn off any).
 
 ## 0041 My Assistant is the person's own screen; an assistant's text is kept one year and the person may delete it sooner
 
@@ -918,7 +918,7 @@ A policy's page and the Policies screen show its level, target, enforcement, dat
 
 **Consequences.** Gmail's send as the assistant mailbox with a Reply-To, and the calendar insert with attendees and `sendUpdates=all`, are staging probes. A send whose outcome is unknown is recorded failed `outcome_unknown` and never retried. Expiry runs nightly; a proposal past its week is refused and shown expired before the job marks it.
 
-**Changes / changed by.** Changes 0036 (item 6: the proposal kinds, the decision path and the effect check are built as above) and 0039 (the Workspace port also sends a proposed mail as the assistant mailbox and an invitation as the person). Changed by 0045 (review fixes).
+**Changes / changed by.** Changes 0036 (item 6: the proposal kinds, the decision path and the effect check are built as above) and 0039 (the Workspace port also sends a proposed mail as the assistant mailbox and an invitation as the person). Changed by 0045 (review fixes); 0047 (a proposal may address anyone, inside the organization or outside it, and every email copies its person and every invitation includes them; the person still sees every recipient before accepting).
 
 ## 0044 Assistants go live through declared settings, staging probes run from a terminal, and one scenario walks a person's whole day
 
@@ -996,6 +996,30 @@ A policy's page and the Policies screen show its level, target, enforcement, dat
 **Consequences.** DNS over HTTPS is checked before the Worker's own fetch resolves the name, so a name that changes its answer between the two (rebinding) is still refused only if Cloudflare's egress refuses private addresses; that, Brave's and Duffel's response shapes, the Browser Run `markdown` quick action on the binding and its answer shape are staging probes (s12.1 to s12.6). A test Duffel token answers only Duffel's test airline. Brave's plan terms (rate, storage of results) and Duffel's search-to-book terms are the owner's to accept.
 
 **Changes / changed by.** Adds to 0036 the research verbs, which reach no person and change nothing.
+
+## 0047 A leaver's assistant is turned off by the platform, an org admin can turn off any, names are checked against groups, and every proposal copies its person
+
+*2026-11-27. Changes 0039, 0040 and 0043.*
+
+**Decision.**
+
+1. **A person no longer active loses their assistant, through the same path** (owner decision 15). `kernel.assistants.disableLeavers` (`packages/harness/assistants/leavers.ts`), callable only by `agent:assistant-provisioner`, reads at most 50 enabled accounts whose person's status is not `active` (`assistantAccounts.read.leavers`, a join on `people` in the one Store implementation) and turns each off with the same `turnOffIn` the person's own Turn off uses: the account disabled at a new version, the live `assist` delegation revoked with `delegation_revoked`, and `assistant_disabled` recorded. The provisioner revokes directly, because it holds no grant; the decision to revoke is the person's status, which only an org admin changes. The minute cron runs it as step `assistant-leavers` before `assistant-provisioning`, which then suspends the Workspace user and deactivates the bot; the nightly deletion and the freeing of the number follow 30 days later as for any assistant turned off.
+2. **An org admin can turn off any person's assistant.** `disable_person_assistant` (`POST /api/acl/commands/disable_person_assistant`, a platform command) is refused at the route unless the actor is an org admin, and again in the kernel (`disableFor`) after their grants are locked and re-read, the check `setBudget` already used, now shared as `orgAdminRefusal`. It is offered on the admin view of My Assistant (`/assistant?person=<id>`, linked from the person's profile), which already showed an org admin the accounts and budget and never what the person asked. The person can turn it on again within 30 days.
+3. **A name is checked against groups before anything is made** (owner decision 16). The token minter's allowlist lets the admin subject, and only it, also ask for `admin.directory.group.readonly`; the directory client reads `groups.get` by the would-be address, where 404 means free and a group's address or alias means `assistant_name_taken`, before the kernel is called. A directory that cannot answer does not refuse the name; provisioning then records `name_taken` when Google answers 409.
+4. **A proposal may address anyone, and copies its person** (owner decision 17). Recipients and attendees are not limited to the organization's domain, as before; the person still sees every recipient before they accept. Both Workspace adapters add the person: an email gets the person in copy unless they are already a recipient, and an invitation lists them among the attendees unless already listed (`copiedToPerson`, `attendingPerson` in `packages/harness/assistants/recipients.ts`, held by the shared Workspace contract suite). My Assistant shows "and you" on the copy and attendee lines.
+
+**Why.** An assistant whose person has left keeps a licence, a mailbox that still receives mail and a bot that still answers to its pairing; owner decision 15 asks that leaving end it the same way turning it off does. A sweep keyed on the person's status catches every path that changes it, including ones built later, and one minute is soon enough because the `assist` delegation of a person who is no longer active already admits no turn. A group's address takes a name as surely as a user's does, and finding out at `users.insert` leaves the person with a refusal after they were told the assistant was turned on. Copying the person on every send keeps them aware of everything said in their name.
+
+**Rejected.**
+- Calling the kernel from the person-status command inside its transaction: the people module and the kernel's Store are separate writers, and the sweep also covers a status changed any other way.
+- Letting the provisioner revoke through the person-or-admin rule: it is no person; the narrow sweep is its authority.
+- Reading Google's own suspension of a person every minute: one directory call per assistant per minute, and the platform's status is the record.
+- A group write scope, or reading members: the check needs only whether an address is taken.
+- Recording the copy in the proposal's payload: the digest the person decides stays the one the assistant drafted; the copy is a rule of sending, shown on the screen.
+
+**Consequences.** The platform has no command that turns an active person's status to `disabled`; declining applies only to a pending person. Until one exists, a leaver offboarded by revoking grants and suspending them in Google keeps status `active`, so an org admin turns their assistant off from its admin view (PRD open question 32). The group scope must be added to domain-wide delegation and the admin subject given Groups: Read before staging probe s13.1 passes.
+
+**Changes / changed by.** Changes 0039's scope list (a fifth scope, for the admin subject only), 0040 (turning off is no longer only the person's own command) and 0043 (every proposed send includes its person).
 
 # Part 2. Workflow design decisions
 

@@ -40,6 +40,7 @@ export type { Proposed, ProposeInput } from './proposal-drafts.ts';
 export type { ProposalDecided, ProposalDecideInput } from './proposal-decide.ts';
 export type { Expired, ExpireInput } from './proposal-expiry.ts';
 export { privateAddress, webAddressRefusal } from './web-address.ts';
+export { attendingPerson, copiedToPerson } from './recipients.ts';
 export type { WebAddressParts } from './web-address.ts';
 export { RESEARCH_PER_DAY, RESEARCH_PER_REQUEST } from './research-ledger.ts';
 export type { ResearchCounts } from './research-ledger.ts';

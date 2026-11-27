@@ -27,6 +27,7 @@ const REMINDER_LIMIT = 50;
 const STALE_TURN_LIMIT = 50;
 const START_LIMIT = 20;
 const PROVISION_LIMIT = 5;
+const LEAVER_LIMIT = 20;
 
 type Minute = {
   readonly kernel: Kernel;
@@ -167,6 +168,21 @@ async function startWaiting(minute: Minute): Promise<void> {
   });
 }
 
+async function turnOffLeavers({ kernel, provisioner, logger }: Minute): Promise<void> {
+  const swept = await kernel.assistants.disableLeavers(provisioner.caller, {
+    limit: LEAVER_LIMIT,
+  });
+  if (swept.status !== 'accepted') {
+    logger.warn('assistant leavers refused', { step: 'assistant-leavers', outcome: swept.reason });
+    return;
+  }
+  logger.info('assistant leavers turned off', {
+    step: 'assistant-leavers',
+    outcome: 'assistant_leavers_turned_off',
+    disabled: swept.value.disabled.length,
+  });
+}
+
 async function provision({ provisioner, logger }: Minute): Promise<void> {
   const driven = await provisionDue(provisioner, PROVISION_LIMIT);
   const counts = { done: 0, waiting: 0, failed: 0 };
@@ -222,6 +238,7 @@ async function guardedSteps(minute: Minute): Promise<void> {
   await guarded(minute, 'reminders', remind);
   await guarded(minute, 'assistant-turns', closeStale);
   await guarded(minute, 'assistant-starts', startWaiting);
+  await guarded(minute, 'assistant-leavers', turnOffLeavers);
   await guarded(minute, 'assistant-provisioning', provision);
   await guarded(minute, 'assistant-mail', mail);
   await guarded(minute, 'silence', silence);
