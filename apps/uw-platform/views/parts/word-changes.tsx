@@ -1,9 +1,9 @@
 import { wordChanges, type WordChange } from '../../pages/word-diff.ts';
 
-const piece = 'rounded-sm whitespace-pre-wrap no-underline';
+const piece = 'rounded-sm whitespace-pre-wrap';
 const looks: Readonly<Record<WordChange['kind'], string>> = {
   same: 'whitespace-pre-wrap text-text-2',
-  added: `${piece} bg-ok-soft text-ok-text`,
+  added: `${piece} bg-ok-soft text-ok-text no-underline`,
   removed: `${piece} bg-raised text-text-3 line-through`,
 };
 

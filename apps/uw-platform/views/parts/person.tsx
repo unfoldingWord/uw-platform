@@ -29,6 +29,13 @@ export function Person(props: { readonly reading: Reading; readonly person: Pers
 export function Who(props: { readonly reading: Reading; readonly who: Someone }) {
   const { who } = props;
   if (who.kind === 'text') return <>{who.text}</>;
+  if (who.kind === 'agent') {
+    return (
+      <>
+        An agent for <Person reading={props.reading} person={who.person} />
+      </>
+    );
+  }
   return <Person reading={props.reading} person={who.person} />;
 }
 

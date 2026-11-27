@@ -54,6 +54,10 @@ function raiseButton(section: Element | null): Element | undefined {
 async function storyPageShowsLevelConsentAndUses(db: Database): Promise<void> {
   const made = await scene(db);
   const page = await shown(db, made.editor.email, `/pages/${made.told}`);
+  const crumbs = [...page.querySelectorAll('nav[aria-label="Breadcrumb"] a')].map(
+    (a) => a.textContent,
+  );
+  expect(crumbs[0]).toBe('Story Bank');
   const section = page.querySelector('[data-story]');
   const text = section?.textContent ?? '';
   expect(text).toContain('Newsletter');

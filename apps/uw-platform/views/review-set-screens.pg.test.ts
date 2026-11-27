@@ -1,7 +1,10 @@
 import { JSDOM } from 'jsdom';
 import { describe, expect, it } from 'vitest';
 import type { Database } from '@uw/db/client';
+import { principalSchema } from '@uw/contracts';
 import { seedPage } from '@uw/db/test-seed';
+import { writePageAsAgent } from '../pages/agent-write.ts';
+import { personOn } from '../testing/kernel.ts';
 import { person } from '../testing/commands.ts';
 import { testServer, withAppDatabase } from '../testing/postgres.ts';
 import { screenProblems } from '../testing/screen-checks.ts';
@@ -49,6 +52,13 @@ async function suggested(db: Database, made: World, fields: Record<string, strin
   return postForm(db, made.editor, newPath, sent, ORIGIN);
 }
 
+function namesTheSuggesterAndStrikesDeletions(document: Document): void {
+  expect(document.querySelector('main')?.textContent).not.toContain('human:');
+  const struck = document.querySelector('[data-word-changes] del')?.getAttribute('class') ?? '';
+  expect(struck.split(' ')).toContain('line-through');
+  expect(struck.split(' ')).not.toContain('no-underline');
+}
+
 async function suggestReviewAccept(db: Database): Promise<void> {
   const made = await world(db);
   const asking = await getHtml(db, made.editor, newPath);
@@ -67,6 +77,7 @@ async function suggestReviewAccept(db: Database): Promise<void> {
     row.getAttribute('data-suggested-change'),
   );
   expect(kinds).toEqual(['insertion', 'replacement']);
+  namesTheSuggesterAndStrikesDeletions(document);
   const page = documentOf((await getHtml(db, made.viewer, `/pages/${POLICY}`)).text);
   expect(page.querySelector('[data-review-sets-waiting] a')?.getAttribute('href')).toBe(path);
   const asViewer = documentOf((await getHtml(db, made.viewer, path)).text);
@@ -104,12 +115,54 @@ async function importMarkedExport(db: Database): Promise<void> {
   expect(viewer.querySelector('main form')).toBeNull();
 }
 
+async function agentSuggestionNamesItsPerson(db: Database): Promise<void> {
+  await world(db);
+  const bound = await person(db, 'review-agent-owner', 'editor', AREA);
+  const owner = await personOn(db, bound.id, bound.email, new Date());
+  const agent = principalSchema.parse({
+    ...owner,
+    identity: `agent:${bound.id}/laptop`,
+    kind: 'agent',
+    email: null,
+  });
+  const held = await writePageAsAgent(
+    db,
+    agent,
+    {
+      pageId: POLICY,
+      type: 'policy',
+      jdArea: AREA,
+      slug: 'sessions',
+      title: 'Sessions',
+      parentId: null,
+      frontmatter: { enforcement: 'required', effective_from: '2026-01-01' },
+      bodyMd: BODY.replace('every', 'each'),
+      expectedVersion: 1,
+    },
+    {
+      traceId: crypto.randomUUID(),
+      at: new Date(),
+      instructions: { namesInstructions: () => Promise.resolve(false) },
+      writer: null,
+    },
+  );
+  if (!held.ok || held.reviewSetId === undefined) throw new Error('no review set was held');
+  const review = await getHtml(db, bound.email, `/pages/${POLICY}/review-sets/${held.reviewSetId}`);
+  expect(await screenProblems(review.text)).toEqual([]);
+  const band = documentOf(review.text).querySelector('main')?.textContent ?? '';
+  expect(band).toContain('An agent for');
+  expect(band).not.toContain('agent:');
+  expect(documentOf(review.text).querySelector('main [data-person-chip]')).not.toBeNull();
+}
+
 describe.skipIf(!testServer)(
   '#197 a person suggests changes and decides a review set on screen',
   () => {
     it('turns an edited text into a review set, lists it on the page, and accepts it as one version', () =>
       withAppDatabase(suggestReviewAccept));
 
+    it("names an agent's suggestion by the person it works for, through the person chip", () =>
+      withAppDatabase(agentSuggestionNamesItsPerson));
     it('brings a marked export back as suggested changes, and refuses an unchanged text', () =>
       withAppDatabase(importMarkedExport));
   },

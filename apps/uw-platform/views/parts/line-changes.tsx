@@ -1,9 +1,9 @@
 import { lineChanges, type LineChange } from '../../pages/diff.ts';
 
-const line = 'block rounded-sm px-3 py-1 font-mono text-xs whitespace-pre-wrap no-underline';
+const line = 'block rounded-sm px-3 py-1 font-mono text-xs whitespace-pre-wrap';
 const looks: Readonly<Record<LineChange['kind'], string>> = {
-  same: `${line} text-text-3`,
-  added: `${line} bg-ok-soft text-ok-text`,
+  same: `${line} text-text-3 no-underline`,
+  added: `${line} bg-ok-soft text-ok-text no-underline`,
   removed: `${line} bg-raised text-text-3 line-through`,
 };
 
