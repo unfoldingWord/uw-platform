@@ -6,6 +6,7 @@ import { seriesRoles, tokenColour } from './chart.tsx';
 use([GraphChart, LegendComponent]);
 
 export type GraphNode = {
+  readonly id: string;
   readonly name: string;
   readonly side: 'source' | 'target';
   readonly group: string | null;
@@ -42,7 +43,7 @@ const SOURCE_X = 190;
 const TARGET_X = 450;
 
 function nodeId(node: GraphNode): string {
-  return `${node.side}:${node.name}`;
+  return `${node.side}:${node.id}`;
 }
 
 function circlePlot(nodes: readonly GraphNode[]): Plot {

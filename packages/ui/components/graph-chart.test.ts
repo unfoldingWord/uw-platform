@@ -12,6 +12,7 @@ const network: SpecChartDrawing = {
   graph: {
     layout: 'circle',
     nodes: ['Ada Example', 'Lee-Anne Placeholder', 'Sam Sample'].map((name) => ({
+      id: name,
       name,
       side: 'source',
       group: null,
@@ -34,9 +35,9 @@ const allocation: SpecChartDrawing = {
   graph: {
     layout: 'columns',
     nodes: [
-      { name: 'Ada Example', side: 'source', group: null },
-      { name: 'Program Alpha', side: 'target', group: 'Portfolio One' },
-      { name: 'Portfolio Two', side: 'target', group: 'Portfolio Two' },
+      { id: 'Ada Example', name: 'Ada Example', side: 'source', group: null },
+      { id: 'Program Alpha', name: 'Program Alpha', side: 'target', group: 'Portfolio One' },
+      { id: 'Portfolio Two', name: 'Portfolio Two', side: 'target', group: 'Portfolio Two' },
     ],
     edges: [
       { from: 'Ada Example', to: 'Program Alpha', label: '60%' },

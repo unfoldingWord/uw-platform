@@ -15,9 +15,18 @@ async function inWorld(work: (world: TeamWorld) => Promise<void>): Promise<void>
   await withAppDatabase(async (db: Database) => work(await teamWorld(db)));
 }
 
-async function screenOf(world: TeamWorld, email: string) {
-  const page = await getHtml(world.db, email, teamChartsPath(), {}, clock);
+async function screenOf(world: TeamWorld, email: string, query = '') {
+  const page = await getHtml(world.db, email, `${teamChartsPath()}${query}`, {}, clock);
   return { page, document: new JSDOM(page.text).window.document };
+}
+
+function commitmentEditor(document: Document) {
+  const add = document.querySelector('form[data-command="add_commitment"]');
+  const from = add?.querySelector<HTMLInputElement>('input[name="fromPersonId"]')?.value;
+  const removals = [...document.querySelectorAll('form[data-command="remove_commitment"]')];
+  const removing = removals.map((form) => form.textContent?.replace('Remove', '').trim());
+  const chooser = document.querySelector('form[method="get"] select[name="person"]');
+  return { from, removing, chooser, open: add?.closest('details')?.hasAttribute('open') };
 }
 
 function texts(document: Document, selector: string): (string | null)[] {
@@ -70,6 +79,28 @@ async function editingIsAskedFor(world: TeamWorld): Promise<void> {
   expect(allocation?.closest('details')?.hasAttribute('open')).toBe(false);
 }
 
+async function stewardChoosesWhoseCommitments(world: TeamWorld): Promise<void> {
+  const own = commitmentEditor((await screenOf(world, world.steward.email)).document);
+  expect(own.from).toBe(world.steward.id);
+  expect(own.chooser).not.toBeNull();
+  const query = `?person=${world.ada.id}`;
+  const chosen = commitmentEditor((await screenOf(world, world.steward.email, query)).document);
+  expect(chosen.from).toBe(world.ada.id);
+  expect(chosen.removing.sort()).toEqual([
+    'Committed to Sam Sample',
+    'Committed to “lee.anne placeholder”',
+  ]);
+  expect(chosen.open).toBe(true);
+}
+
+async function colleagueEditsOnlyTheirOwn(world: TeamWorld): Promise<void> {
+  const query = `?person=${world.ada.id}`;
+  const lee = commitmentEditor((await screenOf(world, world.lee.email, query)).document);
+  expect(lee.from).toBe(world.lee.id);
+  expect(lee.removing).toEqual(['Committed to “Sam”']);
+  expect(lee.chooser).toBeNull();
+}
+
 async function printsAsPdf(world: TeamWorld): Promise<void> {
   const browser = fakeBrowser();
   const path = `${teamChartsPath()}?format=pdf`;
@@ -99,6 +130,10 @@ describe.skipIf(!testServer)('#200 the Team Charts screen', () => {
     inWorld(drawsThreeChartsWithTheirData));
   it('#200 commitments and allocations are edited only when asked, and allocations only by a steward', () =>
     inWorld(editingIsAskedFor));
+  it('#200 the directory steward chooses whose commitments to edit, and both add and remove act for that person', () =>
+    inWorld(stewardChoosesWhoseCommitments));
+  it('#200 a colleague edits only their own commitments, whoever the address names', () =>
+    inWorld(colleagueEditsOnlyTheirOwn));
   it('#200 the screen prints as a PDF with its three charts and no forms', () =>
     inWorld(printsAsPdf));
   it('#200 a person who cannot read the directory gets not found', () =>

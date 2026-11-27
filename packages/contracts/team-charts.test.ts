@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { chartLineageSchema, chartQueryParamsSchemas, chartSpecSchema } from './chart-spec.ts';
+import {
+  CHART_CANDIDATES_MOST,
+  chartLineageSchema,
+  chartQueryParamsSchemas,
+  chartSpecSchema,
+} from './chart-spec.ts';
 import {
   addCommitmentCommandSchema,
   removeCommitmentCommandSchema,
@@ -56,33 +61,49 @@ describe('#200 a chart spec draws a graph from a source and a target column', ()
   });
 });
 
-describe('#200 the data-quality note is the lineage’s list of entries left out', () => {
-  const lineage = {
-    source: 'person_commitments',
-    query: 'team_commitments',
-    asOf: '2026-11-26T09:00:00.000Z',
-    filters: {},
-    excluded: {
-      count: 2,
-      reasons: [
-        { reason: 'ambiguous_name', count: 1 },
-        { reason: 'person_not_readable', count: 1 },
-      ],
-      entries: [
-        {
-          reason: 'ambiguous_name',
-          subject: 'Lee-Anne Placeholder',
-          named: 'Sam',
-          candidates: ['Sam Sample', 'Sam Specimen'],
-        },
-      ],
-    },
-    stale: null,
-    capped: null,
-  };
+const lineage = {
+  source: 'person_commitments',
+  query: 'team_commitments',
+  asOf: '2026-11-26T09:00:00.000Z',
+  filters: {},
+  excluded: {
+    count: 2,
+    reasons: [
+      { reason: 'ambiguous_name', count: 1 },
+      { reason: 'person_not_readable', count: 1 },
+    ],
+    entries: [
+      {
+        reason: 'ambiguous_name',
+        subject: 'Lee-Anne Placeholder',
+        named: 'Sam',
+        candidates: ['Sam Sample', 'Sam Specimen'],
+        moreCandidates: 0,
+      },
+    ],
+  },
+  stale: null,
+  capped: null,
+};
 
+describe('#200 the data-quality note is the lineage’s list of entries left out', () => {
   it('#200 accepts an ambiguous entry with its candidates beside a counted reason', () => {
     expect(chartLineageSchema.parse(lineage)).toEqual(lineage);
+  });
+
+  it('#200 lists at most CHART_CANDIDATES_MOST candidates and counts the rest only when the list is full', () => {
+    const [entry] = lineage.excluded.entries;
+    const names = Array.from({ length: CHART_CANDIDATES_MOST }, (_, n) => `Jo Example ${n}`);
+    const full = { ...entry, candidates: names, moreCandidates: 3 };
+    const withEntry = (one: object) => ({
+      ...lineage,
+      excluded: { ...lineage.excluded, entries: [one] },
+    });
+    expect(chartLineageSchema.safeParse(withEntry(full)).success).toBe(true);
+    const tooMany = { ...full, candidates: [...names, 'Jo Example extra'], moreCandidates: 2 };
+    expect(chartLineageSchema.safeParse(withEntry(tooMany)).success).toBe(false);
+    const short = { ...entry, moreCandidates: 1 };
+    expect(chartLineageSchema.safeParse(withEntry(short)).success).toBe(false);
   });
 
   it('#200 refuses more entries of a reason than the count left out for it', () => {

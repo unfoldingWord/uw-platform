@@ -645,7 +645,7 @@ What every drawn chart says about its rows: the source, the chart query, the as-
 _Avoid_: provenance (that is a page export's footer), metadata, audit trail
 
 **Data-quality note**:
-The lines a chart draws under its picture and shows on its screen for what its **lineage** left out: each ambiguous entry with the people it could name, each unresolved entry, each entry on a retired page or a page the reader cannot read, and a count of the rest. Ambiguous entries are left out and listed, never guessed (ADR 0039).
+The lines a chart draws under its picture and shows on its screen for what its **lineage** left out: each ambiguous entry with the people it could name (the first 20 by name, and a count of the rest), each unresolved entry, each entry on a retired page or a page the reader cannot read, and a count of the rest. Ambiguous entries are left out and listed, never guessed (ADR 0039).
 _Avoid_: quality report, warnings, errors
 
 **Commitment**:
@@ -657,7 +657,7 @@ A person's share of time on exactly one program or portfolio, a row of `staff_al
 _Avoid_: assignment, FTE, capacity
 
 **Team Charts**:
-The screen at `/team-charts`, beside the Colleague Directory, that draws the commitments network, staff allocation, and people and portfolios as **standard charts** of the chart spec, each with its data-quality note, rows and downloads, and prints as a PDF.
+The screen at `/team-charts`, beside the Colleague Directory, that draws the commitments network, staff allocation, and people and portfolios as **standard charts** of the chart spec, each with its data-quality note, rows and downloads, and prints as a PDF. A graph's nodes are people and pages by id, labelled by name, so two colleagues or two programs with one name are two nodes. The directory steward chooses whose commitments to edit there (`?person=<id>`); a colleague edits only their own.
 _Avoid_: org chart, team dashboard
 
 ## Measures and dashboards

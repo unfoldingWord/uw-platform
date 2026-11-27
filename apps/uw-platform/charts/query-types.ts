@@ -13,7 +13,11 @@ export function cellOf(row: ChartRow, key: string): ChartCell {
   return new Map(Object.entries(row)).get(key) ?? null;
 }
 
-export type ChartColumn = { readonly key: string; readonly label: string };
+export type ChartColumn = {
+  readonly key: string;
+  readonly label: string;
+  readonly identity?: string;
+};
 
 export type Excluded = {
   readonly count: number;

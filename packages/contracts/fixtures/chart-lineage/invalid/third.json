@@ -20,7 +20,8 @@
         "reason": "unresolved_name",
         "subject": "Ada Example",
         "named": "Quinn",
-        "candidates": []
+        "candidates": [],
+        "moreCandidates": 0
       }
     ]
   },

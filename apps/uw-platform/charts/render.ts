@@ -85,8 +85,10 @@ export async function drawChart(
     stale: stale === null ? null : { since: stale.since.toISOString(), reason: stale.reason },
     capped: read.value.capped ?? null,
   };
-  const table = { columns: [...query.columns], rows: read.value.rows.map((row) => ({ ...row })) };
-  const drawing = drawingOf({ id, spec, ...table, notes: notesOf(lineage) });
+  const columns = query.columns.map(({ key: columnKey, label }) => ({ key: columnKey, label }));
+  const rows = read.value.rows.map((row) => ({ ...row }));
+  const drawing = drawingOf({ id, spec, columns: query.columns, rows, notes: notesOf(lineage) });
+  const table = { columns, rows };
   return accepted({ spec, table, lineage, drawing });
 }
 

@@ -20,7 +20,8 @@
         "reason": "ambiguous_name",
         "subject": "Lee-Anne Placeholder",
         "named": "Sam",
-        "candidates": ["Sam Sample", "Sam Specimen"]
+        "candidates": ["Sam Sample", "Sam Specimen"],
+        "moreCandidates": 0
       }
     ]
   },

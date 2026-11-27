@@ -4,7 +4,7 @@ import { PlatformCommandForm } from '@uw/ui/components/command-form.tsx';
 import { Disclosure } from '@uw/ui/components/disclosure.tsx';
 import { SelectField, TextField } from '@uw/ui/components/field.tsx';
 import { Section } from '@uw/ui/components/section.tsx';
-import { teamCommandsPath } from './paths.ts';
+import { teamChartsPath, teamCommandsPath } from './paths.ts';
 
 type Choice = { readonly value: string; readonly label: string };
 export type Listed = { readonly id: string; readonly label: string };
@@ -51,18 +51,61 @@ function Rows(props: {
   );
 }
 
+export type CommitmentsOf = {
+  readonly id: string;
+  readonly name: string;
+  readonly own: boolean;
+};
+
+export type Chooser = { readonly people: readonly Choice[]; readonly chosen: boolean };
+
+function PersonChooser(props: { readonly chooser: Chooser; readonly personId: string }) {
+  return (
+    <form method="get" action={teamChartsPath()} class="flex flex-wrap items-end gap-2">
+      <SelectField
+        name="person"
+        label="Whose commitments"
+        scope="commitments-of"
+        choices={props.chooser.people}
+        selected={props.personId}
+      />
+      <Button type="submit">Show</Button>
+    </form>
+  );
+}
+
+function commitmentWords(person: CommitmentsOf) {
+  if (person.own) {
+    return {
+      title: 'Your commitments',
+      summary: 'Edit your commitments',
+      empty: 'You have named no one yet.',
+    };
+  }
+  return {
+    title: `Commitments by ${person.name}`,
+    summary: `Edit commitments by ${person.name}`,
+    empty: `${person.name} has named no one yet.`,
+  };
+}
+
 export function CommitmentEditor(props: {
-  readonly personId: string;
+  readonly person: CommitmentsOf;
   readonly mine: readonly Listed[];
   readonly colleagues: readonly Choice[];
+  readonly chooser: Chooser | null;
 }) {
   const choices = [{ value: '', label: 'Someone not listed' }, ...props.colleagues];
+  const words = commitmentWords(props.person);
   return (
-    <Section title="Your commitments" headingId="commitments-edit-heading" tight>
-      <Disclosure summary="Edit your commitments" open={false}>
+    <Section title={words.title} headingId="commitments-edit-heading" tight>
+      <Disclosure summary={words.summary} open={props.chooser?.chosen === true}>
+        {props.chooser === null ? null : (
+          <PersonChooser chooser={props.chooser} personId={props.person.id} />
+        )}
         <Rows
           rows={props.mine}
-          empty="You have named no one yet."
+          empty={words.empty}
           command="remove_commitment"
           field="commitmentId"
         />
@@ -72,7 +115,7 @@ export function CommitmentEditor(props: {
           scope="new"
           done="Added. Reload to redraw the charts."
         >
-          <input type="hidden" name="fromPersonId" value={props.personId} />
+          <input type="hidden" name="fromPersonId" value={props.person.id} />
           <SelectField name="toPersonId" label="Colleague" scope="commitment" choices={choices} />
           <TextField
             name="toText"

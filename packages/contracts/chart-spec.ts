@@ -99,12 +99,23 @@ export const chartSpecSchema = z
     path: ['encodings', 'y'],
   });
 
-const entrySchema = z.strictObject({
-  reason: chartExcludedReasonSchema,
-  subject: z.string().min(1).max(200),
-  named: z.string().max(200).nullable(),
-  candidates: z.array(z.string().min(1).max(200)).max(20),
-});
+export const CHART_CANDIDATES_MOST = 20;
+
+const entrySchema = z
+  .strictObject({
+    reason: chartExcludedReasonSchema,
+    subject: z.string().min(1).max(200),
+    named: z.string().max(200).nullable(),
+    candidates: z.array(z.string().min(1).max(200)).max(CHART_CANDIDATES_MOST),
+    moreCandidates: z.number().int().min(0),
+  })
+  .refine(
+    (entry) => entry.moreCandidates === 0 || entry.candidates.length === CHART_CANDIDATES_MOST,
+    {
+      message: 'candidates beyond the list are counted only when the list is full',
+      path: ['moreCandidates'],
+    },
+  );
 
 type Excluded = {
   readonly count: number;

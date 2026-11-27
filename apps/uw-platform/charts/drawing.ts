@@ -23,7 +23,9 @@ function leftOutLine(count: number, reason: string): string {
   return `${formatCount(count)} ${count === 1 ? noun : plural} left out${why}.`;
 }
 
-function either(names: readonly string[]): string {
+function either(names: readonly string[], more: number): string {
+  if (more > 0)
+    return `${names.join(', ')}, or ${formatCount(more)} more ${more === 1 ? 'person' : 'people'}`;
   if (names.length < 3) return names.join(' or ');
   return `${names.slice(0, -1).join(', ')} or ${names.at(-1) ?? ''}`;
 }
@@ -35,7 +37,7 @@ function quoted(named: string | null): string {
 function entryNote(entry: ChartExcludedEntry): string {
   const { subject, named } = entry;
   if (entry.reason === 'ambiguous_name') {
-    return `Left out, ambiguous: ${subject} named ${quoted(named)}, who could be ${either(entry.candidates)}.`;
+    return `Left out, ambiguous: ${subject} named ${quoted(named)}, who could be ${either(entry.candidates, entry.moreCandidates)}.`;
   }
   if (entry.reason === 'unresolved_name') {
     return `Left out, unresolved: ${subject} named ${quoted(named)}, who matches no one in the directory.`;
@@ -177,7 +179,8 @@ export function drawingOf(input: {
 }): SpecChartDrawing {
   const { spec, rows } = input;
   const categories = distinct(rows, spec.encodings.x);
-  const graph = spec.encodings.target === undefined ? {} : { graph: graphOf(spec, rows) };
+  const graph =
+    spec.encodings.target === undefined ? {} : { graph: graphOf(spec, input.columns, rows) };
   return {
     ...graph,
     id: input.id,

@@ -820,7 +820,7 @@ A policy's page and the Policies screen show its level, target, enforcement, dat
 
 ## 0039 The team charts resolve names at read time, never guess, and report what they leave out in the lineage
 
-*2026-11-26. Extends 0038. Part of #200.*
+*2026-11-26, amended 2026-11-27. Extends 0038. Part of #200.*
 
 **Decision.** Seven rulings.
 - **Platform data, two new tables.** The commitments network, staff allocation and people and portfolios charts read `people`, `directory_entries`, the portfolio and program pages and their `program.portfolio` relation, and two tables the people module owns: `staff_allocations` (a person to exactly one of a program page or a portfolio page, a whole percent from 0 to 100 or none) and `person_commitments` (a person to exactly one of a person or a text). Both are `internal` and `cache_readonly`; the database refuses a row with both targets or neither, a percent out of range, a blank text and a commitment to oneself.
@@ -844,7 +844,12 @@ A policy's page and the Policies screen show its level, target, enforcement, dat
 - The reference dashboard's ellipse of people by portfolio sector and ring. Its overlap relaxation measures text in a browser; counts by portfolio and ring with the names in the table carry the same facts and print.
 - A separate data-quality report field beside the lineage.
 
-**Consequences.** A directory edit can change which entries resolve, so a chart's lineage, not the stored row, says what was drawn. Two people with one display name are one node in a graph and make every text naming them ambiguous until one is renamed. A table cell may now hold up to 4,000 characters, for the names in a people row. Retiring the Apps Script deployment is an operations step outside this repository. Cost if wrong: the resolution tiers are one pure function (`people/name-resolution.ts`) and the layouts one renderer (`packages/ui/components/graph-chart.ts`); either changes without a migration.
+**Consequences.** A directory edit can change which entries resolve, so a chart's lineage, not the stored row, says what was drawn. Two people with one display name make every text naming them ambiguous until one is renamed (amended 2026-11-27: they are no longer one node). A table cell may now hold up to 4,000 characters, for the names in a people row. Retiring the Apps Script deployment is an operations step outside this repository and remains an open task: #200 does not retire it. Cost if wrong: the resolution tiers are one pure function (`people/name-resolution.ts`) and the layouts one renderer (`packages/ui/components/graph-chart.ts`); either changes without a migration.
+
+**Amended 2026-11-27 (review of PR #262).**
+- **Graph nodes are ids, labelled by name.** A column a query draws as a graph end names the column that holds its identity (`ChartColumn.identity`): `from` by `fromId` and `to` by `toId` for commitments, `person` by `personId` and `target` by `targetId` for allocations. Nodes and edges are keyed by that id and labelled by the name, and the ids are columns of the rows, so the CSV and JSON tell two same-named colleagues or programs apart as the picture does. Rejected: a new `encodings` field naming the identity column, since the identity belongs to the query's rows, not to a spec an agent writes. Two portfolios with one title still share a legend group.
+- **Candidates are capped and counted.** A lineage entry lists at most `CHART_CANDIDATES_MOST` (20) candidates, the first by name, and `moreCandidates` counts the rest; the schema refuses a count beyond a list that is not full, and the note reads "…, or 3 more people". Contract 15.6.0. Rejected: raising the cap, which moves the limit without making the cut visible.
+- **The steward chooses whose commitments to edit.** The Team Charts screen gives the directory steward a person chooser (`?person=<id>`); the add form's `fromPersonId` and the removal list follow it. A colleague's editor stays on their own list whatever the address names.
 
 **Changes / changed by.** Extends 0038 (two chart types, a value format, five exclusion reasons and listed entries in the lineage).
 

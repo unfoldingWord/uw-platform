@@ -1,4 +1,5 @@
 import type { Context } from 'hono';
+import { z } from 'zod';
 import { can, DIRECTORY_AREA } from '@uw/core/acl';
 import { ButtonLink } from '@uw/ui/components/button.tsx';
 import { OverviewShape } from '@uw/ui/shapes/overview.tsx';
@@ -51,18 +52,37 @@ async function drawAll(screen: ScreenKernel, db: Parameters<typeof platformSourc
   return drawn;
 }
 
-function Editors(props: { readonly read: TeamRead; readonly screen: ScreenKernel }) {
-  const { actor } = props.screen.caller;
+const askedSchema = z.uuid();
+
+function commitmentsOf(read: TeamRead, screen: ScreenKernel, asked: string | null) {
+  const { actor } = screen.caller;
   const personId = actor.kind === 'person' ? actor.personId : null;
-  const member = props.read.members.find((each) => each.id === personId);
-  const steward = stewardsTeam(actor, props.screen.at);
+  const own = read.members.find((each) => each.id === personId);
+  if (!stewardsTeam(actor, screen.at)) {
+    return own === undefined ? null : { person: { ...own, own: true }, chooser: null };
+  }
+  const named = read.members.find((each) => each.id === asked);
+  const person = named ?? own ?? read.members[0];
+  if (person === undefined) return null;
+  const chooser = { people: peopleChoices(read), chosen: named !== undefined };
+  return { person: { ...person, own: person.id === own?.id }, chooser };
+}
+
+function Editors(props: {
+  readonly read: TeamRead;
+  readonly screen: ScreenKernel;
+  readonly asked: string | null;
+}) {
+  const steward = stewardsTeam(props.screen.caller.actor, props.screen.at);
+  const editing = commitmentsOf(props.read, props.screen, props.asked);
   return (
     <>
-      {member === undefined ? null : (
+      {editing === null ? null : (
         <CommitmentEditor
-          personId={member.id}
-          mine={commitmentsBy(props.read, member.id)}
-          colleagues={colleagueChoices(props.read, member.id)}
+          person={editing.person}
+          mine={commitmentsBy(props.read, editing.person.id)}
+          colleagues={colleagueChoices(props.read, editing.person.id)}
+          chooser={editing.chooser}
         />
       )}
       {steward ? (
@@ -105,6 +125,7 @@ function Side(props: {
   readonly drawn: readonly Drawn[];
   readonly read: TeamRead;
   readonly screen: ScreenKernel;
+  readonly asked: string | null;
 }) {
   return (
     <>
@@ -115,7 +136,7 @@ function Side(props: {
           ids={idsOf(each.prefix)}
         />
       ))}
-      <Editors read={props.read} screen={props.screen} />
+      <Editors read={props.read} screen={props.screen} asked={props.asked} />
     </>
   );
 }
@@ -151,10 +172,14 @@ export async function teamChartsScreen(c: Context<AppEnv>): Promise<Response> {
   const read = await readTeam(database.db, actor, screen.at);
   const drawn = await drawAll(screen, database.db);
   if (read === null || drawn === null) return notFound(c);
+  const asked = askedSchema.safeParse(c.req.query('person'));
+  const side = (
+    <Side drawn={drawn} read={read} screen={screen} asked={asked.success ? asked.data : null} />
+  );
   return renderScreen(
     c,
     screenSpec,
-    <OverviewShape head={head()} side={<Side drawn={drawn} read={read} screen={screen} />}>
+    <OverviewShape head={head()} side={side}>
       <Charts drawn={drawn} />
     </OverviewShape>,
   );

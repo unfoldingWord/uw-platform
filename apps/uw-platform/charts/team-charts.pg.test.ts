@@ -67,8 +67,15 @@ async function reportsTheAmbiguousEntry(world: TeamWorld): Promise<void> {
       subject: 'Lee-Anne Placeholder',
       named: 'Sam',
       candidates: ['Sam Sample', 'Sam Specimen'],
+      moreCandidates: 0,
     },
-    { reason: 'unresolved_name', subject: 'Sam Specimen', named: 'Quinn Nobody', candidates: [] },
+    {
+      reason: 'unresolved_name',
+      subject: 'Sam Specimen',
+      named: 'Quinn Nobody',
+      candidates: [],
+      moreCandidates: 0,
+    },
   ]);
   expect(excluded.reasons).toEqual([
     { reason: 'ambiguous_name', count: 1 },
@@ -89,8 +96,20 @@ async function allocatesByPortfolio(world: TeamWorld): Promise<void> {
     ['Ada Example', 'Portfolio Two', 'Portfolio', 'Portfolio Two', null],
   ]);
   expect(chart.lineage.excluded.entries).toEqual([
-    { reason: 'page_not_readable', subject: 'Sam Sample', named: null, candidates: [] },
-    { reason: 'page_retired', subject: 'Sam Specimen', named: 'Program Retired', candidates: [] },
+    {
+      reason: 'page_not_readable',
+      subject: 'Sam Sample',
+      named: null,
+      candidates: [],
+      moreCandidates: 0,
+    },
+    {
+      reason: 'page_retired',
+      subject: 'Sam Specimen',
+      named: 'Program Retired',
+      candidates: [],
+      moreCandidates: 0,
+    },
   ]);
   expect(cspProblems(chart.svg)).toEqual([]);
   expect(chart.svg).toContain('60%');
@@ -115,7 +134,13 @@ async function countsPeopleByPortfolioAndRing(world: TeamWorld): Promise<void> {
     ['No portfolio', 'No ring', 4, 'Outsider Example, Reader Example, Rowan Test, Steward Example'],
   ]);
   expect(chart.lineage.excluded.entries).toEqual([
-    { reason: 'page_not_readable', subject: 'Sam Specimen', named: null, candidates: [] },
+    {
+      reason: 'page_not_readable',
+      subject: 'Sam Specimen',
+      named: null,
+      candidates: [],
+      moreCandidates: 0,
+    },
   ]);
   expect(chart.svg).not.toContain('Portfolio Hidden');
 }
