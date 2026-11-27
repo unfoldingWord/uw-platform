@@ -16,6 +16,7 @@ import {
   pageSearchReplySchema,
   pageVersionReplySchema,
   pageVersionsReplySchema,
+  renderChannelSchema,
 } from '@uw/contracts';
 import type { Principal } from '@uw/core/principal';
 import type { Database } from '@uw/db/client';
@@ -34,7 +35,7 @@ import { pageExportText } from './export-page.ts';
 import { renderPage } from './render-page.ts';
 import { backlinksOf } from './links.ts';
 import { searchWithSnippets } from './search.ts';
-import { readPage } from './store.ts';
+import { readPage, readPageIn } from './store.ts';
 import { commitOf } from '../env.ts';
 
 type Reader = { readonly db: Database; readonly actor: Principal; readonly at: Date };
@@ -121,10 +122,12 @@ const one: Read = async (c, { db, actor, at }) => {
 const exported: Read = async (c, { db, actor, at }) => {
   const pageId = z.uuid().safeParse(c.req.param('pageId'));
   const mode = pageExportModeSchema.default('accepted').safeParse(c.req.query('mode'));
-  if (!mode.success) return refuse(c, 'malformed_command');
-  const page = pageId.success ? await readPage(db, actor, pageId.data, at) : null;
+  const channel = renderChannelSchema.default('platform').safeParse(c.req.query('channel'));
+  if (!mode.success || !channel.success) return refuse(c, 'malformed_command');
+  const page = pageId.success ? await readPageIn(db, actor, pageId.data, at, channel.data) : null;
   if (page === null) return refuse(c, 'page_not_found');
-  const text = await pageExportText({ db, actor, at }, page, mode.data);
+  if (page === 'story_above_channel') return refuse(c, page);
+  const text = await pageExportText({ db, actor, at }, page, mode.data, channel.data);
   c.set('outcome', 'accepted');
   return c.body(text, 200, {
     'content-type': 'text/markdown; charset=utf-8',

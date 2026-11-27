@@ -46,6 +46,7 @@ export const pageNames = {
   measures: 'Measures & Dashboards',
   charts: 'Charts',
   teamCharts: 'Team Charts',
+  stories: 'Story Bank',
 } as const;
 
 const smallWord = /^[a-z]/;
@@ -80,7 +81,8 @@ export type BuiltModule =
   | 'directory'
   | 'crosswalk'
   | 'measures'
-  | 'teamCharts';
+  | 'teamCharts'
+  | 'stories';
 export type PlatformArea = {
   readonly code: string;
   readonly name: string;
@@ -137,7 +139,7 @@ export const platformAreas: readonly PlatformArea[] = [
     modules: [
       { label: 'CRM & Giving', icon: 'heart' },
       { label: 'Grants', icon: 'award' },
-      { label: 'Story Bank', icon: 'book-open' },
+      { label: 'Story Bank', icon: 'book-open', built: 'stories' },
     ],
   },
   {
@@ -170,6 +172,7 @@ export const moduleCodes: Readonly<Record<BuiltModule, string>> = {
   crosswalk: '00',
   measures: '00',
   teamCharts: '00.05',
+  stories: '40',
 };
 
 export const noModules = 'No modules enabled for this area';

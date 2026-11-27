@@ -24,7 +24,7 @@ import { provenanceOf, type ExternalWriter } from './provenance.ts';
 import { REPLAY_INDEX, replayOf } from './replay.ts';
 import { checkFrontmatter } from './validate.ts';
 
-export { readPage, toPage } from './page-row.ts';
+export { readPage, readPageIn, toPage } from './page-row.ts';
 
 export const owns = [
   'pages',

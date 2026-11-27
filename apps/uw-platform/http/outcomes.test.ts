@@ -41,3 +41,22 @@ describe('ADR 0036 a measure command refusal answers with the status its reason 
     expect(await response.json()).toEqual({ status: 'error', reason });
   });
 });
+
+const storyReasons: readonly (readonly [ErrorReason, number])[] = [
+  ['story_above_channel', 403],
+  ['consent_required', 409],
+  ['consent_expired', 409],
+  ['consent_withdrawn', 409],
+  ['photo_release_required', 409],
+];
+
+describe('#201 a story refusal answers with the status its reason names', () => {
+  it.each(storyReasons)(
+    '#201 %s answers %i with the reason in the body',
+    async (reason, status) => {
+      const response = await refuser(reason).request('/');
+      expect(response.status).toBe(status);
+      expect(await response.json()).toEqual({ status: 'error', reason });
+    },
+  );
+});

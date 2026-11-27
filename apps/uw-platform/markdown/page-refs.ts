@@ -9,6 +9,7 @@ import { claimPanels } from './panel-embeds.ts';
 export type EmbedSource =
   | { readonly kind: 'page'; readonly title: string; readonly bodyMd: string }
   | { readonly kind: 'denied' }
+  | { readonly kind: 'withheld' }
   | { readonly kind: 'missing' };
 
 export type RenderHooks = {
@@ -19,6 +20,8 @@ export type RenderHooks = {
 };
 
 type Nested = (source: string, depth: number) => Root;
+
+export const withheldNotice = 'This section is not cleared for this channel.';
 
 const DEEPEST_EMBED = 2;
 const WIKI = /!?\[\[([^\][\n]+)\]\]/g;
@@ -118,6 +121,7 @@ function embedded(image: Element, embedding: Embedding): Element | null {
   if (address === null) return null;
   const source = embedding.hooks.embed(address.id);
   if (source.kind === 'denied') return notice('You do not have access to this section.');
+  if (source.kind === 'withheld') return notice(withheldNotice);
   if (source.kind === 'missing') return notice('This section no longer exists.');
   const origin = element('p', { dataEmbedSource: '' }, [pageLink(address.id, source.title)]);
   if (embedding.depth >= DEEPEST_EMBED) return origin;

@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { collectionKeySchema } from './collections.ts';
+import { renderChannelSchema } from './stories.ts';
 
 export const pdfExportKinds = ['page', 'view', 'screen', 'binder'] as const;
 
@@ -20,9 +21,16 @@ const binderByRoot = z.strictObject({
   rootPageId: z.uuid(),
 });
 
+const channel = { channel: renderChannelSchema.optional() };
+
 export const binderRequestSchema = z.union([
-  z.strictObject({ kind: z.literal('binder'), title: binderTitle, pageIds: binderPages }),
-  binderByRoot,
+  z.strictObject({
+    kind: z.literal('binder'),
+    title: binderTitle,
+    pageIds: binderPages,
+    ...channel,
+  }),
+  binderByRoot.extend(channel),
 ]);
 
 export const pdfTargetSchema = z.union([

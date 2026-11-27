@@ -116,6 +116,7 @@ const written = new Map<string, { areaRank: number | null; owner: boolean }>([
   ['credential_bindings', { areaRank: 3, owner: false }],
   ['credential_access_log', { areaRank: 3, owner: false }],
   ['directory_private', { areaRank: 1, owner: true }],
+  ['story_consents', { areaRank: 1, owner: false }],
 ]);
 
 type Asked = {

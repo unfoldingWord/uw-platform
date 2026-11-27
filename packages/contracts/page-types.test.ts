@@ -12,6 +12,7 @@ import {
 import { dashboardFrontmatterSchema } from './dashboards.ts';
 import { measureFrontmatterSchema } from './measures.ts';
 import { isCollectionPageType, pageTypes } from './pages.ts';
+import { impactStoryFrontmatterSchema } from './stories.ts';
 
 const persona = {
   identity: 'agent:builder',
@@ -36,11 +37,22 @@ describe('FD-9 the page-type registry', () => {
   });
 
   it('ADR 0036 registers resource, measure and dashboard, a resource as a collection row', () => {
-    expect(pageTypes.slice(-3)).toEqual(['resource', 'measure', 'dashboard']);
+    expect(pageTypes.slice(-4, -1)).toEqual(['resource', 'measure', 'dashboard']);
     expect(isCollectionPageType('resource')).toBe(true);
     expect(isCollectionPageType('measure')).toBe(false);
     expect(pageTypeDefinition('measure')?.frontmatter).toBe(measureFrontmatterSchema);
     expect(pageTypeDefinition('dashboard')?.frontmatter).toBe(dashboardFrontmatterSchema);
+  });
+
+  it('#201 registers impact_story last, never offline, its edits by an agent held as suggestions', () => {
+    expect(pageTypes.at(-1)).toBe('impact_story');
+    expect(isCollectionPageType('impact_story')).toBe(false);
+    expect(pageTypeDefinition('impact_story')).toMatchObject({
+      frontmatter: impactStoryFrontmatterSchema,
+      classification: 'internal',
+      offlineEligibility: 'never',
+      agentSuggests: true,
+    });
   });
 
   it.each(pageTypes)(

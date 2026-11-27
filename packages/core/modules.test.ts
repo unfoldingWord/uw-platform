@@ -17,8 +17,8 @@ const dependsOnLaterModule = (declared: (typeof modules)[number], position: numb
   declared.depends_on.some((dependency) => keys.indexOf(dependency) >= position);
 
 describe('the module registry', () => {
-  it('declares core, agents, strategy and charts', () => {
-    expect(keys).toEqual(['core', 'agents', 'strategy', 'charts']);
+  it('declares core, agents, strategy, charts and story_bank', () => {
+    expect(keys).toEqual(['core', 'agents', 'strategy', 'charts', 'story_bank']);
   });
 
   it.each(modules)('declares $key in the plan §14 shape', (declared) => {
@@ -56,8 +56,11 @@ describe('the module registry claims every page type and verb once', () => {
       'charter',
     ]);
     expect(moduleOf('charts').page_types).toEqual(['resource', 'measure', 'dashboard']);
+    expect(moduleOf('story_bank').page_types).toEqual(['impact_story']);
     expect(
-      ['agents', 'core', 'strategy', 'charts'].flatMap((key) => moduleOf(key).page_types),
+      ['agents', 'core', 'strategy', 'charts', 'story_bank'].flatMap(
+        (key) => moduleOf(key).page_types,
+      ),
     ).toEqual(Object.keys(pageTypeRegistry));
   });
 
@@ -87,6 +90,18 @@ describe('the module registry claims every page type and verb once', () => {
 
   it('refuses a module outside the §14 shape', () => {
     expect(moduleSchema.safeParse({ key: 'core', name: 'Core' }).success).toBe(false);
+  });
+});
+
+describe('#201 the story bank module', () => {
+  it('#201 gives story_bank the story tables, restricted and never offline', () => {
+    expect(moduleOf('story_bank')).toMatchObject({
+      tables: ['story_levels', 'story_consents', 'story_media_levels', 'story_uses'],
+      depends_on: ['core'],
+      data_classification: 'restricted',
+      offline_eligibility: 'never',
+      mcp_tools: [],
+    });
   });
 });
 

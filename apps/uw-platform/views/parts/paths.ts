@@ -283,6 +283,14 @@ export function chartFilePath(
   return `/api/charts/${segment(key)}?${scope}format=${format}`;
 }
 
+export function storiesPath(): string {
+  return '/stories';
+}
+
+export function storyCommandsPath(): string {
+  return '/api/stories/commands';
+}
+
 export function teamChartsPath(): string {
   return '/team-charts';
 }

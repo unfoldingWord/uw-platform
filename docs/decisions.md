@@ -839,6 +839,36 @@ A policy's page and the Policies screen show its level, target, enforcement, dat
 
 **Changes / changed by.** Extends 0038 (two chart types, a value format, five exclusion reasons and listed entries in the lineage).
 
+## 0040 A story's level is a server filter over a render channel, raised only by an area admin on a recorded consent
+
+*2026-11-26. Builds on 0015 and 0017. Part of #201.*
+
+**Decision.** Eight rulings.
+- **Level and consent beside the page, not in it.** An `impact_story` page (gated; an agent's edit to an active story is held as a review set) carries its tags as validated frontmatter: `jd_category` (its area's `xx.96` home), an ISO 3166-1 alpha-2 `country` (a user-assigned code such as `XA` is accepted for invented test places), an ISO 3166-2 `region` that starts with that country, BCP 47 `languages` (an ISO 639-3 code is a valid tag), `illustrates` page ids and free-form `themes` that are never a join key. The level is a row of `story_levels`, the consent a row of `story_consents`, each file's level a row of `story_media_levels` and every use a row of the append-only `story_uses`, all owned by `apps/uw-platform/stories/`. No page save can set or raise a level.
+- **The ladder and the channels are closed sets.** Levels are `internal` < `private_circulation` < `newsletter` < `public`; render channels are `platform` (staff screens behind sign-in, the reach of `internal`), `private_circulation`, `newsletter` and `public`. One pure function, `storyMayAppear(level, channel)`, decides, and one SQL predicate, `storyChannelFilter(channel, at)`, applies it in the read path: a story shows in a channel wider than `platform` only when its level reaches the channel and its consent is neither withdrawn nor past its expiry day. A story with no level row is `internal`.
+- **Every render path declares its channel.** Staff screens, listings, backlinks and the tree are `platform`. `read_page`, `search_pages`, `resolve_context` and `render_pdf` take a `channel` argument, the markdown export a `channel` query parameter and a binder request a `channel` field, each defaulting to `platform`. A page asked for above its level is refused with `story_above_channel`; a story reached through an embed, a binder or a context package is left out, the embed drawn as "not cleared for this channel". Embeds, binder sections and images inherit the request's channel and nothing nested can reset it, so a verb cannot widen what its caller asked for.
+- **Raising needs an area admin and a valid consent; lowering needs a writer.** Raising needs a person holding `admin` on the story's area, with grants re-read inside the transaction, and a consent record with a release reference and a day that is neither expired nor withdrawn; a file's level also needs the photo release. Lowering is open to anyone who may write the page. An agent identity never raises. Recording consent needs a person who may write the page.
+- **Withdrawal is a report.** Withdrawing consent stamps the record, drops the story and each of its files to `internal`, and answers with every recorded use.
+- **Every export records its stories.** A markdown export, a PDF of a page and a PDF binder record one use per story drawn into it, embedded ones included, at every channel; `read_page` records an agent read when asked for a wider channel. The database refuses an update, delete or truncate of `story_uses`.
+- **Consent is restricted.** `story_consents` is `restricted` with the read rule `viewer` on the story's own area or org admin; an org viewer reads the story and its level but not who consented. The level, media and uses tables are `internal`. All four are `never` offline.
+- **A seam for the field-record ceiling.** The ceiling a sensitive engagement would set is not built, because no field data is in the platform yet; it belongs in `storyChannelFilter` as one more condition.
+
+**Why.**
+- **A label is not a permission.** The failure the PRD names is a well-meaning draft putting a named field worker on the public web; only a filter in the read path, not an editorial habit, prevents it on every path at once.
+- **Frontmatter is writable by every save.** An agent's page save could otherwise set `level: public`; a table only the stories module writes, behind a person and a consent, cannot be reached by a page write.
+- **Uses traced at render time are complete.** Recording a use where a rendering includes a story catches embeds and binders that a caller never named.
+
+**Rejected.**
+- The level as a frontmatter select. Any page writer could raise it.
+- One table for level and consent. The level is read by every filter and every listing; the consent names a person and links a signed release, and deserves the restricted rule.
+- Refusing the whole host page when it embeds a story above the channel. Leaving the section out keeps a newsletter buildable from a page that also serves staff.
+- A package for country and language codes. `Intl.DisplayNames` and `Intl.getCanonicalLocales` validate them on Workers and in Node with no dependency; the cost is that a few CLDR region codes that are not countries (`EU`, `UN`) are also accepted.
+- Recording uses only for channels wider than `platform`. A board packet printed for staff is still a place the story landed.
+
+**Consequences.** Every page read with a wider channel joins `story_levels` and `story_consents`; a platform read adds nothing. Screen PDFs (`?format=pdf`) are platform renderings and do not record uses. A wiki link to a story still shows its title in a wider export. The public publishing path (#252) must render through these channels. Cost if wrong: the ladder and the channels are contract sets, the decision one pure function and the read rule one predicate, so a change to either touches two files and the contract lock.
+
+**Changes / changed by.** Builds on 0015 and 0017 (a new restricted table and its rule).
+
 ---
 
 # Part 2. Workflow design decisions

@@ -10,6 +10,7 @@ export const searchPagesVerb = rowFilteredHandler({
       area: null,
       titlesOnly: false,
       liveOnly: false,
+      channel: input.channel,
       limit: input.limit,
     };
     return searchPages(context.db, context.principal, query, context.at);

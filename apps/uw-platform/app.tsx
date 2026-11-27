@@ -23,6 +23,7 @@ import { observe, serverTiming } from './observe.ts';
 import { mountCollections } from './collections/routes.ts';
 import { mountKnowledgeBase } from './pages/routes.ts';
 import { mountExports } from './pdf/routes.ts';
+import { storyRoutes, storyScreenRoutes } from './stories/routes.ts';
 import { requestLogger } from './request-logger.ts';
 import { viewRoutes } from './views/routes.tsx';
 import { notFound } from './views/screens/not-found.tsx';
@@ -38,6 +39,8 @@ function mountContent(app: Hono<AppEnv>): void {
   app.route('/charts', chartScreenRoutes());
   app.route('/api/team', teamRoutes());
   app.route('/team-charts', teamChartScreenRoutes());
+  app.route('/api/stories', storyRoutes());
+  app.route('/stories', storyScreenRoutes());
 }
 
 export function createApp(

@@ -1,5 +1,10 @@
 import { z } from 'zod';
-import { binderRequestSchema, principalSchema, type ErrorReason } from '@uw/contracts';
+import {
+  binderRequestSchema,
+  principalSchema,
+  type ErrorReason,
+  type RenderChannel,
+} from '@uw/contracts';
 import { formatDate } from '@uw/core/dates';
 import type { Principal } from '@uw/core/principal';
 import type { Database } from '@uw/db/client';
@@ -14,6 +19,7 @@ import type { Printable } from './print-kernel.ts';
 import { binderPlan, printPlannedBinder } from './print-targets.ts';
 import { exporterOf, sha256Hex, type Provenance } from './provenance.ts';
 import type { PdfRenderer } from './renderer.ts';
+import { recordStoryUses } from '../stories/uses.ts';
 
 export type PdfExportDeps = {
   readonly db: Database;
@@ -31,6 +37,7 @@ type Rendering = {
   readonly actor: Principal;
   readonly printable: Printable;
   readonly queued: QueuedExport;
+  readonly channel: RenderChannel;
 };
 
 const queuedRequestSchema = z.object({ target: binderRequestSchema });
@@ -78,10 +85,10 @@ async function rendered(
   renderer: PdfRenderer,
   rendering: Rendering,
 ): Promise<PdfExportResult> {
-  const { actor, printable, queued } = rendering;
+  const { actor, printable, queued, channel } = rendering;
   const { db, files, origin } = run.deps;
   const provenance = await provenanceOf(run, actor, printable.printed);
-  const image = fileImages(db, files, { actor, at: run.at }, origin);
+  const image = fileImages(db, files, { actor, at: run.at, channel }, origin);
   const { title, bodyHtml } = printable;
   const pdf = await renderer.render(await printJob({ title, bodyHtml, provenance, origin, image }));
   if (pdf === null) return failed(run, 'pdf_render_failed');
@@ -91,6 +98,13 @@ async function rendered(
   const areas = [...new Set([...queued.areas, ...printable.areas])];
   const ready = { kind: 'ready', r2Key, ...hashes, bytes: pdf.byteLength, areas } as const;
   await finishExport(db, run.exportId, ready, run.at);
+  const use = { channel, kind: 'pdf_binder', reference: run.exportId } as const;
+  await recordStoryUses(db, {
+    pageIds: printable.stories,
+    usedBy: actor.identity,
+    at: run.at,
+    ...use,
+  });
   return 'ready';
 }
 
@@ -110,7 +124,8 @@ export async function runPdfExport(
   const plan = await binderPlan(deps.db, principal, target, run.at);
   if (typeof plan === 'string') return failed(run, plan);
   const printable = await printPlannedBinder(deps.db, principal, plan, run.at, deps.commit);
-  return rendered(run, deps.renderer, { actor: principal, printable, queued });
+  const channel = plan.channel;
+  return rendered(run, deps.renderer, { actor: principal, printable, queued, channel });
 }
 
 export async function abandonPdfExport(

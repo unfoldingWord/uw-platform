@@ -10,6 +10,7 @@ export type Printable = {
   readonly bodyHtml: string;
   readonly printed: Printed;
   readonly areas: readonly string[];
+  readonly stories: readonly string[];
 };
 
 export function screenOf(db: Database, actor: Principal, at: Date): ScreenKernel {

@@ -1,0 +1,38 @@
+import type { ZodType } from 'zod';
+import {
+  consentFormSchema,
+  countryCodeSchema,
+  impactStoryFrontmatterSchema,
+  languageTagSchema,
+  locationPrecisionSchema,
+  nameUseSchema,
+  recordStoryConsentCommandSchema,
+  regionCodeSchema,
+  renderChannelSchema,
+  sensitivityLevelSchema,
+  setStoryLevelCommandSchema,
+  setStoryMediaLevelCommandSchema,
+  storyUseKindSchema,
+  storyUseSchema,
+  withdrawalReportSchema,
+  withdrawStoryConsentCommandSchema,
+} from './stories.ts';
+
+export const storySchemaRegistry: Record<string, ZodType> = {
+  'sensitivity-level': sensitivityLevelSchema,
+  'render-channel': renderChannelSchema,
+  'name-use': nameUseSchema,
+  'location-precision': locationPrecisionSchema,
+  'consent-form': consentFormSchema,
+  'story-use-kind': storyUseKindSchema,
+  'country-code': countryCodeSchema,
+  'region-code': regionCodeSchema,
+  'language-tag': languageTagSchema,
+  'impact-story-frontmatter': impactStoryFrontmatterSchema,
+  'set-story-level-command': setStoryLevelCommandSchema,
+  'record-story-consent-command': recordStoryConsentCommandSchema,
+  'withdraw-story-consent-command': withdrawStoryConsentCommandSchema,
+  'set-story-media-level-command': setStoryMediaLevelCommandSchema,
+  'story-use': storyUseSchema,
+  'withdrawal-report': withdrawalReportSchema,
+};

@@ -72,5 +72,6 @@ export async function printView(
       hashInput: { kind: 'hash', sourceSha256: await sha256Hex(hashed), withheld: false },
     },
     areas: [stored.definition.jdArea],
+    stories: [],
   };
 }

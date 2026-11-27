@@ -18,6 +18,7 @@ import { owns as githubFacts } from '../../apps/uw-platform/github/facts/owns.ts
 import { owns as notify } from '../../apps/uw-platform/notify/push/owns.ts';
 import { owns as pages } from '../../apps/uw-platform/pages/store.ts';
 import { owns as measures } from '../../apps/uw-platform/measures/owns.ts';
+import { owns as stories } from '../../apps/uw-platform/stories/owns.ts';
 import { owns as pdf } from '../../apps/uw-platform/pdf/owns.ts';
 import { owns as people } from '../../apps/uw-platform/people/directory.ts';
 import { owns as queue } from '../../apps/uw-platform/queue/watermarks.ts';
@@ -60,6 +61,7 @@ const owners: Owner[] = [
   { dir: 'apps/uw-platform/crosswalk/', tables: crosswalk },
   { dir: 'apps/uw-platform/pdf/', tables: pdf },
   { dir: 'apps/uw-platform/measures/', tables: measures },
+  { dir: 'apps/uw-platform/stories/', tables: stories },
   { dir: 'apps/uw-platform/github/facts/', tables: githubFacts },
   { dir: 'apps/uw-platform/notify/push/', tables: notify },
   { dir: 'apps/uw-ingest/deliveries/', tables: deliveries },

@@ -208,6 +208,20 @@ export const modules = [
     offline_eligibility: 'never',
     status: 'standard',
   },
+  {
+    ...unclaimed,
+    key: 'story_bank',
+    tables: ['story_levels', 'story_consents', 'story_media_levels', 'story_uses'],
+    page_types: ['impact_story'],
+    routes: ['/api/stories/commands/:name', '/stories'],
+    name: 'Story Bank',
+    summary:
+      'Impact stories from the field, each with its consent record and a sensitivity level that every render channel obeys, the level of each photograph and the log of every place a story was used.',
+    depends_on: ['core'],
+    data_classification: 'restricted',
+    offline_eligibility: 'never',
+    status: 'standard',
+  },
 ] as const satisfies readonly Module[];
 
 export type ModuleKey = (typeof modules)[number]['key'];

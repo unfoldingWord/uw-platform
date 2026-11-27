@@ -65,6 +65,7 @@ export * from './schema-exports.ts';
 export * from './schema-suggestions.ts';
 export * from './schema-review-sets.ts';
 export * from './schema-measures.ts';
+export * from './schema-stories.ts';
 
 const internalSync = { classification: 'internal', offlineEligibility: 'sync' } as const;
 const restrictedNever = { classification: 'restricted', offlineEligibility: 'never' } as const;

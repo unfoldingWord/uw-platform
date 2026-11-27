@@ -533,6 +533,20 @@
       "when": 1795732711347,
       "tag": "0077_team_charts",
       "breakpoints": true
+    },
+    {
+      "idx": 78,
+      "version": "7",
+      "when": 1795735888923,
+      "tag": "0078_story_bank",
+      "breakpoints": true
+    },
+    {
+      "idx": 79,
+      "version": "7",
+      "when": 1795735895544,
+      "tag": "0079_story_uses_append_only",
+      "breakpoints": true
     }
   ]
 }

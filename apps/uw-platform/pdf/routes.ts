@@ -42,6 +42,7 @@ function formFields(posted: Posted): Record<string, unknown> {
     title: filled(posted['title'])[0],
     rootPageId: filled(posted['rootPageId'])[0],
     pageIds: pageIds.length === 0 ? undefined : pageIds,
+    channel: filled(posted['channel'])[0],
   };
   return Object.fromEntries(Object.entries(fields).filter(([, value]) => value !== undefined));
 }

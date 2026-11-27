@@ -72,6 +72,7 @@ import { notFound } from './not-found.tsx';
 import { withViews } from '../parts/view-embed.tsx';
 import { withPanels } from '../parts/dashboard-panels.tsx';
 import { measureParts } from '../parts/measure-section.tsx';
+import { storyParts } from '../parts/story-section.tsx';
 import type { Principal } from '@uw/core/principal';
 import { shownPerson, shownText, Who, type Reading } from '../parts/person.tsx';
 import { commitOf } from '../../env.ts';
@@ -142,7 +143,7 @@ type Extras = {
   readonly favourite: boolean;
   readonly filed: readonly PageEntry[];
   readonly owner: PersonName | null;
-  readonly measures: Child;
+  readonly typed: Child;
   readonly policy: PolicyReading | null;
   readonly suggestions: readonly PendingSuggestion[];
   readonly reviewSets: readonly PendingReviewSet[];
@@ -253,7 +254,7 @@ function dashboardBody(shown: ShownPage, extras: Extras) {
     >
       <PageStatusLine page={page} />
       <Notices shown={shown} extras={extras} />
-      {extras.measures}
+      {extras.typed}
       <div data-page-sheet="">
         <div data-page-body="">{raw(extras.rendered.html)}</div>
       </div>
@@ -294,7 +295,7 @@ function body(shown: ShownPage, extras: Extras) {
       <div data-page-sheet="">
         <div data-page-body="">{raw(extras.rendered.html)}</div>
       </div>
-      {extras.measures}
+      {extras.typed}
       {category === null ? null : <Pager category={category} previous={previous} next={next} />}
       <ConfirmControl
         page={page}
@@ -333,7 +334,7 @@ type Stored = Pick<
   | 'favourite'
   | 'filed'
   | 'owner'
-  | 'measures'
+  | 'typed'
   | 'policy'
   | 'suggestions'
   | 'reviewSets'
@@ -346,7 +347,7 @@ const nothingStored: Stored = {
   favourite: false,
   filed: [],
   owner: null,
-  measures: null,
+  typed: null,
   policy: null,
   suggestions: [],
   reviewSets: [],
@@ -389,7 +390,12 @@ async function storedExtras(
   );
   return {
     rendered: await withPanels(database.db, screen, page, rendered),
-    measures: await measureParts(database.db, screen, page),
+    typed: (
+      <>
+        {await measureParts(database.db, screen, page)}
+        {await storyParts(database.db, screen, page)}
+      </>
+    ),
     openComments: await openComments(database.db, page.id),
     favourite: await isFavourite(database.db, actor, page.id),
     filed:

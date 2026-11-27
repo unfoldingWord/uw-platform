@@ -1,7 +1,7 @@
 import GithubSlugger from 'github-slugger';
 import type { PageExportMode, Page, SuggestedChangeInput } from '@uw/contracts';
 import { markedText } from './critic.ts';
-import type { EmbedSource } from './page-refs.ts';
+import { withheldNotice, type EmbedSource } from './page-refs.ts';
 import { pageAddress } from './wiki-syntax.ts';
 
 type Sources = (id: string) => EmbedSource;
@@ -26,6 +26,7 @@ export function exportSource(page: Pick<Page, 'slug' | 'version'>): string {
 const FENCE = '```';
 const GONE = '> This section no longer exists.';
 const DENIED = '> You do not have access to this section.';
+const WITHHELD = `> ${withheldNotice}`;
 
 function stampOf(page: Page, request: ExportRequest): (readonly [string, unknown])[] {
   const { stamp, mode, leftOut = 0 } = request;
@@ -115,6 +116,7 @@ type Walk = {
 function written(address: { id: string; fragment: string | null }, walk: Walk): string {
   const source = walk.sources(address.id);
   if (source.kind === 'denied') return DENIED;
+  if (source.kind === 'withheld') return WITHHELD;
   if (source.kind === 'missing') return GONE;
   const link = `[${source.title}](/pages/${address.id})`;
   if (walk.depth >= DEEPEST_EMBED || walk.seen.has(address.id)) return `See ${link}.`;

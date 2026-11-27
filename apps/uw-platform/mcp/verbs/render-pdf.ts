@@ -1,4 +1,4 @@
-import type { BinderRequest, PdfExportReply } from '@uw/contracts';
+import type { BinderRequest, PdfExportReply, RenderChannel } from '@uw/contracts';
 import { formatDate } from '@uw/core/dates';
 import { ensureBuiltIns } from '../../collections/builtins/seed.ts';
 import { loadCollectionById } from '../../collections/definitions.ts';
@@ -18,7 +18,7 @@ import { fileImages } from '../../pdf/print-images.ts';
 import {
   binderPlan,
   binderReference,
-  printPage,
+  printPageIn,
   printView,
   type BinderPlan,
   type Printable,
@@ -27,6 +27,7 @@ import { exporterOf, type Provenance } from '../../pdf/provenance.ts';
 import type { PdfRenderer } from '../../pdf/renderer.ts';
 import type { VerbContext } from '../context.ts';
 import { gatedHandler, refusal, type Found, type VerbInput, type VerbRefusal } from '../handler.ts';
+import { recordStoryUses } from '../../stories/uses.ts';
 import { storedPageArea } from './page-scene.ts';
 
 type RenderInput = VerbInput<'render_pdf'>;
@@ -35,6 +36,7 @@ type Single = Extract<Target, { readonly kind: 'page' } | { readonly kind: 'view
 type Binder = { readonly plan: BinderPlan; readonly request: BinderRequest };
 type Scene = { readonly kind: 'single' } | ({ readonly kind: 'binder' } & Binder);
 type Wired = { readonly pdf: PdfRenderer; readonly files: FileStore };
+type Use = { readonly channel: RenderChannel; readonly reference: string };
 
 function hiddenTarget(input: RenderInput): VerbRefusal {
   const { target } = input;
@@ -52,22 +54,27 @@ async function viewArea(context: VerbContext, target: Extract<Target, { kind: 'v
   return { resource: { kind: 'area' as const, area: stored.definition.jdArea } };
 }
 
-function requestOf(target: Exclude<Target, Single>, title: string): BinderRequest {
-  if ('rootPageId' in target) return { ...target, title };
-  return { kind: 'binder', title, pageIds: target.pageIds };
+function requestOf(
+  target: Exclude<Target, Single>,
+  title: string,
+  channel: RenderChannel,
+): BinderRequest {
+  if ('rootPageId' in target) return { ...target, title, channel };
+  return { kind: 'binder', title, pageIds: target.pageIds, channel };
 }
 
 async function binderArea(
   context: VerbContext,
   target: Exclude<Target, Single>,
+  channel: RenderChannel,
 ): Promise<Found<Scene> | VerbRefusal> {
-  const asked = requestOf(target, target.title ?? 'Binder');
+  const asked = requestOf(target, target.title ?? 'Binder', channel);
   const planned = await binderPlan(context.db, context.principal, asked, context.at);
   if (typeof planned === 'string') return refusal(planned);
   const title = target.title ?? planned.root?.title ?? planned.pages[0]?.title ?? 'Binder';
   const plan = { ...planned, title };
   const area = plan.areas[0] ?? '';
-  const found = { kind: 'binder' as const, plan, request: requestOf(target, title) };
+  const found = { kind: 'binder' as const, plan, request: requestOf(target, title, channel) };
   return { resource: { kind: 'area', area }, found };
 }
 
@@ -76,7 +83,7 @@ async function targetArea(
   input: RenderInput,
 ): Promise<Found<Scene> | VerbRefusal> {
   const { target } = input;
-  if (target.kind === 'binder') return binderArea(context, target);
+  if (target.kind === 'binder') return binderArea(context, target, input.channel);
   const found =
     target.kind === 'page'
       ? await storedPageArea(context, target)
@@ -108,10 +115,22 @@ async function provenanceOf(
   };
 }
 
-function printableOf(context: VerbContext, target: Single): Promise<Printable | null> {
+function printableOf(
+  context: VerbContext,
+  target: Single,
+  channel: RenderChannel,
+): Promise<Printable | 'story_above_channel' | null> {
   const { db, principal, at, commit } = context;
-  if (target.kind === 'page') return printPage(db, principal, target.pageId, at, commit);
+  if (target.kind === 'page') {
+    return printPageIn(db, principal, { pageId: target.pageId, at, commit }, channel);
+  }
   return printView(db, principal, target.collection, target.viewId, at);
+}
+
+async function recordUses(context: VerbContext, printable: Printable, use: Use): Promise<void> {
+  const { db, principal, at } = context;
+  const pageIds = printable.stories;
+  await recordStoryUses(db, { pageIds, usedBy: principal.identity, at, kind: 'pdf_page', ...use });
 }
 
 async function renderNow(
@@ -119,13 +138,14 @@ async function renderNow(
   wired: Wired,
   input: RenderInput & { readonly target: Single },
 ) {
-  const { target } = input;
-  const printable = await printableOf(context, target);
+  const { target, channel } = input;
+  const printable = await printableOf(context, target, channel);
   if (printable === null) return hiddenTarget(input);
+  if (printable === 'story_above_channel') return refusal(printable);
   const { title, bodyHtml, printed, areas } = printable;
   const provenance = await provenanceOf(context, target, printed);
   const origin = context.origin ?? '';
-  const reader = { actor: context.principal, at: context.at };
+  const reader = { actor: context.principal, at: context.at, channel };
   const image = fileImages(context.db, wired.files, reader, origin);
   const pdf = await wired.pdf.render(
     await printJob({ title, bodyHtml, provenance, origin, image }),
@@ -138,6 +158,7 @@ async function renderNow(
     return refusal('pdf_render_failed');
   }
   const reply = await storeReadyExport(context.db, wired.files, { ...asked, pdf, sourceSha256 });
+  await recordUses(context, printable, { channel, reference: reply.exportId });
   return { status: 'accepted' as const, output: reply };
 }
 

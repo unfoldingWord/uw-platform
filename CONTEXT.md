@@ -714,6 +714,32 @@ _Avoid_: widget, tile, chart (a chart is drawn by a panel), card (that is the Qu
 The dashboard a measure names to be shown, with the host page as its context, in the Measures section of every page its resources serve.
 _Avoid_: scorecard, summary, embed (alone, that is another page's text)
 
+## Story Bank
+
+**Impact story**:
+A page of type `impact_story`: one account from the field, filed under its area's `xx.96` home, tagged with a country, a region and languages as codes and with the pages it illustrates. Its sensitivity level and its consent record live beside it in the stories module, never in its frontmatter, so no page save can change them. An agent's save lands `suggested` (ADR 0040).
+_Avoid_: testimonial, case study, anecdote, story (alone, in code)
+
+**Sensitivity level**:
+How widely an impact story may be told, from an ordered ladder where each level includes those below it: `internal` < `private_circulation` < `newsletter` < `public`. A story is created `internal`. Raising it needs `admin` on its area and a valid consent record; lowering it is open to anyone who may write the page. An agent never sets or raises one. It is a permission, not a label.
+_Avoid_: visibility, privacy setting, tier (that is a risk tier), classification (that is a table's)
+
+**Consent record**:
+The release behind a story: a reference to the stored release, who consented, in what form and on what day, when it expires, whether the subject is anonymised, how names are used (`real`, `pseudonym`, `none`), how precise the location is (`country`, `region`, `none`), a separate photo release, a review date and, once withdrawn, when. It is valid while it is neither expired nor withdrawn. A row of the restricted `story_consents` table, read by its area's readers and org admins only.
+_Avoid_: permission (that is a grant's), release form (that is the stored document), waiver
+
+**Render channel**:
+Where a rendering will be seen, from a closed set: `platform` (staff screens behind sign-in, the same reach as `internal`), `private_circulation`, `newsletter` and `public`. Every render path declares one; exports and verbs take it as a parameter that defaults to `platform`. A story appears in a channel only when `storyMayAppear(level, channel)` says so, and everything a rendering pulls in, embeds and images included, obeys the same channel.
+_Avoid_: audience, destination, target (that is a PDF export's), visibility
+
+**Media level**:
+The sensitivity level of one file attached to an impact story, kept apart from the story's own level, so a story can be `public` while one photograph in it stays `internal`. A file with no level of its own is `internal`; raising one also needs the consent record's photo release.
+_Avoid_: image privacy, photo tier
+
+**Story use**:
+One line of the append-only `story_uses` log: which story, at which version, went into which channel, by which kind of rendering (a markdown export, a PDF of a page or a binder, an agent read), where, by whom and when. Withdrawing consent drops the story to `internal` and answers with every recorded use, the **withdrawal report**.
+_Avoid_: view (that is a page view), impression, citation
+
 ## What GitHub says
 
 **GitHub facts**:

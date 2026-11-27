@@ -34,11 +34,12 @@ export const resolveContext = gatedHandler({
   name: 'resolve_context',
   hidden: hiddenItem,
   resource: itemScope,
-  run: async (context, _input, scope) => {
+  run: async (context, input, scope) => {
     const { db, principal, at, logger } = context;
     const dropped = (pageId: string) =>
       logger.warn('learning frontmatter invalid', { outcome: 'learning_dropped', pageId });
-    const pages = await contextPages(db, principal, scope, at, dropped);
+    const asked = { ...scope, channel: input.channel };
+    const pages = await contextPages(db, principal, asked, at, dropped);
     const invalid = (kind: string) => (pageId: string) =>
       logger.warn(`${kind} frontmatter invalid`, { outcome: `${kind}_dropped`, pageId });
     const chain = await policyChainFor(db, scope);

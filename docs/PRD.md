@@ -1023,6 +1023,8 @@ Stories keep their reserved home at `xx.96` in each area.
 
 **Proven when:** a `newsletter` story cannot be rendered to a public address by any path, the agent verbs included; a story cannot be raised above its engagement's level; withdrawing consent lists every prior use.
 
+**As built (#201).** An impact story is a gated page of type `impact_story`, filed under its area's `xx.96` home by its `jd_category`, with its country (ISO 3166-1 alpha-2), region (ISO 3166-2) and languages (BCP 47, which takes ISO 639-3 codes) as checked codes, the pages it illustrates by id and free-form themes. Its level, its consent record, the level of each file and every use are kept by the Story Bank module, never in the page, so no page save, an agent's included, can set or raise a level. Every rendering names a **render channel**: `platform` (staff screens behind sign-in, the reach of `internal`), `private_circulation`, `newsletter` or `public`. Staff screens read at `platform`; the markdown export, PDF of a page, binders, `render_pdf`, `read_page`, `search_pages` and `resolve_context` take a channel that defaults to `platform`. A story asked for above its level is refused (`story_above_channel`); a story embedded in a page, placed in a binder or reached through a context package is left out, and the embed says it is not cleared for this channel. A story shows in a wider channel only while its consent is neither withdrawn nor expired. Each file of a story carries its own level, `internal` until raised, and a file's level can be raised only with the photo release. Raising needs a person with `admin` on the story's area and a consent record with its release reference and day; lowering and withdrawing need anyone who may write the page. Withdrawing consent drops the story and its files to `internal` and lists every recorded use. Every export that includes a story, at any channel, and every agent read for a wider channel records a use with the story's version, the channel, the kind and the export or page. The consent record is restricted: readers of the story's area and org admins see who consented; an org viewer sees the level only. The Story Bank screen lists the stories a reader may read with level, consent state and review date; a story's page shows its level, consent, file levels and usage log with Raise, Lower, Record consent and Withdraw, each refusal shown in place. The ceiling from a sensitive field record is not built, since no field data is in the platform yet. Rules: ADR 0040.
+
 Issue: #201.
 
 ### Publishing
@@ -1188,7 +1190,7 @@ Offline eligibility by kind of data:
 | Ledger, budgets, funds, contracts, work orders, expenses | restricted (`20-29`) | `never` |
 | Contacts, gifts, soft credits, giving history, donor notes | restricted (`40-49`) | `never` |
 | Sensitive engagements and field organizations in protected countries | sensitive (`60-79`) | `never` by default; per-device opt-in with an expiry |
-| Story Bank entries above their consented level | per story | `never` above `internal` |
+| Story Bank entries: impact stories, their levels, consent records, file levels and uses | per story; consent records restricted | `never` as built; an `internal` story may sync once the manifest can read a story's level |
 | Credentials, security incidents, access grants, audit logs | restricted or sensitive | `never` |
 
 Issue: #196 (sync manifest and offline).
@@ -1235,14 +1237,14 @@ There is no separate finance or fund-development role, because the areas already
 - A row of a `restricted` or `sensitive` table is read only by the **read rule** its table declares: which role on the row's own area reads it, whether the person it belongs to reads it, and whether an org admin does. An org viewer or org editor reads none of them through the org grant (ADR 0017). A new restricted table cannot land without a rule.
 - A **property** can be narrower than its row (ADR 0024).
 - A **credential** answers its four capabilities and never `read` (ADR 0018).
-- Field sensitivity and a story's level are filters applied on the server (Field Data, Story Bank).
+- Field sensitivity and a story's level are filters applied on the server (Field Data, Story Bank). A story's consent record is restricted, read by its area's readers and org admins (ADR 0040).
 - Read access is logged for finance, CRM and sensitive field data. It is not logged for the general wiki, where it would be surveillance without a purpose.
 
 **Agents carry no authority of their own.** An agent's session runs with its bound person's grants, read fresh each time, and never more. An agent therefore reads only the areas its person can.
 
 **Reviews.** A quarterly access review lists every grant with its scope, who gave it, its age, expiry and last use, with a sign-off page; expired and never-used grants are listed for revocation. A grant change touching the finance areas notifies the org admins.
 
-Issue: #153, #154, #155; the quarterly access review under #203. Rules: ADR 0015, ADR 0017, ADR 0018, ADR 0024, ADR 0031.
+Issue: #153, #154, #155; the quarterly access review under #203. Rules: ADR 0015, ADR 0017, ADR 0018, ADR 0024, ADR 0031, ADR 0040.
 
 ### 4.2 Agents on the platform
 

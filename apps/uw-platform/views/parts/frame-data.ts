@@ -19,6 +19,7 @@ import {
   homePath,
   logOutPath,
   measuresPath,
+  storiesPath,
   teamChartsPath,
   wikiPath,
 } from './paths.ts';
@@ -65,6 +66,7 @@ const plainModules: ReadonlyMap<string, { readonly href: string; readonly code: 
     ['crosswalk', { href: crosswalkPath(), code: moduleCodes.crosswalk }],
     ['measures', { href: measuresPath(), code: moduleCodes.measures }],
     ['teamCharts', { href: teamChartsPath(), code: moduleCodes.teamCharts }],
+    ['stories', { href: storiesPath(), code: moduleCodes.stories }],
   ],
 );
 

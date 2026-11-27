@@ -149,6 +149,11 @@ export const errorReasonSchema = z.enum([
   'chart_query_not_allowed',
   'chart_encoding_unknown',
   'chart_png_failed',
+  'story_above_channel',
+  'consent_required',
+  'consent_expired',
+  'consent_withdrawn',
+  'photo_release_required',
 ]);
 
 export const refusalSchema = z.object({

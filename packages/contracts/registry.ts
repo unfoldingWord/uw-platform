@@ -58,6 +58,7 @@ import { chartSchemaRegistry } from './chart-registry.ts';
 import * as closedSets from './closed-sets.ts';
 import { collectionSchemaRegistry } from './collection-registry.ts';
 import { measureSchemaRegistry } from './measure-registry.ts';
+import { storySchemaRegistry } from './story-registry.ts';
 import {
   commandNameSchema,
   commandSchema,
@@ -228,6 +229,7 @@ import { zulipMessageSchema, zulipOutgoingSchema, zulipTopicSchema } from './zul
 export const schemaRegistry: Record<string, ZodType> = {
   ...collectionSchemaRegistry,
   ...measureSchemaRegistry,
+  ...storySchemaRegistry,
   ...chartSchemaRegistry,
   command: commandSchema,
   'command-name': commandNameSchema,

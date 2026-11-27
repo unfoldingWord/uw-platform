@@ -22,6 +22,7 @@ const routeFiles = [
   'apps/uw-platform/collections/routes.ts',
   'apps/uw-platform/pdf/routes.ts',
   'apps/uw-platform/measures/routes.ts',
+  'apps/uw-platform/stories/routes.ts',
   'apps/uw-platform/charts/routes.ts',
   'apps/uw-platform/people/routes.ts',
   'apps/uw-platform/health/routes.tsx',

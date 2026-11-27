@@ -1,10 +1,11 @@
 import { and, asc, eq, inArray, ne, sql, type SQL } from 'drizzle-orm';
 import type { z } from 'zod';
-import { jdAreaSchema, pageSchema, type JdArea } from '@uw/contracts';
+import { jdAreaSchema, pageSchema, type JdArea, type RenderChannel } from '@uw/contracts';
 import { readableAreas } from '@uw/core/acl';
 import type { Principal } from '@uw/core/principal';
 import type { Executor } from '@uw/db/client';
 import { pages } from '@uw/db/schema';
+import { storyChannelFilter } from '../stories/channel-filter.ts';
 
 export const summarySchema = pageSchema.pick({
   id: true,
@@ -36,6 +37,16 @@ export function areaFilter(actor: Principal, at: Date): SQL | undefined | null {
   if (readable.kind === 'all') return undefined;
   if (readable.areas.length === 0) return null;
   return inArray(pages.jdArea, [...readable.areas]);
+}
+
+export function readFilter(
+  actor: Principal,
+  at: Date,
+  channel: RenderChannel,
+): SQL | undefined | null {
+  const areas = areaFilter(actor, at);
+  if (areas === null) return null;
+  return and(areas, storyChannelFilter(channel, at));
 }
 
 export async function pagesOwnedBy(
