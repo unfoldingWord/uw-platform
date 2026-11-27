@@ -367,6 +367,18 @@ A person does all of the above on the My Assistant screen at `/assistant` (sideb
 
 The nightly cron runs `cron assistant retention` after the deletion job: it empties request text, untrusted parts, replies, effect drafts and passed reminder and hold text recorded more than 365 days ago (owner decision 8), at most 10,000 requests a night, and records `assistant_history_redacted` on each assistant's harness. Its log line carries `outcome: history_redacted`, the count and `done: false` when a backlog remains for the next night. It needs no configuration beyond the database. Nothing restores redacted text; a backup taken before the run still holds it until the backup itself expires.
 
+### Email to an assistant (PA-10, PA-11)
+
+A person writes to their assistant's mailbox, or forwards mail to it, and gets one reply by email on the same thread (ADR 0042). The minute cron's step `assistant-mail` reads up to 25 active assistant mailboxes a minute through the Gmail API as each mailbox, ten new messages each, within 20 seconds, and labels every message it handled `uw/processed` (a hidden label it creates in the mailbox). Its log line carries `outcome: assistant_mail_swept` with counts (`mailboxes`, `admitted`, `declined`, `started`, `failed`) and the flag, or `assistant_mail_not_configured` until `GOOGLE_WORKSPACE_KEY` and `GOOGLE_WORKSPACE_DOMAIN` are set. A mail that may not instruct the assistant is recorded on the assistant's harness as `assistant_mail_declined` with its reason and nothing else.
+
+| Variable | Value |
+|---|---|
+| `ASSISTANT_EMAIL_INSTRUCTIONS` | `on` to honour mail that passes the sender checks; anything else declines it as `email_instructions_off`. `on` in staging, `off` in production until the DMARC probe below passes |
+
+Mail counts only from the person's own address, alone in From, when the topmost `Authentication-Results` header, the one `mx.google.com` wrote, shows `dmarc=pass` for the person's domain, or `spf=pass` for their exact address with `dkim=pass` for their domain. Automatic mail (out-of-office, lists, bounces, another assistant) never starts a turn, and every reply carries `Auto-Submitted: auto-replied`. The person's own address is bound to the assistant when its Workspace user is made.
+
+Before turning the flag on in production, run the email staging probes in the assistants' staging-probes list as one test person: send a mail from the person's own account to their assistant and read the raw message in the assistant mailbox, confirming the top `Authentication-Results` header and its `dmarc` or `spf` and `dkim` results; confirm `history.list` answers 404 for an old history id; confirm the label search; send a reply and confirm it threads in the person's inbox. If Gmail does not mark mail inside the domain as passing, keep the flag `off` and ask the owner.
+
 ## Platform secrets in Cloudflare Secrets Store (#160)
 
 The secrets the platform itself runs on live in the account's Cloudflare Secrets Store, and each Worker binds only the ones it reads. `uw-ingest` binds its two; `uw-platform` binds the rest; a per-PR Worker (`preview`) binds none. The list is `infra/secrets-store.json`, under 30-39 Infrastructure: each secret with what it is, who issues it, its owner and the date to rotate it by, per environment. `tools/infra/secrets-store.test.ts` keeps the list, the wrangler files and the code naming the same secrets, and fails when a binding named like a credential is added to a Worker without a row.

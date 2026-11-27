@@ -101,6 +101,7 @@ export type Bindings = {
   ALWAYS_ON_PROVIDER?: string;
   ANTHROPIC_API_KEY?: string;
   APP_ORIGIN?: string;
+  ASSISTANT_EMAIL_INSTRUCTIONS?: string;
   ASSISTANT_SPEND_CAP_MINOR?: string;
   ASSISTANT_TURN?: AssistantTurnBinding;
   ASSISTANT_WEBHOOK_BASE?: string;

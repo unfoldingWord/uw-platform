@@ -56,6 +56,7 @@ import { fireDueReminders, type FireInput, type Fired } from './reminder-fire.ts
 import type { TurnAddress } from './reminder-turn.ts';
 import { listReminders, type ListedReminders } from './reminders.ts';
 import { recordRequest, type RecordedRequest, type RequestInput } from './requests.ts';
+import { admitMail, type AdmitMailInput } from './mail-intake.ts';
 import { customise, type CustomiseInput } from './settings.ts';
 import { closeStaleTurns, type SweepInput, type Swept } from './stale.ts';
 import { redactHistory, type RedactInput, type Redacted } from './redaction.ts';
@@ -75,6 +76,7 @@ export type AssistantCommands = {
   ): Promise<KernelOutcome<ActivatedPersona>>;
   customise(caller: Caller, input: CustomiseInput): Promise<KernelOutcome<AssistantSettingsRow>>;
   recordRequest(caller: Caller, input: RequestInput): Promise<KernelOutcome<RecordedRequest>>;
+  admitMail(caller: Caller, input: AdmitMailInput): Promise<KernelOutcome<RecordedRequest>>;
   beginTurn(caller: Caller, input: BeginInput): Promise<KernelOutcome<Turn>>;
   finishTurn(caller: Caller, input: FinishInput): Promise<KernelOutcome<Finished>>;
   setReminder(caller: Caller, input: SetReminderInput): Promise<KernelOutcome<DraftedEffect>>;
@@ -113,6 +115,7 @@ export function createAssistantCommands(
     activatePersona: (caller, input) => activateAssistantPersona(ports, caller, input),
     customise: (caller, input) => customise(ports, caller, input),
     recordRequest: (caller, input) => recordRequest(ports, caller, input),
+    admitMail: (caller, input) => admitMail(ports, caller, input),
     beginTurn: (caller, input) => beginTurn(ports, settings, caller, input),
     finishTurn: (caller, input) => finishTurn(ports, caller, input),
     setReminder: (caller, input) => setReminder(ports, caller, input),

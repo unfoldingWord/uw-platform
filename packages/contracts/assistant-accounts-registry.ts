@@ -19,6 +19,7 @@ import {
   revokeAssistCommandSchema,
   undoAssistantEffectCommandSchema,
 } from './assistant-history.ts';
+import { assistantMailRefusalSchema } from './assistant-mail.ts';
 
 export const assistantAccountSchemaRegistry: Record<string, ZodType> = {
   'assistant-account-status': assistantAccountStatusSchema,
@@ -37,4 +38,5 @@ export const assistantAccountSchemaRegistry: Record<string, ZodType> = {
   'revoke-assist-command': revokeAssistCommandSchema,
   'undo-assistant-effect-command': undoAssistantEffectCommandSchema,
   'delete-my-assistant-history-command': deleteMyAssistantHistoryCommandSchema,
+  'assistant-mail-refusal': assistantMailRefusalSchema,
 };

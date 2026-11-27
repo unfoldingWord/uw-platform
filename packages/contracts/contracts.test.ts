@@ -214,6 +214,8 @@ describe('closed sets added for v0.2.0', () => {
       'pr_title',
       'chat_quote',
       'calendar_event',
+      'email_forwarded',
+      'email_attachment',
     ]);
   });
 

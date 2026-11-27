@@ -554,6 +554,13 @@
       "when": 1795749762212,
       "tag": "0080_assistant_history",
       "breakpoints": true
+    },
+    {
+      "idx": 81,
+      "version": "7",
+      "when": 1795753895680,
+      "tag": "0081_assistant_mail",
+      "breakpoints": true
     }
   ]
 }

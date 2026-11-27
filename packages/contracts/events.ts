@@ -102,6 +102,7 @@ export const eventNames = [
   'assistant_deleted',
   'assistant_effect_undone',
   'assistant_history_redacted',
+  'assistant_mail_declined',
 ] as const;
 
 export const eventNameSchema = z.enum(eventNames);

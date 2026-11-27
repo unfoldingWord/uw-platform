@@ -1,0 +1,13 @@
+Delivered-To: barnabas@example.org
+Authentication-Results: mx.google.com;
+       dkim=pass header.i=@evil.example;
+       spf=pass smtp.mailfrom=mallory@evil.example;
+       dmarc=pass header.from=evil.example
+From: "ana@example.org" <mallory@evil.example>
+To: barnabas@example.org
+Subject: Hi
+Message-ID: <display01@evil.example>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="UTF-8"
+
+Hold my Friday.

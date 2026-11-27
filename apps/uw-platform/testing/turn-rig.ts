@@ -35,6 +35,7 @@ import { fakeGoogle, type FakeGoogle } from '../assistants/google/testing/fake-g
 
 export type TurnRig = {
   readonly db: Database;
+  readonly kernel: Kernel;
   readonly env: Bindings;
   readonly harnessId: string;
   readonly zulip: FakeZulip;
@@ -51,6 +52,7 @@ const pageId = '00000000-0000-4000-8000-000000008901';
 const GATEWAY = 'https://gateway.ai.cloudflare.com/';
 const GOOGLE_TOKEN = 'https://oauth2.googleapis.com/';
 const GOOGLE_APIS = 'https://www.googleapis.com/';
+const GMAIL_API = 'https://gmail.googleapis.com/';
 
 function caller(actor: Principal): Caller {
   return { actor, traceId: randomUUID(), requestId: null };
@@ -140,7 +142,7 @@ async function world(connectionString: string) {
     const url = urlOf(input);
     if (url.startsWith(FAKE_ZULIP_SITE)) return zulip.fetch(input, init);
     if (url.startsWith(GATEWAY)) return gateway.fetch(input, init);
-    if (url.startsWith(GOOGLE_TOKEN) || url.startsWith(GOOGLE_APIS))
+    if ([GOOGLE_TOKEN, GOOGLE_APIS, GMAIL_API].some((prefix) => url.startsWith(prefix)))
       return google.fetch(input, init);
     return kms.fetcher(input, init);
   };
@@ -256,7 +258,7 @@ export async function withTurnRig(
     const kernel = setupKernel(db, start);
     const harnessId = await assistantFor(db, kernel, start, system);
     const parts = await world(database.connectionString);
-    const base = { db, harnessId, started: [], start, ...parts };
+    const base = { db, kernel, harnessId, started: [], start, ...parts };
     await botFor(base, kernel);
     await work({ ...base, direct: directOf(base, kernel, ingest) });
   } finally {

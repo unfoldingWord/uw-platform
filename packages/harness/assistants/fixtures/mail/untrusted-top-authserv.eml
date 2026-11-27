@@ -1,0 +1,13 @@
+Delivered-To: barnabas@example.org
+Authentication-Results: relay.attacker.example.net;
+       dmarc=pass header.from=example.org
+Authentication-Results: mx.google.com;
+       dmarc=pass (p=QUARANTINE sp=QUARANTINE dis=NONE) header.from=example.org
+From: ana@example.org
+To: barnabas@example.org
+Subject: Hello
+Message-ID: <relay01@attacker.example.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="UTF-8"
+
+Hold my morning.

@@ -1,0 +1,20 @@
+Delivered-To: barnabas@example.org
+Authentication-Results: mx.google.com;
+       spf=softfail (google.com: domain of transitioning ana@example.org does not designate 203.0.113.9 as permitted sender) smtp.mailfrom=ana@example.org;
+       dmarc=fail (p=QUARANTINE sp=QUARANTINE dis=QUARANTINE) header.from=example.org
+Received: from attacker.example.net (attacker.example.net [203.0.113.9])
+        by mx.google.com with ESMTP id xyz;
+        Fri, 27 Nov 2026 01:02:03 -0800 (PST)
+Authentication-Results: mx.google.com;
+       dkim=pass header.i=@example.org;
+       spf=pass smtp.mailfrom=ana@example.org;
+       dmarc=pass (p=QUARANTINE sp=QUARANTINE dis=NONE) header.from=example.org
+From: Ana Example <ana@example.org>
+To: barnabas@example.org
+Subject: Urgent
+Message-ID: <forged01@attacker.example.net>
+Date: Fri, 27 Nov 2026 10:02:00 +0100
+MIME-Version: 1.0
+Content-Type: text/plain; charset="UTF-8"
+
+Hold my whole Friday afternoon.

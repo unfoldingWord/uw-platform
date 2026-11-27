@@ -10,6 +10,7 @@ export type GoogleCall = {
   readonly method: 'GET' | 'POST' | 'PUT' | 'DELETE';
   readonly url: string;
   readonly body?: unknown;
+  readonly timeoutMs?: number;
 };
 
 const TIMEOUT_MS = 5_000;
@@ -32,7 +33,7 @@ function requestOf(call: GoogleCall, token: string): RequestInit {
   const init: RequestInit = {
     method: call.method,
     headers,
-    signal: AbortSignal.timeout(TIMEOUT_MS),
+    signal: AbortSignal.timeout(call.timeoutMs ?? TIMEOUT_MS),
   };
   if (call.body !== undefined) {
     headers['content-type'] = 'application/json';

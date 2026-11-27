@@ -184,6 +184,9 @@ export {
   assistantRole,
   assistantTemplate,
   classifyEffect,
+  emailSenderVerdict,
+  splitForward,
+  TRUSTED_AUTHSERV_ID,
 } from './assistants/index.ts';
 export type {
   AssistantCommands,
@@ -209,5 +212,11 @@ export type {
   OverviewRequest,
   Redacted,
   Undone,
+  AdmitMailInput,
+  InboundMail,
+  MailAttachment,
+  MailHeader,
+  SenderVerdict,
+  SplitMail,
 } from './assistants/index.ts';
 export type { PersonaFixture, PersonaPageDraft } from './templates/personas.ts';

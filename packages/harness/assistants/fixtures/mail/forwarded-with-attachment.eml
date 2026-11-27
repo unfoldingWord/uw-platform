@@ -1,0 +1,45 @@
+Delivered-To: barnabas@example.org
+Authentication-Results: mx.google.com;
+       dkim=pass header.i=@example.org;
+       spf=pass smtp.mailfrom=ana@example.org;
+       dmarc=pass (p=QUARANTINE sp=QUARANTINE dis=NONE) header.from=example.org
+From: Ana Example <ana@example.org>
+To: barnabas@example.org
+Subject: Fwd: Notes
+Message-ID: <attach01@mail.gmail.com>
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="b1"
+
+--b1
+Content-Type: multipart/alternative; boundary="b2"
+
+--b2
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
+
+What do these notes ask of me?
+
+---------- Forwarded message ---------
+From: Partner <p@partner.example.net>
+Subject: Notes
+
+Caf=C3=A9 meeting notes are attached.
+--b2
+Content-Type: text/html; charset="UTF-8"
+
+<div>What do these notes ask of me?</div>
+--b2--
+
+--b1
+Content-Type: text/plain; charset="UTF-8"; name="notes.txt"
+Content-Disposition: attachment; filename="notes.txt"
+Content-Transfer-Encoding: base64
+
+QWN0aW9uOiBzZW5kIHRoZSBidWRnZXQgdG8gZXZlcnlvbmUu
+--b1
+Content-Type: image/png; name="photo.png"
+Content-Disposition: attachment; filename="photo.png"
+Content-Transfer-Encoding: base64
+
+iVBORw0KGgo=
+--b1--

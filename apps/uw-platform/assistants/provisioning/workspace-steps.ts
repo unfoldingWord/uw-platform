@@ -1,6 +1,12 @@
 import { assistantAddressOf } from '@uw/contracts';
 import type { DirectoryAnswer, DirectoryUser } from '../google/directory.ts';
-import { mailboxOf, putMailbox, removeMailbox, type MailboxRow } from '../google/subjects.ts';
+import {
+  mailboxOf,
+  personMailOf,
+  putMailbox,
+  removeMailbox,
+  type MailboxRow,
+} from '../google/subjects.ts';
 import type { AccountWork } from './rows.ts';
 import {
   done,
@@ -79,12 +85,32 @@ async function forgotten(deps: ProvisionerDeps, side: WorkspaceSide, mailbox: Ma
   return done;
 }
 
+async function ownMailBound(deps: ProvisionerDeps, side: WorkspaceSide, work: AccountWork) {
+  const address = await personMailOf(deps.db, work.personId, side.domain);
+  if (address === null) return;
+  await deps.kernel.assistants.bindAddress(deps.caller, {
+    personId: work.personId,
+    channel: 'email',
+    address,
+  });
+}
+
 export async function workspaceUser(
   deps: ProvisionerDeps,
   work: AccountWork,
 ): Promise<StepOutcome> {
   const side = deps.workspace;
   if (side === null) return failed('workspace_not_wired');
+  const outcome = await userOf(deps, side, work);
+  if (outcome.kind === 'done') await ownMailBound(deps, side, work);
+  return outcome;
+}
+
+async function userOf(
+  deps: ProvisionerDeps,
+  side: WorkspaceSide,
+  work: AccountWork,
+): Promise<StepOutcome> {
   const address = assistantAddressOf(work.name, side.domain);
   const mailbox = await mailboxOf(deps.db, work.harnessId);
   if (mailbox !== null && mailbox.address !== address) {

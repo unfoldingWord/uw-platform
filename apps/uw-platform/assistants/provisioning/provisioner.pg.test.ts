@@ -123,10 +123,14 @@ async function expectPairedWithActivePersona(
   harnessId: string,
   anaZulip: number,
 ): Promise<void> {
-  const [binding] = await db.execute<{ address: string }>(
-    sql`SELECT address FROM assistant_bindings WHERE harness_id = ${harnessId}`,
+  const bindings = await db.execute<{ channel: string; address: string }>(
+    sql`SELECT channel, address FROM assistant_bindings WHERE harness_id = ${harnessId}
+      ORDER BY channel`,
   );
-  expect(binding?.address).toBe(`zulip:${String(anaZulip)}`);
+  expect(bindings.map((row) => [row.channel, row.address])).toEqual([
+    ['email', `ana@${domain}`],
+    ['zulip_dm', `zulip:${String(anaZulip)}`],
+  ]);
   const [persona] = await db.execute<{ status: string }>(
     sql`SELECT p.status FROM personas r JOIN pages p ON p.id = r.page_id
       WHERE r.identity = ${assistantIdentityOf(ana)}`,
@@ -175,6 +179,7 @@ async function turnedOnEndToEnd(db: Database): Promise<void> {
   expect(zulip.bots()).toHaveLength(1);
   expect(await eventsOf(db, harnessId)).toEqual([
     ['assistant_enabled', { jdId: '10.51', restored: false }],
+    ['assistant_paired', { channel: 'email', via: 'email_match' }],
     ['assistant_paired', { channel: 'zulip_dm', via: 'email_match' }],
     ['assistant_provisioned', { goal: 'enabled' }],
   ]);

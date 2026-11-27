@@ -15,6 +15,7 @@ import { turnStarterOf, type TurnStarter } from '../assistants/turn/start.ts';
 import { provisionerOf } from '../assistants/provisioning/deps.ts';
 import { provisionDue } from '../assistants/provisioning/provisioner.ts';
 import type { ProvisionerDeps } from '../assistants/provisioning/types.ts';
+import { sweepAssistantMail } from './assistant-mail.ts';
 import { runDelegatedExits } from './delegated-exits.ts';
 import { cronLogger, type CronDeps, type CronJob } from './job.ts';
 
@@ -34,6 +35,8 @@ type Minute = {
   readonly logger: Logger;
   readonly startTurn: TurnStarter;
   readonly provisioner: ProvisionerDeps;
+  readonly env: Bindings;
+  readonly database: DatabaseHandle;
 };
 
 function monthStart(now: Date): Date {
@@ -196,6 +199,33 @@ async function guarded(
   }
 }
 
+function mail(minute: Minute): Promise<void> {
+  const { env, database, deps, kernel, caller, logger, startTurn } = minute;
+  return sweepAssistantMail({
+    env,
+    database,
+    fetch: deps.fetch,
+    kernel,
+    caller,
+    logger,
+    startTurn,
+    now: deps.now,
+  });
+}
+
+async function guardedSteps(minute: Minute): Promise<void> {
+  await guarded(minute, 'sweep', sweep);
+  await guarded(minute, 'expiry', expire);
+  await guarded(minute, 'breaker', checkBreaker);
+  await guarded(minute, 'beat', beat);
+  await guarded(minute, 'reminders', remind);
+  await guarded(minute, 'assistant-turns', closeStale);
+  await guarded(minute, 'assistant-starts', startWaiting);
+  await guarded(minute, 'assistant-provisioning', provision);
+  await guarded(minute, 'assistant-mail', mail);
+  await guarded(minute, 'silence', silence);
+}
+
 async function minuteWith(
   database: DatabaseHandle,
   env: Bindings,
@@ -221,17 +251,11 @@ async function minuteWith(
     logger,
     startTurn: turnStarterOf(env.ASSISTANT_TURN),
     provisioner: provisionerOf(host),
+    env,
+    database,
   };
   try {
-    await guarded(minute, 'sweep', sweep);
-    await guarded(minute, 'expiry', expire);
-    await guarded(minute, 'breaker', checkBreaker);
-    await guarded(minute, 'beat', beat);
-    await guarded(minute, 'reminders', remind);
-    await guarded(minute, 'assistant-turns', closeStale);
-    await guarded(minute, 'assistant-starts', startWaiting);
-    await guarded(minute, 'assistant-provisioning', provision);
-    await guarded(minute, 'silence', silence);
+    await guardedSteps(minute);
     await runDelegatedExits({
       database,
       env,

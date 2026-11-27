@@ -405,10 +405,18 @@ export const assistantMailboxes = declareTable(
     status: text('status').notNull(),
     createdAt: instant('created_at').notNull(),
     updatedAt: instant('updated_at').notNull(),
+    historyId: text('history_id'),
+    processedLabelId: text('processed_label_id'),
+    sweptAt: instant('swept_at'),
   },
   { classification: 'internal', offlineEligibility: 'never' },
   (t) => [
     personalHarnessOf('assistant_mailboxes_personal_harness_fk', t.harnessId, t.personId),
+    check('assistant_mailboxes_history_id_shape', sql`${t.historyId} ~ '^[0-9]{1,20}$'`),
+    check(
+      'assistant_mailboxes_label_id_shape',
+      sql`${t.processedLabelId} ~ '^[A-Za-z0-9_]{1,64}$'`,
+    ),
     check(
       'assistant_mailboxes_address_shape',
       sql`${t.address} ~ '^[a-z0-9][a-z0-9.-]{0,63}@[a-z0-9][a-z0-9.-]{0,188}$'`,
@@ -416,5 +424,29 @@ export const assistantMailboxes = declareTable(
     check('assistant_mailboxes_status_known', oneOf(t.status, ['active', 'suspended', 'deleted'])),
     uniqueIndex('assistant_mailboxes_address_once').on(t.address),
     index('assistant_mailboxes_person').on(t.personId),
+    index('assistant_mailboxes_sweep').on(t.status, t.sweptAt),
+  ],
+);
+
+export const assistantMailSends = declareTable(
+  'assistant_mail_sends',
+  {
+    effectId: uuid('effect_id').primaryKey(),
+    harnessId: uuid('harness_id')
+      .notNull()
+      .references(() => harnesses.id),
+    status: text('status').notNull(),
+    gmailMessageId: text('gmail_message_id'),
+    claimedAt: instant('claimed_at').notNull(),
+    sentAt: instant('sent_at'),
+  },
+  { classification: 'internal', offlineEligibility: 'never' },
+  (t) => [
+    check('assistant_mail_sends_status_known', oneOf(t.status, ['sending', 'sent'])),
+    check(
+      'assistant_mail_sends_sent_has_message',
+      sql`(${t.status} = 'sent') = (${t.gmailMessageId} IS NOT NULL AND ${t.sentAt} IS NOT NULL)`,
+    ),
+    check('assistant_mail_sends_message_shape', sql`${t.gmailMessageId} ~ '^[0-9a-zA-Z_-]{1,64}$'`),
   ],
 );

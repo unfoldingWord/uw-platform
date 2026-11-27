@@ -1,0 +1,21 @@
+CREATE TABLE "assistant_mail_sends" (
+	"effect_id" uuid PRIMARY KEY NOT NULL,
+	"harness_id" uuid NOT NULL,
+	"status" text NOT NULL,
+	"gmail_message_id" text,
+	"claimed_at" timestamp with time zone NOT NULL,
+	"sent_at" timestamp with time zone,
+	CONSTRAINT "assistant_mail_sends_status_known" CHECK ("assistant_mail_sends"."status" IN ('sending', 'sent')),
+	CONSTRAINT "assistant_mail_sends_sent_has_message" CHECK (("assistant_mail_sends"."status" = 'sent') = ("assistant_mail_sends"."gmail_message_id" IS NOT NULL AND "assistant_mail_sends"."sent_at" IS NOT NULL)),
+	CONSTRAINT "assistant_mail_sends_message_shape" CHECK ("assistant_mail_sends"."gmail_message_id" ~ '^[0-9a-zA-Z_-]{1,64}$')
+);
+--> statement-breakpoint
+ALTER TABLE "harness_events" DROP CONSTRAINT "harness_events_name_known";--> statement-breakpoint
+ALTER TABLE "assistant_mailboxes" ADD COLUMN "history_id" text;--> statement-breakpoint
+ALTER TABLE "assistant_mailboxes" ADD COLUMN "processed_label_id" text;--> statement-breakpoint
+ALTER TABLE "assistant_mailboxes" ADD COLUMN "swept_at" timestamp with time zone;--> statement-breakpoint
+ALTER TABLE "assistant_mail_sends" ADD CONSTRAINT "assistant_mail_sends_harness_id_harnesses_id_fk" FOREIGN KEY ("harness_id") REFERENCES "public"."harnesses"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+CREATE INDEX "assistant_mailboxes_sweep" ON "assistant_mailboxes" USING btree ("status","swept_at");--> statement-breakpoint
+ALTER TABLE "harness_events" ADD CONSTRAINT "harness_events_name_known" CHECK ("harness_events"."name" IN ('item_created', 'item_claimed', 'item_released', 'item_reordered', 'lease_renewed', 'lease_expired', 'branch_abandoned', 'branch_adopted', 'stage_advanced', 'loop_edge_taken', 'premise_held', 'risk_derived', 'label_removed', 'run_started', 'run_step_recorded', 'run_failed', 'run_hibernated', 'run_resumed', 'run_stopped', 'run_completed', 'run_prompted', 'submitted_to_gate', 'checks_passed', 'checks_failed', 'gate_approved', 'gate_rejected', 'gate_taken_over', 'gate_overridden', 'gate_refused_to_agent', 'ship_refused', 'connector_succeeded', 'connector_refused', 'delegation_granted', 'delegation_revoked', 'delegation_lapsed', 'delegation_required', 'stage_edit_refused', 'stage_edited', 'stage_removed', 'workflow_draft_opened', 'workflow_draft_saved', 'workflow_draft_taken_over', 'workflow_draft_discarded', 'workflow_published', 'template_activated', 'harness_paused', 'harness_resumed', 'hosted_builder_set', 'learning_attached', 'nothing_learned', 'comment_recorded', 'zulip_topic_linked', 'breaker_holding', 'breaker_pausing', 'breaker_open', 'persona_activation_failed', 'persona_activated', 'measurement_recorded', 'handed_to_person', 'review_verdict_recorded', 'shadow_verdict', 'shadow_lifted', 'shadow_turned_on', 'freeze_changed', 'finding_refuted', 'delegated_merge', 'delegated_exit_claimed', 'fix_claimed', 'fix_claim_set', 'title_set', 'epic_enqueued', 'done_when_missing', 'silence_alarm', 'template_changed', 'assistant_customised', 'assistant_request_recorded', 'assistant_turn_started', 'assistant_turn_refused', 'assistant_turn_finished', 'assistant_effect_started', 'assistant_effect_done', 'assistant_effect_failed', 'assistant_reminder_set', 'assistant_reminder_cancelled', 'assistant_reminder_fired', 'assistant_reminder_undelivered', 'assistant_pairing_started', 'assistant_paired', 'assistant_pairing_refused', 'assistant_budget_set', 'assistant_hold_placed', 'assistant_hold_released', 'assistant_enabled', 'assistant_disabled', 'assistant_provisioned', 'assistant_provisioning_failed', 'assistant_deleted', 'assistant_effect_undone', 'assistant_history_redacted', 'assistant_mail_declined'));--> statement-breakpoint
+ALTER TABLE "assistant_mailboxes" ADD CONSTRAINT "assistant_mailboxes_history_id_shape" CHECK ("assistant_mailboxes"."history_id" ~ '^[0-9]{1,20}$');--> statement-breakpoint
+ALTER TABLE "assistant_mailboxes" ADD CONSTRAINT "assistant_mailboxes_label_id_shape" CHECK ("assistant_mailboxes"."processed_label_id" ~ '^[A-Za-z0-9_]{1,64}$');

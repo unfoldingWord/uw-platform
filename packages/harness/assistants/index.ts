@@ -24,3 +24,8 @@ export {
   assistantTemplate,
 } from './role.ts';
 export type { AssistantRole } from './role.ts';
+export { emailSenderVerdict, TRUSTED_AUTHSERV_ID } from './mail-verdict.ts';
+export type { MailHeader, SenderVerdict } from './mail-verdict.ts';
+export { splitForward } from './mail-split.ts';
+export type { SplitMail } from './mail-split.ts';
+export type { AdmitMailInput, InboundMail, MailAttachment } from './mail-intake.ts';

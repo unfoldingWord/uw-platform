@@ -253,6 +253,9 @@ async function delegatedExitsWithoutApp(rig: Rig): Promise<void> {
   );
   expect(outcomeOf(rig, 'beat')).toMatchObject({ outcome: 'beat_finished' });
   expect(outcomeOf(rig, 'delegated_exits')).toMatchObject({ outcome: 'github_not_configured' });
+  expect(outcomeOf(rig, 'assistant-mail')).toMatchObject({
+    outcome: 'assistant_mail_not_configured',
+  });
 }
 
 async function delegatedExitsUnreadableApp(rig: Rig): Promise<void> {

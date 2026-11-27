@@ -1,5 +1,6 @@
 import { decodeJwt, jwtVerify, type CryptoKey } from 'jose';
 import { createFakeDirectory, type FakeDirectory } from './fake-directory.ts';
+import { createFakeGmail, type FakeGmail } from './fake-gmail.ts';
 
 export const FAKE_TOKEN_URL = 'https://oauth2.googleapis.com/token';
 
@@ -35,7 +36,9 @@ type State = {
   readonly tokens: Map<string, Issued>;
   readonly requests: FakeRequest[];
   readonly failures: Reply[];
+  readonly pathFailures: Map<string, Reply[]>;
   readonly directory: FakeDirectory;
+  readonly gmail: FakeGmail;
   next: number;
 };
 
@@ -48,7 +51,9 @@ export type FakeGoogle = {
   requests(): readonly FakeRequest[];
   revokeScope(scope: string): void;
   failNext(status: number): void;
+  failNextAt(path: string, status: number): void;
   readonly directory: Pick<FakeDirectory, 'add' | 'user'>;
+  readonly gmail: Pick<FakeGmail, 'deliver' | 'sent' | 'labelsOf' | 'expireHistory'>;
 };
 
 const SCOPE_ROOT = 'https://www.googleapis.com/auth/';
@@ -223,6 +228,12 @@ function directoryRoute(state: State, request: Request, url: URL, body: unknown)
   );
 }
 
+function gmailRoute(state: State, request: Request, url: URL, body: unknown): Reply {
+  const issued = issuedTo(state, request);
+  if (issued === null) return error(401, 'Invalid Credentials');
+  return state.gmail.route(request.method, url, issued, body) ?? error(404, 'Not Found');
+}
+
 async function bodyOf(request: Request): Promise<{ form: URLSearchParams; json: unknown }> {
   const text = request.method === 'GET' || request.method === 'DELETE' ? '' : await request.text();
   const json = (() => {
@@ -235,6 +246,14 @@ async function bodyOf(request: Request): Promise<{ form: URLSearchParams; json: 
   return { form: new URLSearchParams(text), json };
 }
 
+type Service = (state: State, request: Request, url: URL, body: unknown) => Reply;
+
+const services: ReadonlyMap<string, Service> = new Map([
+  ['https://www.googleapis.com', calendarRoute],
+  ['https://gmail.googleapis.com', gmailRoute],
+  ['https://admin.googleapis.com', directoryRoute],
+]);
+
 async function route(state: State, request: Request): Promise<Reply> {
   const url = new URL(request.url);
   const { form, json } = await bodyOf(request);
@@ -245,13 +264,11 @@ async function route(state: State, request: Request): Promise<Reply> {
     subject: issuedTo(state, request)?.subject ?? null,
     body: url.href === FAKE_TOKEN_URL ? Object.fromEntries(form) : json,
   });
-  const failure = state.failures.shift();
+  const failure = state.failures.shift() ?? state.pathFailures.get(url.pathname)?.shift();
   if (failure !== undefined) return failure;
   if (url.href === FAKE_TOKEN_URL && request.method === 'POST') return token(state, form);
-  if (url.origin === 'https://www.googleapis.com') return calendarRoute(state, request, url, json);
-  if (url.origin === 'https://admin.googleapis.com')
-    return directoryRoute(state, request, url, json);
-  return error(404, 'Not Found');
+  const service = services.get(url.origin);
+  return service === undefined ? error(404, 'Not Found') : service(state, request, url, json);
 }
 
 function initialState(): State {
@@ -268,9 +285,11 @@ function initialState(): State {
     tokens: new Map(),
     requests: [],
     failures: [],
+    pathFailures: new Map(),
     directory: createFakeDirectory((address) => {
       if (!users.has(address)) users.set(address, []);
     }),
+    gmail: createFakeGmail(),
     next: 0,
   };
 }
@@ -310,6 +329,12 @@ export function fakeGoogle(): FakeGoogle {
     failNext: (status) => {
       state.failures.push(error(status, 'failed'));
     },
+    failNextAt: (path, status) => {
+      const queued = state.pathFailures.get(path) ?? [];
+      queued.push(error(status, 'failed'));
+      state.pathFailures.set(path, queued);
+    },
     directory: state.directory,
+    gmail: state.gmail,
   };
 }

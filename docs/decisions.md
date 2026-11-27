@@ -709,7 +709,7 @@ A policy's page and the Policies screen show its level, target, enforcement, dat
 
 ## 0036 A person's assistant is a persona on their own harness, lent authority by that person, acting directly only within a closed low-risk set
 
-*2026-11-26. Changes 0002, 0003, 0005, 0015 and 0020. Changed by 0037, 0038, 0039, 0040 and 0041.*
+*2026-11-26. Changes 0002, 0003, 0005, 0015 and 0020. Changed by 0037, 0038, 0039, 0040, 0041 and 0042.*
 
 **Decision.**
 
@@ -795,7 +795,7 @@ A policy's page and the Policies screen show its level, target, enforcement, dat
 
 ## 0039 The platform reaches Google with one domain-wide-delegated service account, allowlisted in code before it signs
 
-*2026-11-26. Changes 0036. Changed by 0040 and 0041.*
+*2026-11-26. Changes 0036. Changed by 0040, 0041 and 0042.*
 
 **Decision.**
 
@@ -867,6 +867,32 @@ A policy's page and the Policies screen show its level, target, enforcement, dat
 **Consequences.** The nightly retention redacts at most 20 batches of 500 requests a night, so a backlog drains over several nights. A hold the person removed in Google themselves cannot be undone from the screen (the port answers `not_own_hold`); it stays listed until it ends.
 
 **Changes / changed by.** Changes 0036 (item 4: assistant text is redacted after 365 days or on the person's request; a personal harness is hidden from area readers) and 0039 (a hold can be released by its person, with no releasing effect).
+
+## 0042 Mail instructs an assistant only from its person's own address, proven by Google's top authentication header, and is answered by email to that address alone
+
+*2026-11-27. Changes 0036 and 0039.*
+
+**Decision.**
+
+1. **Mail in is swept, not pushed.** A guarded minute-cron step reads every active assistant mailbox through the Gmail API as that mailbox (the `gmail.modify` scope 0039 already allows it): at most 25 mailboxes a minute, the least recently swept first, ten messages each, within a 20-second budget. It reads Gmail's history since the mailbox's stored history id, or the unprocessed inbox of the last two days when the history id has expired or was never read, and labels each message it has handled `uw/processed`. The cursor advances only when the whole page was handled, so a pass cut short repeats safely; a request is recorded once per Gmail message id.
+2. **The sender verdict is pure and closed.** `emailSenderVerdict` returns `automated_sender` for mail marked automatic (`Auto-Submitted` other than `no`, `Precedence` bulk, junk, list or auto_reply, `List-Id`, `List-Unsubscribe`, `X-Autoreply`, `X-Autorespond`, an empty `Return-Path`) or sent from another assistant mailbox; then `other_sender` unless exactly one From header names exactly one address, the person's bound address; then `unverified_sender` unless the topmost `Authentication-Results` header was written by `mx.google.com` and shows `dmarc=pass` with `header.from` the person's domain, or `spf=pass` with `smtp.mailfrom` the person's exact address together with `dkim=pass` for the person's domain. A lower header is never read: any sender can write one, and Google adds its own on top.
+3. **Instructions behind a flag.** `kernel.assistants.admitMail` (system only) records the request, or records `assistant_mail_declined {why}` with no content and starts nothing. A passing mail is honoured only when `ASSISTANT_EMAIL_INSTRUCTIONS` is `on`; it is on in staging and off in production until a staging probe shows Gmail marks mail inside the domain as passing (PRD open question 30).
+4. **The person's words and the rest.** `splitForward` keeps the person's own words as the note and fences a forwarded original, an Outlook original, a quoted reply and quoted lines as `email_forwarded`; text attachments (plain, markdown, CSV, VTT, calendar) are fenced as `email_attachment`; other attachments are not read. The note is held to 20,000 characters and the fenced parts to the request's limits.
+5. **One reply, to the person, on their thread.** The `DirectMessages` port's email adapter sends only to the person's email binding (bound to their own address when the assistant's Workspace user is made), only while the mailbox is active and before `sendBy`, at most once per effect (`assistant_mail_sends`; an unknown outcome keeps the claim). The reply is plain text from the assistant mailbox, `Re:` the original subject, `In-Reply-To` and `References` the original, on the original's Gmail thread, with `Auto-Submitted: auto-replied` and no other recipient; the recipient comes from the binding, never from the model or the mail.
+6. **`postal-mime`** parses the raw message (MIT-0, Workers-compatible, typed, no telemetry); it replaces a hand-written MIME parser.
+
+**Why.** The owner wants email in and out working for a real person, with instructions honoured only when authentication passes for the person's own address. The top header is the only one the receiving server vouches for. Polling needs no public push endpoint and no Pub/Sub topic, and Gmail's history gives a cheap cursor.
+
+**Rejected.**
+- Gmail push through Pub/Sub into `uw-ingest`: a second verifier, a topic and a subscription to run, for a latency the minute cron already meets.
+- Trusting any `Authentication-Results` header that says pass: a sender can add one below Google's.
+- SPF alone: Google's shared sending servers would pass for any Google customer naming the person's address as envelope sender.
+- Replying to a forwarded sender or anyone in Cc: that is a message to someone else, a proposal under 0036.
+- Sending as the person: the assistant sends only as its own mailbox.
+
+**Consequences.** Gmail's exact shapes (history 404 on an expired id, the label search spelling, the `Authentication-Results` Gmail writes on mail inside the domain) come from Google's published API, not a live call; the staging probes confirm them before the flag is turned on in production. A person whose own address changes keeps the old binding until their assistant is turned off and on. A declined mail retried after a failed label is recorded declined again.
+
+**Changes / changed by.** Changes 0036 (item 9: the email rule is the verdict above, SPF with DKIM accepted beside DMARC, and a declined mail is recorded without content) and 0039 (the assistant mailbox subject reads, labels and sends its own mail).
 
 # Part 2. Workflow design decisions
 

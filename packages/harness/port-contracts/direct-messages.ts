@@ -9,7 +9,34 @@ export type DirectMessagesSubject = {
   bind(personId: string, channel: AssistantChannel, address: string): Promise<void>;
 };
 
-const message: DirectMessage = {
+export type DirectMessagesSample = {
+  readonly channel: AssistantChannel;
+  readonly replyAddress: string;
+  readonly strangerAddress: string;
+  readonly otherChannel: AssistantChannel;
+  readonly otherChannelAddress: string;
+  readonly threadKey: string | null;
+};
+
+export const zulipSample: DirectMessagesSample = {
+  channel: 'zulip_dm',
+  replyAddress: 'zulip:5005',
+  strangerAddress: 'zulip:6006',
+  otherChannel: 'email',
+  otherChannelAddress: 'zulip:5005',
+  threadKey: 'dm',
+};
+
+export const emailSample: DirectMessagesSample = {
+  channel: 'email',
+  replyAddress: 'ana@example.org',
+  strangerAddress: 'ben@example.org',
+  otherChannel: 'zulip_dm',
+  otherChannelAddress: 'zulip:5005',
+  threadKey: null,
+};
+
+const base: DirectMessage = {
   requestId: 'b5000000-0000-4000-8000-000000000001',
   effectId: 'b5000000-0000-4000-8000-000000000002',
   personId: 'b5000000-0000-4000-8000-000000000005',
@@ -21,15 +48,22 @@ const message: DirectMessage = {
   sendBy: new Date('2100-01-01T00:00:00.000Z'),
 };
 
-async function bound(open: () => Promise<DirectMessagesSubject>): Promise<DirectMessagesSubject> {
+type Open = () => Promise<DirectMessagesSubject>;
+
+function messageOf(sample: DirectMessagesSample): DirectMessage {
+  const { channel, replyAddress, threadKey } = sample;
+  return { ...base, channel, replyAddress, threadKey };
+}
+
+async function bound(open: Open, message: DirectMessage): Promise<DirectMessagesSubject> {
   const subject = await open();
   await subject.bind(message.personId, message.channel, message.replyAddress);
   return subject;
 }
 
-function describeSend(open: () => Promise<DirectMessagesSubject>): void {
+function describeSend(open: Open, message: DirectMessage): void {
   it("sends a message for a fresh effect id to its owner's verified binding", async () => {
-    const subject = await bound(open);
+    const subject = await bound(open, message);
     await expect(subject.directMessages.send(message)).resolves.toEqual({ outcome: 'sent' });
     const delivered = await subject.delivered();
     expect(delivered.map((sent) => [sent.effectId, sent.replyAddress, sent.text])).toEqual([
@@ -38,14 +72,14 @@ function describeSend(open: () => Promise<DirectMessagesSubject>): void {
   });
 
   it('answers sent for a repeated effect id and delivers it once', async () => {
-    const subject = await bound(open);
+    const subject = await bound(open, message);
     await subject.directMessages.send(message);
     await expect(subject.directMessages.send(message)).resolves.toEqual({ outcome: 'sent' });
     expect(await subject.delivered()).toHaveLength(1);
   });
 
   it('delivers a second effect separately', async () => {
-    const subject = await bound(open);
+    const subject = await bound(open, message);
     const second = { ...message, effectId: 'b5000000-0000-4000-8000-000000000004' };
     await subject.directMessages.send(message);
     await subject.directMessages.send(second);
@@ -56,9 +90,9 @@ function describeSend(open: () => Promise<DirectMessagesSubject>): void {
   });
 }
 
-function describeDeadline(open: () => Promise<DirectMessagesSubject>): void {
+function describeDeadline(open: Open, message: DirectMessage): void {
   it('delivers nothing once the send-by time has passed, and answers deadline_passed', async () => {
-    const subject = await bound(open);
+    const subject = await bound(open, message);
     const late = { ...message, sendBy: new Date('2000-01-01T00:00:00.000Z') };
     await expect(subject.directMessages.send(late)).resolves.toEqual({
       outcome: 'deadline_passed',
@@ -67,10 +101,11 @@ function describeDeadline(open: () => Promise<DirectMessagesSubject>): void {
   });
 }
 
-function describeOwner(open: () => Promise<DirectMessagesSubject>): void {
+function describeOwner(open: Open, sample: DirectMessagesSample): void {
+  const message = messageOf(sample);
   it("delivers nothing to an address that is not the owner's binding", async () => {
     const subject = await open();
-    await subject.bind(message.personId, message.channel, 'zulip:6006');
+    await subject.bind(message.personId, message.channel, sample.strangerAddress);
     await expect(subject.directMessages.send(message)).resolves.toEqual({ outcome: 'not_paired' });
     expect(await subject.delivered()).toEqual([]);
   });
@@ -88,7 +123,7 @@ function describeOwner(open: () => Promise<DirectMessagesSubject>): void {
 
   it('delivers nothing on a channel the owner has not bound', async () => {
     const subject = await open();
-    await subject.bind(message.personId, 'email', message.replyAddress);
+    await subject.bind(message.personId, sample.otherChannel, sample.otherChannelAddress);
     await expect(subject.directMessages.send(message)).resolves.toEqual({ outcome: 'not_paired' });
     expect(await subject.delivered()).toEqual([]);
   });
@@ -96,12 +131,14 @@ function describeOwner(open: () => Promise<DirectMessagesSubject>): void {
 
 export function describeDirectMessagesContract(
   adapter: string,
-  open: () => Promise<DirectMessagesSubject>,
+  open: Open,
+  sample: DirectMessagesSample = zulipSample,
 ): void {
+  const message = messageOf(sample);
   describe(`DX-3 direct messages port contract on ${adapter}`, () => {
-    describeSend(open);
-    describeOwner(open);
-    describeDeadline(open);
+    describeSend(open, message);
+    describeOwner(open, sample);
+    describeDeadline(open, message);
   });
 }
 

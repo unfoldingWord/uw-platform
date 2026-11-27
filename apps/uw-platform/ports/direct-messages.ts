@@ -63,7 +63,7 @@ async function delivered(
   return dropped;
 }
 
-function zulipDirectMessages(deps: ZulipDirectDeps): DirectMessages {
+export function platformDirectMessages(deps: ZulipDirectDeps): DirectMessages {
   return {
     send: async (message) => {
       if (remainingMs(deps, message) <= 0) return deadlinePassed;
@@ -75,16 +75,5 @@ function zulipDirectMessages(deps: ZulipDirectDeps): DirectMessages {
       if (claim === 'unsettled') return dropped;
       return delivered(deps, bot, message);
     },
-  };
-}
-
-export function platformDirectMessages(
-  deps: ZulipDirectDeps,
-  email: DirectMessages | null = null,
-): DirectMessages {
-  const zulip = zulipDirectMessages(deps);
-  return {
-    send: (message) =>
-      message.channel === 'email' && email !== null ? email.send(message) : zulip.send(message),
   };
 }

@@ -804,6 +804,18 @@ _Avoid_: the bot (say which), service bot
 The assistant's own Google Workspace address, from which it receives forwarded mail and sends replies.
 _Avoid_: service account, bot email
 
+**Mail sweep**:
+The minute cron's pass over the assistant mailboxes that turns each new message into a request or a declined mail, and labels it processed.
+_Avoid_: mail poll, inbox sync, Gmail watch (a push the platform does not use)
+
+**Sender verdict**:
+Whether a mail may instruct an assistant: automatic, from someone else, unproven, or passing. Only the topmost `Authentication-Results` header that Google's own mail server wrote is read.
+_Avoid_: spam check, trust score
+
+**Declined mail**:
+A mail to an assistant that started nothing, recorded without content as `assistant_mail_declined` with its closed reason.
+_Avoid_: rejected mail, bounce (the platform sends none)
+
 **Assistant name**:
 The name a person picks when they turn their assistant on. It is the assistant mailbox's address exactly (`<name>@unfoldingword.org`, no suffix) and its bot's name: lowercase letters, digits, dots and hyphens, 2 to 30 characters, free in Google Workspace and among assistants.
 _Avoid_: handle, username, display name (that is the **customisation**'s)

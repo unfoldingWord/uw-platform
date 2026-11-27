@@ -1,4 +1,7 @@
-import { describeDirectMessagesContract } from '@uw/harness/port-contracts/direct-messages';
+import {
+  describeDirectMessagesContract,
+  emailSample,
+} from '@uw/harness/port-contracts/direct-messages';
 import { describe, expect, it } from 'vitest';
 import { createSimClock } from './clock.ts';
 import { createSimDirectMessages } from './direct-messages.ts';
@@ -13,6 +16,19 @@ describeDirectMessagesContract('the recording sim direct messages', async () => 
     bind: async (personId, channel, address) => directMessages.bind(personId, channel, address),
   };
 });
+
+describeDirectMessagesContract(
+  'the recording sim direct messages, by email',
+  async () => {
+    const directMessages = createSimDirectMessages(createSimClock(start));
+    return {
+      directMessages,
+      delivered: async () => directMessages.sent(),
+      bind: async (personId, channel, address) => directMessages.bind(personId, channel, address),
+    };
+  },
+  emailSample,
+);
 
 describe('the sim direct messages fail on request', () => {
   it('answers the outcome it was told once, delivers nothing, then sends again', async () => {
