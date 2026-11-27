@@ -58,6 +58,7 @@ function levelsBelow(level: SensitivityLevel): SensitivityLevel[] {
 
 function consentRefusal(consent: ConsentShown): ErrorReason | null {
   if (consent.kind === 'recorded') return null;
+  if (consent.kind === 'not_started') return 'consent_not_started';
   if (consent.kind === 'expired') return 'consent_expired';
   if (consent.kind === 'withdrawn') return 'consent_withdrawn';
   return 'consent_required';

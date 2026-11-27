@@ -31,6 +31,7 @@ export const restrictedReads: ReadonlyMap<string, ReadGovernance> = new Map<stri
     ['apps/uw-platform/stories/reads.ts', rule('apps/uw-platform/stories/reads.ts')],
     ['apps/uw-platform/stories/channel-filter.ts', platform],
     ['apps/uw-platform/stories/consent.ts', platform],
+    ['apps/uw-platform/stories/media.ts', platform],
     ['packages/harness/views/gates.ts', derived],
     ['packages/harness/views/holder.ts', derived],
     ['packages/harness/views/look.ts', derived],

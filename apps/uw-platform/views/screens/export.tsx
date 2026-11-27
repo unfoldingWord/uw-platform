@@ -29,6 +29,9 @@ function Status(props: { readonly found: ExportRecord }) {
   if (found.status === 'expired') {
     return <p class="m-0 text-sm">This PDF has expired. Export it again from its page.</p>;
   }
+  if (found.withheld !== null) {
+    return <Note>{`Not available for download: ${reasonText(found.withheld)}.`}</Note>;
+  }
   return <Ready found={found} />;
 }
 

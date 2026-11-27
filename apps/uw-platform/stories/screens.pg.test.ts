@@ -20,7 +20,12 @@ async function scene(db: Database) {
   const quiet = await seedStory(db, AREA, inventedStories[1]);
   await levelled(db, actor, told.id, 'newsletter');
   const use = { channel: 'newsletter', kind: 'pdf_page', reference: 'export-five' } as const;
-  await recordStoryUses(db, { pageIds: [told.id], usedBy: actor.identity, at: new Date(), ...use });
+  await recordStoryUses(db, {
+    stories: [{ pageId: told.id, version: 1 }],
+    usedBy: actor.identity,
+    at: new Date(),
+    ...use,
+  });
   return { admin, editor, stranger, told: told.id, quiet: quiet.id };
 }
 

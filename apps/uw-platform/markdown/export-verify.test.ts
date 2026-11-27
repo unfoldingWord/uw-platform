@@ -25,7 +25,12 @@ const page: Page = {
 
 const snapshot = { ...page, pageId: PAGE };
 
-const sources = () => ({ kind: 'page' as const, title: 'Rules', bodyMd: 'Sign in first.' });
+const sources = () => ({
+  kind: 'page' as const,
+  title: 'Rules',
+  bodyMd: 'Sign in first.',
+  version: 1,
+});
 
 const marks: readonly SuggestedChangeInput[] = [
   { kind: 'replacement', anchor: anchorOf(body, 0, 3), text: 'Three', note: null },

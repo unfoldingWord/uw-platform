@@ -30,7 +30,7 @@ export const expressionKinds = ['link', 'native'] as const;
 
 export const expressionFlags = ['told_above_level', 'told_without_consent'] as const;
 
-export const consentStates = ['none', 'recorded', 'expired', 'withdrawn'] as const;
+export const consentStates = ['none', 'recorded', 'not_started', 'expired', 'withdrawn'] as const;
 
 export const EXPRESSION_EXCERPT_MOST = 1000;
 export const EXPRESSION_URL_MOST = 2000;

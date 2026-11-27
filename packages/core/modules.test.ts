@@ -108,6 +108,7 @@ describe('#201 the story bank module', () => {
       tables: [
         'story_levels',
         'story_consents',
+        'story_consent_history',
         'story_media_levels',
         'story_uses',
         'story_expressions',

@@ -16,6 +16,8 @@ export const locationPrecisions = ['country', 'region', 'none'] as const;
 
 export const consentForms = ['written', 'audio', 'video', 'witnessed_verbal'] as const;
 
+export const consentHistoryKinds = ['granted', 'withdrawn'] as const;
+
 export const storyUseKinds = ['markdown_export', 'pdf_page', 'pdf_binder', 'agent_read'] as const;
 
 export const sensitivityLevelSchema = z.enum(sensitivityLevels);

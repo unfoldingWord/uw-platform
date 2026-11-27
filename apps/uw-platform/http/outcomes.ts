@@ -54,6 +54,7 @@ const statusByReason = new Map<ErrorReason, ContentfulStatusCode>([
   ['run_too_soon', 429],
   ['story_above_channel', 403],
   ['consent_required', 409],
+  ['consent_not_started', 409],
   ['consent_expired', 409],
   ['consent_withdrawn', 409],
   ['photo_release_required', 409],

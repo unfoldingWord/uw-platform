@@ -7,7 +7,7 @@ import {
   type SensitivityLevel,
 } from '@uw/contracts';
 import type { Executor } from '@uw/db/client';
-import { pageFiles, pages, storyMediaLevels } from '@uw/db/schema';
+import { pageFiles, pages, storyConsents, storyMediaLevels } from '@uw/db/schema';
 import { STORY_TYPE, storyChannelFilter } from './channel-filter.ts';
 
 export type StoryMedia = {
@@ -76,13 +76,19 @@ export async function fileMayAppear(
 ): Promise<boolean> {
   if (levelsShownIn(channel).includes('internal')) return true;
   const [row] = await db
-    .select({ type: pages.type, level: storyMediaLevels.level })
+    .select({
+      type: pages.type,
+      level: storyMediaLevels.level,
+      photoRelease: storyConsents.photoRelease,
+    })
     .from(pageFiles)
     .innerJoin(pages, eq(pages.id, pageFiles.pageId))
     .leftJoin(storyMediaLevels, eq(storyMediaLevels.fileId, pageFiles.id))
+    .leftJoin(storyConsents, eq(storyConsents.pageId, pageFiles.pageId))
     .where(and(eq(pageFiles.id, fileId), storyChannelFilter(channel, at)));
   if (row === undefined) return false;
-  return row.type !== STORY_TYPE || storyMayAppear(levelOrInternal(row.level), channel);
+  if (row.type !== STORY_TYPE) return true;
+  return row.photoRelease === true && storyMayAppear(levelOrInternal(row.level), channel);
 }
 
 export async function filesWithheldIn(

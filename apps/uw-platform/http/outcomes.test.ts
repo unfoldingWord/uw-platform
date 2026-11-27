@@ -45,6 +45,7 @@ describe('ADR 0036 a measure command refusal answers with the status its reason 
 const storyReasons: readonly (readonly [ErrorReason, number])[] = [
   ['story_above_channel', 403],
   ['consent_required', 409],
+  ['consent_not_started', 409],
   ['consent_expired', 409],
   ['consent_withdrawn', 409],
   ['photo_release_required', 409],

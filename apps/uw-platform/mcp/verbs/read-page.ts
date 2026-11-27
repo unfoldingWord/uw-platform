@@ -20,7 +20,8 @@ export const readPageVerb = gatedHandler({
         reference: 'read_page',
         usedBy: principal.identity,
       } as const;
-      await recordStoryUses(db, { pageIds: [page.id], channel: input.channel, at, ...use });
+      const stories = [{ pageId: page.id, version: page.version }];
+      await recordStoryUses(db, { stories, channel: input.channel, at, ...use });
     }
     return { status: 'accepted', output: { page } };
   },

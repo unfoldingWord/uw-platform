@@ -9,7 +9,7 @@ import {
 import { can } from '@uw/core/acl';
 import type { Principal } from '@uw/core/principal';
 import type { Database, Transaction } from '@uw/db/client';
-import { consentRowOf } from './consent.ts';
+import { consentHistoryOf } from './consent.ts';
 import {
   decideExpression,
   expressionAt,
@@ -73,7 +73,7 @@ function httpsOnly(given: ExpressionFields): ExpressionFields {
 async function answered(tx: Transaction, row: ExpressionRow, created: boolean) {
   const told = {
     level: await levelOf(tx, row.pageId),
-    consent: await consentRowOf(tx, row.pageId),
+    consent: await consentHistoryOf(tx, row.pageId),
   };
   const shaped = shapedExpression(row, told);
   return {

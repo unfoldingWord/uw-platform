@@ -38,7 +38,12 @@ async function scene(db: Database) {
   const agent = agentOf(editorActor, 'researcher');
   await addStoryExpression(db, agent, { pageId: story, ...expressionAt(0) }, at);
   const use = { channel: 'newsletter', kind: 'pdf_page', reference: 'export-eight' } as const;
-  await recordStoryUses(db, { pageIds: [story], usedBy: editorActor.identity, at, ...use });
+  await recordStoryUses(db, {
+    stories: [{ pageId: story, version: 1 }],
+    usedBy: editorActor.identity,
+    at,
+    ...use,
+  });
   return { editor, stranger, story };
 }
 

@@ -49,6 +49,7 @@ async function sourcesOf(
       jdArea: pages.jdArea,
       status: pages.status,
       bodyMd: pages.bodyMd,
+      version: pages.version,
     })
     .from(pages)
     .where(inArray(pages.id, [...ids]));
@@ -66,12 +67,13 @@ type SourceRow = {
   readonly title: string;
   readonly jdArea: string;
   readonly bodyMd: string;
+  readonly version: number;
 };
 
 function sourceOf(reader: Reader, row: SourceRow, shown: ReadonlySet<string> | null): EmbedSource {
   if (!mayRead(reader, row.jdArea)) return { kind: 'denied' };
   if (shown !== null && !shown.has(row.id)) return { kind: 'withheld' };
-  return { kind: 'page', title: row.title, bodyMd: row.bodyMd };
+  return { kind: 'page', title: row.title, bodyMd: row.bodyMd, version: row.version };
 }
 
 async function gatherEmbeds(
@@ -157,8 +159,12 @@ export function embedSources(
   return gatherEmbeds(db, { actor, at, channel }, bodyMd);
 }
 
-export function embeddedPages(sources: ReadonlyMap<string, EmbedSource>): readonly string[] {
-  return [...sources].flatMap(([id, source]) => (source.kind === 'page' ? [id] : []));
+export type DrawnPage = { readonly pageId: string; readonly version: number };
+
+export function embeddedPages(sources: ReadonlyMap<string, EmbedSource>): readonly DrawnPage[] {
+  return [...sources].flatMap(([pageId, source]) =>
+    source.kind === 'page' ? [{ pageId, version: source.version }] : [],
+  );
 }
 
 function resolvedAll(
@@ -178,12 +184,26 @@ export function renderPage(
   return renderPageIn(db, { actor, at, channel: 'platform' }, page, revision);
 }
 
-export async function renderPageIn(
+async function renderPageIn(
   db: Executor,
   reader: Reader,
   page: Page,
   revision = UNVERSIONED,
 ): Promise<Rendered> {
+  return (await renderPageDrawn(db, reader, page, revision)).rendered;
+}
+
+export type PageRender = {
+  readonly rendered: Rendered;
+  readonly embeds: ReadonlyMap<string, EmbedSource>;
+};
+
+export async function renderPageDrawn(
+  db: Executor,
+  reader: Reader,
+  page: Page,
+  revision = UNVERSIONED,
+): Promise<PageRender> {
   const { actor, at } = reader;
   const embeds = await gatherEmbeds(db, reader, page.bodyMd);
   const bodies = [
@@ -216,8 +236,8 @@ export async function renderPageIn(
   };
   const key = await renderKey(inputs);
   const cached = await cachedRender(db, page.id, key);
-  if (cached !== null) return cached;
+  if (cached !== null) return { rendered: cached, embeds };
   const rendered = renderMarkdown(page.bodyMd, hooks);
   await keepRender(db, { page, key, at }, rendered);
-  return rendered;
+  return { rendered, embeds };
 }

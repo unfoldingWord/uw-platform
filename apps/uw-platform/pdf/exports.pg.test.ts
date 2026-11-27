@@ -68,6 +68,8 @@ async function world(db: Database): Promise<World> {
   };
 }
 
+const undrawn = { channel: 'platform' as const, stories: [] };
+
 function binder(made: World) {
   return {
     kind: 'binder' as const,
@@ -77,6 +79,7 @@ function binder(made: World) {
     request: { kind: 'binder', title: 'Board packet', pageIds: [randomUUID()] },
     actor: made.requester,
     at: made.at,
+    ...undrawn,
   };
 }
 
@@ -140,6 +143,7 @@ async function finishedReadyAndFailed(db: Database): Promise<void> {
       fileSha256: FILE_HASH,
       bytes: 1234,
       areas: ['30-39', '40-49'],
+      ...undrawn,
     },
     made.at,
   );
@@ -292,6 +296,7 @@ function screenRender(actor: Principal, at: Date) {
     request: {},
     actor,
     at,
+    ...undrawn,
   };
 }
 

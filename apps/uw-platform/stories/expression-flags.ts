@@ -6,25 +6,14 @@ import {
   type RenderChannel,
   type SensitivityLevel,
 } from '@uw/contracts';
-
-export type ConsentFacts = {
-  readonly consentedOn: string;
-  readonly expires: string | null;
-  readonly withdrawnOn: string | null;
-} | null;
+import { coveredOn, type ConsentHistory } from './consent-interval.ts';
 
 type Told = { readonly channel: RenderChannel; readonly publishedOn: string | null };
-
-function coveredOn(consent: ConsentFacts, day: string): boolean {
-  if (consent === null || consent.consentedOn > day) return false;
-  if (consent.expires !== null && consent.expires < day) return false;
-  return consent.withdrawnOn === null || consent.withdrawnOn > day;
-}
 
 export function flagsOf(
   told: Told,
   level: SensitivityLevel,
-  consent: ConsentFacts,
+  consent: ConsentHistory,
 ): ExpressionFlag[] {
   const flags: ExpressionFlag[] = [];
   if (!storyMayAppear(level, told.channel)) flags.push('told_above_level');

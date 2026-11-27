@@ -9,8 +9,10 @@ import type { Executor } from '@uw/db/client';
 import { pages, storyUses } from '@uw/db/schema';
 import { STORY_TYPE } from './channel-filter.ts';
 
+export type StoryVersion = { readonly pageId: string; readonly version: number };
+
 export type StoryUseInput = {
-  readonly pageIds: readonly string[];
+  readonly stories: readonly StoryVersion[];
   readonly channel: RenderChannel;
   readonly kind: StoryUseKind;
   readonly reference: string;
@@ -18,30 +20,41 @@ export type StoryUseInput = {
   readonly at: Date;
 };
 
-async function storyRows(db: Executor, pageIds: readonly string[]) {
-  const ids = [...new Set(pageIds)];
-  if (ids.length === 0) return [];
-  return db
-    .select({ id: pages.id, version: pages.version })
-    .from(pages)
-    .where(and(inArray(pages.id, ids), eq(pages.type, STORY_TYPE)))
-    .orderBy(asc(pages.id));
+function firstOfEach(drawn: readonly StoryVersion[]): readonly StoryVersion[] {
+  const seen = new Map<string, StoryVersion>();
+  for (const each of drawn) if (!seen.has(each.pageId)) seen.set(each.pageId, each);
+  return [...seen.values()].sort((a, b) => a.pageId.localeCompare(b.pageId));
 }
 
 export async function storiesOnly(
   db: Executor,
-  pageIds: readonly string[],
-): Promise<readonly string[]> {
-  return (await storyRows(db, pageIds)).map((row) => row.id);
+  drawn: readonly StoryVersion[],
+): Promise<readonly StoryVersion[]> {
+  const each = firstOfEach(drawn);
+  if (each.length === 0) return [];
+  const rows = await db
+    .select({ id: pages.id })
+    .from(pages)
+    .where(
+      and(
+        inArray(
+          pages.id,
+          each.map((one) => one.pageId),
+        ),
+        eq(pages.type, STORY_TYPE),
+      ),
+    );
+  const stories = new Set(rows.map((row) => row.id));
+  return each.filter((one) => stories.has(one.pageId));
 }
 
 export async function recordStoryUses(db: Executor, input: StoryUseInput): Promise<number> {
-  const stories = await storyRows(db, input.pageIds);
+  const stories = await storiesOnly(db, input.stories);
   if (stories.length === 0) return 0;
   const { channel, kind, reference, usedBy, at } = input;
   await db.insert(storyUses).values(
     stories.map((story) => ({
-      pageId: story.id,
+      pageId: story.pageId,
       version: story.version,
       channel,
       kind,

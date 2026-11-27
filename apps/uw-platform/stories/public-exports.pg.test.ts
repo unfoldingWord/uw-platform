@@ -110,7 +110,7 @@ async function pdfRefusesAboveItsLevel(db: Database): Promise<void> {
   );
   if (letter === null || typeof letter === 'string') throw new Error('letter not printed');
   expect(letter.bodyHtml).toContain(STORY_TEXT);
-  expect(letter.stories).toEqual([made.story]);
+  expect(letter.stories).toEqual([{ pageId: made.story, version: 1 }]);
 }
 
 async function binderLeavesTheStoryOut(db: Database): Promise<void> {

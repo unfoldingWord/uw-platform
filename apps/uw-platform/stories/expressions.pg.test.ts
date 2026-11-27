@@ -169,7 +169,7 @@ async function withdrawalListsEveryTelling(db: Database): Promise<void> {
   for (const index of [0, 1, 2]) await added(db, made.agent, made.story, expressionAt(index));
   const use = { channel: 'newsletter', kind: 'pdf_page', reference: 'export-seven' } as const;
   await recordStoryUses(db, {
-    pageIds: [made.story],
+    stories: [{ pageId: made.story, version: 1 }],
     usedBy: made.editor.identity,
     at: new Date(),
     ...use,

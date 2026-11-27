@@ -151,6 +151,7 @@ export const errorReasonSchema = z.enum([
   'chart_png_failed',
   'story_above_channel',
   'consent_required',
+  'consent_not_started',
   'consent_expired',
   'consent_withdrawn',
   'photo_release_required',

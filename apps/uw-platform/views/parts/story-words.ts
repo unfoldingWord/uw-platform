@@ -26,6 +26,7 @@ export const channelWords: Readonly<Record<RenderChannel, string>> = {
 export const consentWords: Readonly<Record<ConsentShown['kind'], string>> = {
   none: 'None recorded',
   recorded: 'Recorded',
+  not_started: 'Recorded, not yet in effect',
   expired: 'Expired',
   withdrawn: 'Withdrawn',
   withheld: 'Withheld from you',

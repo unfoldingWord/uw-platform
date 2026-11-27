@@ -39,7 +39,7 @@ export async function pageExportText(
   });
   const text = withoutFiles(drawn, await filesWithheldIn(db, fileIds(drawn), channel, at));
   const used = { channel, kind: 'markdown_export', reference: page.id } as const;
-  const pageIds = [page.id, ...embeddedPages(sources)];
-  await recordStoryUses(db, { pageIds, usedBy: actor.identity, at, ...used });
+  const stories = [{ pageId: page.id, version: page.version }, ...embeddedPages(sources)];
+  await recordStoryUses(db, { stories, usedBy: actor.identity, at, ...used });
   return text;
 }

@@ -28,6 +28,7 @@
     "testing/context-rig.ts",
     "testing/chart-app.ts",
     "testing/story-app.ts",
+    "testing/story-exports.ts",
     "islands/browser/**",
     "islands/editor/**",
     "islands/worker/**"

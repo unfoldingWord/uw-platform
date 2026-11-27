@@ -7,7 +7,12 @@ import type { FileKind } from './file-video.ts';
 import { claimPanels } from './panel-embeds.ts';
 
 export type EmbedSource =
-  | { readonly kind: 'page'; readonly title: string; readonly bodyMd: string }
+  | {
+      readonly kind: 'page';
+      readonly title: string;
+      readonly bodyMd: string;
+      readonly version: number;
+    }
   | { readonly kind: 'denied' }
   | { readonly kind: 'withheld' }
   | { readonly kind: 'missing' };

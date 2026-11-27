@@ -1,7 +1,7 @@
 import type { Context } from 'hono';
 import { formatDate } from '@uw/core/dates';
 import type { Principal } from '@uw/core/principal';
-import type { Executor } from '@uw/db/client';
+import type { Database } from '@uw/db/client';
 import type { AppEnv } from '../deps.ts';
 import { refuse } from '../http/outcomes.ts';
 import { requestLogger } from '../request-logger.ts';
@@ -12,6 +12,7 @@ import { printJob, sourceHashOf, type Printed } from './print-document.ts';
 import { fileImages, noImages } from './print-images.ts';
 import type { ImageOf } from './print-html.ts';
 import { exporterOf, sha256Hex, type Provenance } from './provenance.ts';
+import type { StoryVersion } from '../stories/uses.ts';
 import { browserPdf } from './renderer.ts';
 
 const FORMAT = 'format';
@@ -74,12 +75,14 @@ type ScreenRender = {
   readonly title: string;
   readonly printed: Printed;
   readonly at: Date;
+  readonly stories: readonly StoryVersion[];
 };
 
-function recorded(db: Executor, render: ScreenRender, outcome: RenderOutcome) {
-  const { actor, title, printed, at } = render;
+function recorded(db: Database, render: ScreenRender, outcome: RenderOutcome) {
+  const { actor, title, printed, at, stories } = render;
   const screen = { kind: 'screen' as const, title, reference: printed.reference, areas: [] };
-  return recordRender(db, { ...screen, request: {}, actor, at }, outcome);
+  const drawn = { channel: 'platform' as const, stories };
+  return recordRender(db, { ...screen, ...drawn, request: {}, actor, at }, outcome);
 }
 
 export async function pdfOfScreen(
@@ -87,6 +90,7 @@ export async function pdfOfScreen(
   title: string,
   bodyHtml: string,
   printed: Printed,
+  stories: readonly StoryVersion[] = [],
 ): Promise<Response> {
   const actor = c.get('principal');
   if (actor === null) return refuse(c, 'unauthenticated');
@@ -100,7 +104,7 @@ export async function pdfOfScreen(
   const image = imagesOf(c, actor);
   const job = await printJob({ title, bodyHtml, provenance, origin: originOf(c), image });
   const pdf = await browserPdf(c.env.BROWSER, requestLogger(c)).render(job);
-  const render = { actor, title, printed, at: c.get('now') };
+  const render = { actor, title, printed, at: c.get('now'), stories };
   if (pdf === null) {
     await recorded(database.db, render, { kind: 'failed', reason: 'pdf_render_failed' });
     return refuse(c, 'pdf_render_failed');

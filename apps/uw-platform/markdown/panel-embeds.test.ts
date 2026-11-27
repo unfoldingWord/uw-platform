@@ -21,7 +21,12 @@ describe('ADR 0036 a panel block renders as a placeholder the page fills for eac
       linkTitle: () => null,
       wiki: () => null,
       fileKind: () => null,
-      embed: () => ({ kind: 'page' as const, title: 'Card', bodyMd: block('status') }),
+      embed: () => ({
+        kind: 'page' as const,
+        title: 'Card',
+        bodyMd: block('status'),
+        version: 1,
+      }),
     };
     const { html } = renderMarkdown(`${block('status')}\n![Card](/pages/${embedded})\n`, hooks);
     expect(placedPanels(html)).toEqual([

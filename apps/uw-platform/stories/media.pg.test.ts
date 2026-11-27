@@ -79,9 +79,28 @@ async function photoNeedsItsRelease(db: Database): Promise<void> {
   expect(await fileMayAppear(db, made.photo, 'public', at)).toBe(false);
 }
 
+async function photoFollowsTheCurrentRelease(db: Database): Promise<void> {
+  const made = await world(db);
+  const at = new Date();
+  expect(await setStoryMediaLevel(db, made.admin, mediaTo(made, 'public'), at)).toEqual({
+    ok: true,
+  });
+  expect(await fileMayAppear(db, made.photo, 'public', at)).toBe(true);
+  const textOnly = consentFor(made.story, { photoRelease: false, photoReference: null });
+  expect(await recordStoryConsent(db, made.admin, textOnly, at)).toEqual({ ok: true });
+  expect(await fileMayAppear(db, made.photo, 'public', at)).toBe(false);
+  expect(await fileMayAppear(db, made.photo, 'platform', at)).toBe(true);
+  const open = await getRaw(db, made.email, `/api/pages/${made.story}/export?channel=public`);
+  const text = await open.text();
+  expect(text).toContain('Di Example at the reading.');
+  expect(text).not.toContain(`/api/files/${made.photo}`);
+}
+
 describe.skipIf(!testServer)('#201 each file of a story carries its own level', () => {
   it('#201 a public story keeps an internal photograph out of a public export until its own level is raised', () =>
     withAppDatabase(fileKeepsItsOwnLevel));
   it('#201 a photograph is raised only with a photo release', () =>
     withAppDatabase(photoNeedsItsRelease));
+  it('ADR 0041 a raised photograph leaves every channel above the platform once the photo release is taken back', () =>
+    withAppDatabase(photoFollowsTheCurrentRelease));
 });

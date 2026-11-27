@@ -22,17 +22,18 @@ import { pages, storyLevels } from '@uw/db/schema';
 import { areaFilter } from '../pages/reads.ts';
 import { STORY_TYPE } from './channel-filter.ts';
 import {
-  consentFactsOf,
+  consentHistoriesOf,
   consentRowOf,
   consentRowsOf,
   consentStateOf,
   type ConsentRow,
 } from './consent.ts';
+import type { ConsentHistory } from './consent-interval.ts';
 import { flagCounts, flagsOf } from './expression-flags.ts';
 import { expressionRowsOf, type ExpressionRow } from './expression-rows.ts';
 import { storyUsesOf } from './uses.ts';
 
-type Told = { readonly level: SensitivityLevel; readonly consent: ConsentRow | null };
+type Told = { readonly level: SensitivityLevel; readonly consent: ConsentHistory };
 
 export function shapedExpression(row: ExpressionRow, told: Told): StoryExpression {
   return storyExpressionSchema.parse({
@@ -59,7 +60,7 @@ export function shapedExpression(row: ExpressionRow, told: Told): StoryExpressio
         publishedOn: row.publishedOn,
       },
       told.level,
-      consentFactsOf(told.consent),
+      told.consent,
     ),
   });
 }
@@ -82,12 +83,12 @@ async function expressionsOfStories(
   ids: readonly string[],
 ): Promise<ReadonlyMap<string, readonly StoryExpression[]>> {
   const levels = await levelsOf(db, ids);
-  const consents = await consentRowsOf(db, ids);
+  const histories = await consentHistoriesOf(db, ids);
   const shaped = new Map<string, StoryExpression[]>(ids.map((id) => [id, []]));
   for (const row of await expressionRowsOf(db, ids)) {
     const told = {
       level: levels.get(row.pageId) ?? 'internal',
-      consent: consents.get(row.pageId) ?? null,
+      consent: histories.get(row.pageId) ?? [],
     };
     shaped.get(row.pageId)?.push(shapedExpression(row, told));
   }

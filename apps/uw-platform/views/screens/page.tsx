@@ -33,7 +33,13 @@ import { ReviewSetsWaiting } from '../parts/review-sets-waiting.tsx';
 import { verificationOf } from '../../pages/verification.ts';
 import { PolicyConflicts, SuggestionsWaiting, policyFacts } from '../parts/policy-facts.tsx';
 import { personOfProfilePage } from '../../people/profile-body.ts';
-import { renderScreen, screenKernel, screenRefusal, type ScreenKernel } from '../parts/frame.tsx';
+import {
+  renderScreen,
+  screenKernel,
+  screenRefusal,
+  wantsPdf,
+  type ScreenKernel,
+} from '../parts/frame.tsx';
 import {
   backOf,
   categoryOf,
@@ -56,7 +62,7 @@ import {
   type Fact,
 } from '../parts/page-read.tsx';
 import { neighboursOf } from '../parts/wiki-tree.ts';
-import { printedPage } from '../parts/page-printed.ts';
+import { pdfOfPage } from '../../pdf/page-print.ts';
 import { pagesInCategory } from '../../pages/categories.ts';
 import { namesOf, shownIdentity } from '../parts/person-names.ts';
 import { idParam } from '../parts/params.ts';
@@ -420,6 +426,12 @@ function reasonParam(raw: string | undefined): string | null {
   return raw !== undefined && /^[a-z_]{1,60}$/.test(raw) ? raw : null;
 }
 
+async function elsewhere(c: Context<AppEnv>, shown: ShownPage): Promise<Response | null> {
+  const profile = await profileOf(c, shown.page);
+  if (profile !== null) return c.redirect(profile, 302);
+  return wantsPdf(c) ? pdfOfPage(c, shown.page.id) : null;
+}
+
 export async function pageScreen(c: Context<AppEnv>): Promise<Response> {
   const screen = screenKernel(c);
   if (screen === null) return screenRefusal(c);
@@ -428,8 +440,8 @@ export async function pageScreen(c: Context<AppEnv>): Promise<Response> {
   const read = await screen.kernel.views.page(screen.caller, { pageId }, { at: screen.at });
   const shown = read.status === 'accepted' ? await shownPage(c, screen, pageId) : null;
   if (shown === null) return notFound(c);
-  const profile = await profileOf(c, shown.page);
-  if (profile !== null) return c.redirect(profile, 302);
+  const away = await elsewhere(c, shown);
+  if (away !== null) return away;
   const draft = shown.canEdit
     ? await draftsOf(c.env)?.status(shown.page.id, shown.page.version)
     : null;
@@ -443,7 +455,6 @@ export async function pageScreen(c: Context<AppEnv>): Promise<Response> {
     refused: reasonParam(c.req.query('refused')),
   };
   const spec = await pageScreenSpec(c, screen, shown, null, extras.filed);
-  const printed = await printedPage(c, shown.page);
   const draw = bodies.get(shown.page.type) ?? body;
-  return renderScreen(c, { ...spec, ...printed }, draw(shown, extras));
+  return renderScreen(c, spec, draw(shown, extras));
 }

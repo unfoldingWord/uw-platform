@@ -107,7 +107,12 @@ async function withdrawalListsEveryUse(db: Database): Promise<void> {
     { channel: 'private_circulation', kind: 'pdf_binder', reference: 'export-three' },
   ] as const;
   for (const use of uses) {
-    await recordStoryUses(db, { pageIds: [made.story], usedBy, at, ...use });
+    await recordStoryUses(db, {
+      stories: [{ pageId: made.story, version: 1 }],
+      usedBy,
+      at,
+      ...use,
+    });
   }
   const withdrawal = {
     command: 'withdraw_story_consent',
@@ -131,7 +136,7 @@ async function usesAreAppendOnly(db: Database): Promise<void> {
   const made = await world(db);
   const use = { channel: 'platform', kind: 'pdf_page', reference: 'export-four' } as const;
   await recordStoryUses(db, {
-    pageIds: [made.story],
+    stories: [{ pageId: made.story, version: 1 }],
     usedBy: made.admin.identity,
     at: new Date(),
     ...use,
@@ -170,7 +175,12 @@ async function commandsAnswerOverHttp(db: Database): Promise<void> {
   );
   expect(consent.body).toMatchObject({ status: 'accepted' });
   const use = { channel: 'newsletter', kind: 'pdf_page', reference: 'export-six' } as const;
-  await recordStoryUses(db, { pageIds: [id], usedBy: actor.identity, at: new Date(), ...use });
+  await recordStoryUses(db, {
+    stories: [{ pageId: id, version: 1 }],
+    usedBy: actor.identity,
+    at: new Date(),
+    ...use,
+  });
   const withdrawal = { command: 'withdraw_story_consent', requestId: randomUUID(), pageId: id };
   const report = await post(
     db,

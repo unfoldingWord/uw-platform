@@ -11,6 +11,7 @@ import {
   renderChannels,
   sensitivityLevels,
   storyUseKinds,
+  consentHistoryKinds,
 } from '@uw/contracts';
 import { IDENTITY_PATTERN, matches, oneOf } from './checks.ts';
 import { instant } from './columns.ts';
@@ -69,6 +70,31 @@ export const storyConsents = declareTable(
       sql`${t.photoReference} IS NULL OR ${t.photoRelease}`,
     ),
     check('story_consents_updated_by_identity', matches(t.updatedBy, IDENTITY_PATTERN)),
+  ],
+);
+
+export const storyConsentHistory = declareTable(
+  'story_consent_history',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    pageId: uuid('page_id')
+      .notNull()
+      .references(() => pages.id),
+    kind: text('kind').notNull(),
+    startsOn: date('starts_on', { mode: 'string' }).notNull(),
+    endsBefore: date('ends_before', { mode: 'string' }),
+    recordedBy: text('recorded_by').notNull(),
+    recordedAt: instant('recorded_at').notNull(),
+  },
+  restrictedNever,
+  (t) => [
+    check('story_consent_history_kind_known', oneOf(t.kind, consentHistoryKinds)),
+    check(
+      'story_consent_history_withdrawal_open',
+      sql`${t.kind} <> 'withdrawn' OR ${t.endsBefore} IS NULL`,
+    ),
+    check('story_consent_history_recorded_by_identity', matches(t.recordedBy, IDENTITY_PATTERN)),
+    index('story_consent_history_page').on(t.pageId, t.recordedAt),
   ],
 );
 

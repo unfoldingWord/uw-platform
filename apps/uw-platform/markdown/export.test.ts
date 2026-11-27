@@ -26,13 +26,14 @@ function page(bodyMd: string): Page {
 const source: EmbedSource = {
   kind: 'page',
   title: 'Passwords',
+  version: 1,
   bodyMd:
     'Intro.\n\n## Rules\n\nUse strong ones.\n\n### Length\n\nTwelve.\n\n## Travel\n\nAsk first.',
 };
 
 const nested: Readonly<Record<string, EmbedSource>> = {
-  [C]: { kind: 'page', title: 'Outer', bodyMd: `Outer text.\n\n![Inner](/pages/${D})` },
-  [D]: { kind: 'page', title: 'Inner', bodyMd: `Inner text.\n\n![Outer](/pages/${C})` },
+  [C]: { kind: 'page', title: 'Outer', version: 1, bodyMd: `Outer text.\n\n![Inner](/pages/${D})` },
+  [D]: { kind: 'page', title: 'Inner', version: 1, bodyMd: `Inner text.\n\n![Outer](/pages/${C})` },
 };
 
 const SHA = 'a'.repeat(64);

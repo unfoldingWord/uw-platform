@@ -3,15 +3,15 @@ import { formatDate } from '@uw/core/dates';
 import type { Principal } from '@uw/core/principal';
 import type { Database } from '@uw/db/client';
 import { listPages } from '../pages/listing.ts';
-import { embedSources, embeddedPages, renderPageIn } from '../pages/render-page.ts';
+import { embeddedPages, renderPageDrawn } from '../pages/render-page.ts';
 import { readPage, readPageIn } from '../pages/store.ts';
 import { withPanels } from '../views/parts/dashboard-panels.tsx';
 import { withViews } from '../views/parts/view-embed.tsx';
 import { binderBody, type BinderSection, type SourceHash } from './print-document.ts';
-import { screenOf, titled, type Printable } from './print-kernel.ts';
+import { pageBody, screenOf, titled, type Printable } from './print-kernel.ts';
 import { pagePrinted, pageReference, pageSourceHash } from './page-source.ts';
 import { canonicalJson, exporterOf, sha256Hex } from './provenance.ts';
-import { storiesOnly } from '../stories/uses.ts';
+import { storiesOnly, type StoryVersion } from '../stories/uses.ts';
 
 export { printView } from './print-view.tsx';
 export type { Printable } from './print-kernel.ts';
@@ -32,26 +32,21 @@ type Reader = {
   readonly at: Date;
   readonly channel: RenderChannel;
 };
-type Drawn = { readonly areas: readonly string[]; readonly stories: readonly string[] };
+type Drawn = { readonly areas: readonly string[]; readonly stories: readonly StoryVersion[] };
 type Section = BinderSection & SourceHash & Drawn;
 type PageDrawn = Drawn & { readonly html: string };
 
 const DEEPEST = 20;
 const CHILDREN = 200;
 
-async function storiesDrawn(reader: Reader, page: Page): Promise<readonly string[]> {
-  const { db, actor, at, channel } = reader;
-  const sources = await embedSources(db, actor, page.bodyMd, at, channel);
-  return [page.id, ...embeddedPages(sources)];
-}
-
 async function pageDrawn(reader: Reader, page: Page, commit: string): Promise<PageDrawn> {
   const { db, actor, at, channel } = reader;
   const screen = screenOf(db, actor, at);
-  const rendered = await renderPageIn(db, { actor, at, channel }, page, commit);
+  const { rendered, embeds } = await renderPageDrawn(db, { actor, at, channel }, page, commit);
   const viewed = await withViews(db, screen, rendered);
   const { html, areas } = await withPanels(db, screen, page, viewed);
-  const stories = await storiesOnly(db, await storiesDrawn(reader, page));
+  const drawn = [{ pageId: page.id, version: page.version }, ...embeddedPages(embeds)];
+  const stories = await storiesOnly(db, drawn);
   return { html, areas: [...new Set([page.jdArea, ...areas])], stories };
 }
 
@@ -79,7 +74,7 @@ export async function printPageIn(
   const drawn = await pageDrawn(reader, page, commit);
   return {
     title: page.title,
-    bodyHtml: titled(page.title, drawn.html),
+    bodyHtml: titled(page.title, pageBody(drawn.html)),
     printed: await pagePrinted(reader, page),
     areas: drawn.areas,
     stories: drawn.stories,
@@ -183,7 +178,10 @@ export async function printPlannedBinder(
       hashInput: { kind: 'hash', sourceSha256: await sha256Hex(canonicalJson(hashed)), withheld },
     },
     areas: [...new Set([...plan.areas, ...sections.flatMap((section) => section.areas)])],
-    stories: [...new Set(sections.flatMap((section) => section.stories))],
+    stories: await storiesOnly(
+      db,
+      sections.flatMap((section) => section.stories),
+    ),
   };
 }
 

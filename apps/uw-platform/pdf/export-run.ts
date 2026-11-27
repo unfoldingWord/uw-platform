@@ -12,14 +12,20 @@ import { resolveGrants } from '@uw/db/store';
 import type { PdfExportStart } from '../env.ts';
 import type { FileStore } from '../pages/file-store.ts';
 import { personById } from '../people/directory.ts';
-import { exportKey, exportPath, finishExport, queuedExport, type QueuedExport } from './exports.ts';
+import {
+  exportKey,
+  exportPath,
+  finishExport,
+  finishReadyExport,
+  queuedExport,
+  type QueuedExport,
+} from './exports.ts';
 import { printJob, sourceHashOf, type Printed } from './print-document.ts';
 import { fileImages } from './print-images.ts';
 import type { Printable } from './print-kernel.ts';
 import { binderPlan, printPlannedBinder } from './print-targets.ts';
 import { exporterOf, sha256Hex, type Provenance } from './provenance.ts';
 import type { PdfRenderer } from './renderer.ts';
-import { recordStoryUses } from '../stories/uses.ts';
 
 export type PdfExportDeps = {
   readonly db: Database;
@@ -96,16 +102,17 @@ async function rendered(
   await files.put(r2Key, { bytes: pdf, contentType: PDF });
   const hashes = { sourceSha256: provenance.sourceSha256, fileSha256: await sha256Hex(pdf) };
   const areas = [...new Set([...queued.areas, ...printable.areas])];
-  const ready = { kind: 'ready', r2Key, ...hashes, bytes: pdf.byteLength, areas } as const;
-  await finishExport(db, run.exportId, ready, run.at);
-  const use = { channel, kind: 'pdf_binder', reference: run.exportId } as const;
-  await recordStoryUses(db, {
-    pageIds: printable.stories,
-    usedBy: actor.identity,
-    at: run.at,
-    ...use,
-  });
-  return 'ready';
+  const drawn = { channel, stories: printable.stories };
+  const ready = {
+    kind: 'ready',
+    r2Key,
+    ...hashes,
+    bytes: pdf.byteLength,
+    areas,
+    ...drawn,
+  } as const;
+  const finished = await finishReadyExport(db, run.exportId, ready, actor.identity, run.at);
+  return finished ? 'ready' : 'skipped';
 }
 
 export async function runPdfExport(

@@ -733,19 +733,23 @@ How widely an impact story may be told, from an ordered ladder where each level 
 _Avoid_: visibility, privacy setting, tier (that is a risk tier), classification (that is a table's)
 
 **Consent record**:
-The release behind a story: a reference to the stored release, who consented, in what form and on what day, when it expires, whether the subject is anonymised, how names are used (`real`, `pseudonym`, `none`), how precise the location is (`country`, `region`, `none`), a separate photo release, a review date and, once withdrawn, when. It is valid while it is neither expired nor withdrawn. A row of the restricted `story_consents` table, read by its area's readers and org admins only.
+The release behind a story: a reference to the stored release, who consented, in what form and on what day, when it expires, whether the subject is anonymised, how names are used (`real`, `pseudonym`, `none`), how precise the location is (`country`, `region`, `none`), a separate photo release, a review date and, once withdrawn, when. It is **in effect** on a day from its start day up to, not including, its expiry day, unless withdrawn on or before that day; one rule decides raising, rendering and flagging. A row of the restricted `story_consents` table, read by its area's readers and org admins only; it holds the current release.
 _Avoid_: permission (that is a grant's), release form (that is the stored document), waiver
+
+**Consent history**:
+Every release interval a story has had and every withdrawal, in the order recorded, as append-only rows of the restricted `story_consent_history` table. A telling is judged against the release that covered its day, so a renewal does not flag what was told under the original release (ADR 0041).
+_Avoid_: consent log, audit trail (that is the grant's)
 
 **Render channel**:
 Where a rendering will be seen, from a closed set: `platform` (staff screens behind sign-in, the same reach as `internal`), `private_circulation`, `newsletter` and `public`. Every render path declares one; exports and verbs take it as a parameter that defaults to `platform`. A story appears in a channel only when `storyMayAppear(level, channel)` says so, and everything a rendering pulls in, embeds and images included, obeys the same channel.
 _Avoid_: audience, destination, target (that is a PDF export's), visibility
 
 **Media level**:
-The sensitivity level of one file attached to an impact story, kept apart from the story's own level, so a story can be `public` while one photograph in it stays `internal`. A file with no level of its own is `internal`; raising one also needs the consent record's photo release.
+The sensitivity level of one file attached to an impact story, kept apart from the story's own level, so a story can be `public` while one photograph in it stays `internal`. A file with no level of its own is `internal`; raising one also needs the consent record's photo release, and it appears above `platform` only while the current consent still holds it.
 _Avoid_: image privacy, photo tier
 
 **Story use**:
-One line of the append-only `story_uses` log: which story, at which version, went into which channel, by which kind of rendering (a markdown export, a PDF of a page or a binder, an agent read), where, by whom and when. Every story expression with a day told counts as a use too. Withdrawing consent drops the story to `internal` and answers with every recorded use and every expression, the **withdrawal report**.
+One line of the append-only `story_uses` log: which story, at which version, went into which channel, by which kind of rendering (a markdown export, a PDF of a page or a binder, an agent read), where, by whom and when. Every story expression with a day told counts as a use too. A page's Print as PDF is a use at `platform`. Withdrawing consent drops the story to `internal` and answers with every recorded use and every expression, the **withdrawal report**; a stored PDF that drew the story into a wider channel can no longer be downloaded.
 _Avoid_: view (that is a page view), impression, citation
 
 ## What GitHub says

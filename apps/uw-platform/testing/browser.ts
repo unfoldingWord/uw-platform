@@ -45,3 +45,21 @@ export function failingBrowser(): BrowserBinding {
       ),
   };
 }
+
+export function browserDoingFirst(before: () => Promise<void>): BrowserBinding {
+  const inner = fakeBrowser();
+  async function quickAction(action: 'pdf', options: PdfQuickAction): Promise<Response>;
+  async function quickAction(
+    action: 'screenshot',
+    options: ScreenshotQuickAction,
+  ): Promise<Response>;
+  async function quickAction(
+    _action: 'pdf' | 'screenshot',
+    options: PdfQuickAction | ScreenshotQuickAction,
+  ): Promise<Response> {
+    await before();
+    if ('viewport' in options) return inner.quickAction('screenshot', options);
+    return inner.quickAction('pdf', options);
+  }
+  return { quickAction };
+}

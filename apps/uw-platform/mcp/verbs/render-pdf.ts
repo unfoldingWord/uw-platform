@@ -27,7 +27,6 @@ import { exporterOf, type Provenance } from '../../pdf/provenance.ts';
 import type { PdfRenderer } from '../../pdf/renderer.ts';
 import type { VerbContext } from '../context.ts';
 import { gatedHandler, refusal, type Found, type VerbInput, type VerbRefusal } from '../handler.ts';
-import { recordStoryUses } from '../../stories/uses.ts';
 import { storedPageArea } from './page-scene.ts';
 
 type RenderInput = VerbInput<'render_pdf'>;
@@ -36,7 +35,6 @@ type Single = Extract<Target, { readonly kind: 'page' } | { readonly kind: 'view
 type Binder = { readonly plan: BinderPlan; readonly request: BinderRequest };
 type Scene = { readonly kind: 'single' } | ({ readonly kind: 'binder' } & Binder);
 type Wired = { readonly pdf: PdfRenderer; readonly files: FileStore };
-type Use = { readonly channel: RenderChannel; readonly reference: string };
 
 function hiddenTarget(input: RenderInput): VerbRefusal {
   const { target } = input;
@@ -127,12 +125,6 @@ function printableOf(
   return printView(db, principal, target.collection, target.viewId, at);
 }
 
-async function recordUses(context: VerbContext, printable: Printable, use: Use): Promise<void> {
-  const { db, principal, at } = context;
-  const pageIds = printable.stories;
-  await recordStoryUses(db, { pageIds, usedBy: principal.identity, at, kind: 'pdf_page', ...use });
-}
-
 async function renderNow(
   context: VerbContext,
   wired: Wired,
@@ -152,13 +144,13 @@ async function renderNow(
   );
   const { reference, sourceSha256 } = provenance;
   const stored = { kind: target.kind, title, reference, areas, request: target };
-  const asked = { ...stored, actor: context.principal, at: context.at };
+  const drawn = { channel, stories: printable.stories };
+  const asked = { ...stored, ...drawn, actor: context.principal, at: context.at };
   if (pdf === null) {
     await recordRender(context.db, asked, { kind: 'failed', reason: 'pdf_render_failed' });
     return refusal('pdf_render_failed');
   }
   const reply = await storeReadyExport(context.db, wired.files, { ...asked, pdf, sourceSha256 });
-  await recordUses(context, printable, { channel, reference: reply.exportId });
   return { status: 'accepted' as const, output: reply };
 }
 

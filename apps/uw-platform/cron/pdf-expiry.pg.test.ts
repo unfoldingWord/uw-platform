@@ -57,6 +57,8 @@ function exported(daysAgo: number) {
     at: new Date(now.getTime() - daysAgo * DAY),
     pdf: new TextEncoder().encode('%PDF-1.7\n'),
     sourceSha256: HASH,
+    channel: 'platform' as const,
+    stories: [],
   };
 }
 
