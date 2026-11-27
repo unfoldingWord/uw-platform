@@ -5,11 +5,19 @@ import {
   type ChartSpec,
   type RenderedChart,
 } from '@uw/contracts';
-import { accepted, daysEnding, refused, type ItemHistoryRead } from '@uw/harness';
+import { formatCount } from '@uw/core/money';
+import {
+  accepted,
+  daysEnding,
+  HISTORY_FOLD_LIMIT,
+  refused,
+  type ItemHistoryRead,
+} from '@uw/harness';
 import { hasColourLiteral } from '../../../tools/ui/colour-literals.ts';
 import { csvRows } from '../testing/csv.ts';
 import { csvOf } from './csv.ts';
-import { drawChart, renderedOf, type ChartSources } from './render.ts';
+import { LINEAGE_LINE, lineageLines } from './drawing.ts';
+import { drawChart, exportedSvg, renderedOf, type ChartSources } from './render.ts';
 import { standardSpec } from './standard.ts';
 
 const harnessId = '00000000-0000-4000-8000-0000000019d1';
@@ -163,5 +171,66 @@ describe('#199 a chart says what it left out and when its source is stale', () =
     const rendered = await drawn(standardSpec('runs_over_time', { harnessId }));
     expect(rendered.lineage.stale).toBeNull();
     expect(rendered.svg).not.toContain('Source behind');
+  });
+});
+
+describe('#199 a chart over a capped history read says so, whatever it left out', () => {
+  const capped = sources({
+    history: async () => accepted({ ...history, unread: 0, capped: true }),
+  });
+
+  it('#199 a capped read with no item missing its creation keeps the cap in the lineage and the picture', async () => {
+    const rendered = await drawn(standardSpec('burndown', { harnessId }), capped);
+    expect(rendered.lineage.excluded.count).toBe(0);
+    expect(rendered.lineage.capped).toEqual({ newestEvents: HISTORY_FOLD_LIMIT });
+    expect(rendered.svg).toContain(
+      `Only the newest ${formatCount(HISTORY_FOLD_LIMIT)} stage events were read`,
+    );
+    expect(renderedChartSchema.safeParse(rendered).success).toBe(true);
+  });
+
+  it('#199 a read in full carries no cap', async () => {
+    const rendered = await drawn(standardSpec('burndown', { harnessId }));
+    expect(rendered.lineage.capped).toBeNull();
+    expect(rendered.svg).not.toContain('Only the newest');
+  });
+});
+
+describe('#199 the standalone SVG and PNG carry their own lineage', () => {
+  it('#199 a fresh chart with nothing left out names its source, as-of time and filters in the exported figure', async () => {
+    const fresh = sources({ history: async () => accepted({ ...history, unread: 0 }) });
+    const outcome = await drawChart(fresh, standardSpec('burndown', { harnessId }), 'x');
+    if (outcome.status !== 'accepted') throw new Error(`refused: ${outcome.reason}`);
+    expect(outcome.value.drawing.notes).toEqual([]);
+    const svg = exportedSvg(outcome.value);
+    const lines = [...svg.matchAll(/<text\b[^>]*>([^<]*)<\/text>/g)].map((m) => m[1]);
+    expect(lines).toContain(`Source: ${outcome.value.lineage.source}.`);
+    expect(lines).toContain('As of 2026-11-26 12:00 UTC.');
+    expect(lines).toContain(`Filters: harnessId ${harnessId}.`);
+    expect(cspProblems(svg)).toEqual([]);
+  });
+
+  it('#199 a source too long for the narrowest figure wraps by word, losing nothing', () => {
+    const source =
+      'person_commitments, each resolved against the directory by id, full name, loose name or a unique first name';
+    const lineage = {
+      source,
+      query: 'team_commitments' as const,
+      asOf: at.toISOString(),
+      filters: {},
+      excluded: { count: 0, reasons: [], entries: [] },
+      stale: null,
+      capped: null,
+    };
+    const lines = lineageLines(lineage);
+    expect(lines.every((line) => line.length <= LINEAGE_LINE)).toBe(true);
+    expect(lines.join(' ')).toBe(`Source: ${source}. As of 2026-11-26 12:00 UTC. Filters: none.`);
+  });
+
+  it('#199 a chart with no filters says so in the exported figure', async () => {
+    const outcome = await drawChart(sources(), standardSpec('runs_over_time', { harnessId }), 'x');
+    if (outcome.status !== 'accepted') throw new Error(`refused: ${outcome.reason}`);
+    const unfiltered = { ...outcome.value, lineage: { ...outcome.value.lineage, filters: {} } };
+    expect(exportedSvg(unfiltered)).toContain('Filters: none.');
   });
 });

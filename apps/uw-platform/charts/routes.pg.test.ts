@@ -161,6 +161,25 @@ async function pngThroughTheBrowser(world: BoardWorld): Promise<void> {
   expect(JSON.parse(text(unwired.bytes))).toEqual({ status: 'error', reason: 'not_wired' });
 }
 
+async function exportsCarryLineage(world: BoardWorld): Promise<void> {
+  const rendered = await jsonOf(world, 'burndown');
+  expect(rendered.lineage.excluded.count).toBe(0);
+  expect(rendered.lineage.stale).toBeNull();
+  const lines = [
+    `Source: ${rendered.lineage.source}.`,
+    'As of 2026-10-02 09:00 UTC.',
+    `Filters: harnessId ${world.harnessId}.`,
+  ];
+  const svg = text((await fetchChart(world, 'svg', { key: 'burndown' })).bytes);
+  const browser = fakeBrowser();
+  await fetchChart(world, 'png', { key: 'burndown', env: { BROWSER: browser } });
+  const png = browser.screenshots()[0]?.html ?? '';
+  for (const line of lines) {
+    expect(svg).toContain(line);
+    expect(png).toContain(line);
+  }
+}
+
 describe.skipIf(!testServer)('#199 GET /api/charts/:key and POST /api/charts/render', () => {
   it('#199 the CSV export of every standard chart equals the rows the chart drew', () =>
     inWorld(csvEqualsRows));
@@ -178,4 +197,6 @@ describe.skipIf(!testServer)('#199 GET /api/charts/:key and POST /api/charts/ren
     inWorld(strangerSeesNothing));
   it('#199 PNG is drawn by the browser binding, and says not wired without it', () =>
     inWorld(pngThroughTheBrowser));
+  it('#199 the downloaded SVG and PNG of a fresh chart with nothing left out name its source, as-of time and filters', () =>
+    inWorld(exportsCarryLineage));
 });

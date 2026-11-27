@@ -134,6 +134,14 @@ export function ChartLineageRows(props: {
     { what: 'As of', value: formatInstant(new Date(lineage.asOf)) },
     ...(props.workflow === undefined ? [] : [{ what: 'Workflow', value: props.workflow }]),
     { what: 'Left out', value: leftOutText(lineage) },
+    ...(lineage.capped === null
+      ? []
+      : [
+          {
+            what: 'Read limit',
+            value: `Newest ${formatCount(lineage.capped.newestEvents)} stage events`,
+          },
+        ]),
     { what: 'Source freshness', value: staleText(lineage) },
   ];
   const columns = [

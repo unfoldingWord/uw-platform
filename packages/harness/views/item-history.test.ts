@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { identitySchema, type HarnessEvent } from '@uw/contracts';
-import { burndown, cumulativeFlow, cycleTimes, foldHistories } from './item-history.ts';
+import {
+  burndown,
+  cumulativeFlow,
+  cycleTimes,
+  foldHistories,
+  HISTORY_FOLD_LIMIT,
+  HISTORY_READ_LIMIT,
+  historyWindow,
+} from './item-history.ts';
 
 const harnessId = '00000000-0000-4000-8000-0000000019b1';
 const [one, two, three, orphan] = [
@@ -115,5 +123,36 @@ describe('#199 the history folds into cumulative flow, cycle time and burndown',
       { day: '2026-11-03', open: 2 },
       { day: '2026-11-04', open: 1 },
     ]);
+  });
+});
+
+function creations(count: number): readonly HarnessEvent[] {
+  const start = Date.parse('2026-10-01T00:00:00.000Z');
+  return Array.from({ length: count }, (_, index) =>
+    created(
+      `00000000-0000-4000-9000-${String(index).padStart(12, '0')}`,
+      new Date(start + index * 60_000).toISOString(),
+    ),
+  ).reverse();
+}
+
+describe('#199 the history read tells a truncated read from an exactly full one', () => {
+  it('#199 reads one event more than it folds', () => {
+    expect(HISTORY_READ_LIMIT).toBe(HISTORY_FOLD_LIMIT + 1);
+  });
+
+  it('#199 a read holding no more events than it folds is not capped, and folds them all', () => {
+    const read = creations(HISTORY_FOLD_LIMIT);
+    const window = historyWindow(read);
+    expect(window.capped).toBe(false);
+    expect(window.events).toHaveLength(HISTORY_FOLD_LIMIT);
+  });
+
+  it('#199 one event beyond the fold marks the read capped, even when every item folded was created in it', () => {
+    const read = creations(HISTORY_READ_LIMIT);
+    const window = historyWindow(read);
+    expect(window.capped).toBe(true);
+    expect(window.events).toEqual(read.slice(0, HISTORY_FOLD_LIMIT));
+    expect(foldHistories(window.events).unread).toBe(0);
   });
 });

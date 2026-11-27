@@ -1,0 +1,20 @@
+{
+  "title": "Items per stage, two measures",
+  "type": "stacked_area",
+  "query": {
+    "key": "item_cumulative_flow",
+    "params": {
+      "harnessId": "00000000-0000-4000-8000-0000000019a1"
+    }
+  },
+  "encodings": {
+    "x": "day",
+    "y": ["items", "items"],
+    "series": "stage"
+  },
+  "format": {
+    "x": "date",
+    "y": "count",
+    "currency": null
+  }
+}

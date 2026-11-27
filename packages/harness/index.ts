@@ -121,7 +121,7 @@ export type { RefuteTally } from './views/refutes.ts';
 export type { FrameCounts, FrameHarness } from './views/frame.ts';
 export { DAILY_DAYS, daysEnding } from './views/look.ts';
 export {
-  HISTORY_EVENT_LIMIT,
+  HISTORY_FOLD_LIMIT,
   burndown,
   cumulativeFlow,
   cycleTimes,

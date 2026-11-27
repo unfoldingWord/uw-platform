@@ -5,6 +5,7 @@ import {
   cumulativeFlow,
   cycleTimes,
   daysEnding,
+  HISTORY_FOLD_LIMIT,
   type ItemHistoryRead,
   type KernelOutcome,
 } from '@uw/harness';
@@ -56,7 +57,8 @@ function historyQuery(
     const read = await sources.history(harnessId);
     if (read.status === 'error') return read;
     const rows = rowsOf(read.value, daysEnding(sources.at));
-    return accepted({ rows, excluded: leftOut(read.value) });
+    const capped = read.value.capped ? { capped: { newestEvents: HISTORY_FOLD_LIMIT } } : {};
+    return accepted({ rows, excluded: leftOut(read.value), ...capped });
   });
 }
 

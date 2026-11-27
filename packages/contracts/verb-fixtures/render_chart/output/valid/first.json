@@ -34,6 +34,7 @@
       "reasons": [],
       "entries": []
     },
-    "stale": null
+    "stale": null,
+    "capped": null
   }
 }

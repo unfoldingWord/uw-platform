@@ -69,6 +69,24 @@ async function unknownColumn(world: BoardWorld): Promise<void> {
   expect(called.body).toMatchObject({ reason: 'chart_encoding_unknown' });
 }
 
+async function seriesOverManyMeasures(world: BoardWorld): Promise<void> {
+  const app = measureApp(world.db, {});
+  const spec = {
+    ...specOver('item_cumulative_flow', world.harnessId),
+    encodings: { x: 'day', y: ['items', 'items'], series: 'stage' },
+  };
+  const called = await app.verb(world.rowanEmail, 'render_chart', {
+    chart: null,
+    params: {},
+    spec,
+  });
+  expect(called.isError).toBe(true);
+  expect(called.body).toMatchObject({
+    reason: 'malformed_command',
+    detail: { fields: ['spec.encodings.y'] },
+  });
+}
+
 async function asPerson(
   world: BoardWorld,
   person: { readonly id: string; readonly email: string },
@@ -112,6 +130,8 @@ describe.skipIf(!testServer)('#199 render_chart', () => {
   it('#199 refuses a spec referencing a query not on the whitelist, by its closed-set reason', () =>
     inWorld(offTheWhitelist));
   it('#199 refuses an encoding that names no column of the query', () => inWorld(unknownColumn));
+  it('#199 refuses a series split over more than one measure, naming the y encoding', () =>
+    inWorld(seriesOverManyMeasures));
   it('#199 answers as if the workflow did not exist to a person who cannot read it', () =>
     inWorld(hiddenFromStrangers));
 });

@@ -8,7 +8,7 @@ import {
 } from '@uw/contracts';
 import { accepted, refused, type KernelOutcome } from '@uw/harness';
 import { specChartSvg, type SpecChartDrawing } from '@uw/ui/components/spec-chart.tsx';
-import { drawingOf, notesOf } from './drawing.ts';
+import { drawingOf, notesOf, lineageLines } from './drawing.ts';
 import { chartQueries } from './queries.ts';
 import type { ChartQuery, PreparedQuery } from './query-types.ts';
 import type { ChartSources } from './sources.ts';
@@ -83,6 +83,7 @@ export async function drawChart(
       entries: [...excluded.entries],
     },
     stale: stale === null ? null : { since: stale.since.toISOString(), reason: stale.reason },
+    capped: read.value.capped ?? null,
   };
   const table = { columns: [...query.columns], rows: read.value.rows.map((row) => ({ ...row })) };
   const drawing = drawingOf({ id, spec, ...table, notes: notesOf(lineage) });
@@ -91,4 +92,9 @@ export async function drawChart(
 
 export function renderedOf(drawn: DrawnChart): RenderedChart {
   return { svg: specChartSvg(drawn.drawing), table: drawn.table, lineage: drawn.lineage };
+}
+
+export function exportedSvg(drawn: DrawnChart): string {
+  const { drawing, lineage } = drawn;
+  return specChartSvg({ ...drawing, notes: [...drawing.notes, ...lineageLines(lineage)] });
 }

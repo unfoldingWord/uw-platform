@@ -78,6 +78,7 @@ describe('#200 the data-quality note is the lineage’s list of entries left out
       ],
     },
     stale: null,
+    capped: null,
   };
 
   it('#200 accepts an ambiguous entry with its candidates beside a counted reason', () => {

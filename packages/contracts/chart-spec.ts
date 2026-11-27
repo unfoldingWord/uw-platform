@@ -93,6 +93,10 @@ export const chartSpecSchema = z
   .refine((spec) => spec.type === 'bipartite' || spec.encodings.group === undefined, {
     message: 'only a two-column graph groups its targets',
     path: ['encodings', 'group'],
+  })
+  .refine((spec) => spec.encodings.series === null || spec.encodings.y.length === 1, {
+    message: 'a chart split by a series draws one measure',
+    path: ['encodings', 'y'],
   });
 
 const entrySchema = z.strictObject({
@@ -144,6 +148,7 @@ export const chartLineageSchema = z.strictObject({
   filters: z.record(z.string(), z.string().max(200)),
   excluded: excludedSchema,
   stale: z.strictObject({ since: z.iso.datetime(), reason: chartStaleReasonSchema }).nullable(),
+  capped: z.strictObject({ newestEvents: z.number().int().min(1) }).nullable(),
 });
 
 const cellSchema = z.union([z.string().max(4000), z.number(), z.null()]);

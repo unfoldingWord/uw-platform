@@ -42,6 +42,7 @@
     "stale": {
       "since": "2026-11-26T08:00:00.000Z",
       "reason": "source_behind"
-    }
+    },
+    "capped": null
   }
 }

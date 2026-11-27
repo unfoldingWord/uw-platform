@@ -78,7 +78,40 @@ export function notesOf(lineage: ChartLineage): readonly string[] {
       : [
           `Source ${stale.reason === 'source_behind' ? 'behind' : 'unreadable'} since ${formatInstant(new Date(stale.since))}: ${staleWords.get(stale.reason) ?? stale.reason}.`,
         ];
-  return [...staleNote, ...lineage.excluded.entries.map(entryNote), ...countNotes(lineage)];
+  const cappedNote =
+    lineage.capped === null
+      ? []
+      : [
+          `Only the newest ${formatCount(lineage.capped.newestEvents)} stage events were read, so items created before them are missing.`,
+        ];
+  return [
+    ...staleNote,
+    ...cappedNote,
+    ...lineage.excluded.entries.map(entryNote),
+    ...countNotes(lineage),
+  ];
+}
+
+export const LINEAGE_LINE = 90;
+
+function wrapped(line: string): readonly string[] {
+  const lines: string[] = [];
+  for (const word of line.split(' ')) {
+    const last = lines.at(-1);
+    if (last !== undefined && last.length + 1 + word.length <= LINEAGE_LINE) {
+      lines[lines.length - 1] = `${last} ${word}`;
+    } else lines.push(word);
+  }
+  return lines;
+}
+
+export function lineageLines(lineage: ChartLineage): readonly string[] {
+  const filters = Object.entries(lineage.filters).map(([key, value]) => `${key} ${value}`);
+  return [
+    `Source: ${lineage.source}.`,
+    `As of ${formatInstant(new Date(lineage.asOf))}.`,
+    `Filters: ${filters.length === 0 ? 'none' : filters.join(', ')}.`,
+  ].flatMap(wrapped);
 }
 
 function text(cell: ChartCell | undefined): string {

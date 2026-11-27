@@ -21,7 +21,13 @@ export type Excluded = {
   readonly entries: readonly ChartExcludedEntry[];
 };
 
-export type QueryRead = { readonly rows: readonly ChartRow[]; readonly excluded: Excluded };
+type ChartCapped = { readonly newestEvents: number };
+
+export type QueryRead = {
+  readonly rows: readonly ChartRow[];
+  readonly excluded: Excluded;
+  readonly capped?: ChartCapped;
+};
 
 export type PreparedQuery = {
   readonly harnessId: string | null;

@@ -6,7 +6,8 @@ import type { StoreTransaction } from '../ports.ts';
 import { harnessScene, type ScenePorts } from '../reads/scene.ts';
 import { byPosition } from './flow.ts';
 
-export const HISTORY_EVENT_LIMIT = 5000;
+export const HISTORY_READ_LIMIT = 5000;
+export const HISTORY_FOLD_LIMIT = HISTORY_READ_LIMIT - 1;
 const DAY_MS = 86_400_000;
 const historyNames: readonly HarnessEvent['name'][] = [
   'item_created',
@@ -56,6 +57,16 @@ export function foldHistories(events: readonly HarnessEvent[]): HistoryFold {
   }
   const items = [...steps].map(([itemId, itemSteps]) => ({ itemId, steps: itemSteps }));
   return { items, unread: [...unread].filter((itemId) => !steps.has(itemId)).length };
+}
+
+export function historyWindow(newestFirst: readonly HarnessEvent[]): {
+  readonly events: readonly HarnessEvent[];
+  readonly capped: boolean;
+} {
+  return {
+    events: newestFirst.slice(0, HISTORY_FOLD_LIMIT),
+    capped: newestFirst.length > HISTORY_FOLD_LIMIT,
+  };
 }
 
 function endOf(day: string): number {
@@ -142,10 +153,11 @@ export async function itemHistoryView(
     since: new Date(0),
     names: historyNames,
     agentsOnly: false,
-    limit: HISTORY_EVENT_LIMIT,
+    limit: HISTORY_READ_LIMIT,
     harnessIds: [scene.value.harness.id],
   });
   const stages = byPosition(scene.value.stages).map((stage) => stage.key);
-  const folded = foldHistories(events.filter((event) => new Date(event.at) <= input.at));
-  return accepted({ ...folded, stages, capped: events.length === HISTORY_EVENT_LIMIT });
+  const { events: kept, capped } = historyWindow(events);
+  const folded = foldHistories(kept.filter((event) => new Date(event.at) <= input.at));
+  return accepted({ ...folded, stages, capped });
 }

@@ -34,8 +34,22 @@ describe('#199 a chart spec names a type, a query, its encodings and its formatt
     ['a currency on a count', { ...spec, format: { x: 'date', y: 'count', currency: 'USD' } }],
     ['a query key that is not a word', { ...spec, query: { key: 'DROP TABLE', params: {} } }],
     ['an extra field', { ...spec, script: 'alert(1)' }],
+    [
+      'more than one measure split by a series',
+      { ...spec, encodings: { x: 'day', y: ['runs', 'gateWaits'], series: 'stage' } },
+    ],
   ])('#199 refuses %s', (_why, bad) => {
     expect(chartSpecSchema.safeParse(bad).success).toBe(false);
+  });
+
+  it('#199 refuses a series over more than one measure at the y encoding, and keeps one measure per series', () => {
+    const split = { ...spec, encodings: { x: 'day', y: ['runs', 'gateWaits'], series: 'stage' } };
+    const parsed = chartSpecSchema.safeParse(split);
+    expect(parsed.error?.issues.map((issue) => issue.path)).toEqual([['encodings', 'y']]);
+    const one = { ...split, encodings: { ...split.encodings, y: ['runs'] } };
+    expect(chartSpecSchema.safeParse(one).success).toBe(true);
+    const unsplit = { ...split, encodings: { ...split.encodings, series: null } };
+    expect(chartSpecSchema.safeParse(unsplit).success).toBe(true);
   });
 
   it('#199 keeps a query key off the whitelist parseable, so the platform can refuse it by name', () => {
@@ -65,6 +79,7 @@ describe('#199 lineage names the source, the time, the filters, what was left ou
     filters: { harnessId },
     excluded: { count: 2, reasons: [{ reason: 'creation_not_read', count: 2 }], entries: [] },
     stale: { since: '2026-11-26T08:00:00.000Z', reason: 'source_behind' },
+    capped: null,
   };
 
   it('#199 accepts lineage with an exclusion and a staleness note', () => {
@@ -74,6 +89,14 @@ describe('#199 lineage names the source, the time, the filters, what was left ou
   it('#199 refuses an exclusion whose reasons do not add up to its count', () => {
     const wrong = { ...lineage, excluded: { ...lineage.excluded, count: 3 } };
     expect(chartLineageSchema.safeParse(wrong).success).toBe(false);
+  });
+
+  it('#199 accepts lineage of a capped read, naming how many of the newest events were read', () => {
+    const capped = { ...lineage, capped: { newestEvents: 4999 } };
+    expect(chartLineageSchema.parse(capped)).toEqual(capped);
+    expect(chartLineageSchema.safeParse({ ...lineage, capped: { newestEvents: 0 } }).success).toBe(
+      false,
+    );
   });
 
   it('#199 refuses a staleness reason outside the closed set', () => {
