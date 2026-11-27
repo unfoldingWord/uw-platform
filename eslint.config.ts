@@ -121,7 +121,13 @@ export default defineConfig([
     },
   },
   {
-    files: ['sim/runner/**', 'sim/cli/**', 'sim/mail-fixtures.ts', 'vitest.config.ts'],
+    files: [
+      'sim/runner/**',
+      'sim/cli/**',
+      'sim/mail-fixtures.ts',
+      'apps/uw-platform/bin/**',
+      'vitest.config.ts',
+    ],
     rules: { 'security/detect-non-literal-fs-filename': 'off' },
   },
   {

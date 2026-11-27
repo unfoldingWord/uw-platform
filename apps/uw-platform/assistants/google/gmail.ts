@@ -95,11 +95,25 @@ function bytesToBase64Url(bytes: Uint8Array): string {
   return btoa(binary).replaceAll('+', '-').replaceAll('/', '_').replace(/=+$/, '');
 }
 
+export async function searchMail(tokens: TokenDeps, mailbox: string, q: string) {
+  const query = new URLSearchParams({ q, maxResults: String(LIST_MOST) });
+  return parsed(await get(tokens, mailbox, `${GMAIL}/messages?${query}`), messagesSchema);
+}
+
+export function historyAnswer(tokens: TokenDeps, mailbox: string, since: string) {
+  const query = new URLSearchParams({
+    startHistoryId: since,
+    historyTypes: 'messageAdded',
+    labelId: 'INBOX',
+    maxResults: String(LIST_MOST),
+  });
+  return get(tokens, mailbox, `${GMAIL}/history?${query}`);
+}
+
 async function recent(tokens: TokenDeps, mailbox: string): Promise<Gmail<MailPage>> {
   const profile = parsed(await get(tokens, mailbox, `${GMAIL}/profile`), profileSchema);
   if (!profile.ok) return profile;
-  const query = new URLSearchParams({ q: RECENT_QUERY, maxResults: String(LIST_MOST) });
-  const listed = parsed(await get(tokens, mailbox, `${GMAIL}/messages?${query}`), messagesSchema);
+  const listed = await searchMail(tokens, mailbox, RECENT_QUERY);
   if (!listed.ok) return listed;
   return {
     ok: true,
@@ -118,13 +132,7 @@ export async function mailSince(
   since: string | null,
 ): Promise<Gmail<MailPage>> {
   if (since === null) return recent(tokens, mailbox);
-  const query = new URLSearchParams({
-    startHistoryId: since,
-    historyTypes: 'messageAdded',
-    labelId: 'INBOX',
-    maxResults: String(LIST_MOST),
-  });
-  const answer = await get(tokens, mailbox, `${GMAIL}/history?${query}`);
+  const answer = await historyAnswer(tokens, mailbox, since);
   if (!answer.ok && answer.failure === 'not_found') return recent(tokens, mailbox);
   const page = parsed(answer, historySchema);
   if (!page.ok) return page;

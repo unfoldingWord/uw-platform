@@ -792,6 +792,10 @@ _Avoid_: append (in prose), page edit, transcript import
 A transcript of a meeting, pasted into a direct message or attached to an email, which reaches the assistant fenced as untrusted `meeting_transcript` text.
 _Avoid_: recording, notes (the notes are the page it may be added to)
 
+**Staging probe**:
+One check that an external service answers the way the platform's code assumes, run against staging with `pnpm probe:assistants` and reported as pass, fail, skip or manual. Each is a numbered entry of the assistants' staging-probes list.
+_Avoid_: smoke test, health check (that is `/health/probe`, the Worker's own indicators)
+
 **Reminder**:
 A note to an assistant's person, due at an instant, delivered only to that person. It is set when the turn that drafted it ends, fires once, and is recorded undelivered, never sent, when the person's `assist` delegation has lapsed by then.
 _Avoid_: alarm (that word belongs to the silence alarm), task, due date

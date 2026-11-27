@@ -167,7 +167,11 @@ function holdBody(hold: CalendarHold) {
   };
 }
 
-async function readEvent(deps: TokenDeps, email: string, eventId: string): Promise<GoogleAnswer> {
+export async function readEvent(
+  deps: TokenDeps,
+  email: string,
+  eventId: string,
+): Promise<GoogleAnswer> {
   const url = `${EVENTS}/${encodeURIComponent(eventId)}`;
   return googleCall(deps, { subject: email, scopes: eventsScope, method: 'GET', url });
 }
@@ -179,20 +183,28 @@ function ownedBy(body: unknown, marker: HoldMarker): boolean {
   return found?.harnessId === marker.harnessId && found.holdId === marker.holdId;
 }
 
-export async function insertHold(
+export function postHold(
   deps: TokenDeps,
   email: string,
   hold: CalendarHold,
-): Promise<HoldPlacement> {
-  const eventId = eventIdOf(hold.holdId);
+): Promise<GoogleAnswer> {
   const url = `${EVENTS}?sendUpdates=none`;
-  const answer = await googleCall(deps, {
+  return googleCall(deps, {
     subject: email,
     scopes: eventsScope,
     method: 'POST',
     url,
     body: holdBody(hold),
   });
+}
+
+export async function insertHold(
+  deps: TokenDeps,
+  email: string,
+  hold: CalendarHold,
+): Promise<HoldPlacement> {
+  const eventId = eventIdOf(hold.holdId);
+  const answer = await postHold(deps, email, hold);
   if (answer.ok) return { outcome: 'held', eventId };
   if (answer.failure !== 'conflict') return { outcome: failureOf(answer) };
   const existing = await readEvent(deps, email, eventId);

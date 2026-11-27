@@ -766,7 +766,7 @@ A policy's page and the Policies screen show its level, target, enforcement, dat
 - Polling each bot's event queue. Workers have no long-lived process, and Zulip drops idle queues.
 - Storing bot keys in the Secrets Store or the credentials vault rows. The store is capped, and the vault's rows are area-scoped credentials a person reveals, not platform keys.
 
-**Changes / changed by.** Changes 0020 (its envelope also seals assistant bot keys, under their own context) and 0036 (item 9: the pairing is by email at provisioning or by a one-time code, and each assistant has its own bot).
+**Changes / changed by.** Changes 0020 (its envelope also seals assistant bot keys, under their own context) and 0036 (item 9: the pairing is by email at provisioning or by a one-time code, and each assistant has its own bot). 0044 runs its staging probes as `pnpm probe:assistants` and the walk in `infra/README.md`.
 
 ## 0038 An assistant's turn is a Cloudflare Workflow named by its request, on zero-retention OpenRouter, inside its own spend pool
 
@@ -815,7 +815,7 @@ A policy's page and the Policies screen show its level, target, enforcement, dat
 
 **Consequences.** A leaked key can act as any user in the domain for the delegated scopes; Google cannot limit delegation to some users. The mitigations are the allowlist, the four scopes, key rotation and Workspace audit alerts on unexpected subjects. Scope names, the token exchange, the conflict on a reused event id and the free/busy shape come from Google's published API, not a live call; staging confirms them before go-live.
 
-**Changes / changed by.** Changes 0036 (calendar holds are placed acting as the person through domain-wide delegation, not through the person's share to the assistant mailbox).
+**Changes / changed by.** Changes 0036 (calendar holds are placed acting as the person through domain-wide delegation, not through the person's share to the assistant mailbox). 0044 runs its staging probes as `pnpm probe:assistants` and the walk in `infra/README.md`.
 
 ## 0040 A person turns their own assistant on and off; a narrow provisioner principal makes its accounts, numbered from 10.51
 
@@ -892,7 +892,7 @@ A policy's page and the Policies screen show its level, target, enforcement, dat
 
 **Consequences.** Gmail's exact shapes (history 404 on an expired id, the label search spelling, the `Authentication-Results` Gmail writes on mail inside the domain) come from Google's published API, not a live call; the staging probes confirm them before the flag is turned on in production. A person whose own address changes keeps the old binding until their assistant is turned off and on. A declined mail retried after a failed label is recorded declined again.
 
-**Changes / changed by.** Changes 0036 (item 9: the email rule is the verdict above, SPF with DKIM accepted beside DMARC, and a declined mail is recorded without content) and 0039 (the assistant mailbox subject reads, labels and sends its own mail).
+**Changes / changed by.** Changes 0036 (item 9: the email rule is the verdict above, SPF with DKIM accepted beside DMARC, and a declined mail is recorded without content) and 0039 (the assistant mailbox subject reads, labels and sends its own mail). 0044 runs its staging probes as `pnpm probe:assistants` and the walk in `infra/README.md`.
 
 ## 0043 An assistant proposes; only its person decides, on the digest they saw, and the decision runs once as that person
 
@@ -919,6 +919,28 @@ A policy's page and the Policies screen show its level, target, enforcement, dat
 **Consequences.** Gmail's send as the assistant mailbox with a Reply-To, and the calendar insert with attendees and `sendUpdates=all`, are staging probes. A send whose outcome is unknown is recorded failed `outcome_unknown` and never retried. Expiry runs nightly; a proposal past its week is refused and shown expired before the job marks it.
 
 **Changes / changed by.** Changes 0036 (item 6: the proposal kinds, the decision path and the effect check are built as above) and 0039 (the Workspace port also sends a proposed mail as the assistant mailbox and an invitation as the person).
+
+## 0044 Assistants go live through declared settings, staging probes run from a terminal, and one scenario walks a person's whole day
+
+*2026-11-27. Changes 0037, 0039 and 0042 (only how their staging probes are run).*
+
+**Decision.**
+
+1. **Every setting is declared, checked and documented in one place.** The two assistant secrets (`GOOGLE_WORKSPACE_KEY`, `ZULIP_ADMIN_API_KEY`) are in `infra/secrets-store.json`, `platformSecretNames`, the Worker's `Bindings` and both environments' Secrets Store blocks of `wrangler.go-live.toml`; the variables (`GOOGLE_WORKSPACE_DOMAIN`, `GOOGLE_WORKSPACE_ADMIN_SUBJECT`, `GOOGLE_ASSISTANT_OU`, `ZULIP_ADMIN_EMAIL`, `ASSISTANT_WEBHOOK_BASE`, `ASSISTANT_EMAIL_INSTRUCTIONS`, `ASSISTANT_SPEND_CAP_MINOR`) are declared under staging and production in both wrangler files. `ASSISTANT_SPEND_CAP_MINOR` is declared empty, which means no ceiling (owner decision 12). `tools/infra/assistants-config.test.ts` fails on a missing or malformed one, and on production email instructions that are not `off`.
+2. **The assistants' area is not a setting.** It is `10-19` in `apps/uw-platform/assistants/area.ts`, because the numbering from 10.51 is fixed in the contracts (`ASSISTANT_JD_CATEGORY`, owner decisions 4 and 10). The test keeps the two in step and refuses an `ASSISTANTS_AREA` variable.
+3. **Staging probes are a command.** `pnpm probe:assistants` (`apps/uw-platform/bin/probe-assistants.ts`) runs `apps/uw-platform/assistants/probes/`, which calls the same functions the platform calls (the Zulip admin client and direct send, the Google token minter, calendar, directory and Gmail clients, the mail verdict, and the OpenRouter engine through the engine registry), one probe per numbered entry of the staging-probes list, and prints `PASS`, `FAIL`, `SKIP` or `MANUAL` per line, exiting 1 on any failure. Without `--write` it only reads; with it, it creates and removes a probe Workspace user, a probe hold and a probe Zulip bot, and sends the test person one direct message and one email. What only a deployed Worker or a person can show (Workflow instance reuse and step replay, the outgoing webhook, latency, the web push link) is listed `MANUAL` with how to check it, never reported passed. The probes run against the recorded-shape fakes in `probes.test.ts`, so a probe that would pass on a wrong answer fails there first.
+4. **One scenario walks a person's whole day.** PA-18 turns an assistant on with a name, provisions its persona and bindings, takes the person's grant, answers a calendar question in their timezone, fires a reminder once, places a private hold, answers forwarded mail by email on its thread, sends an email only after the person accepts it, and once turned off takes no turn and frees its number 30 days later.
+
+**Why.** The owner requires the whole feature to work for a real person, and every external shape so far was assumed from documentation. A command that calls the real code paths turns each assumption into a line that passes or fails on staging, before anyone relies on it.
+
+**Rejected.**
+- A probe route on the deployed Worker, using its own secrets: it would add an admin route that creates users and bots, reachable over HTTP, for a one-time check; and the admin who runs the setup holds the key file at that moment anyway.
+- An `ASSISTANTS_AREA` variable: it could only disagree with the numbering the contracts fix.
+- Leaving `ASSISTANT_SPEND_CAP_MINOR` undeclared: an admin reading the wrangler file would not know the ceiling exists.
+
+**Consequences.** Running the probes needs the service account key and the Zulip admin key on the admin's machine for the length of the run; the runbook says to delete the env file after. The probes cannot prove Workflow semantics, the webhook delivery or the DMARC result for forged mail from outside; those stay manual. A probe bot is left deactivated in the realm.
+
+**Changes / changed by.** Changes 0037, 0039 and 0042 only in how their staging probes are run: by `pnpm probe:assistants` and the walk in `infra/README.md`, "Going live with personal assistants".
 
 # Part 2. Workflow design decisions
 
