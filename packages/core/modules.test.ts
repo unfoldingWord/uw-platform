@@ -64,7 +64,7 @@ describe('the module registry claims every page type and verb once', () => {
     ).toEqual(Object.keys(pageTypeRegistry));
   });
 
-  it('declares the measure verbs and render_chart under charts and every other registered verb under agents', () => {
+  it('declares the measure verbs and render_chart under charts, the story verbs under story_bank and every other registered verb under agents', () => {
     expect(moduleOf('charts').mcp_tools).toEqual([
       'save_measure',
       'save_dashboard',
@@ -75,9 +75,11 @@ describe('the module registry claims every page type and verb once', () => {
       'preview_dashboard',
       'render_chart',
     ]);
-    expect([...moduleOf('agents').mcp_tools, ...moduleOf('charts').mcp_tools]).toEqual(
-      verbRegistry.map((entry) => entry.name),
-    );
+    expect([
+      ...moduleOf('agents').mcp_tools,
+      ...moduleOf('charts').mcp_tools,
+      ...moduleOf('story_bank').mcp_tools,
+    ]).toEqual(verbRegistry.map((entry) => entry.name));
   });
 
   it('ADR 0036 gives charts the measures tables, none of them offline', () => {
@@ -96,11 +98,22 @@ describe('the module registry claims every page type and verb once', () => {
 describe('#201 the story bank module', () => {
   it('#201 gives story_bank the story tables, restricted and never offline', () => {
     expect(moduleOf('story_bank')).toMatchObject({
-      tables: ['story_levels', 'story_consents', 'story_media_levels', 'story_uses'],
-      depends_on: ['core'],
       data_classification: 'restricted',
       offline_eligibility: 'never',
-      mcp_tools: [],
+    });
+  });
+
+  it('ADR 0041 gives story_bank the expressions table and the four story verbs, reading program pages from strategy', () => {
+    expect(moduleOf('story_bank')).toMatchObject({
+      tables: [
+        'story_levels',
+        'story_consents',
+        'story_media_levels',
+        'story_uses',
+        'story_expressions',
+      ],
+      depends_on: ['core', 'strategy'],
+      mcp_tools: ['add_story_expression', 'update_story_expression', 'read_story', 'list_stories'],
     });
   });
 });

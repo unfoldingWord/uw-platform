@@ -1,8 +1,9 @@
-import { eq } from 'drizzle-orm';
+import { eq, inArray } from 'drizzle-orm';
 import type { ErrorReason, RecordStoryConsentCommand } from '@uw/contracts';
 import { formatDate } from '@uw/core/dates';
 import type { Executor } from '@uw/db/client';
 import { storyConsents } from '@uw/db/schema';
+import type { ConsentFacts } from './expression-flags.ts';
 
 export type ConsentRow = typeof storyConsents.$inferSelect;
 
@@ -14,6 +15,12 @@ export function consentStateOf(row: ConsentRow, at: Date): ConsentState {
   return expires !== null && expires < formatDate(at) ? 'expired' : 'recorded';
 }
 
+export function consentFactsOf(row: ConsentRow | null): ConsentFacts {
+  if (row === null) return null;
+  const withdrawnOn = row.withdrawnAt === null ? null : formatDate(row.withdrawnAt);
+  return { consentedOn: row.consentedOn, expires: row.consentExpires, withdrawnOn };
+}
+
 const refusalByState: Readonly<Record<ConsentState, ErrorReason | null>> = {
   recorded: null,
   expired: 'consent_expired',
@@ -23,6 +30,16 @@ const refusalByState: Readonly<Record<ConsentState, ErrorReason | null>> = {
 export async function consentRowOf(db: Executor, pageId: string): Promise<ConsentRow | null> {
   const [row] = await db.select().from(storyConsents).where(eq(storyConsents.pageId, pageId));
   return row ?? null;
+}
+
+export async function consentRowsOf(
+  db: Executor,
+  pageIds: readonly string[],
+): Promise<ReadonlyMap<string, ConsentRow>> {
+  const ids = [...new Set(pageIds)];
+  if (ids.length === 0) return new Map();
+  const rows = await db.select().from(storyConsents).where(inArray(storyConsents.pageId, ids));
+  return new Map(rows.map((row) => [row.pageId, row]));
 }
 
 export async function consentRefusal(

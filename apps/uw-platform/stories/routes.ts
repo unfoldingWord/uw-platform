@@ -1,11 +1,24 @@
 import { Hono, type Context } from 'hono';
-import { storyCommandSchemas, withdrawalReportSchema } from '@uw/contracts';
+import {
+  expressionFieldsOf,
+  storyCommandSchemas,
+  storyExpressionCommandSchemas,
+  withdrawalReportSchema,
+} from '@uw/contracts';
 import type { Principal } from '@uw/core/principal';
 import type { Database } from '@uw/db/client';
 import type { AppEnv } from '../deps.ts';
 import { malformed, readJson, toOutcome } from '../http/commands.ts';
 import { refuse, reply } from '../http/outcomes.ts';
 import { storiesScreen } from '../views/screens/stories.tsx';
+import {
+  addStoryExpression,
+  confirmStoryExpression,
+  retireStoryExpression,
+  updateStoryExpression,
+  type DecisionOutcome,
+  type ExpressionOutcome,
+} from './expressions.ts';
 import {
   recordStoryConsent,
   setStoryLevel,
@@ -23,8 +36,10 @@ type Request = {
 
 type Handler = (request: Request) => Promise<Response | null>;
 
-function answered(c: Context<AppEnv>, requestId: string, outcome: StoryOutcome): Response {
-  return reply(c, toOutcome(requestId, outcome));
+type Answered = StoryOutcome | DecisionOutcome | ExpressionOutcome;
+
+function answered(c: Context<AppEnv>, requestId: string, outcome: Answered): Response {
+  return reply(c, toOutcome(requestId, outcome.ok ? { ok: true } : outcome));
 }
 
 const levelCommand: Handler = async ({ c, db, actor, body }) => {
@@ -55,11 +70,50 @@ const withdrawCommand: Handler = async ({ c, db, actor, body }) => {
   const outcome = await withdrawStoryConsent(db, actor, parsed.data, c.get('now'));
   if (!outcome.ok) return answered(c, requestId, outcome);
   c.set('outcome', 'accepted');
-  const report = { status: 'accepted', requestId, uses: [...outcome.uses] };
+  const report = {
+    status: 'accepted',
+    requestId,
+    uses: [...outcome.uses],
+    expressions: [...outcome.expressions],
+  };
   return c.json(withdrawalReportSchema.parse(report), 200);
 };
 
+const addExpression: Handler = async ({ c, db, actor, body }) => {
+  const parsed = storyExpressionCommandSchemas.add_story_expression.safeParse(body);
+  if (!parsed.success) return null;
+  const { requestId, pageId } = parsed.data;
+  const adding = { pageId, ...expressionFieldsOf(parsed.data) };
+  return answered(c, requestId, await addStoryExpression(db, actor, adding, c.get('now')));
+};
+
+const updateExpression: Handler = async ({ c, db, actor, body }) => {
+  const parsed = storyExpressionCommandSchemas.update_story_expression.safeParse(body);
+  if (!parsed.success) return null;
+  const { requestId, expressionId } = parsed.data;
+  const editing = { expressionId, ...expressionFieldsOf(parsed.data) };
+  return answered(c, requestId, await updateStoryExpression(db, actor, editing, c.get('now')));
+};
+
+const confirmExpression: Handler = async ({ c, db, actor, body }) => {
+  const parsed = storyExpressionCommandSchemas.confirm_story_expression.safeParse(body);
+  if (!parsed.success) return null;
+  const outcome = await confirmStoryExpression(db, actor, parsed.data, c.get('now'));
+  return answered(c, parsed.data.requestId, outcome);
+};
+
+const retireExpression: Handler = async ({ c, db, actor, body }) => {
+  const parsed = storyExpressionCommandSchemas.retire_story_expression.safeParse(body);
+  if (!parsed.success) return null;
+  const outcome = await retireStoryExpression(db, actor, parsed.data, c.get('now'));
+  return answered(c, parsed.data.requestId, outcome);
+};
+
 const handlers = new Map<string, Handler>([
+  ['add_story_expression', addExpression],
+  ['update_story_expression', updateExpression],
+  ['confirm_story_expression', confirmExpression],
+  ['retire_story_expression', retireExpression],
   ['set_story_level', levelCommand],
   ['set_story_media_level', mediaCommand],
   ['record_story_consent', consentCommand],

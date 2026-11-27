@@ -9,6 +9,7 @@ export type StoryPage = {
   readonly jdArea: string;
   readonly title: string;
   readonly version: number;
+  readonly status: string;
 };
 
 const storyColumns = {
@@ -16,6 +17,7 @@ const storyColumns = {
   jdArea: pages.jdArea,
   title: pages.title,
   version: pages.version,
+  status: pages.status,
 };
 
 export async function storyPageOf(db: Executor, pageId: string): Promise<StoryPage | null> {

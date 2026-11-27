@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { consentFor, inventedStories, photoStory } from '../testing/stories.ts';
+import {
+  consentFor,
+  inventedExpressions,
+  inventedStories,
+  photoStory,
+} from '../testing/stories.ts';
 
 const userAssignedCountry = /^(?:AA|Q[M-Z]|X[A-Z]|ZZ)$/;
 const localUseLanguage = /^q[a-t][a-z]$/;
@@ -46,6 +51,26 @@ describe('#201 every seeded test story is invented', () => {
     expect(consent.consentedBy).toMatch(inventedName);
     expect(new URL(consent.consentReference).hostname).toMatch(/(^|\.)example\.org$/);
   });
+
+  it.each(seeded)('ADR 0041 "$title" happened in an invented place', (story) => {
+    expect(placesNamedIn(story.frontmatter.place ?? '')).toEqual([]);
+    const place = story.frontmatter.place ?? 'Region One';
+    expect(place).toMatch(/Region (?:One|Two|Three|Four)/);
+  });
+
+  it.each(inventedExpressions)(
+    'ADR 0041 the expression "$title" links an example address and names no real place or person',
+    (expression) => {
+      expect(new URL(expression.url).hostname).toMatch(/(^|\.)example\.org$/);
+      const text = `${expression.title} ${expression.venue} ${expression.excerpt ?? ''}`;
+      expect(placesNamedIn(text)).toEqual([]);
+      const people = [...text.matchAll(/\b[A-Z][a-z]+ [A-Z][a-z]+\b/g)];
+      expect(
+        people.map(([name]) => name).filter((name) => !/Example$|^Region /.test(name)),
+      ).toEqual([]);
+      expect(expression.language === null || localUseLanguage.test(expression.language)).toBe(true);
+    },
+  );
 
   it('#201 the check finds a real place when one is written', () => {
     expect(placesNamedIn('A story from Kenya')).toEqual(['Kenya']);

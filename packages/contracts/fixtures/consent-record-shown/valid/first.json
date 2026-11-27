@@ -1,0 +1,13 @@
+{
+  "consentReference": "https://files.example.org/releases/release-004.pdf",
+  "consentedBy": "Di Example",
+  "consentForm": "written",
+  "consentedOn": "2026-11-04",
+  "consentExpires": null,
+  "anonymised": false,
+  "nameUse": "pseudonym",
+  "locationPrecision": "country",
+  "photoRelease": false,
+  "photoReference": null,
+  "reviewOn": null
+}

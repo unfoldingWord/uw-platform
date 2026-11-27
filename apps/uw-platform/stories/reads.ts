@@ -1,5 +1,14 @@
 import { and, asc, eq, ne } from 'drizzle-orm';
-import { sensitivityLevelSchema, type SensitivityLevel, type StoryUse } from '@uw/contracts';
+import {
+  impactStoryFrontmatterSchema,
+  sensitivityLevelSchema,
+  type ImpactStoryFrontmatter,
+  type LocationPrecision,
+  type SensitivityLevel,
+  type StoryExpression,
+  type StorySummary,
+  type StoryUse,
+} from '@uw/contracts';
 import { can } from '@uw/core/acl';
 import type { Principal } from '@uw/core/principal';
 import type { Executor } from '@uw/db/client';
@@ -8,7 +17,9 @@ import { areaFilter } from '../pages/reads.ts';
 import { STORY_TYPE } from './channel-filter.ts';
 import { consentRowOf, consentStateOf, type ConsentRow, type ConsentState } from './consent.ts';
 import { mediaOfStory, type StoryMedia } from './media.ts';
+import { precisionOfStory } from './place.ts';
 import { levelOf, storyPageOf, type StoryPage } from './story-pages.ts';
+import { expressionsOfStory, programsShown, storySummaries } from './story-records.ts';
 import { storyUsesOf } from './uses.ts';
 
 export type ConsentShown =
@@ -24,7 +35,12 @@ export type StoryState = {
   readonly media: readonly StoryMedia[];
   readonly admin: boolean;
   readonly writer: boolean;
+  readonly record: ImpactStoryFrontmatter | null;
+  readonly programs: readonly Program[];
+  readonly expressions: readonly StoryExpression[];
 };
+
+type Program = { readonly id: string; readonly title: string };
 
 export type StoryLine = {
   readonly id: string;
@@ -34,6 +50,9 @@ export type StoryLine = {
   readonly level: SensitivityLevel;
   readonly consent: ConsentShown['kind'];
   readonly reviewOn: string | null;
+  readonly summary: StorySummary | null;
+  readonly precision: LocationPrecision | null;
+  readonly programs: readonly Program[];
 };
 
 function readsConsent(actor: Principal, area: string, at: Date): boolean {
@@ -73,7 +92,11 @@ export async function storyStateFor(
   const consent = readsConsent(actor, story.jdArea, at)
     ? shownConsent(await consentRowOf(db, story.id), at)
     : ({ kind: 'withheld' } as const);
+  const record = await recordOf(db, story.id);
   return {
+    record,
+    programs: await programsShown(db, actor, record?.programs ?? [], at),
+    expressions: await expressionsOfStory(db, story.id),
     story,
     level: await levelOf(db, story.id),
     consent,
@@ -82,6 +105,43 @@ export async function storyStateFor(
     admin: actor.kind === 'person' && can(actor, 'admin', area, at),
     writer: can(actor, 'write', area, at),
   };
+}
+
+async function recordOf(db: Executor, pageId: string): Promise<ImpactStoryFrontmatter | null> {
+  const [row] = await db
+    .select({ frontmatter: pages.frontmatter })
+    .from(pages)
+    .where(eq(pages.id, pageId));
+  const parsed = impactStoryFrontmatterSchema.safeParse(row?.frontmatter);
+  return parsed.success ? parsed.data : null;
+}
+
+const allStories = {
+  query: null,
+  program: null,
+  country: null,
+  formatPresent: null,
+  formatAbsent: null,
+  limit: 1000,
+} as const;
+
+async function linesTold(
+  db: Executor,
+  actor: Principal,
+  lines: readonly Omit<StoryLine, 'summary' | 'precision' | 'programs'>[],
+  at: Date,
+): Promise<readonly StoryLine[]> {
+  const summaries = new Map(
+    (await storySummaries(db, actor, allStories, at)).map((each) => [each.id, each]),
+  );
+  const told: StoryLine[] = [];
+  for (const line of lines) {
+    const summary = summaries.get(line.id) ?? null;
+    const programs = await programsShown(db, actor, summary?.programs ?? [], at);
+    const precision = await precisionOfStory(db, line.id);
+    told.push({ ...line, summary, precision, programs });
+  }
+  return told;
 }
 
 export async function storyBankLines(
@@ -105,7 +165,7 @@ export async function storyBankLines(
     .leftJoin(storyConsents, eq(storyConsents.pageId, pages.id))
     .where(and(eq(pages.type, STORY_TYPE), ne(pages.status, 'retired'), areas))
     .orderBy(asc(pages.title), asc(pages.id));
-  return rows.map(({ consent, level, ...row }) => {
+  const lines = rows.map(({ consent, level, ...row }) => {
     const shown = readsConsent(actor, row.jdArea, at)
       ? shownConsent(consent, at)
       : ({ kind: 'withheld' } as const);
@@ -116,4 +176,5 @@ export async function storyBankLines(
       reviewOn: 'reviewOn' in shown ? shown.reviewOn : null,
     };
   });
+  return linesTold(db, actor, lines, at);
 }

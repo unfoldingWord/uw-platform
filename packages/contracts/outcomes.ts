@@ -154,6 +154,12 @@ export const errorReasonSchema = z.enum([
   'consent_expired',
   'consent_withdrawn',
   'photo_release_required',
+  'url_not_https',
+  'story_retired',
+  'expression_not_found',
+  'expression_exists',
+  'expression_decided',
+  'program_not_found',
 ]);
 
 export const refusalSchema = z.object({

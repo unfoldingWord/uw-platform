@@ -28,6 +28,7 @@ export const storyUseKindSchema = z.enum(storyUseKinds);
 export type SensitivityLevel = z.infer<typeof sensitivityLevelSchema>;
 export type RenderChannel = z.infer<typeof renderChannelSchema>;
 export type StoryUseKind = z.infer<typeof storyUseKindSchema>;
+export type LocationPrecision = z.infer<typeof locationPrecisionSchema>;
 
 const levelRank: ReadonlyMap<string, number> = new Map(
   sensitivityLevels.map((level, rank) => [level, rank]),
@@ -70,6 +71,11 @@ const label = z
   .max(60)
   .refine((value) => value.trim().length > 0, 'a theme is not blank');
 
+const placeSchema = z
+  .string()
+  .max(120)
+  .refine((value) => value.trim().length > 0, 'a place is not blank');
+
 export const countryCodeSchema = z.string().refine(isCountryCode, 'an ISO 3166-1 alpha-2 code');
 export const regionCodeSchema = z
   .string()
@@ -91,6 +97,9 @@ export const impactStoryFrontmatterSchema = z
       .default([]),
     illustrates: z.array(z.uuid()).max(50).refine(distinct, 'each page once').default([]),
     themes: z.array(label).max(20).refine(distinct, 'each theme once').default([]),
+    occurred_on: z.iso.date().nullable().default(null),
+    place: placeSchema.nullable().default(null),
+    programs: z.array(z.uuid()).max(20).refine(distinct, 'each program once').default([]),
   })
   .refine(
     (value) => value.region === null || value.region.startsWith(`${value.country ?? ''}-`),
@@ -157,15 +166,8 @@ export const storyUseSchema = z.strictObject({
   usedAt: z.iso.datetime(),
 });
 
-export const withdrawalReportSchema = z.strictObject({
-  status: z.literal('accepted'),
-  requestId: z.uuid(),
-  uses: z.array(storyUseSchema),
-});
-
 export type SetStoryLevelCommand = z.infer<typeof setStoryLevelCommandSchema>;
 export type RecordStoryConsentCommand = z.infer<typeof recordStoryConsentCommandSchema>;
 export type WithdrawStoryConsentCommand = z.infer<typeof withdrawStoryConsentCommandSchema>;
 export type SetStoryMediaLevelCommand = z.infer<typeof setStoryMediaLevelCommandSchema>;
 export type StoryUse = z.infer<typeof storyUseSchema>;
-export type WithdrawalReport = z.infer<typeof withdrawalReportSchema>;

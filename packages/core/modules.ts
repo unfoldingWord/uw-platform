@@ -211,13 +211,20 @@ export const modules = [
   {
     ...unclaimed,
     key: 'story_bank',
-    tables: ['story_levels', 'story_consents', 'story_media_levels', 'story_uses'],
+    tables: [
+      'story_levels',
+      'story_consents',
+      'story_media_levels',
+      'story_uses',
+      'story_expressions',
+    ],
     page_types: ['impact_story'],
     routes: ['/api/stories/commands/:name', '/stories'],
+    mcp_tools: ['add_story_expression', 'update_story_expression', 'read_story', 'list_stories'],
     name: 'Story Bank',
     summary:
-      'Impact stories from the field, each with its consent record and a sensitivity level that every render channel obeys, the level of each photograph and the log of every place a story was used.',
-    depends_on: ['core'],
+      'Impact story records from the field (who, when, where, which programs), each with its consent record, a sensitivity level that every render channel obeys, every telling linked as an expression with its flags, the level of each photograph and the log of every place a story was used.',
+    depends_on: ['core', 'strategy'],
     data_classification: 'restricted',
     offline_eligibility: 'never',
     status: 'standard',

@@ -4,5 +4,8 @@
   "region": "XA-01",
   "languages": ["qaa"],
   "illustrates": ["00000000-0000-4000-8000-000000002101"],
-  "themes": ["reading groups"]
+  "themes": ["reading groups"],
+  "occurred_on": "2026-03-14",
+  "place": "Region One",
+  "programs": ["00000000-0000-4000-8000-000000004104"]
 }

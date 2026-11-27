@@ -10,15 +10,54 @@ import { renderScreen, screenKernel, screenRefusal } from '../parts/frame.tsx';
 import { areaLabel, moduleCodes, pageNames } from '../parts/names.ts';
 import { pageLink } from '../parts/page-shown.ts';
 import { pagePath, storiesPath } from '../parts/paths.ts';
-import { consentWords, levelWords } from '../parts/story-words.ts';
+import { consentWords, levelWords, precisionWords } from '../parts/story-words.ts';
 
 const columns = [
   { key: 'title', label: 'Story' },
   { key: 'area', label: 'Area' },
+  { key: 'happened', label: 'Happened' },
+  { key: 'place', label: 'Place' },
+  { key: 'programs', label: 'Programs' },
   { key: 'level', label: 'Level' },
   { key: 'consent', label: 'Consent' },
+  { key: 'told', label: 'Expressions', numeric: true },
+  { key: 'last', label: 'Last told' },
+  { key: 'flags', label: 'Flags' },
   { key: 'review', label: 'Review on' },
 ];
+
+function flagsOf(line: StoryLine): string {
+  const counts = line.summary?.flags ?? { toldAboveLevel: 0, toldWithoutConsent: 0 };
+  const shown = [
+    counts.toldAboveLevel === 0 ? null : `${String(counts.toldAboveLevel)} told above its level`,
+    counts.toldWithoutConsent === 0
+      ? null
+      : `${String(counts.toldWithoutConsent)} told without consent`,
+  ].filter((each) => each !== null);
+  return shown.length === 0 ? 'None' : shown.join(', ');
+}
+
+function Place(props: { readonly line: StoryLine }) {
+  const { summary, precision } = props.line;
+  return (
+    <span class="flex flex-col">
+      <span>{summary?.place ?? 'Not recorded'}</span>
+      <span class="text-xs text-text-3">{precisionWords[precision ?? 'unconsented']}</span>
+    </span>
+  );
+}
+
+function told(line: StoryLine) {
+  return {
+    happened: line.summary?.occurredOn ?? 'Not recorded',
+    place: <Place line={line} />,
+    programs:
+      line.programs.length === 0 ? 'None' : line.programs.map((each) => each.title).join(', '),
+    told: String(line.summary?.expressionCount ?? 0),
+    last: line.summary?.lastToldOn ?? 'Not told yet',
+    flags: flagsOf(line),
+  };
+}
 
 function rowOf(line: StoryLine) {
   return {
@@ -27,6 +66,7 @@ function rowOf(line: StoryLine) {
         {line.title}
       </a>
     ),
+    ...told(line),
     area: areaLabel(line.jdArea),
     level: (
       <Badge tone={line.level === 'internal' ? 'neutral' : 'info'}>{levelWords[line.level]}</Badge>
@@ -63,7 +103,7 @@ export async function storiesScreen(c: Context<AppEnv>): Promise<Response> {
     crumbs: [{ label: pageNames.stories }],
   };
   const lede =
-    'The impact stories you may read, with how widely each may be told. A story starts internal; an area admin raises it once its consent is recorded.';
+    'The impact story records you may read: when and where each happened, the programs it shows, how widely it may be told, and every telling linked to it. A story starts internal; an area admin raises it once its consent is recorded.';
   return renderScreen(
     c,
     spec,

@@ -43,6 +43,8 @@ export * from './resource-ids.ts';
 export * from './runs.ts';
 export * from './shadow.ts';
 export * from './stories.ts';
+export * from './story-expressions.ts';
+export * from './story-verb-io.ts';
 export * from './suggestions.ts';
 export * from './team-commands.ts';
 export * from './review-sets.ts';

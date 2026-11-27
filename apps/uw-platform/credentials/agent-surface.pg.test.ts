@@ -110,6 +110,26 @@ async function credentialLife(): Promise<void> {
   note('bind again', await bindCredential(world.deps, admin, change, traceId));
 }
 
+const telling = {
+  title: 'A telling',
+  format: 'other',
+  venue: 'A venue',
+  channel: 'platform',
+  url: 'https://files.example.org/tellings/one',
+  language: null,
+  publishedOn: null,
+  excerpt: null,
+};
+
+function storyArguments() {
+  return {
+    add_story_expression: [{ storyId: credentialId, ...telling }],
+    update_story_expression: [{ expressionId: credentialId, ...telling }],
+    read_story: [{ storyId: credentialId }],
+    list_stories: [{ query: name }, { query: first }, {}],
+  };
+}
+
 function argumentsOf(): Readonly<Record<VerbName, readonly unknown[]>> {
   const ids = { credentialId, credential_ref: credentialId, itemId: credentialId };
   const page = { pageId: credentialId };
@@ -157,6 +177,7 @@ function argumentsOf(): Readonly<Record<VerbName, readonly unknown[]>> {
       { chart: 'burndown', params: { harnessId }, spec: null },
       { chart: 'cumulative_flow', params: { harnessId: credentialId }, spec: null },
     ],
+    ...storyArguments(),
   };
 }
 

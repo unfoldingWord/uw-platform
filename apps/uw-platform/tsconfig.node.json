@@ -24,7 +24,8 @@
     "testing/measure-app.ts",
     "testing/measure-scene.ts",
     "testing/context-rig.ts",
-    "testing/chart-app.ts"
+    "testing/chart-app.ts",
+    "testing/story-app.ts"
   ],
   "exclude": ["node_modules"]
 }

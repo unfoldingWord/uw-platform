@@ -20,10 +20,13 @@ import { Section } from '@uw/ui/components/section.tsx';
 import { Table } from '@uw/ui/components/table.tsx';
 import { storyStateFor, type ConsentShown, type StoryState } from '../../stories/reads.ts';
 import type { ScreenKernel } from './frame.tsx';
-import { storyCommandsPath } from './paths.ts';
+import { pagePath, storyCommandsPath } from './paths.ts';
+import { pageLink } from './page-shown.ts';
+import { ExpressionsSection } from './story-expressions.tsx';
 import {
   channelWords,
   consentWords,
+  formatWords,
   formWords,
   levelWords,
   locationWords,
@@ -210,6 +213,40 @@ function consentLines(consent: ConsentShown): string[] {
   ];
 }
 
+type Landed = {
+  readonly when: string;
+  readonly kind: string;
+  readonly channel: string;
+  readonly where: Child;
+  readonly version: string;
+};
+
+function usesOf(state: StoryState): Landed[] {
+  return state.uses.map((use) => ({
+    when: formatDate(new Date(use.usedAt)),
+    kind: useWords[use.kind],
+    channel: channelWords[use.channel],
+    where: use.reference,
+    version: String(use.version),
+  }));
+}
+
+function tellingsOf(state: StoryState): Landed[] {
+  return state.expressions.flatMap((told) =>
+    told.publishedOn === null || told.status === 'retired'
+      ? []
+      : [
+          {
+            when: told.publishedOn,
+            kind: formatWords[told.format],
+            channel: channelWords[told.channel],
+            where: `${told.venue}: ${told.title}`,
+            version: 'Not a platform export',
+          },
+        ],
+  );
+}
+
 function Uses(props: { readonly state: StoryState }) {
   const columns = [
     { key: 'when', label: 'When' },
@@ -218,15 +255,45 @@ function Uses(props: { readonly state: StoryState }) {
     { key: 'where', label: 'Where' },
     { key: 'version', label: 'Version' },
   ];
-  const rows = props.state.uses.map((use) => ({
-    when: formatDate(new Date(use.usedAt)),
-    kind: useWords[use.kind],
-    channel: channelWords[use.channel],
-    where: use.reference,
-    version: String(use.version),
-  }));
+  const rows = [...usesOf(props.state), ...tellingsOf(props.state)].sort((a, b) =>
+    a.when.localeCompare(b.when),
+  );
   if (rows.length === 0) return <p class="m-0 text-sm text-text-3">It has not been used yet.</p>;
-  return <Table caption="Every recorded use of this story" columns={columns} rows={rows} />;
+  return (
+    <Table
+      caption="Every recorded use and every told expression of this story"
+      columns={columns}
+      rows={rows}
+    />
+  );
+}
+
+function RecordFacts(props: { readonly state: StoryState }) {
+  const { record, programs } = props.state;
+  const lines = [
+    `Happened on: ${record?.occurred_on ?? 'not recorded'}.`,
+    `Where: ${record?.place ?? 'not recorded'}${record?.country === null || record === null ? '' : `, ${record.region ?? record.country}`}.`,
+  ];
+  return (
+    <ul class="m-0 flex flex-col gap-1 pl-5 text-sm text-text">
+      {lines.map((line) => (
+        <li>{line}</li>
+      ))}
+      <li>
+        Programs:{' '}
+        {programs.length === 0
+          ? 'none named.'
+          : programs.map((program, index) => (
+              <>
+                {index === 0 ? null : ', '}
+                <a href={pagePath(program.id)} class={pageLink}>
+                  {program.title}
+                </a>
+              </>
+            ))}
+      </li>
+    </ul>
+  );
 }
 
 function Media(props: { readonly state: StoryState }) {
@@ -244,6 +311,11 @@ function StorySection(props: { readonly state: StoryState }) {
   const { state } = props;
   return (
     <Section title="Story" headingId="story-state-heading" attrs={{ 'data-story': state.story.id }}>
+      <p class="m-0 text-sm text-text-3">
+        The page above is the staff summary and research notes. The story is told in its
+        expressions, each linked below.
+      </p>
+      <RecordFacts state={state} />
       <p class="m-0 flex items-center gap-2 text-sm text-text">
         Level <Badge tone="info">{levelWords[state.level]}</Badge>
       </p>
@@ -267,5 +339,11 @@ function StorySection(props: { readonly state: StoryState }) {
 export async function storyParts(db: Executor, screen: ScreenKernel, page: Page): Promise<Child> {
   if (page.type !== STORY_TYPE) return null;
   const state = await storyStateFor(db, screen.caller.actor, page.id, screen.at);
-  return state === null ? null : <StorySection state={state} />;
+  if (state === null) return null;
+  return (
+    <>
+      <StorySection state={state} />
+      <ExpressionsSection state={state} />
+    </>
+  );
 }

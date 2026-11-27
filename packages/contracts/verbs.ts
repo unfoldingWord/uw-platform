@@ -105,6 +105,33 @@ const chartVerbs: readonly VerbDefinition[] = [
   ),
 ];
 
+const storyVerbs: readonly VerbDefinition[] = [
+  verb(
+    'add_story_expression',
+    'records',
+    onResource('editor'),
+    'Link one telling of a story you may edit, by its https address; it lands suggested for a person to confirm, and the same address on the same story answers the one already there.',
+  ),
+  verb(
+    'update_story_expression',
+    'records',
+    onResource('editor'),
+    'Change the fields of a story expression you added that a person has not decided yet.',
+  ),
+  verb(
+    'read_story',
+    'pages_and_context',
+    onResource('viewer'),
+    'Read a story record you may read: when, where, which programs, its level and consent state, every expression by format with its flags, and every recorded use.',
+  ),
+  verb(
+    'list_stories',
+    'pages_and_context',
+    null,
+    'List the story records you may read, by program, country, a format told or not told, and title text, with counts and flags, to find a story before adding another.',
+  ),
+];
+
 export const verbRegistry: readonly VerbDefinition[] = [
   verb(
     'search_pages',
@@ -219,6 +246,7 @@ export const verbRegistry: readonly VerbDefinition[] = [
   ),
   ...measureVerbs,
   ...chartVerbs,
+  ...storyVerbs,
 ];
 
 const byName = new Map<string, VerbDefinition>(verbRegistry.map((entry) => [entry.name, entry]));

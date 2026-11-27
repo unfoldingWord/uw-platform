@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import type {
+  ExpressionFields,
   ImpactStoryFrontmatter,
   Principal,
   RecordStoryConsentCommand,
@@ -29,6 +30,9 @@ export const inventedStories: readonly InventedStory[] = [
       languages: ['qaa'],
       illustrates: [],
       themes: ['reading groups'],
+      occurred_on: '2026-03-14',
+      place: 'The well by the market in Region One',
+      programs: [],
     },
   },
   {
@@ -42,6 +46,9 @@ export const inventedStories: readonly InventedStory[] = [
       languages: ['qab'],
       illustrates: [],
       themes: ['checking'],
+      occurred_on: null,
+      place: null,
+      programs: [],
     },
   },
   {
@@ -55,6 +62,9 @@ export const inventedStories: readonly InventedStory[] = [
       languages: ['qac'],
       illustrates: [],
       themes: [],
+      occurred_on: '2025-12-01',
+      place: 'Region Three',
+      programs: [],
     },
   },
 ];
@@ -71,8 +81,68 @@ export function photoStory(photoId: string): InventedStory {
       languages: [],
       illustrates: [],
       themes: [],
+      occurred_on: null,
+      place: null,
+      programs: [],
     },
   };
+}
+
+export const inventedExpressions: readonly ExpressionFields[] = [
+  {
+    title: 'Twelve readers at the well',
+    format: 'social_post',
+    venue: 'Social media',
+    channel: 'public',
+    url: 'https://social.example.org/posts/region-one-well',
+    language: 'qaa',
+    publishedOn: '2026-10-01',
+    excerpt: 'Twelve readers now meet at the well in Region One.',
+  },
+  {
+    title: 'The well, in the annual report',
+    format: 'annual_report',
+    venue: 'Annual report 2026',
+    channel: 'newsletter',
+    url: 'https://docs.example.org/document/d/annual-report-2026/edit',
+    language: null,
+    publishedOn: '2026-11-02',
+    excerpt: 'A reading group in Region One grew from three to twelve.',
+  },
+  {
+    title: 'A reading group grows',
+    format: 'newsletter_article',
+    venue: 'Supporter newsletter',
+    channel: 'newsletter',
+    url: 'https://news.example.org/issues/41/a-reading-group-grows',
+    language: null,
+    publishedOn: null,
+    excerpt: null,
+  },
+];
+
+export function expressionAt(index: number): ExpressionFields {
+  return inventedExpressions.at(index) ?? never();
+}
+
+export async function seedProgram(
+  db: Database,
+  jdArea: string,
+  title = 'Reading groups programme',
+): Promise<string> {
+  const id = randomUUID();
+  await seedPage(db, {
+    id,
+    type: 'program',
+    status: 'active',
+    jdArea,
+    slug: `program-${id.slice(0, 8)}`,
+    title,
+    bodyMd: '',
+    frontmatter: {},
+    parentId: null,
+  });
+  return id;
 }
 
 export type SeededStory = { readonly id: string; readonly story: InventedStory };
@@ -82,12 +152,13 @@ export async function seedStory(
   jdArea: string,
   story: InventedStory = inventedStories[0] ?? never(),
   parentId: string | null = null,
+  status: 'active' | 'retired' = 'active',
 ): Promise<SeededStory> {
   const id = randomUUID();
   await seedPage(db, {
     id,
     type: 'impact_story',
-    status: 'active',
+    status,
     jdArea,
     slug: `story-${id.slice(0, 8)}`,
     title: story.title,

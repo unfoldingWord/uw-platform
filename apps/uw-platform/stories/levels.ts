@@ -4,6 +4,7 @@ import type {
   SetStoryLevelCommand,
   SetStoryMediaLevelCommand,
   SensitivityLevel,
+  StoryExpression,
   StoryUse,
   WithdrawStoryConsentCommand,
 } from '@uw/contracts';
@@ -15,12 +16,17 @@ import { administers, freshPerson } from '../measures/authority.ts';
 import { consentRefusal, keepConsent, markWithdrawn } from './consent.ts';
 import { dropMediaLevels, fileOfStory, keepMediaLevel, mediaLevelOf } from './media.ts';
 import { keepLevel, levelOf, lockedStoryPage, type StoryPage } from './story-pages.ts';
+import { expressionsOfStory } from './story-records.ts';
 import { storyUsesOf } from './uses.ts';
 
 export type StoryOutcome =
   { readonly ok: true } | { readonly ok: false; readonly reason: ErrorReason };
 export type WithdrawalOutcome =
-  | { readonly ok: true; readonly uses: readonly StoryUse[] }
+  | {
+      readonly ok: true;
+      readonly uses: readonly StoryUse[];
+      readonly expressions: readonly StoryExpression[];
+    }
   | { readonly ok: false; readonly reason: ErrorReason };
 
 const accepted = { ok: true } as const;
@@ -154,7 +160,8 @@ export function withdrawStoryConsent(
       await markWithdrawn(tx, story.id, actor.identity, at);
       await keepLevel(tx, story.id, 'internal', actor.identity, at);
       await dropMediaLevels(tx, story.id, { by: actor.identity, at });
-      return { ok: true as const, uses: await storyUsesOf(tx, story.id) };
+      const uses = await storyUsesOf(tx, story.id);
+      return { ok: true as const, uses, expressions: await expressionsOfStory(tx, story.id) };
     }),
   );
 }

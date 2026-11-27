@@ -10,6 +10,7 @@ import { pullRequestRefSchema, stageKeySchema } from './harness.ts';
 import { runStepCosts, runStepSchema } from './runs.ts';
 import { fullShaSchema } from './ship-rule.ts';
 import { renderChannelSchema } from './stories.ts';
+import { storyVerbIo } from './story-verb-io.ts';
 import { policyEnforcementSchema, policyLevelSchema } from './policies.ts';
 import {
   frontmatterSchema,
@@ -261,4 +262,5 @@ export const verbIo = {
   },
   ...measureVerbIo,
   render_chart: { input: renderChartInputSchema, output: renderedChartSchema },
+  ...storyVerbIo,
 } as const satisfies Record<VerbName, { input: z.ZodType; output: z.ZodType }>;

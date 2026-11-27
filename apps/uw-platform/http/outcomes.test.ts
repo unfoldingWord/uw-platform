@@ -60,3 +60,23 @@ describe('#201 a story refusal answers with the status its reason names', () => 
     },
   );
 });
+
+const expressionReasons: readonly (readonly [ErrorReason, number])[] = [
+  ['url_not_https', 422],
+  ['program_not_found', 422],
+  ['story_retired', 409],
+  ['expression_not_found', 404],
+  ['expression_exists', 409],
+  ['expression_decided', 409],
+];
+
+describe('ADR 0041 a story expression refusal answers with the status its reason names', () => {
+  it.each(expressionReasons)(
+    'ADR 0041 %s answers %i with the reason in the body',
+    async (reason, status) => {
+      const response = await refuser(reason).request('/');
+      expect(response.status).toBe(status);
+      expect(await response.json()).toEqual({ status: 'error', reason });
+    },
+  );
+});

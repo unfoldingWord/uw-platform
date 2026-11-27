@@ -19,6 +19,8 @@ import { runMeasureVerb } from './run-measure.ts';
 import { saveDashboardVerb } from './save-dashboard.ts';
 import { saveMeasureVerb } from './save-measure.ts';
 import { searchPagesVerb } from './search-pages.ts';
+import { listStoriesVerb } from './list-stories.ts';
+import { addStoryExpressionVerb, readStoryVerb, updateStoryExpressionVerb } from './stories.ts';
 import { submitToGate } from './submit-to-gate.ts';
 import { writePageVerb } from './write-page.ts';
 
@@ -48,6 +50,10 @@ const handlers: readonly VerbHandler[] = [
   readObservationsVerb,
   previewDashboardVerb,
   renderChartVerb,
+  addStoryExpressionVerb,
+  updateStoryExpressionVerb,
+  readStoryVerb,
+  listStoriesVerb,
 ];
 
 export const verbHandlers: ReadonlyMap<string, VerbHandler> = new Map(

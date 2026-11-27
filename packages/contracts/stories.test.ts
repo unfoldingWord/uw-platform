@@ -53,6 +53,9 @@ describe('#201 an impact story tags its place and language as codes', () => {
       languages: [],
       illustrates: [],
       themes: [],
+      occurred_on: null,
+      place: null,
+      programs: [],
     });
     const tagged = { ...filed, country: 'XA', region: 'XA-01', languages: ['qaa', 'en-GB'] };
     expect(impactStoryFrontmatterSchema.safeParse(tagged).success).toBe(true);

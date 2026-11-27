@@ -60,7 +60,11 @@ export const OUTCOME_TEXT: Readonly<Record<string, string>> = {
   set_story_media_level: 'Saved. Reload to see the new level.',
   record_story_consent: 'Consent recorded. Reload to see it.',
   withdraw_story_consent:
-    'Consent withdrawn and the story set to internal. Reload to see every use it had.',
+    'Consent withdrawn and the story set to internal. Reload to see every use and expression it had.',
+  add_story_expression: 'Expression added. Reload to see it.',
+  update_story_expression: 'Saved. Reload to see the expression.',
+  confirm_story_expression: 'Confirmed. Reload to see it.',
+  retire_story_expression: 'Retired. It stays in the record.',
   add_commitment: 'Added. Reload to redraw the charts.',
   remove_commitment: 'Removed. Reload to redraw the charts.',
   set_staff_allocation: 'Saved. Reload to redraw the charts.',

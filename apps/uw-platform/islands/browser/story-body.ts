@@ -1,4 +1,4 @@
-import { storyCommandSchemas } from '@uw/contracts';
+import { storyCommandSchemas, storyExpressionCommandSchemas } from '@uw/contracts';
 import type { ZodType } from 'zod';
 
 type Given = ReadonlyMap<string, string>;
@@ -28,9 +28,21 @@ const consent: Shape = (fields) => ({
   reviewOn: given(fields.get('reviewOn')),
 });
 
-export const storySchemas: ReadonlyMap<string, ZodType> = new Map<string, ZodType>(
-  Object.entries(storyCommandSchemas),
-);
+const telling: Shape = (fields) => ({
+  title: fields.get('title'),
+  format: fields.get('format'),
+  venue: fields.get('venue'),
+  channel: fields.get('channel'),
+  url: fields.get('url'),
+  language: given(fields.get('language')),
+  publishedOn: given(fields.get('publishedOn')),
+  excerpt: given(fields.get('excerpt')),
+});
+
+export const storySchemas: ReadonlyMap<string, ZodType> = new Map<string, ZodType>([
+  ...Object.entries(storyCommandSchemas),
+  ...Object.entries(storyExpressionCommandSchemas),
+]);
 
 export const storyShapes: ReadonlyMap<string, Shape> = new Map<string, Shape>([
   ['set_story_level', (fields) => ({ pageId: fields.get('pageId'), level: fields.get('level') })],
@@ -44,4 +56,11 @@ export const storyShapes: ReadonlyMap<string, Shape> = new Map<string, Shape>([
   ],
   ['record_story_consent', consent],
   ['withdraw_story_consent', (fields) => ({ pageId: fields.get('pageId') })],
+  ['add_story_expression', (fields) => ({ pageId: fields.get('pageId'), ...telling(fields) })],
+  [
+    'update_story_expression',
+    (fields) => ({ expressionId: fields.get('expressionId'), ...telling(fields) }),
+  ],
+  ['confirm_story_expression', (fields) => ({ expressionId: fields.get('expressionId') })],
+  ['retire_story_expression', (fields) => ({ expressionId: fields.get('expressionId') })],
 ]);

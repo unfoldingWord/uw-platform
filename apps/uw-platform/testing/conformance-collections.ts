@@ -1,6 +1,7 @@
 import type { ErrorReason } from '@uw/contracts';
 import type { McpHost } from '../mcp/context.ts';
 import { measureCalls, measureOutcomes } from './conformance-measures.ts';
+import { storyCalls, storyOutcomes } from './conformance-stories.ts';
 
 export function readerGrant(personId: string) {
   return {
@@ -30,6 +31,7 @@ export function collectionCalls(host: McpHost, harnessId: string): Call[] {
     },
     ...measureCalls(host),
     { verb: 'render_chart', args: { chart: 'cumulative_flow', params: { harnessId }, spec: null } },
+    ...storyCalls(),
   ];
 }
 
@@ -54,6 +56,10 @@ export function expectedOn(
   verb: string,
 ): 'accepted' | ErrorReason {
   const delegated = host === 'workflow' ? delegatedOutcomes.get(verb) : undefined;
-  const known = expected.get(verb) ?? collectionOutcomes.get(verb) ?? measureOutcomes.get(verb);
+  const known =
+    expected.get(verb) ??
+    collectionOutcomes.get(verb) ??
+    measureOutcomes.get(verb) ??
+    storyOutcomes.get(verb);
   return delegated ?? known ?? 'internal_error';
 }

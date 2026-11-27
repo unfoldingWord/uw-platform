@@ -720,6 +720,14 @@ _Avoid_: scorecard, summary, embed (alone, that is another page's text)
 A page of type `impact_story`: one account from the field, filed under its area's `xx.96` home, tagged with a country, a region and languages as codes and with the pages it illustrates. Its sensitivity level and its consent record live beside it in the stories module, never in its frontmatter, so no page save can change them. An agent's save lands `suggested` (ADR 0040).
 _Avoid_: testimonial, case study, anecdote, story (alone, in code)
 
+**Story record**:
+The parent of everything said about one impact story: the `impact_story` page, whose title is the story's name and whose frontmatter holds who, when (`occurred_on`), where (`place`, `country`, `region`), in which languages and for which programs (ids of program pages its writer may read). Its consent record and sensitivity level hang from it. Its body is the staff summary and research notes, not a telling; the story is told in its expressions (ADR 0041).
+_Avoid_: master story, canonical story, story page (alone, any page is a page)
+
+**Story expression**:
+One telling of a story in one format and venue: a social post, a newsletter article, an annual report, a video and so on, each a row of `story_expressions` with its format, venue, channel (the audience it reached or is meant for), language, the day it was told (none while drafted or planned), a short excerpt and a status (`suggested`, `confirmed`, `retired`). Today an expression is a link to an https address outside the platform; a native expression, a platform page of its own, is reserved and not built. A telling above its story's level or without valid consent is kept and flagged, never refused. An agent adds expressions as `suggested`; only a person confirms or retires one.
+_Avoid_: version, variant, draft, revision (each is a page's), copy, post (alone, that is one format)
+
 **Sensitivity level**:
 How widely an impact story may be told, from an ordered ladder where each level includes those below it: `internal` < `private_circulation` < `newsletter` < `public`. A story is created `internal`. Raising it needs `admin` on its area and a valid consent record; lowering it is open to anyone who may write the page. An agent never sets or raises one. It is a permission, not a label.
 _Avoid_: visibility, privacy setting, tier (that is a risk tier), classification (that is a table's)
@@ -737,7 +745,7 @@ The sensitivity level of one file attached to an impact story, kept apart from t
 _Avoid_: image privacy, photo tier
 
 **Story use**:
-One line of the append-only `story_uses` log: which story, at which version, went into which channel, by which kind of rendering (a markdown export, a PDF of a page or a binder, an agent read), where, by whom and when. Withdrawing consent drops the story to `internal` and answers with every recorded use, the **withdrawal report**.
+One line of the append-only `story_uses` log: which story, at which version, went into which channel, by which kind of rendering (a markdown export, a PDF of a page or a binder, an agent read), where, by whom and when. Every story expression with a day told counts as a use too. Withdrawing consent drops the story to `internal` and answers with every recorded use and every expression, the **withdrawal report**.
 _Avoid_: view (that is a page view), impression, citation
 
 ## What GitHub says

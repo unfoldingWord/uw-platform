@@ -5,6 +5,7 @@ import type { Principal } from '@uw/core/principal';
 import type { Executor } from '@uw/db/client';
 import { pages } from '@uw/db/schema';
 import { storyChannelFilter } from '../stories/channel-filter.ts';
+import { pageAtChannel } from '../stories/place.ts';
 import { withoutWithheld } from './property-rules.ts';
 
 export type PageRow = typeof pages.$inferSelect;
@@ -49,7 +50,8 @@ export async function readPageIn(
   channel: RenderChannel,
 ): Promise<ChannelRead> {
   const page = await readPage(db, actor, pageId, at, channel);
-  if (page !== null || channel === 'platform') return page;
+  if (page !== null) return pageAtChannel(db, page, channel);
+  if (channel === 'platform') return page;
   const inside = await readPage(db, actor, pageId, at);
   return inside === null ? null : 'story_above_channel';
 }
