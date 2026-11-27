@@ -15,6 +15,8 @@ const AREA = '00-09';
 const ON = new Date('2026-12-01T12:00:00.000Z');
 const POLICY = '00000000-0000-4000-8000-000000003b11';
 const LEARNING = '00000000-0000-4000-8000-000000003b12';
+const DECISION = '00000000-0000-4000-8000-000000003b13';
+const DECIDED = '## Context\nC.\n## Decision\nTwo adults.\n## Consequences\nQ.';
 const BODY = 'Two adults are present at every session.\n\nRecords are kept.';
 const frontmatter = { enforcement: 'required', effective_from: '2026-01-01' };
 
@@ -131,6 +133,46 @@ async function agentHeldAsReviewSet(db: Database): Promise<void> {
   });
 }
 
+async function agentDecisionHeldAsReviewSet(db: Database): Promise<void> {
+  const { person, agent } = await world(db);
+  const decided = { decided_on: '2026-11-25', applies_to: null, supersedes: [] };
+  await seedPage(db, {
+    id: DECISION,
+    type: 'decision',
+    status: 'active',
+    jdArea: AREA,
+    slug: 'two-adults',
+    title: 'Two adults',
+    bodyMd: DECIDED,
+    frontmatter: decided,
+  });
+  const held = await writePageAsAgent(
+    db,
+    agent,
+    {
+      pageId: DECISION,
+      type: 'decision',
+      jdArea: AREA,
+      slug: 'two-adults',
+      title: 'Two adults',
+      parentId: null,
+      frontmatter: decided,
+      bodyMd: DECIDED.replace('Two adults.', 'Two trained adults.'),
+      expectedVersion: 1,
+    },
+    {
+      traceId: crypto.randomUUID(),
+      at: ON,
+      instructions: { namesInstructions: () => Promise.resolve(false) },
+      writer: null,
+    },
+  );
+  if (!held.ok || held.reviewSetId === undefined) throw new Error('no review set was held');
+  expect(await versionsOf(db, DECISION)).toEqual({ version: 1, body: DECIDED, kept: 0 });
+  const found = await reviewSetFor(db, person, held.reviewSetId, ON);
+  expect(found?.changes.map(({ kind, text }) => [kind, text])).toEqual([['insertion', 'trained ']]);
+}
+
 async function agentCannotSaveGatedBodies(db: Database): Promise<void> {
   const { agent } = await world(db);
   const command = {
@@ -167,6 +209,9 @@ async function agentCannotSaveGatedBodies(db: Database): Promise<void> {
 describe.skipIf(!testServer)("#197 an agent cannot replace a gated page's body directly", () => {
   it("holds an agent's save to an active policy as one review set of word-level changes", () =>
     withAppDatabase(agentHeldAsReviewSet));
+
+  it("holds an agent's edit to an active decision as a review set", () =>
+    withAppDatabase(agentDecisionHeldAsReviewSet));
 
   it('refuses an agent principal on the save path a person uses, for every gated type', () =>
     withAppDatabase(agentCannotSaveGatedBodies));

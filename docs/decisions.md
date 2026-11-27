@@ -681,7 +681,7 @@ A policy's page and the Policies screen show its level, target, enforcement, dat
 
 **Consequences.** An agent reads policies and decision pages through `resolve_context`; a person reads them on their pages and on the Policies screen. A policy in an area the reader cannot read still takes part in resolution, so a readable default may be absent from the answer; its page names the conflict only when the reader can read both policies. Working out a policy's conflicts reads each policy that names it, so the Policies screen does work in proportion to the policies it lists. Not built here, each its own piece of work: attestation (#203) and the lean default policies (#255).
 
-**Changes / changed by.** 0035 replaces the refusal of an agent's save to an active policy or charter with a suggestion set.
+**Changes / changed by.** 0035 replaces the refusal of an agent's save to an active policy or charter with a suggestion set. 0037, amended 2026-11-27, holds an agent's save to an active decision page as a review set too.
 
 ---
 
@@ -705,7 +705,7 @@ A policy's page and the Policies screen show its level, target, enforcement, dat
 
 **Consequences.** Contract and work order pages, when they exist, declare `agentSuggests` and get the same path. Anchored suggestions, named review sets and revision marks in markdown, PDF and DOCX remain #197's.
 
-**Changes / changed by.** Changed by 0037: an agent's save to an active policy or charter is now a review set of suggested changes, and anchored suggestions, review sets and markdown marks are built there. Suggestion sets already pending are still decided as here.
+**Changes / changed by.** Changed by 0037: an agent's save to an active policy or charter is now a review set of suggested changes, and anchored suggestions, review sets and markdown marks are built there; amended 2026-11-27, decision pages and impact stories are held the same way, and each other gated type's own path is named there. Suggestion sets already pending are still decided as here.
 
 ---
 
@@ -772,9 +772,18 @@ A policy's page and the Policies screen show its level, target, enforcement, dat
 - A hash over the exported file. The source hash must resolve against the stored version in every mode, as the PDF footer's does; the file is checked by recomputing.
 - A separate import command. `propose_review_set` takes anchors, and the page's form reads a marked export into them.
 
-**Consequences.** Offsets count UTF-16 code units, so a client counting code points must convert. A page whose own text contains CriticMarkup delimiters reads back wrongly from a marked export; nothing escapes them. A review set leaves slug, parent and status alone. Suggestion sets pending before this change stay decidable on their screen, and nothing makes new ones. PDF redline and appendix modes, DOCX tracked changes and their import, and marks shown inline in the read view remain #197's.
+**Consequences.** Offsets count UTF-16 code units, so a client counting code points must convert. A page whose own text contains CriticMarkup delimiters reads back exactly, because a marked export escapes them (amended below). A review set leaves slug and parent alone, and its status follows the rules of an ordinary edit (amended below). Suggestion sets pending before this change stay decidable on their screen, and nothing makes new ones. PDF redline and appendix modes, DOCX tracked changes and their import, and marks shown inline in the read view remain #197's.
 
 **Changes / changed by.** Changes 0035: an agent's save to an active policy or charter is now a review set.
+
+**Amended 2026-11-27 (review of PR #262).**
+- **An anchor covers exactly its quote.** `textAnchorSchema` refuses an anchor whose `end - start` differs from the length of `exact` (contract 15.4.1), and `resolveAnchor` orphans one rather than trusting either offset, then keeps the position only when the whole quote fits inside the text there. An accepted deletion or replacement can never reach past the text it quoted.
+- **Accepting is an ordinary edit.** `acceptReviewSet` takes its status from `ordinaryEditStatus`, the rule `updatePageWith` uses, with the page's own status requested: an issue mirror refuses with `issue_mirror`, and an edited active measure or dashboard returns to `suggested`. It passes the same `measurePauses` effects, so an accepted change to an active measure pauses its activation in the same transaction.
+- **Which gated types an agent suggests to.** `agentSuggests` is declared by `decision`, `policy`, `charter` and `impact_story`, so an agent's save to an active one becomes a review set. The other gated types keep their own path and an agent's save to an active one is refused with `gated_page`: a `skill` is instructions agents run and a `persona` is an agent's identity, toolset and budget, so a person confirms each whole, never as word changes taken in passing; a `learning` is replaced by a new learning that supersedes it, confirmed whole; a `measure` and a `dashboard` run a pinned tool and return to `suggested` on any edit, to be trialled and activated again (0036); the `platform` page lists the repositories agents may dispatch to, so no agent proposes changes to it. `agentEditOfActive` names the path per type and a test walks every gated type.
+- **The marked format round-trips.** In a marked export every CriticMarkup delimiter (`{++`, `{--`, `{~~`, `{==`, `{>>`, their closers and `~>`) in the page's own text, a proposed text or a note is written with a backslash before it, and a run of backslashes just before a delimiter is doubled, so `parseMarked` reads back the same text. A point comment just after a change with no note is written `{====}{>>note<<}`, so it stays its own change instead of becoming the note of the change before it. Hand-written CriticMarkup with no backslashes reads as before.
+- **The stamp covers the changes.** A marked export's stamp adds `changes_sha256`, the sha256 of the canonical JSON of the exported suggested changes in text order (kind, anchor, text, note). `verifyExport` takes the stored changes, recomputes the hash from them, and refuses with `changes_mismatch` when the stamp or the changes read from the file differ, so an edited replacement or note fails while the version `sha256` stays the provenance of the base text.
+- **A stamped import is checked first.** The review set form reads a pasted file with front matter only after `importedMarks` checks its stamp against the open version: its mode is `marked`, its `source` is this page at this version, its `sha256` is the open version's as this reader sees it, and the text under its marks is the stored text. Another page, an earlier version, another mode, a changed text or a lost stamp is refused in place, naming which. Text with no front matter is taken as hand-written CriticMarkup, checked only by the anchors.
+- **Property changes are shown.** The review set screen lists each readable property the set would change, with its value now and the value proposed, under the same withheld-property rules as the page (`shownFields`); when a property the reader cannot read is part of the proposal, it says so.
 
 ---
 

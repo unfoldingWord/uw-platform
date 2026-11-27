@@ -56,3 +56,19 @@ describe('#197 a suggested change is anchored by position and by quote', () => {
     });
   });
 });
+
+describe('#197 an anchor resolves only to the span its quote covers', () => {
+  it('resolves only the quoted span when the offsets claim more than the quote', () => {
+    const text = 'Alpha beta gamma';
+    const anchor = { start: 6, end: 16, exact: 'beta', prefix: 'Alpha ', suffix: ' gamma' };
+    expect(resolveAnchor(text, anchor)).toEqual({ kind: 'orphaned', why: 'missing' });
+  });
+
+  it('orphans an anchor whose offsets disagree with its quote rather than trusting the end', () => {
+    const text = 'Alpha beta gamma';
+    const anchor = { start: 6, end: 8, exact: 'beta', prefix: 'Alpha ', suffix: ' gamma' };
+    expect(resolveAnchor(text, anchor)).toEqual({ kind: 'orphaned', why: 'missing' });
+    const beyond = { start: 14, end: 18, exact: 'mma', prefix: '', suffix: '' };
+    expect(resolveAnchor(text, beyond)).toEqual({ kind: 'orphaned', why: 'missing' });
+  });
+});

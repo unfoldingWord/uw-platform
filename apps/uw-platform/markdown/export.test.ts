@@ -39,7 +39,7 @@ const SHA = 'a'.repeat(64);
 
 const accepted: ExportRequest = {
   mode: 'accepted',
-  stamp: { exported: '2026-11-26', sha256: SHA, withheld: false },
+  stamp: { exported: '2026-11-26', sha256: SHA, changesSha256: null, withheld: false },
   marks: [],
 };
 

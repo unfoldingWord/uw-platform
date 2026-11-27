@@ -254,3 +254,15 @@ describe('the content pieces pass axe-core', () => {
     window.close();
   });
 });
+
+describe('#197 a keyed table row', () => {
+  it('names each row by its key when keys are given, so a screen can point at one row', async () => {
+    const keyed = await dom(jsx(Table, { caption: 'Spend', columns, rows, rowKeys: ['a', 'b'] }));
+    const keys = [...keyed.querySelectorAll('tbody tr')].map((tr) =>
+      tr.getAttribute('data-row-key'),
+    );
+    expect(keys).toEqual(['a', 'b']);
+    const plain = await dom(jsx(Table, { caption: 'Spend', columns, rows }));
+    expect(plain.querySelector('tbody tr')?.hasAttribute('data-row-key')).toBe(false);
+  });
+});

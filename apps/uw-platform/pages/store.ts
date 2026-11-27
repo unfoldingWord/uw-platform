@@ -427,7 +427,7 @@ export function updateWithin(
   tx: Transaction,
   actor: Principal,
   checked: CheckedSave,
-  request: { readonly traceId: string; readonly at: Date },
+  request: UpdateRequest,
 ): Promise<PageResult | PageRefusal> {
   return updateInTransaction(tx, { actor, checked, ...request });
 }
@@ -457,20 +457,26 @@ export type UpdateRequest = {
   readonly effects?: PageEffects;
 };
 
+export function ordinaryEditStatus(
+  actor: Principal,
+  requested: (stored: Page) => PageStatus,
+): CheckedSave['statusFor'] {
+  return (stored) => {
+    const wanted = requested(stored);
+    if (stored.type === ISSUE_MIRROR) return issueMirror;
+    if (actor.kind !== 'person' && isGatedType(stored.type)) return gatedForAgents;
+    if (returnsToSuggested(stored.type, stored.status, wanted)) return 'suggested';
+    return activates(stored.type, stored.status, wanted) ? activationRequired : wanted;
+  };
+}
+
 export function updatePageWith(
   db: Database,
   actor: Principal,
   command: UpdatePageCommand,
   request: UpdateRequest,
 ): Promise<PageResult | PageRefusal> {
-  const statusFor = (stored: Page): PageStatus | PageRefusal => {
-    if (stored.type === ISSUE_MIRROR) return issueMirror;
-    if (actor.kind !== 'person' && isGatedType(stored.type)) return gatedForAgents;
-    if (returnsToSuggested(stored.type, stored.status, command.status)) return 'suggested';
-    return activates(stored.type, stored.status, command.status)
-      ? activationRequired
-      : command.status;
-  };
+  const statusFor = ordinaryEditStatus(actor, () => command.status);
   return saveChecked(db, { actor, checked: { command, statusFor }, ...request });
 }
 

@@ -60,7 +60,7 @@ export async function pageHistory(
   }));
 }
 
-async function collectionOf(db: Executor, pageId: string): Promise<string | null> {
+export async function collectionOf(db: Executor, pageId: string): Promise<string | null> {
   const [row] = await db.select({ id: pages.collectionId }).from(pages).where(eq(pages.id, pageId));
   return row?.id ?? null;
 }

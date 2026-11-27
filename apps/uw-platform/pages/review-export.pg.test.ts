@@ -13,8 +13,8 @@ import { personOn } from '../testing/kernel.ts';
 import { testServer, withAppDatabase } from '../testing/postgres.ts';
 import { getHtml } from '../testing/views.ts';
 import { anchorOf } from './anchors.ts';
-import { proposeReviewSet, reviewSetFor } from './review-sets.ts';
-import { updatePage } from './store.ts';
+import { markableChanges, proposeReviewSet, reviewSetFor } from './review-sets.ts';
+import { readPage, updatePage } from './store.ts';
 
 const EDITOR = { id: '00000000-0000-4000-8000-000000003c01', email: 'cy.example@example.org' };
 const AREA = '00-09';
@@ -116,6 +116,13 @@ async function roundTrip(db: Database): Promise<void> {
   expect(read?.stamp).toMatchObject({ source: 'records@2', mode: 'marked' });
   const parsed = parseMarked(read?.body ?? '');
   expect(parsed.original).toBe(BODY);
+  const page = await readPage(db, person, POLICY, clock.now());
+  if (page === null) throw new Error('the policy is not readable');
+  const fromSets = await markableChanges(db, person, page, clock.now());
+  const stored = { snapshot: await storedVersion(db), acceptedBody: BODY, marks: fromSets.changes };
+  expect(await verifyExport(plain, stored)).toEqual({ ok: true });
+  const renoted = plain.replace('{>>Who counts?<<}', '{>>Anyone at all.<<}');
+  expect(await verifyExport(renoted, stored)).toEqual({ ok: false, why: 'changes_mismatch' });
   const imported = await proposeReviewSet(
     db,
     person,
@@ -150,12 +157,14 @@ async function hashMatches(db: Database): Promise<void> {
     mode: 'accepted',
   });
   for (const mode of ['accepted', 'original', 'marked']) {
-    expect(await verifyExport(await exported(db, mode), { snapshot, acceptedBody })).toEqual({
+    expect(
+      await verifyExport(await exported(db, mode), { snapshot, acceptedBody, marks: [] }),
+    ).toEqual({
       ok: true,
     });
   }
   const tampered = accepted.replace('kept for a year', 'kept for a day');
-  expect(await verifyExport(tampered, { snapshot, acceptedBody })).toEqual({
+  expect(await verifyExport(tampered, { snapshot, acceptedBody, marks: [] })).toEqual({
     ok: false,
     why: 'text_mismatch',
   });

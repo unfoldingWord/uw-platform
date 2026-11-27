@@ -2,6 +2,7 @@ import { formatDate } from '@uw/core/dates';
 import type { Page, PageExportMode, RenderChannel } from '@uw/contracts';
 import type { Principal } from '@uw/core/principal';
 import type { Executor } from '@uw/db/client';
+import { changesHash } from '../markdown/critic.ts';
 import { exportMarkdown } from '../markdown/export.ts';
 import { fileIds } from '../markdown/file-video.ts';
 import { withoutFiles } from '../markdown/withheld-files.ts';
@@ -23,7 +24,13 @@ export async function pageExportText(
   const sources = await embedSources(db, actor, page.bodyMd, at, channel);
   const hash = await pageSourceHash(reader, page);
   const marked = mode === 'marked' ? await markableChanges(db, actor, page, at) : null;
-  const stamp = { exported: formatDate(at), sha256: hash.sourceSha256, withheld: hash.withheld };
+  const changesSha256 = marked === null ? null : await changesHash(marked.changes);
+  const stamp = {
+    exported: formatDate(at),
+    sha256: hash.sourceSha256,
+    changesSha256,
+    withheld: hash.withheld,
+  };
   const drawn = exportMarkdown(page, (id) => sources.get(id) ?? { kind: 'missing' }, {
     mode,
     stamp,

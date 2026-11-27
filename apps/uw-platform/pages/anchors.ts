@@ -40,9 +40,15 @@ function single(starts: readonly number[], length: number): Resolution | null {
   return { kind: 'anchored', start: only, end: only + length };
 }
 
+function spansItsQuote(anchor: TextAnchor): boolean {
+  return anchor.end - anchor.start === anchor.exact.length;
+}
+
 export function resolveAnchor(text: string, anchor: TextAnchor): Resolution {
-  if (holdsAt(text, anchor, anchor.start)) {
-    return { kind: 'anchored', start: anchor.start, end: anchor.end };
+  if (!spansItsQuote(anchor)) return { kind: 'orphaned', why: 'missing' };
+  const end = anchor.start + anchor.exact.length;
+  if (end <= text.length && holdsAt(text, anchor, anchor.start)) {
+    return { kind: 'anchored', start: anchor.start, end };
   }
   const quoted = `${anchor.prefix}${anchor.exact}${anchor.suffix}`;
   const inContext = startsOf(text, quoted).map((at) => at + anchor.prefix.length);

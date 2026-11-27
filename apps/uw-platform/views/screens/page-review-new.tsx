@@ -7,10 +7,11 @@ import { Section } from '@uw/ui/components/section.tsx';
 import { reasonText } from '@uw/ui/components/text.ts';
 import { FormActions, FormShape } from '@uw/ui/shapes/form.tsx';
 import type { AppEnv } from '../../deps.ts';
-import { parseMarked } from '../../markdown/critic.ts';
-import { readExport } from '../../markdown/export-verify.ts';
+import { exportSource } from '../../markdown/export.ts';
+import { importedMarks, type MarkedImport } from '../../markdown/export-verify.ts';
 import { proposeReviewSet } from '../../pages/review-sets.ts';
 import { suggestedChangesBetween } from '../../pages/word-diff.ts';
+import { pageSourceHash } from '../../pdf/page-source.ts';
 import { renderScreen, screenKernel, screenRefusal, type ScreenKernel } from '../parts/frame.tsx';
 import { pageNames } from '../parts/names.ts';
 import { pageLink, pageScreenSpec, shownPage, type ShownPage } from '../parts/page-shown.ts';
@@ -29,6 +30,14 @@ const refusalWords: Readonly<Record<string, string>> = {
   changes_overlap: 'Some changes overlap each other, so nothing was suggested.',
   stale_version: 'The page changed while you were writing. Start again from its new text.',
   nothing_changed: 'Nothing differs from the page, so there is nothing to suggest.',
+  export_unreadable:
+    'This export has lost its stamp, so its changes cannot be matched to the page. Export it again.',
+  export_other_page: 'This export is of another page, so nothing was suggested.',
+  export_earlier_version:
+    'This export is of an earlier version of the page. Export the current version and mark your changes again.',
+  export_not_marked:
+    'Only an export with suggested changes brings them back. Export the page with suggested changes.',
+  export_mismatch: 'This export does not match the stored page, so nothing was suggested.',
 };
 
 function refusalText(reason: string): string {
@@ -141,10 +150,27 @@ function typedOf(posted: Readonly<Record<string, unknown>>): Typed {
   };
 }
 
-function changesOf(body: string, typed: Typed): SuggestedChangeInput[] {
-  if (typed.marked.trim() === '') return suggestedChangesBetween(body, typed.proposed);
-  const marked = readExport(typed.marked)?.body ?? typed.marked;
-  return [...parseMarked(marked).changes];
+type Db = Parameters<typeof proposeReviewSet>[0];
+
+async function marksOf(db: Db, asking: Asking, typed: Typed): Promise<MarkedImport> {
+  const { page } = asking.shown;
+  if (typed.marked.trim() === '') {
+    return { ok: true, changes: suggestedChangesBetween(page.bodyMd, typed.proposed) };
+  }
+  const reader = { db, actor: asking.screen.caller.actor, at: asking.screen.at };
+  const hash = await pageSourceHash(reader, page);
+  const target = { source: exportSource(page), sha256: hash.sourceSha256, bodyMd: page.bodyMd };
+  return importedMarks(typed.marked, target);
+}
+
+async function changesOf(
+  db: Db,
+  asking: Asking,
+  typed: Typed,
+): Promise<SuggestedChangeInput[] | string> {
+  const imported = await marksOf(db, asking, typed);
+  if (!imported.ok) return imported.why;
+  return imported.changes.length === 0 ? 'nothing_changed' : [...imported.changes];
 }
 
 export async function proposeFromForm(c: Context<AppEnv>): Promise<Response> {
@@ -154,8 +180,8 @@ export async function proposeFromForm(c: Context<AppEnv>): Promise<Response> {
   if (asking === null || database === null || !asking.shown.canEdit) return notFound(c);
   const posted = await c.req.parseBody();
   const typed = typedOf(posted);
-  const changes = changesOf(asking.shown.page.bodyMd, typed);
-  if (changes.length === 0) return render(c, asking, typed, 'nothing_changed');
+  const changes = await changesOf(database.db, asking, typed);
+  if (typeof changes === 'string') return render(c, asking, typed, changes);
   const command = proposeReviewSetCommandSchema.safeParse({
     command: 'propose_review_set',
     requestId: posted['requestId'],

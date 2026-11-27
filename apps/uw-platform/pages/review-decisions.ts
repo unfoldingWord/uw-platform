@@ -10,10 +10,17 @@ import { can } from '@uw/core/acl';
 import type { Principal } from '@uw/core/principal';
 import type { Database, Transaction } from '@uw/db/client';
 import { pageReviewDecisions, pageReviewSets } from '@uw/db/schema';
+import { measurePauses } from '../measures/activations.ts';
 import { pageVersion } from './history.ts';
 import { applyChanges } from './review-changes.ts';
 import { changesOf, type ReviewSetRow } from './review-sets.ts';
-import { lockedPage, updateWithin, type PageRefusal, type PageResult } from './store.ts';
+import {
+  lockedPage,
+  ordinaryEditStatus,
+  updateWithin,
+  type PageRefusal,
+  type PageResult,
+} from './store.ts';
 
 type Done = PageResult | PageRefusal;
 
@@ -114,8 +121,8 @@ async function acceptIn(
     frontmatter: frontmatter.data,
     bodyMd: applyChanges(page.bodyMd, changes),
   };
-  const checked = { command, statusFor: (stored: Page) => stored.status };
-  const saved = await updateWithin(tx, actor, checked, request);
+  const checked = { command, statusFor: ordinaryEditStatus(actor, (stored) => stored.status) };
+  const saved = await updateWithin(tx, actor, checked, { ...request, effects: measurePauses });
   if (!saved.ok) return saved;
   await recorded(tx, actor, found, { request, acceptedVersion: saved.page.version });
   return saved;

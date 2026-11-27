@@ -9,6 +9,7 @@ type Sources = (id: string) => EmbedSource;
 type ExportStamp = {
   readonly exported: string;
   readonly sha256: string;
+  readonly changesSha256: string | null;
   readonly withheld: boolean;
 };
 
@@ -34,6 +35,7 @@ function stampOf(page: Page, request: ExportRequest): (readonly [string, unknown
     ['source', exportSource(page)],
     ['exported', stamp.exported],
     ['sha256', stamp.sha256],
+    ['changes_sha256', mode === 'marked' ? stamp.changesSha256 : undefined],
     ['mode', mode],
     ['withheld', stamp.withheld ? true : undefined],
     ['left_out', leftOut > 0 ? leftOut : undefined],

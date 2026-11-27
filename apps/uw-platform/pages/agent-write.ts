@@ -31,8 +31,12 @@ function refusedWith(reason: PageRefusal['reason'], detail: PageRefusal['detail'
 const ISSUE_MIRROR = 'issue';
 const issueMirror = (): PageRefusal => refusedWith('not_permitted', { why: 'issue_mirror' });
 
+export function agentEditOfActive(type: string): 'review_set' | 'refused' {
+  return agentSuggests(type) ? 'review_set' : 'refused';
+}
+
 function heldAsSuggestion(stored: Page): boolean {
-  return agentSuggests(stored.type) && stored.status === 'active';
+  return agentEditOfActive(stored.type) === 'review_set' && stored.status === 'active';
 }
 
 function divertFor(actor: Principal, at: Date): Divert {

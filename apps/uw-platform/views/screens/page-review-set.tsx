@@ -4,10 +4,12 @@ import { formatInstant } from '@uw/core/dates';
 import { Button } from '@uw/ui/components/button.tsx';
 import { Note } from '@uw/ui/components/note.tsx';
 import { Section } from '@uw/ui/components/section.tsx';
+import { Table } from '@uw/ui/components/table.tsx';
 import { reasonText } from '@uw/ui/components/text.ts';
 import { DocumentShape } from '@uw/ui/shapes/document.tsx';
 import type { AppEnv } from '../../deps.ts';
 import { applyChanges } from '../../pages/review-changes.ts';
+import { proposedProperties, type ProposedProperties } from '../../pages/review-properties.ts';
 import { acceptReviewSet, rejectReviewSet } from '../../pages/review-decisions.ts';
 import { reviewSetFor, type FoundReviewSet } from '../../pages/review-sets.ts';
 import { renderScreen, screenKernel, screenRefusal, type ScreenKernel } from '../parts/frame.tsx';
@@ -31,6 +33,7 @@ type Review = {
   readonly screen: ScreenKernel;
   readonly shown: ShownPage;
   readonly found: FoundReviewSet;
+  readonly properties: ProposedProperties | null;
 };
 
 const refusalWords: Readonly<Record<string, string>> = {
@@ -74,6 +77,44 @@ function ChangeRow(props: { readonly change: SuggestedChangeInput }) {
   );
 }
 
+function valueText(value: unknown): string {
+  if (value === null || value === undefined) return 'Not set';
+  if (typeof value === 'string') return value;
+  const listed = Array.isArray(value) && value.every((item) => typeof item === 'string');
+  if (listed) return value.length === 0 ? 'None' : value.join(', ');
+  return JSON.stringify(value);
+}
+
+const propertyColumns = [
+  { key: 'key', label: 'Property' },
+  { key: 'now', label: 'Now' },
+  { key: 'proposed', label: 'Proposed' },
+];
+
+function PropertyChanges(props: { readonly properties: ProposedProperties }) {
+  const { changes, withheld } = props.properties;
+  const rows = changes.map((change) => ({
+    key: change.key,
+    now: valueText(change.now),
+    proposed: valueText(change.proposed),
+  }));
+  return (
+    <Section title="Properties that change" sub="Accepting writes each proposed value">
+      {withheld ? <Note>Some properties you cannot read are part of this proposal.</Note> : null}
+      {rows.length === 0 ? null : (
+        <div data-property-changes>
+          <Table
+            caption="Properties that change"
+            columns={propertyColumns}
+            rows={rows}
+            rowKeys={changes.map((change) => change.key)}
+          />
+        </div>
+      )}
+    </Section>
+  );
+}
+
 function Decide(props: { readonly review: Review }) {
   const { shown, found } = props.review;
   const stale = found.set.baseVersion !== shown.page.version;
@@ -108,7 +149,7 @@ function Decide(props: { readonly review: Review }) {
 }
 
 function Changes(props: { readonly review: Review }) {
-  const { found, shown } = props.review;
+  const { found, shown, properties } = props.review;
   const { set, changes } = found;
   const current = set.baseVersion === shown.page.version;
   return (
@@ -116,7 +157,7 @@ function Changes(props: { readonly review: Review }) {
       {set.title === null ? null : (
         <Note>{`The title changes from "${shown.page.title}" to "${set.title}".`}</Note>
       )}
-      {set.frontmatter === null ? null : <Note>The properties change too.</Note>}
+      {properties === null ? null : <PropertyChanges properties={properties} />}
       <Section title="Suggested changes" sub={`Against version ${String(set.baseVersion)}`}>
         <ul class="m-0 flex list-none flex-col gap-3 p-0">
           {changes.map((change) => (
@@ -193,7 +234,9 @@ async function reviewOf(c: Context<AppEnv>): Promise<Review | null> {
   const found = await reviewSetFor(database.db, screen.caller.actor, reviewSetId, screen.at);
   if (found?.page.id !== pageId) return null;
   const shown = await shownPage(c, screen, pageId);
-  return shown === null ? null : { screen, shown, found };
+  if (shown === null) return null;
+  const properties = await proposedProperties(database.db, screen.caller.actor, found, screen.at);
+  return { screen, shown, found, properties };
 }
 
 export async function pageReviewSetScreen(c: Context<AppEnv>): Promise<Response> {

@@ -29,7 +29,7 @@ export const textAnchorSchema = z
     prefix: z.string().max(QUOTE_CONTEXT_LENGTH),
     suffix: z.string().max(QUOTE_CONTEXT_LENGTH),
   })
-  .refine((anchor) => anchor.end >= anchor.start, { path: ['end'] });
+  .refine((anchor) => anchor.end - anchor.start === anchor.exact.length, { path: ['end'] });
 
 export type TextAnchor = z.infer<typeof textAnchorSchema>;
 

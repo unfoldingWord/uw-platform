@@ -164,6 +164,7 @@ export const pageTypeRegistry = {
     ...internalSync,
     bodyProblems: (bodyMd: string) => decisionSections(bodyMd).missing,
     appliesToNode: true,
+    agentSuggests: true,
   },
   knowledge: { frontmatter: knowledgeFrontmatterSchema, ...internalSync },
   entry: { frontmatter: collectionFrontmatterSchema, ...internalSync },
