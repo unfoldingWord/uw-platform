@@ -68,6 +68,8 @@ describe('the push notification', () => {
       'An agent merged under a delegation you gave',
       'Items wait in Check and no review has run',
       'A credential in your area was revealed',
+      'Your assistant has a proposal for you to decide',
+      'Your assistant could not answer you',
     ]);
   });
 });

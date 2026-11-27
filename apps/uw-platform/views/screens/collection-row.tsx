@@ -31,6 +31,7 @@ import {
   collectionPath,
   collectionRowPath,
   collectionsPath,
+  myAssistantPath,
   pageCommentsPath,
   pageEditPath,
 } from '../parts/paths.ts';
@@ -213,6 +214,11 @@ async function profileOf(db: Db, screen: ScreenKernel, scene: RowScene): Promise
     <>
       <ProfileBodySection body={body} />
       <ProfileListSections lists={lists} />
+      {can(screen.caller.actor, 'admin', { kind: 'org' }, screen.at) ? (
+        <ButtonLink href={myAssistantPath(scene.row.id)} variant="ghost" size="sm">
+          Their assistant
+        </ButtonLink>
+      ) : null}
     </>
   );
 }

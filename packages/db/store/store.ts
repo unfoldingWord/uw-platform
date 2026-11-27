@@ -1,6 +1,17 @@
 import { advisoryLock, advisoryLockShared } from '../advisory-locks.ts';
 import type { AnyDatabase, AnyExecutor } from '../any-database.ts';
 import { appliedMigrations } from '../migration-ledger.ts';
+import {
+  bindAssistantEffects,
+  bindAssistantRequests,
+  bindAssistantSettings,
+} from './assistants.ts';
+import { bindAssistantBindings, bindAssistantPairingCodes } from './assistant-pairing.ts';
+import { bindAssistantBudgets } from './assistant-budgets.ts';
+import { bindAssistantAccounts } from './assistant-accounts.ts';
+import { bindAssistantReminders } from './assistant-reminders.ts';
+import { bindAssistantHolds } from './assistant-holds.ts';
+import { bindAssistantProposals } from './assistant-proposals.ts';
 import { bindDelegations } from './delegations.ts';
 import { bindDrafts } from './drafts.ts';
 import { bindEvents } from './events.ts';
@@ -49,6 +60,16 @@ function bind(executor: AnyExecutor): DrizzleTransaction {
     pages: bindPages(executor),
     personas: bindPersonas(executor),
     measurements: bindMeasurements(executor),
+    assistantSettings: bindAssistantSettings(executor),
+    assistantRequests: bindAssistantRequests(executor),
+    assistantEffects: bindAssistantEffects(executor),
+    assistantReminders: bindAssistantReminders(executor),
+    assistantHolds: bindAssistantHolds(executor),
+    assistantBindings: bindAssistantBindings(executor),
+    assistantPairingCodes: bindAssistantPairingCodes(executor),
+    assistantBudgets: bindAssistantBudgets(executor),
+    assistantAccounts: bindAssistantAccounts(executor),
+    assistantProposals: bindAssistantProposals(executor),
   };
   executors.set(tx, executor);
   return tx;

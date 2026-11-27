@@ -101,7 +101,7 @@ const ranks = new Map([
   ['admin', 3],
 ]);
 
-const written = new Map<string, { areaRank: number | null; owner: boolean }>([
+const written = new Map<string, { areaRank: number | null; owner: boolean; orgAdmin?: false }>([
   ['role_grants', { areaRank: 3, owner: true }],
   ['grant_audit', { areaRank: 3, owner: true }],
   ['person_audit', { areaRank: null, owner: true }],
@@ -116,6 +116,15 @@ const written = new Map<string, { areaRank: number | null; owner: boolean }>([
   ['credential_bindings', { areaRank: 3, owner: false }],
   ['credential_access_log', { areaRank: 3, owner: false }],
   ['directory_private', { areaRank: 1, owner: true }],
+  ['assistant_settings', { areaRank: null, owner: true, orgAdmin: false }],
+  ['assistant_requests', { areaRank: null, owner: true, orgAdmin: false }],
+  ['assistant_effects', { areaRank: null, owner: true, orgAdmin: false }],
+  ['assistant_reminders', { areaRank: null, owner: true, orgAdmin: false }],
+  ['assistant_calendar_holds', { areaRank: null, owner: true, orgAdmin: false }],
+  ['assistant_proposals', { areaRank: null, owner: true, orgAdmin: false }],
+  ['assistant_bindings', { areaRank: null, owner: true, orgAdmin: false }],
+  ['assistant_pairing_codes', { areaRank: null, owner: true, orgAdmin: false }],
+  ['assistant_zulip_bots', { areaRank: null, owner: true, orgAdmin: false }],
 ]);
 
 type Asked = {
@@ -133,7 +142,7 @@ function oracle(held: readonly HeldGrant[], asked: Asked): boolean {
     .filter((grant) => grant.expiresAt === null || grant.expiresAt > at.toISOString())
     .some((grant) => {
       const rank = ranks.get(grant.role) ?? 0;
-      if (grant.scope === 'org') return rank === 3;
+      if (grant.scope === 'org') return rank === 3 && rule.orgAdmin !== false;
       if (rule.areaRank === null || asked.area === null) return false;
       return grant.scope === asked.area && rank >= rule.areaRank;
     });

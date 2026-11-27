@@ -18,11 +18,13 @@ export const systemIdentity = 'agent:system';
 
 export const ingestIdentity = 'agent:ingest';
 
+export const assistantProvisionerIdentity = 'agent:assistant-provisioner';
+
 const AGENT = 'agent:';
 const ASSUMING = ' as ';
 const VIA_DELEGATION = ' via delegation:';
 
-export const reservedPersonaSlugs = ['system', 'ingest'] as const;
+export const reservedPersonaSlugs = ['system', 'ingest', 'assistant-provisioner'] as const;
 const reserved: ReadonlySet<string> = new Set(reservedPersonaSlugs);
 
 export const devicePattern = '^[a-z0-9][a-z0-9-]{0,31}$';

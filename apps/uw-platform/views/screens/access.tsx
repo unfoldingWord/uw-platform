@@ -8,6 +8,7 @@ import { Table } from '@uw/ui/components/table.tsx';
 import { ListShape } from '@uw/ui/shapes/list.tsx';
 import type { AppEnv } from '../../deps.ts';
 import {
+  DeactivateForm,
   DecideControl,
   KeptOutcome,
   FilterForm,
@@ -195,6 +196,11 @@ export async function accessScreen(c: Context<AppEnv>): Promise<Response> {
       {admin ? (
         <Section title="Grant a role" sub="Only in the scopes you’re an admin of">
           <GrantForm view={view} />
+        </Section>
+      ) : null}
+      {view.orgAdmin ? (
+        <Section title="Deactivate a person" sub="Someone who has left the organization">
+          <DeactivateForm view={view} />
         </Section>
       ) : null}
       <Holders view={view} filter={filter} />

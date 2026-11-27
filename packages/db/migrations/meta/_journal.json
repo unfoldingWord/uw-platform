@@ -512,6 +512,104 @@
       "when": 1795721363511,
       "tag": "0074_measures",
       "breakpoints": true
+    },
+    {
+      "idx": 75,
+      "version": "7",
+      "when": 1795721363512,
+      "tag": "0075_assistants",
+      "breakpoints": true
+    },
+    {
+      "idx": 76,
+      "version": "7",
+      "when": 1795721363513,
+      "tag": "0076_assistant_reminders",
+      "breakpoints": true
+    },
+    {
+      "idx": 77,
+      "version": "7",
+      "when": 1795724782079,
+      "tag": "0077_assistant_zulip",
+      "breakpoints": true
+    },
+    {
+      "idx": 78,
+      "version": "7",
+      "when": 1795732559517,
+      "tag": "0078_assistant_budgets",
+      "breakpoints": true
+    },
+    {
+      "idx": 79,
+      "version": "7",
+      "when": 1795736926985,
+      "tag": "0079_assistant_calendar",
+      "breakpoints": true
+    },
+    {
+      "idx": 80,
+      "version": "7",
+      "when": 1795742066315,
+      "tag": "0080_assistant_accounts",
+      "breakpoints": true
+    },
+    {
+      "idx": 81,
+      "version": "7",
+      "when": 1795749762212,
+      "tag": "0081_assistant_history",
+      "breakpoints": true
+    },
+    {
+      "idx": 82,
+      "version": "7",
+      "when": 1795753895680,
+      "tag": "0082_assistant_mail",
+      "breakpoints": true
+    },
+    {
+      "idx": 83,
+      "version": "7",
+      "when": 1795761536000,
+      "tag": "0083_assistant_proposals",
+      "breakpoints": true
+    },
+    {
+      "idx": 84,
+      "version": "7",
+      "when": 1795761537668,
+      "tag": "0084_assistant_proposals_settled",
+      "breakpoints": true
+    },
+    {
+      "idx": 85,
+      "version": "7",
+      "when": 1795771749609,
+      "tag": "0085_assistant_step_failed",
+      "breakpoints": true
+    },
+    {
+      "idx": 86,
+      "version": "7",
+      "when": 1795792227920,
+      "tag": "0086_assistant_research",
+      "breakpoints": true
+    },
+    {
+      "idx": 87,
+      "version": "7",
+      "when": 1795801754100,
+      "tag": "0087_assistant_research_sources",
+      "breakpoints": true
+    },
+    {
+      "idx": 88,
+      "version": "7",
+      "when": 1795802127227,
+      "tag": "0088_person_deactivate",
+      "breakpoints": true
     }
   ]
 }

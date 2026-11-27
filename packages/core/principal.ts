@@ -2,6 +2,7 @@ import {
   ingestIdentity,
   principalSchema,
   systemIdentity,
+  assistantProvisionerIdentity,
   type Grant,
   type Principal,
 } from '@uw/contracts';
@@ -62,6 +63,17 @@ export function ingestPrincipal(): Principal {
 export function systemPrincipal(): Principal {
   return principalSchema.parse({
     identity: systemIdentity,
+    kind: 'agent',
+    personId: null,
+    email: null,
+    grants: [],
+    interactive: false,
+  });
+}
+
+export function assistantProvisionerPrincipal(): Principal {
+  return principalSchema.parse({
+    identity: assistantProvisionerIdentity,
     kind: 'agent',
     personId: null,
     email: null,

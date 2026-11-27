@@ -1,0 +1,16 @@
+{
+  "eventId": "00000000-0000-4000-8000-0000000000e9",
+  "harnessId": "00000000-0000-4000-8000-0000000000a1",
+  "itemId": null,
+  "name": "assistant_proposal_decided",
+  "position": 1,
+  "at": "2026-10-01T09:00:00.000Z",
+  "actor": "human:00000000-0000-4000-8000-000000000001",
+  "evidence": {
+    "proposalId": "00000000-0000-4000-8000-0000000000f1",
+    "kind": "invite",
+    "decision": "accept"
+  },
+  "traceId": "00000000-0000-4000-8000-0000000000c1",
+  "requestId": null
+}

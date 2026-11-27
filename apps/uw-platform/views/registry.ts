@@ -168,6 +168,11 @@ export const screens: readonly ScreenEntry[] = [
   },
   { name: 'measures', file: 'apps/uw-platform/views/screens/measures.tsx', path: '/measures' },
   {
+    name: 'assistant',
+    file: 'apps/uw-platform/views/screens/assistant.tsx',
+    path: '/assistant',
+  },
+  {
     name: 'not-found',
     file: 'apps/uw-platform/views/screens/not-found.tsx',
     path: '/harnesses/00000000-0000-4000-8000-000000000000',

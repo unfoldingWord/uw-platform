@@ -11,6 +11,9 @@ import { dirname, join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { owns as acl } from '../../apps/uw-platform/acl/grant-commands.ts';
 import { owns as serviceTokens } from '../../apps/uw-platform/agents/service-tokens.ts';
+import { owns as assistantZulip } from '../../apps/uw-platform/assistants/zulip/owns.ts';
+import { owns as assistantGoogle } from '../../apps/uw-platform/assistants/google/owns.ts';
+import { owns as assistantProvisioning } from '../../apps/uw-platform/assistants/provisioning/owns.ts';
 import { owns as commandRequests } from '../../apps/uw-platform/commands/requests.ts';
 import { owns as credentialStore } from '../../apps/uw-platform/credentials/store.ts';
 import { owns as crosswalk } from '../../apps/uw-platform/crosswalk/owns.ts';
@@ -24,6 +27,7 @@ import { owns as queue } from '../../apps/uw-platform/queue/watermarks.ts';
 import { owns as tasks } from '../../apps/uw-platform/tasks/store.ts';
 import { owns as collections } from '../../apps/uw-platform/collections/owns.ts';
 import { owns as deliveries } from '../../apps/uw-ingest/deliveries/ledger.ts';
+import { owns as assistants } from '../../packages/harness/assistants/owns.ts';
 import { owns as delegations } from '../../packages/harness/delegations/owns.ts';
 import { owns as gates } from '../../packages/harness/gates/owns.ts';
 import { owns as items } from '../../packages/harness/items/owns.ts';
@@ -55,6 +59,9 @@ const owners: Owner[] = [
   { dir: 'apps/uw-platform/tasks/', tables: tasks },
   { dir: 'apps/uw-platform/collections/', tables: collections },
   { dir: 'apps/uw-platform/agents/', tables: serviceTokens },
+  { dir: 'apps/uw-platform/assistants/zulip/', tables: assistantZulip },
+  { dir: 'apps/uw-platform/assistants/google/', tables: assistantGoogle },
+  { dir: 'apps/uw-platform/assistants/provisioning/', tables: assistantProvisioning },
   { dir: 'apps/uw-platform/commands/', tables: commandRequests },
   { dir: 'apps/uw-platform/credentials/', tables: credentialStore },
   { dir: 'apps/uw-platform/crosswalk/', tables: crosswalk },
@@ -70,6 +77,7 @@ const owners: Owner[] = [
   { dir: 'packages/harness/runs/', tables: runs },
   { dir: 'packages/harness/measurements/', tables: measurements },
   { dir: 'packages/harness/personas/', tables: personas },
+  { dir: 'packages/harness/assistants/', tables: assistants },
 ];
 
 const entries = tableEntries(schema);

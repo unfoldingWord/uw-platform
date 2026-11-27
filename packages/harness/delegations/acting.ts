@@ -5,6 +5,7 @@ import { draft, recordItemEvents, type RecordContext } from '../items/record.ts'
 import { refused, type Refused } from '../outcome.ts';
 import type { Delegation, Ports, StoreTransaction } from '../ports.ts';
 import { beatPrincipal, personaMatches } from './beat.ts';
+import { policyOf } from './capability.ts';
 import { assertDelegationLive, recordLapse } from './live.ts';
 
 type ActingPorts = Pick<Ports, 'grants'>;
@@ -61,7 +62,7 @@ async function delegatedPrincipal(
     if (liveness.why !== null) await recordLapse(tx, context, delegation, liveness.why);
     return refused('delegation_lapsed', { delegationId, why: liveness.why });
   }
-  if (delegation.capability === 'none') {
+  if (delegation.capability === 'none' || !policyOf(delegation.capability).device) {
     return refused('not_permitted', { delegationId, why: 'delegation_capability' });
   }
   return beatPrincipal(delegation, liveness.grants, harness.jdArea, context.at);

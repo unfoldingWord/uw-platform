@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { createLogger } from '@uw/core/log';
 import { createClient, type Database } from '@uw/db/client';
 import { createMigratedDatabase } from '@uw/db/test-database';
+import { directMessagesOf } from '../assistants/direct-messages.ts';
 import { saveMeasure } from '../measures/authoring.ts';
 import { latestRunOf } from '../measures/runs.ts';
 import { collectionsAt } from '../testing/collections.ts';
@@ -30,6 +31,7 @@ function deps(lines: Line[], at: Date = collectionsAt): CronDeps {
     newId: () => newId(),
     commit: 'c',
     engines: { fetch: () => Promise.reject(new Error('the measures job reads no spend')) },
+    directMessages: directMessagesOf,
   };
 }
 

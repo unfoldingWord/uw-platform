@@ -13,6 +13,7 @@ export {
 export { HarnessHub } from './live/harness-hub.ts';
 export { MeasureRun } from './measures/workflow.ts';
 export { PageDraft } from './pages/draft-hub.ts';
+export { AssistantTurn } from './assistants/turn/workflow.ts';
 export { PdfExportRun } from './pdf/workflow.ts';
 export { HarnessRun } from './runs/workflow.ts';
 

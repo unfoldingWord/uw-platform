@@ -26,6 +26,8 @@
     "testing/measure-app.ts",
     "testing/measure-scene.ts",
     "testing/context-rig.ts",
+    "testing/turn-rig.ts",
+    "testing/turn-script.ts",
     "islands/browser/**",
     "islands/editor/**",
     "islands/worker/**"

@@ -39,7 +39,14 @@ export type RowsSpec<N extends VerbName, R> = {
   reply(visible: readonly R[], input: VerbInput<N>): VerbReply<N>;
 };
 
-export type VerbHandler = GatedHandler<VerbName> | RowFilteredHandler<VerbName>;
+export type TurnHandler<N extends VerbName> = {
+  readonly kind: 'turn';
+  readonly name: N;
+  run(context: VerbContext, input: VerbInput<N>): Promise<VerbReply<N>>;
+};
+
+export type VerbHandler =
+  GatedHandler<VerbName> | RowFilteredHandler<VerbName> | TurnHandler<VerbName>;
 
 const built = new WeakSet<object>();
 
@@ -57,6 +64,12 @@ export function gatedHandler<N extends VerbName, S>(
   handler: Omit<GatedHandler<N, S>, 'kind'>,
 ): GatedHandler<N, S> {
   return brand({ ...handler, kind: 'gated' });
+}
+
+export function turnHandler<N extends VerbName>(
+  handler: Omit<TurnHandler<N>, 'kind'>,
+): TurnHandler<N> {
+  return brand({ ...handler, kind: 'turn' });
 }
 
 function isRows<R>(found: readonly R[] | VerbRefusal): found is readonly R[] {

@@ -119,6 +119,7 @@ const runtimeModuleHosts: ReadonlySet<string> = new Set([
   'apps/uw-platform/live/harness-hub.ts',
   'apps/uw-platform/runs/workflow.ts',
   'apps/uw-platform/pdf/workflow.ts',
+  'apps/uw-platform/assistants/turn/workflow.ts',
   'apps/uw-platform/measures/workflow.ts',
 ]);
 

@@ -19,6 +19,7 @@ import {
 } from '../testing/commands.ts';
 import type { CronDeps } from './job.ts';
 import { minuteJob } from './minute.ts';
+import { directMessagesOf } from '../assistants/direct-messages.ts';
 
 type Line = Record<string, unknown>;
 
@@ -57,6 +58,7 @@ function depsOf(rig: Rig, spend: EngineFetch, cap?: string): CronDeps {
     newId: () => randomUUID(),
     commit: 'c',
     engines: engines(spend, cap),
+    directMessages: directMessagesOf,
   };
 }
 
@@ -251,6 +253,9 @@ async function delegatedExitsWithoutApp(rig: Rig): Promise<void> {
   );
   expect(outcomeOf(rig, 'beat')).toMatchObject({ outcome: 'beat_finished' });
   expect(outcomeOf(rig, 'delegated_exits')).toMatchObject({ outcome: 'github_not_configured' });
+  expect(outcomeOf(rig, 'assistant-mail')).toMatchObject({
+    outcome: 'assistant_mail_not_configured',
+  });
 }
 
 async function delegatedExitsUnreadableApp(rig: Rig): Promise<void> {

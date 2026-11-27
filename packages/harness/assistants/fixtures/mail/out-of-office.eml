@@ -1,0 +1,14 @@
+Delivered-To: barnabas@example.org
+Authentication-Results: mx.google.com;
+       dkim=pass header.i=@example.org;
+       spf=pass smtp.mailfrom=ana@example.org;
+       dmarc=pass (p=QUARANTINE sp=QUARANTINE dis=NONE) header.from=example.org
+Auto-Submitted: auto-replied
+From: Ana Example <ana@example.org>
+To: barnabas@example.org
+Subject: Out of office
+Message-ID: <ooo01@mail.gmail.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="UTF-8"
+
+I am away until Monday.

@@ -7,6 +7,7 @@ import {
 } from '../items/record.ts';
 import type { Delegation, Ports, StoreTransaction } from '../ports.ts';
 import { adminGrantOn } from './beat.ts';
+import { policyOf } from './capability.ts';
 
 export type Liveness =
   | { readonly live: true; readonly delegation: Delegation; readonly grants: readonly Grant[] }
@@ -20,7 +21,7 @@ function lapsed(delegation: Delegation, why: DelegationLapse): Liveness {
   return { live: false, delegation, why };
 }
 
-async function holdsAdmin(
+async function grantorHolds(
   tx: StoreTransaction,
   ports: Pick<Ports, 'grants'>,
   delegation: Delegation,
@@ -29,6 +30,9 @@ async function holdsAdmin(
   const harness = await tx.harnesses.read.byId(delegation.harnessId);
   if (harness === null) return null;
   const grants = await ports.grants.resolveIn(tx, delegation.personId, at);
+  if (policyOf(delegation.capability).grantor === 'harness_person') {
+    return harness.personId === delegation.personId && grants.length > 0 ? grants : null;
+  }
   return adminGrantOn(delegation, grants, harness.jdArea, at) === null ? null : grants;
 }
 
@@ -51,7 +55,7 @@ export async function livenessOf(
 ): Promise<Liveness> {
   if (delegation.revokedAt !== null) return lapsed(delegation, 'revoked');
   if (delegation.expiresAt.getTime() <= at.getTime()) return lapsed(delegation, 'expired');
-  const grants = await holdsAdmin(tx, ports, delegation, at);
+  const grants = await grantorHolds(tx, ports, delegation, at);
   if (grants === null || delegation.lapsedAt !== null) return lapsed(delegation, 'grant_lost');
   return { live: true, delegation, grants };
 }

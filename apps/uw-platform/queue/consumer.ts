@@ -68,6 +68,17 @@ export const notWiredHandlers: ReadonlyMap<IngestSource, IngestHandler> = new Ma
       return 'handled';
     },
   ],
+  [
+    'zulip-assistant',
+    async (envelope, logger) => {
+      logger.info('zulip assistant delivery received', {
+        outcome: 'not_wired',
+        event: envelope.event,
+        delivery_id: envelope.deliveryId,
+      });
+      return 'handled';
+    },
+  ],
 ]);
 
 function unattributedLogger(deps: ConsumerDeps): Logger {

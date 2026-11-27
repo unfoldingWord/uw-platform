@@ -1,14 +1,17 @@
 import type {
+  AssistantChannel,
   ClosingRef,
   Connector,
   CostBasis,
   DeepLink,
   Engine,
+  FlightCabin,
   Grant,
   IssueRef,
   ItemState,
   JdArea,
   LiveScreen,
+  Principal,
   PullRequestDeclaration,
   ReadFinding,
   ReviewVerdict,
@@ -16,6 +19,7 @@ import type {
   ShipRuleInput,
   VerbName,
   WakeReason,
+  WebAddressRefusal,
 } from '@uw/contracts';
 import type { GrantHolder, WakeDelivery } from './notify/types.ts';
 import type { StoreTransaction } from './store-ports.ts';
@@ -202,6 +206,7 @@ export type TurnRequest = {
   readonly tools: readonly VerbName[];
   readonly messages: readonly TurnMessage[];
   readonly traceId: string;
+  readonly zeroRetention?: boolean;
 };
 export type StopReason = 'end_turn' | 'tool_use' | 'max_tokens' | 'refused';
 export type TurnResult = {
@@ -242,8 +247,159 @@ export type Wake = {
   readonly recipients: readonly WakeRecipient[];
   readonly at: Date;
   readonly traceId: string;
+  readonly personal: boolean;
 };
 export type Notifier = { notify(wake: Wake): Promise<WakeDelivery> };
+
+export type DirectMessage = {
+  readonly requestId: string;
+  readonly effectId: string;
+  readonly personId: string;
+  readonly channel: AssistantChannel;
+  readonly replyAddress: string;
+  readonly threadKey: string | null;
+  readonly text: string;
+  readonly traceId: string;
+  readonly sendBy: Date;
+};
+export type DirectDelivery =
+  { readonly outcome: 'sent' } | { readonly outcome: 'not_paired' | 'dropped' | 'deadline_passed' };
+export type DirectMessages = { send(message: DirectMessage): Promise<DirectDelivery> };
+
+export type CalendarFailure = 'refused' | 'unavailable';
+export type HoldMarker = { readonly harnessId: string; readonly holdId: string };
+export type CalendarEntry = {
+  readonly eventId: string;
+  readonly startsAt: Date;
+  readonly endsAt: Date;
+  readonly allDay: boolean;
+  readonly title: string;
+  readonly location: string;
+  readonly description: string;
+  readonly organisedBySelf: boolean;
+  readonly attendees: number;
+  readonly hold: HoldMarker | null;
+};
+export type CalendarWindow = { readonly personId: string; readonly from: Date; readonly to: Date };
+export type CalendarListing =
+  | {
+      readonly outcome: 'listed';
+      readonly entries: readonly CalendarEntry[];
+      readonly truncated: boolean;
+    }
+  | { readonly outcome: CalendarFailure };
+export type FreeBusyQuery = CalendarWindow & { readonly colleagues: readonly string[] };
+export type BusyRange = { readonly startsAt: Date; readonly endsAt: Date };
+export type FreeBusyAnswer =
+  | {
+      readonly outcome: 'answered';
+      readonly busy: readonly BusyRange[];
+      readonly unknown: readonly string[];
+    }
+  | { readonly outcome: 'outside_organization'; readonly addresses: readonly string[] }
+  | { readonly outcome: CalendarFailure };
+export type CalendarHold = HoldMarker & {
+  readonly personId: string;
+  readonly title: string;
+  readonly startsAt: Date;
+  readonly endsAt: Date;
+};
+export type HoldPlacement =
+  { readonly outcome: 'held'; readonly eventId: string } | { readonly outcome: CalendarFailure };
+export type HoldRemoval = HoldMarker & { readonly personId: string; readonly eventId: string };
+export type HoldRemoved = { readonly outcome: 'released' | 'not_own_hold' | CalendarFailure };
+export type ProposalMarker = { readonly harnessId: string; readonly proposalId: string };
+export type OutgoingMail = ProposalMarker & {
+  readonly personId: string;
+  readonly effectId: string;
+  readonly to: readonly string[];
+  readonly cc: readonly string[];
+  readonly subject: string;
+  readonly body: string;
+};
+export type MailSent =
+  { readonly outcome: 'sent' } | { readonly outcome: CalendarFailure | 'outcome_unknown' };
+export type CalendarInvite = ProposalMarker & {
+  readonly personId: string;
+  readonly title: string;
+  readonly startsAt: Date;
+  readonly endsAt: Date;
+  readonly attendees: readonly string[];
+  readonly description: string;
+};
+export type InviteSent =
+  { readonly outcome: 'invited'; readonly eventId: string } | { readonly outcome: CalendarFailure };
+export type Workspace = {
+  listEvents(window: CalendarWindow): Promise<CalendarListing>;
+  freeBusy(query: FreeBusyQuery): Promise<FreeBusyAnswer>;
+  placeHold(hold: CalendarHold): Promise<HoldPlacement>;
+  removeHold(removal: HoldRemoval): Promise<HoldRemoved>;
+  sendMail(mail: OutgoingMail): Promise<MailSent>;
+  sendInvite(invite: CalendarInvite): Promise<InviteSent>;
+};
+
+export type PageAppend = {
+  readonly pageId: string;
+  readonly block: string;
+  readonly requestId: string;
+  readonly traceId: string;
+};
+export type PageAppended =
+  | { readonly outcome: 'appended'; readonly version: number }
+  | { readonly outcome: 'page_not_found' | 'not_permitted' | 'refused' };
+export type PageAppends = {
+  append(actor: Principal, append: PageAppend): Promise<PageAppended>;
+};
+
+export type ResearchFailure = 'refused' | 'unavailable';
+export type WebQuery = { readonly query: string; readonly count: number };
+export type WebResult = { readonly title: string; readonly url: string; readonly snippet: string };
+export type WebResults =
+  | { readonly outcome: 'found'; readonly results: readonly WebResult[] }
+  | { readonly outcome: ResearchFailure };
+export type PageRequest = { readonly url: string; readonly mayRender: boolean };
+export type PageText =
+  | {
+      readonly outcome: 'read';
+      readonly url: string;
+      readonly title: string;
+      readonly text: string;
+      readonly truncated: boolean;
+      readonly rendered: boolean;
+    }
+  | { readonly outcome: 'blocked'; readonly why: WebAddressRefusal }
+  | { readonly outcome: 'unreadable' | ResearchFailure };
+export type FlightQuery = {
+  readonly origin: string;
+  readonly destination: string;
+  readonly departDate: string;
+  readonly returnDate: string | null;
+  readonly passengers: number;
+  readonly cabin: FlightCabin;
+};
+export type FlightLeg = {
+  readonly from: string;
+  readonly to: string;
+  readonly departAt: string;
+  readonly arriveAt: string;
+  readonly durationMinutes: number;
+  readonly flights: readonly string[];
+};
+export type FlightOffer = {
+  readonly airline: string;
+  readonly totalMinor: number;
+  readonly currency: string;
+  readonly expiresAt: Date;
+  readonly legs: readonly FlightLeg[];
+};
+export type FlightOffers =
+  | { readonly outcome: 'offered'; readonly offers: readonly FlightOffer[] }
+  | { readonly outcome: ResearchFailure };
+export type Research = {
+  search(query: WebQuery): Promise<WebResults>;
+  read(request: PageRequest): Promise<PageText>;
+  flights(query: FlightQuery): Promise<FlightOffers>;
+};
 
 export type RunState = 'running' | 'hibernated' | 'stopped' | 'completed' | 'failed';
 export type RunAction = 'start' | 'hibernate' | 'resume' | 'stop';
@@ -275,6 +431,10 @@ export type Ports = {
   readonly hub: Hub;
   readonly notifier: Notifier;
   readonly runs: Runs;
+  readonly directMessages: DirectMessages;
+  readonly workspace: Workspace;
+  readonly pageAppends: PageAppends;
+  readonly research: Research;
 };
 
 export type PortName = keyof Ports;
@@ -290,6 +450,10 @@ const portKeys: Readonly<Record<PortName, true>> = {
   hub: true,
   notifier: true,
   runs: true,
+  directMessages: true,
+  workspace: true,
+  pageAppends: true,
+  research: true,
 };
 
 export const portNames = Object.keys(portKeys) as readonly PortName[];

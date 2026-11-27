@@ -1,4 +1,17 @@
 import type { VerbHandler } from '../handler.ts';
+import {
+  findFreeTimeVerb,
+  holdTimeVerb,
+  readMyCalendarVerb,
+  releaseHoldVerb,
+} from './assistant-calendar.ts';
+import {
+  proposeEmailVerb,
+  proposeInviteVerb,
+  proposePageAppendVerb,
+} from './assistant-proposals.ts';
+import { cancelReminderVerb, listRemindersVerb, setReminderVerb } from './assistant-reminders.ts';
+import { findFlightsVerb, readWebPageVerb, searchWebVerb } from './assistant-research.ts';
 import { attachFileVerb } from './attach-file.ts';
 import { claimItem } from './claim-item.ts';
 import { createRowVerb, readCollectionVerb, readViewVerb, setPropertyVerb } from './collections.ts';
@@ -39,6 +52,19 @@ const handlers: readonly VerbHandler[] = [
   readViewVerb,
   createRowVerb,
   setPropertyVerb,
+  setReminderVerb,
+  cancelReminderVerb,
+  listRemindersVerb,
+  readMyCalendarVerb,
+  findFreeTimeVerb,
+  holdTimeVerb,
+  releaseHoldVerb,
+  proposeEmailVerb,
+  proposeInviteVerb,
+  proposePageAppendVerb,
+  searchWebVerb,
+  readWebPageVerb,
+  findFlightsVerb,
   saveMeasureVerb,
   saveDashboardVerb,
   runMeasureVerb,

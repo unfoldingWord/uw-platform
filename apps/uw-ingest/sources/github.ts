@@ -1,6 +1,6 @@
 import { verify } from '@octokit/webhooks-methods';
 import type { IngestRefusal } from '@uw/contracts';
-import type { VerifiedDelivery, WebhookSource } from '../env.ts';
+import type { VerifiedDelivery, SharedSecretSource } from '../env.ts';
 
 async function signatureMatches(secret: string, rawBody: string, signature: string) {
   try {
@@ -24,7 +24,7 @@ async function verifyGithub(
   return { deliveryId, event };
 }
 
-export const githubSource: WebhookSource = {
+export const githubSource: SharedSecretSource = {
   secret: (env) => env.GITHUB_WEBHOOK_SECRET,
   verify: verifyGithub,
 };

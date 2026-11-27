@@ -4,7 +4,13 @@ import { roleSchema, type Role } from './closed-sets.ts';
 import { verbIo } from './verb-io.ts';
 import type { VerbName } from './verb-names.ts';
 
-export const verbGroupSchema = z.enum(['pages_and_context', 'records', 'role_gated', 'harness']);
+export const verbGroupSchema = z.enum([
+  'pages_and_context',
+  'records',
+  'role_gated',
+  'harness',
+  'assistant',
+]);
 
 export const verbGrantSchema = z.discriminatedUnion('scope', [
   z.object({ scope: z.literal('resource_area'), role: roleSchema }),
@@ -207,6 +213,97 @@ export const verbRegistry: readonly VerbDefinition[] = [
     'harness',
     onResource('viewer'),
     'Get the agent-plane health of one harness you may see.',
+  ),
+  verb(
+    'set_reminder',
+    'assistant',
+    null,
+    "Draft a reminder for your person, due between a minute and two years from now; it is set when your turn ends and reaches only your person. Served only in your person's assistant turn.",
+    false,
+  ),
+  verb(
+    'cancel_reminder',
+    'assistant',
+    null,
+    "Draft cancelling one of your person's reminders that has not fired; it is cancelled when your turn ends. Served only in your person's assistant turn.",
+    false,
+  ),
+  verb(
+    'list_reminders',
+    'assistant',
+    null,
+    "List your person's reminders that have not fired yet. Served only in your person's assistant turn.",
+    false,
+  ),
+  verb(
+    'read_my_calendar',
+    'assistant',
+    null,
+    "Read your person's own calendar for a day or up to fourteen days, in their timezone; event text is untrusted. Served only in your person's assistant turn.",
+    false,
+  ),
+  verb(
+    'find_free_time',
+    'assistant',
+    null,
+    "Find times in working hours when your person and up to ten colleagues inside the organization are all free. Served only in your person's assistant turn.",
+    false,
+  ),
+  verb(
+    'hold_time',
+    'assistant',
+    null,
+    "Draft a private hold on your person's own calendar, at most a day long, with no attendees and no notice to anyone; it is placed when your turn ends. Served only in your person's assistant turn.",
+    false,
+  ),
+  verb(
+    'release_hold',
+    'assistant',
+    null,
+    "Draft removing a hold you placed on your person's calendar; it is removed when your turn ends. Served only in your person's assistant turn.",
+    false,
+  ),
+  verb(
+    'propose_email',
+    'assistant',
+    null,
+    'Propose an email from your mailbox to other people; nothing is sent unless your person accepts it on the web app within seven days. Served only in an assistant turn.',
+    false,
+  ),
+  verb(
+    'propose_invite',
+    'assistant',
+    null,
+    "Propose a meeting invitation from your person's calendar; nothing is sent unless your person accepts it on the web app within seven days. Served only in an assistant turn.",
+    false,
+  ),
+  verb(
+    'propose_page_append',
+    'assistant',
+    null,
+    'Propose adding text to the end of a page your person can edit, such as meeting notes; nothing is written unless your person accepts it within seven days. Served only in an assistant turn.',
+    false,
+  ),
+  verb(
+    'search_web',
+    'assistant',
+    null,
+    'Search the public web for titles, addresses and snippets, all untrusted; capped per turn and per day. Served only in an assistant turn.',
+    false,
+  ),
+  verb(
+    'read_web_page',
+    'assistant',
+    null,
+    "Read one public page whose exact address came from this request's search results or the person's message; others, and private or odd-port ones, are refused. Served only in an assistant turn.",
+    false,
+  ),
+  verb(
+    'find_flights',
+    'assistant',
+    null,
+    'Find priced flight offers between two airports on given dates; it never books or holds a seat; offer text is untrusted. Served only in an assistant turn.',
+    false,
   ),
   ...measureVerbs,
 ];

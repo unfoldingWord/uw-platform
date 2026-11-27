@@ -10,6 +10,7 @@ import type { Caller } from '../caller.ts';
 import { gateView } from '../gates/view.ts';
 import type { KernelOutcome } from '../outcome.ts';
 import type { Ports } from '../ports.ts';
+import { overview, type AssistantOverview, type OverviewInput } from '../assistants/overview.ts';
 import { readOnly } from '../store-read.ts';
 import type { PageFacts, StoreTransaction } from '../store-ports.ts';
 import type { ReadableAreas } from '@uw/core/acl';
@@ -65,6 +66,7 @@ type Gate = { readonly harness: Harness; readonly stage: Stage; readonly item: I
 
 export type ViewReads = {
   harnesses(caller: Caller, options?: ReadOptions): Promise<readonly Harness[]>;
+  myAssistant(caller: Caller, input: OverviewInput): Promise<KernelOutcome<AssistantOverview>>;
   frame(caller: Caller, options?: ReadOptions): Promise<FrameCounts>;
   queues(caller: Caller, options?: ReadOptions): Promise<Queues>;
   creatableAreas(caller: Caller, options?: ReadOptions): Promise<ReadableAreas>;
@@ -252,6 +254,7 @@ export function createViewReads(ports: ViewPorts): ViewReads {
       const at = instant(options);
       return readOnly(store, (tx) => readableHarnesses(ports, tx, caller, at));
     },
+    myAssistant: (caller, input) => overview(ports, caller, input),
     ...frameRead(ports),
     flow: (caller, input, options) => {
       const at = instant(options);

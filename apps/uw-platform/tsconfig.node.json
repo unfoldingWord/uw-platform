@@ -23,7 +23,9 @@
     "testing/measure-world.ts",
     "testing/measure-app.ts",
     "testing/measure-scene.ts",
-    "testing/context-rig.ts"
+    "testing/context-rig.ts",
+    "testing/turn-rig.ts",
+    "testing/turn-script.ts"
   ],
   "exclude": ["node_modules"]
 }

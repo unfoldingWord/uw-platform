@@ -2,6 +2,7 @@ import type { ZodType } from 'zod';
 import {
   approvePersonCommandSchema,
   saveProfileBodyCommandSchema,
+  deactivatePersonCommandSchema,
   declinePersonCommandSchema,
   grantRoleCommandSchema,
   revokeRoleCommandSchema,
@@ -13,6 +14,29 @@ import {
   serviceClientIdSchema,
 } from './agent-commands.ts';
 import { jdAreaSchema, jdCategorySchema, jdIdSchema } from './areas.ts';
+import {
+  assistantChannelSchema,
+  assistantDirectEffectSchema,
+  assistantEffectFailureSchema,
+  assistantEffectKindSchema,
+  assistantReminderRefusalSchema,
+  assistantHoldStatusSchema,
+  assistantCalendarRefusalSchema,
+  assistantPairingRefusalSchema,
+  assistantPairingViaSchema,
+  assistantReminderStatusSchema,
+  assistantRequestInputSchema,
+  assistantSettingFieldSchema,
+  assistantSettingsSchema,
+  assistantTurnOutcomeSchema,
+  assistantTurnRefusalSchema,
+  untrustedPartSchema,
+} from './assistants.ts';
+import { assistantAccountSchemaRegistry } from './assistant-accounts-registry.ts';
+import {
+  disablePersonAssistantCommandSchema,
+  setAssistantBudgetCommandSchema,
+} from './assistant-commands.ts';
 import {
   bindCredentialCommandSchema,
   confirmRevealCommandSchema,
@@ -212,10 +236,16 @@ import {
 import { recordRunStepReplySchema, submitToGateResultSchema } from './verb-io.ts';
 import { forbiddenVerbSchema, verbNameSchema } from './verb-names.ts';
 import { verbGrantSchema, verbGroupSchema } from './verbs.ts';
-import { zulipMessageSchema, zulipOutgoingSchema, zulipTopicSchema } from './zulip.ts';
+import {
+  zulipMessageSchema,
+  zulipOutgoingSchema,
+  zulipRecipientSchema,
+  zulipTopicSchema,
+} from './zulip.ts';
 
 export const schemaRegistry: Record<string, ZodType> = {
   ...collectionSchemaRegistry,
+  ...assistantAccountSchemaRegistry,
   ...measureSchemaRegistry,
   command: commandSchema,
   'command-name': commandNameSchema,
@@ -260,6 +290,7 @@ export const schemaRegistry: Record<string, ZodType> = {
   'revoke-role-command': revokeRoleCommandSchema,
   'approve-person-command': approvePersonCommandSchema,
   'decline-person-command': declinePersonCommandSchema,
+  'deactivate-person-command': deactivatePersonCommandSchema,
   'save-profile-body-command': saveProfileBodyCommandSchema,
   'credential-kind': credentialKindSchema,
   'create-credential-command': createCredentialCommandSchema,
@@ -442,9 +473,28 @@ export const schemaRegistry: Record<string, ZodType> = {
   'zulip-topic': zulipTopicSchema,
   'zulip-outgoing': zulipOutgoingSchema,
   'zulip-message': zulipMessageSchema,
+  'zulip-recipient': zulipRecipientSchema,
   'pdf-export-kind': pdfExportKindSchema,
   'pdf-export-status': pdfExportStatusSchema,
   'binder-request': binderRequestSchema,
   'pdf-target': pdfTargetSchema,
   'pdf-export-reply': pdfExportReplySchema,
+  'assistant-channel': assistantChannelSchema,
+  'assistant-direct-effect': assistantDirectEffectSchema,
+  'assistant-effect-kind': assistantEffectKindSchema,
+  'assistant-turn-refusal': assistantTurnRefusalSchema,
+  'assistant-effect-failure': assistantEffectFailureSchema,
+  'assistant-setting-field': assistantSettingFieldSchema,
+  'untrusted-part': untrustedPartSchema,
+  'assistant-request-input': assistantRequestInputSchema,
+  'assistant-settings': assistantSettingsSchema,
+  'assistant-reminder-status': assistantReminderStatusSchema,
+  'assistant-reminder-refusal': assistantReminderRefusalSchema,
+  'assistant-hold-status': assistantHoldStatusSchema,
+  'assistant-calendar-refusal': assistantCalendarRefusalSchema,
+  'assistant-pairing-via': assistantPairingViaSchema,
+  'assistant-pairing-refusal': assistantPairingRefusalSchema,
+  'assistant-turn-outcome': assistantTurnOutcomeSchema,
+  'set-assistant-budget-command': setAssistantBudgetCommandSchema,
+  'disable-person-assistant-command': disablePersonAssistantCommandSchema,
 };

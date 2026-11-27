@@ -20,6 +20,7 @@ const itemWake: Wake = {
   recipients: [{ personId: 'c7000000-0000-4000-8000-000000000003', present: false }],
   at: new Date('2026-10-04T09:00:00.000Z'),
   traceId: 'c7000000-0000-4000-8000-000000000004',
+  personal: false,
 };
 
 describe('the Zulip post', () => {

@@ -15,6 +15,7 @@ const routeFiles = [
   commandRoutes,
   'apps/uw-platform/mcp/routes.ts',
   'apps/uw-platform/acl/routes.ts',
+  'apps/uw-platform/commands/assistant-routes.ts',
   'apps/uw-platform/agents/routes.ts',
   'apps/uw-platform/credentials/routes.ts',
   'apps/uw-platform/crosswalk/routes.ts',

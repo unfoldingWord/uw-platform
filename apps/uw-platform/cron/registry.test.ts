@@ -6,6 +6,7 @@ import type { CronDeps } from './job.ts';
 import { minuteJob } from './minute.ts';
 import { cronJobs, GITHUB_SWEEP_CRON, MINUTE_CRON } from './registry.ts';
 import { runScheduled } from './scheduled.ts';
+import { directMessagesOf } from '../assistants/direct-messages.ts';
 
 type Line = Record<string, unknown>;
 
@@ -34,6 +35,7 @@ function recordingDeps(): { readonly deps: CronDeps; readonly lines: Line[]; sen
       newId: () => '00000000-0000-4000-8000-000000000001',
       commit: 'c',
       engines: { fetch: () => Promise.reject(new Error('no spend is read')) },
+      directMessages: directMessagesOf,
     },
   };
   return state;
@@ -69,18 +71,6 @@ describe('GH-2 the sweep is registered as a nightly cron', () => {
     expect(worker.scheduled).toBe(runScheduled);
   });
 
-  it('#198 runs the request retention, the PDF export expiry, the measure output expiry and then the sweep, each logging database_not_configured as the system principal when there is no database', async () => {
-    const spy = vi.spyOn(console, 'log').mockImplementation(() => undefined);
-    await runScheduled(controller(GITHUB_SWEEP_CRON), {});
-    const skipped = { outcome: 'database_not_configured', principal: 'agent:system' };
-    expect(logged(spy)).toEqual([
-      expect.objectContaining({ ...skipped, route: 'cron request retention' }),
-      expect.objectContaining({ ...skipped, route: 'cron pdf export expiry' }),
-      expect.objectContaining({ ...skipped, route: 'cron measure output expiry' }),
-      expect.objectContaining({ ...skipped, route: 'cron github sweep' }),
-    ]);
-  });
-
   it('logs github_not_configured and sends no request without the GitHub secrets', async () => {
     const recording = recordingDeps();
     await sweepGitHubJob(database, recording.deps);
@@ -95,6 +85,23 @@ describe('GH-2 the sweep is registered as a nightly cron', () => {
     await runScheduled(controller('0 0 * * *'), database);
     expect(logged(spy)).toEqual([
       expect.objectContaining({ outcome: 'unknown_cron', cron: '0 0 * * *' }),
+    ]);
+  });
+});
+
+describe('#198 PA-12 PA-14 PA-15 the nightly cron', () => {
+  it('#198 PA-14 PA-15 runs the request retention, the PDF export expiry, the measure output expiry, the sweep, the assistant deletion, the assistant history retention and then the proposal expiry, each logging database_not_configured as the system principal when there is no database', async () => {
+    const spy = vi.spyOn(console, 'log').mockImplementation(() => undefined);
+    await runScheduled(controller(GITHUB_SWEEP_CRON), {});
+    const skipped = { outcome: 'database_not_configured', principal: 'agent:system' };
+    expect(logged(spy)).toEqual([
+      expect.objectContaining({ ...skipped, route: 'cron request retention' }),
+      expect.objectContaining({ ...skipped, route: 'cron pdf export expiry' }),
+      expect.objectContaining({ ...skipped, route: 'cron measure output expiry' }),
+      expect.objectContaining({ ...skipped, route: 'cron github sweep' }),
+      expect.objectContaining({ ...skipped, route: 'cron assistant deletion' }),
+      expect.objectContaining({ ...skipped, route: 'cron assistant retention' }),
+      expect.objectContaining({ ...skipped, route: 'cron assistant proposal expiry' }),
     ]);
   });
 });

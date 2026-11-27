@@ -1,0 +1,16 @@
+{
+  "eventId": "00000000-0000-4000-8000-0000000000e7",
+  "harnessId": "00000000-0000-4000-8000-0000000000a1",
+  "itemId": null,
+  "name": "assistant_effect_undone",
+  "position": 1,
+  "at": "2026-10-01T09:00:00.000Z",
+  "actor": "human:00000000-0000-4000-8000-0000000000b1",
+  "evidence": {
+    "effectId": "00000000-0000-4000-8000-0000000000e2",
+    "kind": "reminder_set",
+    "text": "call mum"
+  },
+  "traceId": "00000000-0000-4000-8000-0000000000c1",
+  "requestId": null
+}

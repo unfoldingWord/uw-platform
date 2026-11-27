@@ -47,6 +47,7 @@ import {
   oneOf,
   subsetOf,
 } from './checks.ts';
+import { assistantEventIndexes } from './assistant-event-indexes.ts';
 import { instant } from './columns.ts';
 import { declareTable } from './declarations.ts';
 import { harnesses } from './schema-harnesses.ts';
@@ -63,6 +64,9 @@ export * from './schema-directory.ts';
 export * from './schema-crosswalk.ts';
 export * from './schema-exports.ts';
 export * from './schema-suggestions.ts';
+export * from './schema-assistants.ts';
+export * from './schema-assistant-accounts.ts';
+export * from './schema-assistant-proposals.ts';
 export * from './schema-measures.ts';
 
 const internalSync = { classification: 'internal', offlineEligibility: 'sync' } as const;
@@ -491,5 +495,6 @@ export const harnessEvents = declareTable(
     index('harness_events_breaker_latest')
       .on(t.harnessId, t.at, t.position)
       .where(oneOf(t.name, breakerEventNames)),
+    ...assistantEventIndexes(t),
   ],
 );

@@ -1,0 +1,15 @@
+{
+  "eventId": "00000000-0000-4000-8000-0000000000eb",
+  "harnessId": "00000000-0000-4000-8000-0000000000a1",
+  "itemId": null,
+  "name": "assistant_pairing_started",
+  "position": 1,
+  "at": "2026-10-01T09:00:00.000Z",
+  "actor": "agent:system",
+  "evidence": {
+    "channel": "zulip_dm",
+    "code": "K7M2Q9XR"
+  },
+  "traceId": "00000000-0000-4000-8000-0000000000c1",
+  "requestId": null
+}

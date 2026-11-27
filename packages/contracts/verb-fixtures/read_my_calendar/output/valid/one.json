@@ -1,0 +1,18 @@
+{
+  "timezone": "Europe/Berlin",
+  "from": "2026-12-01T00:00:00.000Z",
+  "to": "2026-12-02T00:00:00.000Z",
+  "events": [
+    {
+      "startAt": "2026-12-01T09:00:00.000Z",
+      "endAt": "2026-12-01T10:00:00.000Z",
+      "when": "2026-12-01 09:00 to 10:00",
+      "allDay": false,
+      "organisedByYou": true,
+      "attendees": 0,
+      "holdId": "00000000-0000-4000-8000-0000000000f4",
+      "details": "Untrusted content from calendar_event."
+    }
+  ],
+  "truncated": false
+}

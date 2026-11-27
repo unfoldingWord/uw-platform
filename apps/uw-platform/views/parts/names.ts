@@ -41,6 +41,7 @@ export const pageNames = {
   cascade: 'Strategic Cascade',
   crosswalk: 'JD Crosswalk',
   person: 'Person',
+  myAssistant: 'My Assistant',
   measures: 'Measures & Dashboards',
 } as const;
 
@@ -75,6 +76,7 @@ export type BuiltModule =
   | 'tasks'
   | 'directory'
   | 'crosswalk'
+  | 'myAssistant'
   | 'measures';
 export type PlatformArea = {
   readonly code: string;
@@ -100,7 +102,7 @@ export const platformAreas: readonly PlatformArea[] = [
   {
     code: '10-19',
     name: 'Internal Operations & Administration',
-    modules: [],
+    modules: [{ label: 'My Assistant', icon: 'user-check', built: 'myAssistant' }],
   },
   {
     code: '20-29',
@@ -162,6 +164,7 @@ export const moduleCodes: Readonly<Record<BuiltModule, string>> = {
   tasks: '00',
   directory: '00.05',
   crosswalk: '00',
+  myAssistant: '10',
   measures: '00',
 };
 

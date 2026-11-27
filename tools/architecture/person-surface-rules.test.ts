@@ -256,6 +256,12 @@ const activationRefusals: [string, string, string, string][] = [
     'persona-activation-only-in-the-person-surface',
   ],
   [
+    'another assistant module reaching the flip',
+    'packages/harness/assistants/accounts.ts',
+    "import '../personas/flip.ts';",
+    'persona-activation-only-in-the-person-surface',
+  ],
+  [
     'the dispatcher reaching the person activation',
     'apps/uw-platform/commands/dispatch.ts',
     "import './person/persona-activation.ts';",
@@ -275,7 +281,7 @@ describe('persona activation is built only for the person activation command', (
     expect(found.map((violation) => violation.rule)).toContain(rule);
   });
 
-  it('allows the capabilities, the person activation, the activation module, the app test helpers and a test', async () => {
+  it('allows the capabilities, the person activation, the activation module, the assistant provisioner activation, the app test helpers and a test', async () => {
     const found = await violations({
       ...activationFiles,
       'apps/uw-platform/commands/capabilities.ts': "import './person/persona-activation.ts';",
@@ -283,6 +289,7 @@ describe('persona activation is built only for the person activation command', (
       'packages/harness/persona-activation.ts': "import './personas/commands.ts';",
       'packages/harness/personas/commands.ts': "import './activate.ts';",
       'packages/harness/personas/activate.ts': "import './flip.ts';",
+      'packages/harness/personas/assistant-activation.ts': "import './flip.ts';",
       'apps/uw-platform/testing/kernel.ts': "import '@uw/harness/persona-activation';",
       'apps/uw-platform/harness/a.pg.test.ts': "import '@uw/harness/persona-activation';",
     });

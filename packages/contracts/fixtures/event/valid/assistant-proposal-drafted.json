@@ -1,0 +1,16 @@
+{
+  "eventId": "00000000-0000-4000-8000-0000000000e8",
+  "harnessId": "00000000-0000-4000-8000-0000000000a1",
+  "itemId": null,
+  "name": "assistant_proposal_drafted",
+  "position": 1,
+  "at": "2026-10-01T09:00:00.000Z",
+  "actor": "agent:system",
+  "evidence": {
+    "proposalId": "00000000-0000-4000-8000-0000000000f1",
+    "requestId": "00000000-0000-4000-8000-0000000000f2",
+    "kind": "email"
+  },
+  "traceId": "00000000-0000-4000-8000-0000000000c1",
+  "requestId": null
+}

@@ -4,6 +4,7 @@ import { recordContext, recordHarnessEvents, type EventDraft } from '../../items
 import { lockKeys } from '../../lock-keys.ts';
 import { refused, type KernelOutcome } from '../../outcome.ts';
 import type { Ports, StoreTransaction } from '../../ports.ts';
+import { personalRefusal } from '../guards.ts';
 import { adminRefusal } from '../rules.ts';
 import type { HeldDraft } from '../../store-ports.ts';
 
@@ -31,7 +32,7 @@ export function withDraft<T>(
     await tx.lock(lockKeys.harnessStages(harnessId));
     const harness = await tx.harnesses.read.byId(harnessId);
     if (harness === null) return refused('harness_not_found', { harnessId });
-    const denied = await adminRefusal(ports, tx, caller, harness, at);
+    const denied = personalRefusal(harness) ?? (await adminRefusal(ports, tx, caller, harness, at));
     if (denied !== null) return denied;
     const personId = caller.actor.personId;
     if (personId === null) return refused('not_permitted', { jdArea: harness.jdArea });

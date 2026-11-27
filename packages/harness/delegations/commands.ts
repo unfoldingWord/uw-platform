@@ -1,4 +1,5 @@
 import {
+  assistantIdentityOf,
   capabilityWordSchema,
   delegableTierSchema,
   personaIdentitySchema,
@@ -16,6 +17,7 @@ import { storeRefusalOf } from '../port-errors.ts';
 import type { Delegation, DelegationFilter, Ports, StoreTransaction } from '../ports.ts';
 import { adminRefusal, agentRefusal } from '../stages/rules.ts';
 import { beatPrincipal, personaMatches } from './beat.ts';
+import { policyOf } from './capability.ts';
 import { lapseExpired, type Expired, type ExpiryInput } from './expiry.ts';
 import { assertDelegationLive, recordLapse } from './live.ts';
 import { readableDelegations } from './readable.ts';
@@ -111,6 +113,43 @@ function draftOf(
   };
 }
 
+async function personRefusal(
+  ports: DelegationPorts,
+  tx: StoreTransaction,
+  caller: Caller,
+  harness: Harness,
+  at: Date,
+): Promise<Refused | null> {
+  const { actor } = caller;
+  const denied = refused('not_permitted', { harnessId: harness.id });
+  if (isAgent(actor) || !actor.interactive || actor.personId === null) return denied;
+  if (actor.personId !== harness.personId) return denied;
+  const grants = await ports.grants.lockAndReread(tx, actor.personId, at);
+  return grants.length > 0 ? null : denied;
+}
+
+async function grantorRefusal(
+  ports: DelegationPorts,
+  tx: StoreTransaction,
+  caller: Caller,
+  { harness, capability }: { readonly harness: Harness; readonly capability: CapabilityWord },
+  at: Date,
+): Promise<Refused | null> {
+  const known = capabilityWordSchema.safeParse(capability);
+  if (!known.success) return adminRefusal(ports, tx, caller, harness, at);
+  const policy = policyOf(known.data);
+  if ((policy.on === 'personal') !== (harness.personId !== null)) {
+    return refused('not_permitted', { why: 'personal_harness' });
+  }
+  if (policy.grantor === 'harness_person') return personRefusal(ports, tx, caller, harness, at);
+  return adminRefusal(ports, tx, caller, harness, at);
+}
+
+function personaRefusal(harness: Harness, persona: string): Refused | null {
+  if (harness.personId === null || persona === assistantIdentityOf(harness.personId)) return null;
+  return refused('not_permitted', { why: 'persona_not_for_harness' });
+}
+
 async function grantIn(
   ports: DelegationPorts,
   tx: StoreTransaction,
@@ -120,8 +159,16 @@ async function grantIn(
 ): Promise<KernelOutcome<Delegation>> {
   const harness = await tx.harnesses.read.byId(input.harnessId);
   if (harness === null) return refused('harness_not_found', { harnessId: input.harnessId });
-  const denied = await adminRefusal(ports, tx, caller, harness, at);
+  const denied = await grantorRefusal(
+    ports,
+    tx,
+    caller,
+    { harness, capability: input.capability },
+    at,
+  );
   if (denied !== null) return denied;
+  const misbound = personaRefusal(harness, input.persona);
+  if (misbound !== null) return misbound;
   const tier = tierOf(input);
   if ('status' in tier) return tier;
   const next = draftOf(ports, caller, harness, { ...input, maxTier: tier.maxTier }, at);
@@ -157,7 +204,7 @@ async function mayRevoke(
   return adminRefusal(ports, tx, caller, harness, at);
 }
 
-async function revokeIn(
+export async function revokeIn(
   ports: DelegationPorts,
   tx: StoreTransaction,
   caller: Caller,
@@ -212,6 +259,9 @@ export async function beatWithin(
       await recordLapse(tx, recordContext(ports, caller, at), liveness.delegation, liveness.why);
     }
     return refused('delegation_lapsed', { delegationId, why: liveness.why });
+  }
+  if (!policyOf(liveness.delegation.capability).device) {
+    return refused('not_permitted', { delegationId, why: 'delegation_capability' });
   }
   const harness = await tx.harnesses.read.byId(found.harnessId);
   if (harness === null) return refused('harness_not_found', { harnessId: found.harnessId });

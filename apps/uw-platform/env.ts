@@ -69,8 +69,18 @@ export type PdfQuickAction = {
   readonly allowRequestPattern: readonly string[];
   readonly cacheTTL: 0;
 };
+export type MarkdownQuickAction = {
+  readonly url: string;
+  readonly allowRequestPattern: readonly string[];
+  readonly rejectResourceTypes: readonly string[];
+  readonly gotoOptions: { readonly waitUntil: 'networkidle2'; readonly timeout: number };
+  readonly cacheTTL: 0;
+};
 export type BrowserBinding = {
-  quickAction(action: 'pdf', options: PdfQuickAction): Promise<Response>;
+  quickAction(
+    action: 'pdf' | 'markdown',
+    options: PdfQuickAction | MarkdownQuickAction,
+  ): Promise<Response>;
 };
 export type PdfExportStart = { readonly exportId: string; readonly traceId: string };
 export type PdfExportBinding = {
@@ -115,6 +125,11 @@ export type MeasureContainerNamespace = {
   get(id: unknown): MeasureContainerStub;
 };
 
+export type AssistantTurnStart = { readonly requestId: string; readonly traceId: string };
+export type AssistantTurnBinding = {
+  create(options: { readonly id: string; readonly params: AssistantTurnStart }): Promise<unknown>;
+};
+
 type DraftStub = { fetch(input: string, init?: RequestInit): Promise<Response> };
 export type DraftNamespace = { idFromName(name: string): unknown; get(id: unknown): DraftStub };
 
@@ -124,6 +139,7 @@ export type Bindings = {
   AI_GATEWAY_ID?: string;
   AI_GATEWAY_TOKEN?: string;
   AI_SPEND_CAP_MINOR?: string;
+  BRAVE_SEARCH_API_KEY?: string;
   BROWSER?: BrowserBinding;
   BUILDER_GITHUB_APP_ID?: string;
   BUILDER_GITHUB_APP_INSTALLATION_ID?: string;
@@ -134,6 +150,10 @@ export type Bindings = {
   ALWAYS_ON_PROVIDER?: string;
   ANTHROPIC_API_KEY?: string;
   APP_ORIGIN?: string;
+  ASSISTANT_EMAIL_INSTRUCTIONS?: string;
+  ASSISTANT_SPEND_CAP_MINOR?: string;
+  ASSISTANT_TURN?: AssistantTurnBinding;
+  ASSISTANT_WEBHOOK_BASE?: string;
   COMMIT_SHA?: string;
   ENVIRONMENT?: string;
   ACCESS_TEAM_DOMAIN?: string;
@@ -146,10 +166,15 @@ export type Bindings = {
   CREDENTIALS_KMS_REGION?: string;
   CREDENTIALS_KMS_SECRET_ACCESS_KEY?: string;
   DEV_PRINCIPAL_EMAIL?: string;
+  DUFFEL_ACCESS_TOKEN?: string;
   FILES?: FilesBucket;
   GITHUB_APP_ID?: string;
   GITHUB_APP_INSTALLATION_ID?: string;
   GITHUB_APP_PRIVATE_KEY?: string;
+  GOOGLE_ASSISTANT_OU?: string;
+  GOOGLE_WORKSPACE_ADMIN_SUBJECT?: string;
+  GOOGLE_WORKSPACE_DOMAIN?: string;
+  GOOGLE_WORKSPACE_KEY?: string;
   HARNESS_HUB?: HubNamespace;
   HARNESS_RUN?: WorkflowBinding;
   HYPERDRIVE?: HyperdriveBinding;
@@ -171,6 +196,8 @@ export type Bindings = {
   VAPID_PRIVATE_JWK?: string;
   VAPID_PUBLIC_KEY?: string;
   VAPID_SUBJECT?: string;
+  ZULIP_ADMIN_API_KEY?: string;
+  ZULIP_ADMIN_EMAIL?: string;
   ZULIP_BOT_API_KEY?: string;
   ZULIP_BOT_EMAIL?: string;
   ZULIP_CHANNELS?: string;

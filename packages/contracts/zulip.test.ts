@@ -26,12 +26,21 @@ const recorded = {
 describe('a Zulip outgoing payload parses with unknown fields kept out of the result', () => {
   it('parses the recorded shape and drops the fields Zulip adds', () => {
     const parsed = zulipOutgoingSchema.parse(recorded);
-    expect(parsed).toEqual({ token: 'xyzzy', trigger: 'mention', message });
+    expect(parsed).toEqual({
+      token: 'xyzzy',
+      trigger: 'mention',
+      bot_email: 'harness-bot@example.zulipchat.com',
+      message: { ...message, timestamp: 1_790_000_000 },
+    });
   });
 
   it('reads the message without its token', () => {
     const rest = Object.fromEntries(Object.entries(recorded).filter(([key]) => key !== 'token'));
-    expect(zulipMessageSchema.parse(rest)).toEqual({ trigger: 'mention', message });
+    expect(zulipMessageSchema.parse(rest)).toEqual({
+      trigger: 'mention',
+      bot_email: 'harness-bot@example.zulipchat.com',
+      message: { ...message, timestamp: 1_790_000_000 },
+    });
     expect(Object.keys(zulipMessageSchema.shape)).not.toContain('token');
   });
 
@@ -45,6 +54,7 @@ describe('a Zulip outgoing payload parses with unknown fields kept out of the re
     { ...recorded, message: { ...message, id: 0 } },
     { ...recorded, message: { ...message, type: 'channel' } },
     { trigger: 'mention', message },
+    { ...recorded, message: { ...message, display_recipient: [{ id: 'x' }] } },
   ])('rejects %j', (payload) => {
     expect(zulipOutgoingSchema.safeParse(payload).success).toBe(false);
   });

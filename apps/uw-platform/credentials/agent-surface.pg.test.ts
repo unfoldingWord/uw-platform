@@ -146,6 +146,20 @@ function argumentsOf(): Readonly<Record<VerbName, readonly unknown[]>> {
     ],
     record_run_step: [ids],
     get_health: [{ harnessId }],
+    ...measureArguments(),
+    set_reminder: [{ text: name, dueAt: '2027-01-01T09:00:00Z' }],
+    cancel_reminder: [{ reminderId: credentialId }],
+    list_reminders: [{}],
+    read_my_calendar: [{}],
+    find_free_time: [{ with: [`${name}@example.org`], minutes: 30 }],
+    hold_time: [{ title: name, start: '2027-01-01T09:00:00Z', end: '2027-01-01T10:00:00Z' }],
+    release_hold: [{ holdId: credentialId }],
+    ...proposalArguments(),
+  };
+}
+
+function measureArguments() {
+  return {
     save_measure: [{ measureId: credentialId }],
     save_dashboard: [{ dashboardId: credentialId }],
     run_measure: [{ measureId: credentialId }],
@@ -153,6 +167,23 @@ function argumentsOf(): Readonly<Record<VerbName, readonly unknown[]>> {
     read_metric: [{ measureId: credentialId, metric: 'score' }],
     read_observations: [{ measureId: credentialId }],
     preview_dashboard: [{ dashboardId: credentialId, hostPageId: null }],
+  };
+}
+
+function proposalArguments() {
+  const invite = {
+    title: name,
+    start: '2027-01-01T09:00:00Z',
+    end: '2027-01-01T10:00:00Z',
+    attendees: ['ana@example.org'],
+  };
+  return {
+    propose_email: [{ to: ['ana@example.org'], subject: name, body: name }],
+    propose_invite: [invite],
+    propose_page_append: [{ pageId: credentialId, text: name }],
+    search_web: [{ query: name }],
+    read_web_page: [{ url: `https://${name}.example.org/` }],
+    find_flights: [{ origin: 'NBO', destination: 'GVA', departDate: '2027-03-01' }],
   };
 }
 

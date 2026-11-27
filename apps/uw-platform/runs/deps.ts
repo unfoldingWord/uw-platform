@@ -14,6 +14,7 @@ import { spendCapOf, type SpendCap } from '../health/spend-cap.ts';
 import { createGitHubReads } from '../github/client.ts';
 import { reviewerAppsOf } from '../github/reviewer-apps.ts';
 import { platformGitHubTransport } from '../github/transport.ts';
+import { directMessagesOf } from '../assistants/direct-messages.ts';
 import { hubWiring, platformKernel, runWiring } from '../kernel.ts';
 import type { MeasureRunBinding } from '../measures/sandbox.ts';
 import { systemClock } from '../ports/clock.ts';
@@ -81,7 +82,14 @@ function runKernelOf(env: Bindings, database: DatabaseHandle, logger: Logger) {
   const engines = engineRegistryOf(config);
   const modelEngine = platformModelEngine(engines, gatewaySpend(config, now));
   const notifier = notifierOf(env, database, consoleSink);
-  const host = { hub: hubOf(env, logger), runs: runsOf(env), modelEngine, notifier };
+  const directMessages = directMessagesOf({ env, database, fetch: send });
+  const host = {
+    hub: hubOf(env, logger),
+    runs: runsOf(env),
+    modelEngine,
+    notifier,
+    directMessages,
+  };
   const kernel = platformKernel(database, systemClock, runWiring(host, reads, reviews));
   return { kernel, engines };
 }
@@ -104,7 +112,10 @@ export function runDepsOf(env: Bindings, traceId: string): OpenedRunDeps {
     verbKernel: platformKernel(
       database,
       systemClock,
-      hubWiring(hubOf(env, logger), { notifier: notifierOf(env, database, consoleSink) }),
+      hubWiring(hubOf(env, logger), {
+        notifier: notifierOf(env, database, consoleSink),
+        directMessages: directMessagesOf({ env, database, fetch: fetch.bind(globalThis) }),
+      }),
     ),
     runKernel: kernel,
     host: { actor: systemPrincipal(), traceId, requestId: null },

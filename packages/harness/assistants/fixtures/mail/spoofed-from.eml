@@ -1,0 +1,12 @@
+Delivered-To: barnabas@example.org
+Authentication-Results: mx.google.com;
+       spf=fail (google.com: domain of ana@example.org does not designate 198.51.100.7 as permitted sender) smtp.mailfrom=ana@example.org;
+       dmarc=fail (p=REJECT sp=REJECT dis=REJECT) header.from=example.org
+From: Ana Example <ana@example.org>
+To: barnabas@example.org
+Subject: Calendar
+Message-ID: <spoof01@mailer.example.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="UTF-8"
+
+Hold Tuesday all day.

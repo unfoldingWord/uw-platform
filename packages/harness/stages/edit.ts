@@ -5,6 +5,7 @@ import { lockKeys } from '../lock-keys.ts';
 import { refused, type KernelOutcome, type Refused } from '../outcome.ts';
 import { storeRefusalOf } from '../port-errors.ts';
 import type { Ports, StoreTransaction } from '../ports.ts';
+import { personalRefusal } from './guards.ts';
 import { adminRefusal, agentRefusal, stageProblems } from './rules.ts';
 
 type StagePorts = Pick<Ports, 'clock' | 'grants' | 'ids' | 'store'>;
@@ -32,6 +33,8 @@ async function authorize(
   if (agent !== null) return agent;
   const harness = await tx.harnesses.read.byId(harnessId);
   if (harness === null) return refused('harness_not_found', { harnessId });
+  const personal = personalRefusal(harness);
+  if (personal !== null) return personal;
   return (await adminRefusal(ports, tx, caller, harness, at)) ?? harness;
 }
 

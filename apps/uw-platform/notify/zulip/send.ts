@@ -15,7 +15,7 @@ function fieldsOf(wake: Wake) {
 }
 
 export async function postTo(deps: ZulipSend, wake: Wake): Promise<ZulipDecision> {
-  if (!POSTING_REASONS.has(wake.reason)) return 'not_posted';
+  if (wake.personal || !POSTING_REASONS.has(wake.reason)) return 'not_posted';
   const { zulip, appOrigin } = deps.config;
   if (zulip === null || appOrigin === null || deps.poster === null) {
     deps.logger.info('zulip not configured', {

@@ -11,6 +11,11 @@ import { notifierOf } from '../ports/notifier.ts';
 import { spendOnlyEngine } from '../ports/model-engine.ts';
 import { runsOf } from '../ports/runs.ts';
 import { unitHub } from '../unit-hub.ts';
+import { turnStarterOf, type TurnStarter } from '../assistants/turn/start.ts';
+import { provisionerOf } from '../assistants/provisioning/deps.ts';
+import { provisionDue } from '../assistants/provisioning/provisioner.ts';
+import type { ProvisionerDeps } from '../assistants/provisioning/types.ts';
+import { sweepAssistantMail } from './assistant-mail.ts';
 import { runDelegatedExits } from './delegated-exits.ts';
 import { startDueMeasures } from './measures.ts';
 import { cronLogger, type CronDeps, type CronJob } from './job.ts';
@@ -19,12 +24,21 @@ const SWEEP_LIMIT = 200;
 const BEAT_LIMIT = 10;
 const EXPIRY_LIMIT = 200;
 const SILENCE_LIMIT = 200;
+const REMINDER_LIMIT = 50;
+const STALE_TURN_LIMIT = 50;
+const START_LIMIT = 20;
+const PROVISION_LIMIT = 5;
+const LEAVER_LIMIT = 20;
 
 type Minute = {
   readonly kernel: Kernel;
   readonly caller: Caller;
   readonly deps: CronDeps;
   readonly logger: Logger;
+  readonly startTurn: TurnStarter;
+  readonly provisioner: ProvisionerDeps;
+  readonly env: Bindings;
+  readonly database: DatabaseHandle;
 };
 
 function monthStart(now: Date): Date {
@@ -102,6 +116,85 @@ async function silence({ kernel, caller, logger }: Minute): Promise<void> {
   });
 }
 
+async function remind({ kernel, caller, logger }: Minute): Promise<void> {
+  const fired = await kernel.assistants.fireDueReminders(caller, { limit: REMINDER_LIMIT });
+  if (fired.status !== 'accepted') {
+    logger.warn('reminders refused', { step: 'reminders', outcome: fired.reason });
+    return;
+  }
+  logger.info('reminders fired', {
+    step: 'reminders',
+    outcome: 'reminders_fired',
+    fired: fired.value.fired.length,
+    undelivered: fired.value.undelivered.length,
+  });
+}
+
+async function closeStale({ kernel, caller, logger }: Minute): Promise<void> {
+  const swept = await kernel.assistants.closeStaleTurns(caller, { limit: STALE_TURN_LIMIT });
+  if (swept.status !== 'accepted') {
+    logger.warn('stale assistant turns refused', {
+      step: 'assistant-turns',
+      outcome: swept.reason,
+    });
+    return;
+  }
+  logger.info('stale assistant turns closed', {
+    step: 'assistant-turns',
+    outcome: 'assistant_turns_swept',
+    abandoned: swept.value.abandoned.length,
+    settled: swept.value.settled.length,
+    unknown: swept.value.unknown.length,
+  });
+}
+
+async function startWaiting(minute: Minute): Promise<void> {
+  const { kernel, caller, logger, startTurn } = minute;
+  const waiting = await kernel.assistants.unstartedRequests(caller, { limit: START_LIMIT });
+  if (waiting.status !== 'accepted') {
+    logger.warn('unstarted assistant turns refused', {
+      step: 'assistant-starts',
+      outcome: waiting.reason,
+    });
+    return;
+  }
+  const counts = { started: 0, already_started: 0, not_wired: 0 };
+  for (const requestId of waiting.value.requestIds) {
+    counts[await startTurn({ requestId, traceId: caller.traceId })] += 1;
+  }
+  logger.info('unstarted assistant turns', {
+    step: 'assistant-starts',
+    outcome: 'assistant_turns_started',
+    ...counts,
+  });
+}
+
+async function turnOffLeavers({ kernel, provisioner, logger }: Minute): Promise<void> {
+  const swept = await kernel.assistants.disableLeavers(provisioner.caller, {
+    limit: LEAVER_LIMIT,
+  });
+  if (swept.status !== 'accepted') {
+    logger.warn('assistant leavers refused', { step: 'assistant-leavers', outcome: swept.reason });
+    return;
+  }
+  logger.info('assistant leavers turned off', {
+    step: 'assistant-leavers',
+    outcome: 'assistant_leavers_turned_off',
+    disabled: swept.value.disabled.length,
+  });
+}
+
+async function provision({ provisioner, logger }: Minute): Promise<void> {
+  const driven = await provisionDue(provisioner, PROVISION_LIMIT);
+  const counts = { done: 0, waiting: 0, failed: 0 };
+  for (const one of driven) counts[one.outcome] += 1;
+  logger.info('assistants provisioned', {
+    step: 'assistant-provisioning',
+    outcome: 'assistants_provisioned',
+    ...counts,
+  });
+}
+
 function failureOf(step: string, error: unknown): string {
   if (step === 'breaker' && error instanceof PortNotWiredError) return 'breaker_not_configured';
   if (step === 'breaker') return 'breaker_unreadable';
@@ -124,6 +217,37 @@ async function guarded(
   }
 }
 
+function mail(minute: Minute): Promise<void> {
+  const { env, database, deps, kernel, caller, logger, startTurn } = minute;
+  return sweepAssistantMail({
+    env,
+    database,
+    fetch: deps.fetch,
+    kernel,
+    caller,
+    logger,
+    startTurn,
+    now: deps.now,
+  });
+}
+
+async function guardedSteps(minute: Minute): Promise<void> {
+  await guarded(minute, 'sweep', sweep);
+  await guarded(minute, 'expiry', expire);
+  await guarded(minute, 'breaker', checkBreaker);
+  await guarded(minute, 'beat', beat);
+  await guarded(minute, 'reminders', remind);
+  await guarded(minute, 'assistant-turns', closeStale);
+  await guarded(minute, 'assistant-starts', startWaiting);
+  await guarded(minute, 'assistant-leavers', turnOffLeavers);
+  await guarded(minute, 'assistant-provisioning', provision);
+  await guarded(minute, 'assistant-mail', mail);
+  await guarded(minute, 'silence', silence);
+  await guarded(minute, 'measures', (each) =>
+    startDueMeasures(each.database, each.env, each.deps, each.logger),
+  );
+}
+
 async function minuteWith(
   database: DatabaseHandle,
   env: Bindings,
@@ -133,22 +257,27 @@ async function minuteWith(
   const unit = unitHub(hubOf(env, logger));
   const modelEngine = spendOnlyEngine(gatewaySpend(deps.engines, deps.now));
   const notifier = notifierOf(env, database, deps.sink, deps.fetch);
+  const directMessages = deps.directMessages({ env, database, fetch: deps.fetch });
   const kernel = platformKernel(
     database,
     { now: deps.now },
-    hubWiring(unit.hub, { modelEngine, runs: runsOf(env), notifier }),
+    hubWiring(unit.hub, { modelEngine, runs: runsOf(env), notifier, directMessages }),
   );
   const caller: Caller = { actor: systemPrincipal(), traceId: deps.newId(), requestId: null };
-  const minute = { kernel, caller, deps, logger };
+  const clock = { now: deps.now };
+  const host = { env, database, fetch: deps.fetch, clock, kernel, traceId: caller.traceId };
+  const minute = {
+    kernel,
+    caller,
+    deps,
+    logger,
+    startTurn: turnStarterOf(env.ASSISTANT_TURN),
+    provisioner: provisionerOf(host),
+    env,
+    database,
+  };
   try {
-    await guarded(minute, 'sweep', sweep);
-    await guarded(minute, 'expiry', expire);
-    await guarded(minute, 'breaker', checkBreaker);
-    await guarded(minute, 'beat', beat);
-    await guarded(minute, 'silence', silence);
-    await guarded(minute, 'measures', (each) =>
-      startDueMeasures(database, env, each.deps, each.logger),
-    );
+    await guardedSteps(minute);
     await runDelegatedExits({
       database,
       env,

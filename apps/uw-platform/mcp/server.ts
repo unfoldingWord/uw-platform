@@ -10,6 +10,7 @@ import { CONTRACT_VERSION } from '@uw/contracts';
 import type { VerbContext } from './context.ts';
 import { assertGatedWhereGranted, callVerb, resultOf } from './dispatch.ts';
 import type { VerbHandler, VerbRefusal } from './handler.ts';
+import { verbRegistry } from '@uw/contracts';
 import { toolsFor } from './tools.ts';
 import { verbHandlers } from './verbs/index.ts';
 
@@ -35,7 +36,9 @@ export function createVerbServer(
   );
   const offered = (name: string) => limits.tools === null || limits.tools.has(name);
   server.setRequestHandler(ListToolsRequestSchema, () => ({
-    tools: toolsFor(context.principal, context.at).filter((tool) => offered(tool.name)),
+    tools: toolsFor(context.principal, context.at, verbRegistry, context.host).filter((tool) =>
+      offered(tool.name),
+    ),
   }));
   server.setRequestHandler(CallToolRequestSchema, async (request) => {
     const { name } = request.params;

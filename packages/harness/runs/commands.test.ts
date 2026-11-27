@@ -97,6 +97,21 @@ function touchingPorts(touched: string[]): Ports {
       stop: touch('runs'),
       status: touch('runs'),
     },
+    directMessages: { send: touch('directMessages') },
+    workspace: {
+      listEvents: touch('workspace.listEvents'),
+      freeBusy: touch('workspace.freeBusy'),
+      placeHold: touch('workspace.placeHold'),
+      removeHold: touch('workspace.removeHold'),
+      sendMail: touch('workspace.sendMail'),
+      sendInvite: touch('workspace.sendInvite'),
+    },
+    pageAppends: { append: touch('pageAppends') },
+    research: {
+      search: touch('research.search'),
+      read: touch('research.read'),
+      flights: touch('research.flights'),
+    },
   };
 }
 

@@ -103,6 +103,10 @@ function eventsGateway(log: string[], appended: HarnessEvent[]): HarnessEventsGa
       lastPositions: unused,
       latestForItems: unused,
       countForPersona: unused,
+      assistantLedger: unused,
+      assistantSpend: unused,
+      assistantPoolSpend: unused,
+      assistantStaleTurns: unused,
       page: async (query) => {
         const matching = appended.filter(
           (event) => event.position > query.after && event.harnessId === query.harnessId,
@@ -127,7 +131,7 @@ function eventsGateway(log: string[], appended: HarnessEvent[]): HarnessEventsGa
 }
 
 const harnessesGateway: HarnessesGateway = {
-  read: { byId: unused, byKey: unused, byRepository: unused, list: unused },
+  read: { byId: unused, byKey: unused, byRepository: unused, byPerson: unused, list: unused },
   write: {
     insert: unused,
     setPaused: unused,

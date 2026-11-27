@@ -143,7 +143,23 @@ async function costInMicros(): Promise<void> {
   expect((await second.turn(request)).usage.costMicros).toBeNull();
 }
 
+async function zeroRetention(): Promise<void> {
+  const { turn, sent } = gatewayWith(toolCalls);
+  await turn({ ...request, zeroRetention: true });
+  expect(sent().provider).toEqual({
+    order: ['z-ai'],
+    allow_fallbacks: false,
+    zdr: true,
+    data_collection: 'deny',
+  });
+  const unpinned = gatewayWith(toolCalls);
+  await unpinned.turn({ ...request, pinnedProvider: null, zeroRetention: true }).catch(() => null);
+  expect(unpinned.sent().provider).toEqual({ zdr: true, data_collection: 'deny' });
+}
+
 describe('openrouter-messages', () => {
+  it('PA-17 a zero-retention request routes only to zero-data-retention endpoints', zeroRetention);
+
   it("HE-4 every request pins the persona's provider and refuses fallbacks", pinsProvider);
 
   it('HE-4 a reply served by another provider fails closed with both names', otherProvider);

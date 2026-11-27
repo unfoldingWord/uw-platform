@@ -23,6 +23,7 @@ const prototypeSidebar = [
   'JD Crosswalk',
   'Measures & Dashboards',
   'Internal Operations & Administration',
+  'My Assistant',
   'Finance',
   'Ledger',
   'Budgets & Charts',

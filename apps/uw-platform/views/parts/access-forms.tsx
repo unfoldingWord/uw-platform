@@ -27,7 +27,7 @@ const roleWords: ReadonlyMap<string, string> = new Map([
 
 export function StatusBadge(props: { readonly status: string; readonly holds: boolean }) {
   if (props.status === 'pending') return <Badge tone="person">Waiting for approval</Badge>;
-  if (props.status === 'disabled') return <Badge tone="held">Declined</Badge>;
+  if (props.status === 'disabled') return <Badge tone="held">Not active</Badge>;
   if (props.holds) return <Badge tone="success">Active</Badge>;
   return <Badge tone="neutral">No access yet</Badge>;
 }
@@ -66,6 +66,37 @@ export function GrantForm(props: { readonly view: AccessView }) {
       <p class="m-0 text-sm text-text-3">
         A grant on an area reaches only that area. With no end date it lasts until someone revokes
         it.
+      </p>
+    </div>
+  );
+}
+
+export function DeactivateForm(props: { readonly view: AccessView }) {
+  return (
+    <div class="flex flex-col gap-2">
+      <PlatformCommandForm
+        endpoint={ACL_ENDPOINT}
+        command="deactivate_person"
+        scope="leaver"
+        done="Deactivated. They can no longer sign in, and their assistant is turned off."
+      >
+        <SelectField
+          name="personId"
+          label="Person"
+          scope="leaver"
+          choices={props.view.deactivatable}
+        />
+        <HumanActionButton
+          itemId="leaver"
+          label="Deactivate"
+          name="decision"
+          value="deactivate_person"
+        />
+      </PlatformCommandForm>
+      <p class="m-0 text-sm text-text-3">
+        For someone who has left. They are refused at sign-in at once, their assistant is turned off
+        within a minute, and its mailbox is deleted 30 days later. Approve them again from Waiting
+        for access to bring them back.
       </p>
     </div>
   );

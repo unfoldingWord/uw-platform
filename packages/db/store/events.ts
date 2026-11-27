@@ -23,12 +23,23 @@ import {
   type HarnessEvent,
   type NewHarnessEvent,
 } from '@uw/contracts';
+import type { AnyPgColumn, PgTable } from 'drizzle-orm/pg-core';
 import type { AnyExecutor } from '../any-database.ts';
+import {
+  assistantFinishedEventName,
+  assistantStartedEventName,
+  evidenceField,
+} from '../assistant-event-indexes.ts';
 import { oneOf } from '../checks.ts';
+import { assistantPoolSpend, assistantStaleTurns } from './assistant-pool.ts';
+import { costMicros, knownCost, sameTurnFinished } from './assistant-spend-sql.ts';
 import { harnessEvents } from '../schema.ts';
 import { refusing } from './refusal.ts';
 import { toEvent } from './rows.ts';
 import type {
+  AssistantLedgerQuery,
+  AssistantMonthQuery,
+  AssistantMonthSpend,
   BreakerEventName,
   EventPage,
   EventQuery,
@@ -52,6 +63,10 @@ export function bindEvents(executor: AnyExecutor): HarnessEventsGateway {
       enteredStage: (harnessId, itemIds) => enteredStage(executor, harnessId, itemIds),
       enteredStages: (itemIds) => enteredStage(executor, null, itemIds),
       recent: (query) => recent(executor, query),
+      assistantLedger: (query) => assistantLedger(executor, query),
+      assistantSpend: (query) => assistantSpend(executor, query),
+      assistantPoolSpend: (since) => assistantPoolSpend(executor, since),
+      assistantStaleTurns: (query) => assistantStaleTurns(executor, query),
       lastPosition: (harnessId) => lastPosition(executor, harnessId),
       lastPositions: (harnessIds) => lastPositions(executor, harnessIds),
       latestForItems: (itemIds, names) => latestForItems(executor, itemIds, names),
@@ -340,4 +355,122 @@ export async function claimsByAgent(
     }),
   );
   return new Map(counted);
+}
+
+const LEDGER_READ_MOST = 100;
+
+function ledgerLimit(limit: number): number {
+  if (!Number.isInteger(limit) || limit < 1 || limit > LEDGER_READ_MOST) {
+    throw new RangeError(`a lifecycle read holds 1 to ${LEDGER_READ_MOST} events, not ${limit}`);
+  }
+  return limit;
+}
+
+export function assistantLedgerQuery(executor: AnyExecutor, query: AssistantLedgerQuery) {
+  const limit = ledgerLimit(query.limit);
+  const [field, value] =
+    'requestId' in query.about
+      ? (['requestId', query.about.requestId] as const)
+      : (['effectId', query.about.effectId] as const);
+  return executor
+    .select()
+    .from(harnessEvents)
+    .where(
+      and(
+        eq(harnessEvents.harnessId, query.harnessId),
+        sql`${evidenceField(harnessEvents.evidence, field)} = ${value}`,
+        oneOf(harnessEvents.name, query.names),
+      ),
+    )
+    .orderBy(asc(harnessEvents.position))
+    .limit(limit);
+}
+
+async function assistantLedger(
+  executor: AnyExecutor,
+  query: AssistantLedgerQuery,
+): Promise<readonly HarnessEvent[]> {
+  const rows = assistantLedgerQuery(executor, query);
+  if (query.names.length === 0) return [];
+  return (await rows).map(toEvent);
+}
+
+export function assistantSpendQuery(executor: AnyExecutor, query: AssistantMonthQuery) {
+  return executor
+    .select({
+      knownMicros:
+        sql<string>`COALESCE(SUM(CASE WHEN ${knownCost} THEN (${costMicros})::bigint END), 0)::text`.as(
+          'known_micros',
+        ),
+      unknownTurns: count(sql`CASE WHEN ${knownCost} THEN NULL ELSE 1 END`).as('unknown_turns'),
+    })
+    .from(harnessEvents)
+    .where(
+      and(
+        eq(harnessEvents.harnessId, query.harnessId),
+        oneOf(harnessEvents.name, [assistantFinishedEventName]),
+        gte(harnessEvents.at, query.since),
+      ),
+    );
+}
+
+export function assistantOpenTurnsQuery(executor: AnyExecutor, query: AssistantMonthQuery) {
+  return executor
+    .select({ openTurns: count().as('open_turns') })
+    .from(harnessEvents)
+    .where(
+      and(
+        eq(harnessEvents.harnessId, query.harnessId),
+        oneOf(harnessEvents.name, [assistantStartedEventName]),
+        gte(harnessEvents.at, query.since),
+        sql`NOT ${sameTurnFinished}`,
+      ),
+    );
+}
+
+async function assistantSpend(
+  executor: AnyExecutor,
+  query: AssistantMonthQuery,
+): Promise<AssistantMonthSpend> {
+  const finished = assistantSpendQuery(executor, query).as('finished_turns');
+  const open = assistantOpenTurnsQuery(executor, query).as('open_turns');
+  const [row] = await executor
+    .select({
+      knownMicros: finished.knownMicros,
+      unknownTurns: finished.unknownTurns,
+      openTurns: open.openTurns,
+    })
+    .from(finished)
+    .crossJoin(open);
+  const knownMicros = Number(row?.knownMicros ?? 0);
+  if (!Number.isSafeInteger(knownMicros)) {
+    throw new RangeError(`an assistant month of ${String(row?.knownMicros)} micros is not exact`);
+  }
+  return {
+    knownMicros,
+    unknownTurns: Number(row?.unknownTurns ?? 0),
+    openTurns: Number(row?.openTurns ?? 0),
+  };
+}
+
+type EffectColumns = {
+  readonly table: PgTable;
+  readonly id: AnyPgColumn;
+  readonly harnessId: AnyPgColumn;
+  readonly requestId: AnyPgColumn;
+  readonly kind: AnyPgColumn;
+};
+
+export function deliveredReplyFor(
+  requestId: AnyPgColumn,
+  harnessId: AnyPgColumn,
+  effects: EffectColumns,
+): SQL {
+  return sql`EXISTS (SELECT 1 FROM ${effects.table} JOIN ${harnessEvents}
+    ON ${harnessEvents.harnessId} = ${effects.harnessId}
+    AND ${oneOf(harnessEvents.name, ['assistant_effect_done'])}
+    AND ${evidenceField(harnessEvents.evidence, 'effectId')} = ${effects.id}::text
+    WHERE ${effects.requestId} = ${requestId}
+    AND ${effects.harnessId} = ${harnessId}
+    AND ${oneOf(effects.kind, ['reply_to_requester'])})`;
 }

@@ -14,5 +14,6 @@
   "requiredChecks": [],
   "protectedPaths": ["src/billing/", "deploy.sh"],
   "fixClaim": false,
-  "botAuthors": ["dependabot[bot]"]
+  "botAuthors": ["dependabot[bot]"],
+  "personId": null
 }

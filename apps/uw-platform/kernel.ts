@@ -1,18 +1,24 @@
+import { platformKernelSettings } from './assistants/area.ts';
 import {
   createKernel,
   type Clock,
+  type DirectMessages,
   type Hub,
   type Kernel,
+  type KernelSettings,
   type ModelEngine,
   type Notifier,
   type Ports,
+  type Research,
   type Runs,
+  type Workspace,
 } from '@uw/harness';
 import type { DatabaseHandle } from './database.ts';
 import type { GitHubAccess } from './github/refresh.ts';
 import { systemClock } from './ports/clock.ts';
 import { platformConnectors, type ReviewGitHub, type ShipGitHub } from './ports/connectors.ts';
 import { platformGitHubFacts } from './ports/github-facts.ts';
+import { directMessagesNotWired } from './ports/direct-messages.not-wired.ts';
 import { githubFactsNotWired } from './ports/github-facts.not-wired.ts';
 import { platformGrants } from './ports/grants.ts';
 import { grantsNotWired } from './ports/grants.not-wired.ts';
@@ -20,9 +26,13 @@ import { hubNotWired } from './ports/hub.not-wired.ts';
 import { randomIds } from './ports/ids.ts';
 import { modelEngineNotWired } from './ports/model-engine.not-wired.ts';
 import { notifierNotWired } from './ports/notifier.not-wired.ts';
+import { platformPageAppends } from './ports/page-appends.ts';
+import { pageAppendsNotWired } from './ports/page-appends.not-wired.ts';
+import { researchNotWired } from './ports/research.not-wired.ts';
 import { runsNotWired } from './ports/runs.not-wired.ts';
 import { platformStore } from './ports/store.ts';
 import { storeNotWired } from './ports/store.not-wired.ts';
+import { workspaceNotWired } from './ports/workspace.not-wired.ts';
 
 type KernelWiring = {
   readonly hub: Hub;
@@ -32,11 +42,19 @@ type KernelWiring = {
   readonly modelEngine: ModelEngine;
   readonly runs: Runs;
   readonly notifier: Notifier;
+  readonly directMessages: DirectMessages;
+  readonly workspace: Workspace;
+  readonly research: Research;
 };
 
 export type LiveWiring = { readonly hub: Hub; readonly runs: Runs; readonly notifier: Notifier };
 
-type HostWiring = Partial<Pick<KernelWiring, 'modelEngine' | 'runs' | 'notifier'>>;
+type HostWiring = Partial<
+  Pick<
+    KernelWiring,
+    'modelEngine' | 'runs' | 'notifier' | 'directMessages' | 'workspace' | 'research'
+  >
+>;
 
 export function hubWiring(hub: Hub, host: HostWiring = {}): KernelWiring {
   return {
@@ -47,10 +65,16 @@ export function hubWiring(hub: Hub, host: HostWiring = {}): KernelWiring {
     modelEngine: host.modelEngine ?? modelEngineNotWired,
     runs: host.runs ?? runsNotWired,
     notifier: host.notifier ?? notifierNotWired,
+    directMessages: host.directMessages ?? directMessagesNotWired,
+    workspace: host.workspace ?? workspaceNotWired,
+    research: host.research ?? researchNotWired,
   };
 }
 
-type RunHostWiring = LiveWiring & { readonly modelEngine: ModelEngine };
+type RunHostWiring = LiveWiring & {
+  readonly modelEngine: ModelEngine;
+  readonly directMessages?: DirectMessages;
+};
 
 export function runWiring(
   host: RunHostWiring,
@@ -80,6 +104,10 @@ export function platformPorts(
     hub: wiring.hub,
     notifier: wiring.notifier,
     runs: wiring.runs,
+    directMessages: wiring.directMessages,
+    workspace: wiring.workspace,
+    pageAppends: database ? platformPageAppends(database.db, clock) : pageAppendsNotWired,
+    research: wiring.research,
   };
 }
 
@@ -87,6 +115,7 @@ export function platformKernel(
   database: DatabaseHandle | null,
   clock: Clock = systemClock,
   wiring: KernelWiring = idle,
+  settings: KernelSettings = platformKernelSettings,
 ): Kernel {
-  return createKernel(platformPorts(database, clock, wiring));
+  return createKernel(platformPorts(database, clock, wiring), settings);
 }

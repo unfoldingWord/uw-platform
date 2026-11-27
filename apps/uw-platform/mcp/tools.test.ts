@@ -6,7 +6,7 @@ import {
   type Grant,
   type Principal,
 } from '@uw/contracts';
-import { toolsFor } from './tools.ts';
+import { servedVerb, toolsFor } from './tools.ts';
 
 const OWNER = '00000000-0000-4000-8000-000000000101';
 const at = new Date('2026-10-02T12:00:00.000Z');
@@ -108,6 +108,34 @@ describe('AB-2 a role-gated verb is offered only to a principal whose owner hold
 
   it('does not offer list_gifts on an expired editor grant for 40-49', () => {
     expect(offersGifts(agent([editorIn('40-49', '2026-10-01T00:00:00.000Z')]))).toBe(false);
+  });
+});
+
+describe('PA-17 the assistant verbs are served only to an assistant turn', () => {
+  const assistantVerbs = [
+    'set_reminder',
+    'cancel_reminder',
+    'list_reminders',
+    'read_my_calendar',
+    'find_free_time',
+    'hold_time',
+    'release_hold',
+  ];
+  const principal = agent([editorIn('10-19')]);
+
+  it('never offers them on the external host', () => {
+    const names = toolsFor(principal, at).map((tool) => tool.name);
+    expect(names.filter((name) => assistantVerbs.includes(name))).toEqual([]);
+    expect(servedVerb('set_reminder', principal, at)).toBeNull();
+  });
+
+  it('offers them on the assistant host, beside the served read verbs', () => {
+    const names = toolsFor(principal, at, verbRegistry, 'assistant').map((tool) => tool.name);
+    expect(assistantVerbs.every((name) => names.includes(name))).toBe(true);
+    expect(names).toContain('read_page');
+    expect(servedVerb('set_reminder', principal, at, verbRegistry, 'assistant')?.name).toBe(
+      'set_reminder',
+    );
   });
 });
 

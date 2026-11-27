@@ -3,6 +3,7 @@ import type { AppEnv } from '../deps.ts';
 import { formGuard } from '../http/form-guard.ts';
 import { agentQueuesScreen } from './screens/agent-queues.tsx';
 import { agentsScreen } from './screens/agents.tsx';
+import { myAssistantScreen, startPairingForm } from './screens/assistant.tsx';
 import { addAgent, newAgentScreen } from './screens/new-agent.tsx';
 import { newWorkflowScreen } from './screens/new-workflow.tsx';
 import { oldQueueAddress, queueScreen } from './screens/queue.tsx';
@@ -32,6 +33,8 @@ function formRoutes(routes: Hono<AppEnv>): void {
   routes.post('/harnesses/:harnessId/agents/new', addAgent);
   routes.use('/personas/:pageId/toolset', formGuard);
   routes.post('/personas/:pageId/toolset', saveToolset);
+  routes.use('/assistant/pairing', formGuard);
+  routes.post('/assistant/pairing', startPairingForm);
 }
 
 export function viewRoutes(): Hono<AppEnv> {
@@ -54,6 +57,7 @@ export function viewRoutes(): Hono<AppEnv> {
   routes.get('/harnesses/:harnessId/gates/:itemId', gateScreen);
   routes.get('/harnesses/:harnessId/items/:itemId', playScreen);
   routes.get('/personas/:pageId', personaScreen);
+  routes.get('/assistant', myAssistantScreen);
   formRoutes(routes);
   return routes;
 }

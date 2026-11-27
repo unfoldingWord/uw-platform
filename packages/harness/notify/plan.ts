@@ -3,6 +3,8 @@ import {
   healthLink,
   homeLink,
   itemLink,
+  proposalLink,
+  requestLink,
   type DeepLink,
   type Harness,
   type HarnessEvent,
@@ -48,8 +50,20 @@ async function holdersFor(
   return holders;
 }
 
+function proposalOf(trigger: Trigger): DeepLink | null {
+  const proposalId = trigger.event.evidence['proposalId'];
+  return typeof proposalId === 'string' ? proposalLink(proposalId) : null;
+}
+
+function requestOf(trigger: Trigger): DeepLink | null {
+  const requestId = trigger.event.evidence['requestId'];
+  return typeof requestId === 'string' ? requestLink(requestId) : null;
+}
+
 function linkOf(trigger: Trigger, harness: Harness, itemId: string | null): DeepLink | null {
   if (trigger.reason === 'silence_alarm') return healthLink('silence_alarm');
+  if (trigger.reason === 'proposal_waiting') return proposalOf(trigger);
+  if (trigger.reason === 'assistant_refused') return requestOf(trigger);
   if (trigger.reason === 'delegation_lapsed') return homeLink;
   if (itemId === null) return null;
   return trigger.reason === 'gate_waiting'
@@ -69,6 +83,7 @@ function peopleFor(
   scope: { readonly harness: Harness; readonly item: ItemContext | null; readonly at: Date },
 ): readonly string[] {
   const { event } = trigger;
+  if (scope.harness.personId !== null) return [scope.harness.personId];
   return recipientsOf({
     trigger,
     ...scope,
@@ -93,6 +108,7 @@ function draftOf(trigger: Trigger, context: WakeContext, holders: Holders, at: D
     harnessKey: harness.key,
     harnessTitle: harness.title,
     jdArea: harness.jdArea,
+    personal: harness.personId !== null,
   };
   const unlinked = item !== null && item.linkable;
   const identity = { itemId, ...where(harness, item), reason, link, unlinked };

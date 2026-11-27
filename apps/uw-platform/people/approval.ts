@@ -1,5 +1,6 @@
 import type {
   ApprovePersonCommand,
+  DeactivatePersonCommand,
   DeclinePersonCommand,
   ErrorReason,
   PersonStatus,
@@ -19,8 +20,15 @@ function refused(reason: ErrorReason): CommandResult {
   return { ok: false, reason };
 }
 
-function decidableFrom(action: StatusChange['action']): readonly PersonStatus[] {
-  return action === 'approve' ? ['pending', 'disabled'] : ['pending'];
+const decidable: Readonly<Record<StatusChange['action'], readonly PersonStatus[]>> = {
+  approve: ['pending', 'disabled'],
+  decline: ['pending'],
+  deactivate: ['active'],
+};
+
+function fits(change: StatusChange, personId: string, status: PersonStatus): boolean {
+  if (change.action === 'deactivate' && change.actor.personId === personId) return false;
+  return decidable[change.action].includes(status);
 }
 
 async function orgAdminNow(tx: Transaction, actor: Principal, at: Date): Promise<boolean> {
@@ -38,7 +46,7 @@ async function decideInTransaction(
   if (!(await orgAdminNow(tx, change.actor, change.at))) return refused('not_permitted');
   const person = await lockPerson(tx, personId);
   if (!person) return refused('person_not_found');
-  if (!decidableFrom(change.action).includes(person.status)) {
+  if (!fits(change, personId, person.status)) {
     return refused('transition_not_allowed');
   }
   await changeStatus(tx, person, change);
@@ -73,4 +81,14 @@ export function declinePerson(
   at: Date,
 ): Promise<CommandResult> {
   return decide(db, command.personId, { actor, action: 'decline', traceId, at });
+}
+
+export function deactivatePerson(
+  db: Database,
+  actor: Principal,
+  command: DeactivatePersonCommand,
+  traceId: string,
+  at: Date,
+): Promise<CommandResult> {
+  return decide(db, command.personId, { actor, action: 'deactivate', traceId, at });
 }

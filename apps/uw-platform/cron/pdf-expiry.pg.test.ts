@@ -10,6 +10,7 @@ import { memoryBucket } from '../testing/files.ts';
 import { testServer } from '../testing/postgres.ts';
 import type { CronDeps } from './job.ts';
 import { expirePdfExportsJob } from './pdf-expiry.ts';
+import { directMessagesOf } from '../assistants/direct-messages.ts';
 
 const DAY = 24 * 60 * 60 * 1000;
 const now = new Date('2026-11-24T03:17:00.000Z');
@@ -43,6 +44,7 @@ function deps(lines: Line[]): CronDeps {
     newId: () => randomUUID(),
     commit: 'c',
     engines: { fetch: () => Promise.reject(new Error('the expiry reads no spend')) },
+    directMessages: directMessagesOf,
   };
 }
 

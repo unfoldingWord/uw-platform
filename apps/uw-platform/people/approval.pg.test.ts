@@ -141,6 +141,34 @@ async function misfitsRefused(db: Database): Promise<void> {
   expect(await auditOf(db)).toEqual([]);
 }
 
+async function deactivatesALeaver(db: Database): Promise<void> {
+  await scene(db);
+  const byArea = await decide(db, AREA_ADMIN, 'deactivate_person', ROWAN_ID);
+  expect(byArea.body['reason']).toBe('not_permitted');
+  const self = await decide(db, ROWAN, 'deactivate_person', ROWAN_ID);
+  expect(self.body['reason']).toBe('transition_not_allowed');
+  const pending = await decide(db, ROWAN, 'deactivate_person', OUTSIDER_ID);
+  expect(pending.body['reason']).toBe('transition_not_allowed');
+  const done = await decide(db, ROWAN, 'deactivate_person', AREA_ADMIN_ID);
+  expect(done.body['status']).toBe('accepted');
+  expect(await statusOf(db, AREA_ADMIN_ID)).toBe('disabled');
+  expect((await send(db, AREA_ADMIN, '/api/me')).status).toBe(403);
+  expect(await auditOf(db)).toEqual([
+    {
+      actor: `human:${ROWAN_ID}`,
+      action: 'deactivate',
+      person_id: AREA_ADMIN_ID,
+      before: 'active',
+      after: 'disabled',
+      trace_id: done.traceId,
+    },
+  ]);
+  expect((await decide(db, ROWAN, 'approve_person', AREA_ADMIN_ID)).body['status']).toBe(
+    'accepted',
+  );
+  expect(await statusOf(db, AREA_ADMIN_ID)).toBe('active');
+}
+
 async function grantApproves(db: Database): Promise<void> {
   await scene(db);
   const granted = await send(db, ROWAN, '/api/acl/commands/grant_role', {
@@ -170,6 +198,9 @@ describe.skipIf(!testServer)('#154 approving and declining a pending person', ()
 
   it('refuses a decision that does not fit the person, in the closed set', () =>
     withAppDatabase(misfitsRefused));
+
+  it('an org admin deactivates an active person, who is refused at the edge, audited, and can be approved again', () =>
+    withAppDatabase(deactivatesALeaver));
 
   it('a grant to a pending person by an org admin approves them and audits the approval', () =>
     withAppDatabase(grantApproves));

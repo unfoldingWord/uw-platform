@@ -1,0 +1,466 @@
+import { sql } from 'drizzle-orm';
+import {
+  bigint,
+  check,
+  foreignKey,
+  index,
+  integer,
+  primaryKey,
+  jsonb,
+  text,
+  unique,
+  uniqueIndex,
+  uuid,
+  type AnyPgColumn,
+} from 'drizzle-orm/pg-core';
+import {
+  assistantChannelSchema,
+  assistantDirectEffectSchema,
+  assistantHoldStatusSchema,
+  assistantPairingViaSchema,
+  assistantProposedEffectSchema,
+  assistantReminderStatusSchema,
+  RESEARCH_SOURCES_MOST,
+} from '@uw/contracts';
+import { oneOf } from './checks.ts';
+import { instant } from './columns.ts';
+import { declareTable } from './declarations.ts';
+import { harnesses } from './schema-harnesses.ts';
+import { people } from './schema-platform.ts';
+
+const restrictedNever = { classification: 'restricted', offlineEligibility: 'never' } as const;
+const jsonArray = (column: AnyPgColumn, most: number) =>
+  sql`jsonb_typeof(${column}) = 'array' AND jsonb_array_length(${column}) <= ${sql.raw(String(most))}`;
+const lengthAtMost = (column: AnyPgColumn, most: number) =>
+  sql`char_length(${column}) <= ${sql.raw(String(most))}`;
+
+export const assistantSettings = declareTable(
+  'assistant_settings',
+  {
+    harnessId: uuid('harness_id').primaryKey(),
+    personId: uuid('person_id')
+      .notNull()
+      .references(() => people.id),
+    displayName: text('display_name').notNull(),
+    instructionsMd: text('instructions_md').notNull(),
+    timezone: text('timezone').notNull(),
+    version: integer('version').notNull(),
+    updatedAt: instant('updated_at').notNull(),
+  },
+  restrictedNever,
+  (t) => [
+    foreignKey({
+      name: 'assistant_settings_personal_harness_fk',
+      columns: [t.harnessId, t.personId],
+      foreignColumns: [harnesses.id, harnesses.personId],
+    }),
+    check('assistant_settings_version_positive', sql`${t.version} >= 1`),
+    check(
+      'assistant_settings_display_name_length',
+      sql`char_length(${t.displayName}) BETWEEN 1 AND 60`,
+    ),
+    check('assistant_settings_instructions_length', lengthAtMost(t.instructionsMd, 8000)),
+    check('assistant_settings_timezone_length', sql`char_length(${t.timezone}) BETWEEN 1 AND 64`),
+  ],
+);
+
+export const assistantRequests = declareTable(
+  'assistant_requests',
+  {
+    id: uuid('id').primaryKey(),
+    harnessId: uuid('harness_id')
+      .notNull()
+      .references(() => harnesses.id),
+    personId: uuid('person_id')
+      .notNull()
+      .references(() => people.id),
+    channel: text('channel').notNull(),
+    externalId: text('external_id').notNull(),
+    threadKey: text('thread_key'),
+    replyAddress: text('reply_address').notNull(),
+    note: text('note').notNull(),
+    untrustedParts: jsonb('untrusted_parts').notNull(),
+    researchSources: jsonb('research_sources')
+      .notNull()
+      .default(sql`'[]'::jsonb`),
+    receivedAt: instant('received_at').notNull(),
+    recordedAt: instant('recorded_at').notNull(),
+    redactedAt: instant('redacted_at'),
+  },
+  restrictedNever,
+  (t) => [
+    foreignKey({
+      name: 'assistant_requests_personal_harness_fk',
+      columns: [t.harnessId, t.personId],
+      foreignColumns: [harnesses.id, harnesses.personId],
+    }),
+    check('assistant_requests_channel_known', oneOf(t.channel, assistantChannelSchema.options)),
+    check('assistant_requests_untrusted_parts_bounded', jsonArray(t.untrustedParts, 20)),
+    check(
+      'assistant_requests_research_sources_bounded',
+      jsonArray(t.researchSources, RESEARCH_SOURCES_MOST),
+    ),
+    check(
+      'assistant_requests_external_id_length',
+      sql`char_length(${t.externalId}) BETWEEN 1 AND 200`,
+    ),
+    check(
+      'assistant_requests_thread_key_length',
+      sql`char_length(${t.threadKey}) BETWEEN 1 AND 200`,
+    ),
+    check(
+      'assistant_requests_reply_address_length',
+      sql`char_length(${t.replyAddress}) BETWEEN 1 AND 254`,
+    ),
+    check('assistant_requests_note_length', lengthAtMost(t.note, 20000)),
+    check(
+      'assistant_requests_redacted_empty',
+      sql`${t.redactedAt} IS NULL OR (${t.note} = '' AND ${t.untrustedParts} = '[]'::jsonb AND ${t.researchSources} = '[]'::jsonb)`,
+    ),
+    uniqueIndex('assistant_requests_external_once').on(t.channel, t.externalId),
+    unique('assistant_requests_id_harness').on(t.id, t.harnessId),
+    index('assistant_requests_thread').on(t.harnessId, t.channel, t.threadKey, t.recordedAt, t.id),
+    index('assistant_requests_recorded').on(t.recordedAt, t.id),
+    index('assistant_requests_unredacted')
+      .on(t.harnessId, t.recordedAt)
+      .where(sql`${t.redactedAt} IS NULL`),
+  ],
+);
+
+export const assistantEffects = declareTable(
+  'assistant_effects',
+  {
+    id: uuid('id').primaryKey(),
+    harnessId: uuid('harness_id')
+      .notNull()
+      .references(() => harnesses.id),
+    requestId: uuid('request_id').notNull(),
+    kind: text('kind').notNull(),
+    idempotencyKey: text('idempotency_key').notNull(),
+    payload: jsonb('payload').notNull(),
+    createdAt: instant('created_at').notNull(),
+    redactedAt: instant('redacted_at'),
+    proposalId: uuid('proposal_id'),
+  },
+  restrictedNever,
+  (t) => [
+    foreignKey({
+      name: 'assistant_effects_request_harness_fk',
+      columns: [t.requestId, t.harnessId],
+      foreignColumns: [assistantRequests.id, assistantRequests.harnessId],
+    }),
+    check(
+      'assistant_effects_direct_or_decided',
+      sql`(${oneOf(t.kind, assistantDirectEffectSchema.options)} AND ${t.proposalId} IS NULL) OR (${oneOf(t.kind, assistantProposedEffectSchema.options)} AND ${t.proposalId} IS NOT NULL)`,
+    ),
+    check('assistant_effects_payload_object', sql`jsonb_typeof(${t.payload}) = 'object'`),
+    check(
+      'assistant_effects_redacted_empty',
+      sql`${t.redactedAt} IS NULL OR ${t.payload} = '{}'::jsonb`,
+    ),
+    check(
+      'assistant_effects_idempotency_key_length',
+      sql`char_length(${t.idempotencyKey}) BETWEEN 1 AND 200`,
+    ),
+    uniqueIndex('assistant_effects_key_once').on(t.harnessId, t.idempotencyKey),
+    unique('assistant_effects_id_harness').on(t.id, t.harnessId),
+    index('assistant_effects_request').on(t.requestId),
+    uniqueIndex('assistant_effects_proposal_once').on(t.proposalId),
+  ],
+);
+
+export const assistantReminders = declareTable(
+  'assistant_reminders',
+  {
+    id: uuid('id').primaryKey(),
+    harnessId: uuid('harness_id').notNull(),
+    personId: uuid('person_id').notNull(),
+    requestId: uuid('request_id').notNull(),
+    effectId: uuid('effect_id').notNull(),
+    text: text('text').notNull(),
+    dueAt: instant('due_at').notNull(),
+    status: text('status').notNull(),
+    closedAt: instant('closed_at'),
+    createdAt: instant('created_at').notNull(),
+    redactedAt: instant('redacted_at'),
+  },
+  restrictedNever,
+  (t) => [
+    foreignKey({
+      name: 'assistant_reminders_personal_harness_fk',
+      columns: [t.harnessId, t.personId],
+      foreignColumns: [harnesses.id, harnesses.personId],
+    }),
+    foreignKey({
+      name: 'assistant_reminders_request_harness_fk',
+      columns: [t.requestId, t.harnessId],
+      foreignColumns: [assistantRequests.id, assistantRequests.harnessId],
+    }),
+    foreignKey({
+      name: 'assistant_reminders_effect_harness_fk',
+      columns: [t.effectId, t.harnessId],
+      foreignColumns: [assistantEffects.id, assistantEffects.harnessId],
+    }),
+    check(
+      'assistant_reminders_status_known',
+      oneOf(t.status, assistantReminderStatusSchema.options),
+    ),
+    check(
+      'assistant_reminders_closed_when_done',
+      sql`(${t.status} = 'set') = (${t.closedAt} IS NULL)`,
+    ),
+    check(
+      'assistant_reminders_text_length',
+      sql`(${t.redactedAt} IS NULL AND char_length(${t.text}) BETWEEN 1 AND 500) OR (${t.redactedAt} IS NOT NULL AND ${t.text} = '' AND ${t.status} <> 'set')`,
+    ),
+    uniqueIndex('assistant_reminders_effect_once').on(t.effectId),
+    index('assistant_reminders_due').on(t.status, t.dueAt, t.id),
+    index('assistant_reminders_harness').on(t.harnessId, t.status, t.dueAt),
+  ],
+);
+
+const personalHarnessOf = (name: string, harnessId: AnyPgColumn, personId: AnyPgColumn) =>
+  foreignKey({
+    name,
+    columns: [harnessId, personId],
+    foreignColumns: [harnesses.id, harnesses.personId],
+  });
+const sha256Hex = (column: AnyPgColumn) => sql`${column} ~ '^[0-9a-f]{64}$'`;
+
+export const assistantBindings = declareTable(
+  'assistant_bindings',
+  {
+    harnessId: uuid('harness_id').notNull(),
+    personId: uuid('person_id').notNull(),
+    channel: text('channel').notNull(),
+    address: text('address').notNull(),
+    via: text('via').notNull(),
+    boundAt: instant('bound_at').notNull(),
+  },
+  restrictedNever,
+  (t) => [
+    primaryKey({ name: 'assistant_bindings_pk', columns: [t.harnessId, t.channel] }),
+    personalHarnessOf('assistant_bindings_personal_harness_fk', t.harnessId, t.personId),
+    check('assistant_bindings_channel_known', oneOf(t.channel, assistantChannelSchema.options)),
+    check('assistant_bindings_via_known', oneOf(t.via, assistantPairingViaSchema.options)),
+    check('assistant_bindings_address_length', sql`char_length(${t.address}) BETWEEN 1 AND 254`),
+    check(
+      'assistant_bindings_zulip_address',
+      sql`${t.channel} <> 'zulip_dm' OR ${t.address} ~ '^zulip:[1-9][0-9]{0,14}$'`,
+    ),
+    uniqueIndex('assistant_bindings_address_once').on(t.channel, t.address),
+    index('assistant_bindings_person').on(t.personId, t.channel),
+  ],
+);
+
+export const assistantPairingCodes = declareTable(
+  'assistant_pairing_codes',
+  {
+    harnessId: uuid('harness_id').notNull(),
+    personId: uuid('person_id').notNull(),
+    channel: text('channel').notNull(),
+    codeDigest: text('code_digest').notNull(),
+    expiresAt: instant('expires_at').notNull(),
+    attempts: integer('attempts').notNull(),
+    createdAt: instant('created_at').notNull(),
+  },
+  restrictedNever,
+  (t) => [
+    primaryKey({ name: 'assistant_pairing_codes_pk', columns: [t.harnessId, t.channel] }),
+    personalHarnessOf('assistant_pairing_codes_personal_harness_fk', t.harnessId, t.personId),
+    check(
+      'assistant_pairing_codes_channel_known',
+      oneOf(t.channel, assistantChannelSchema.options),
+    ),
+    check('assistant_pairing_codes_digest_shape', sha256Hex(t.codeDigest)),
+    check('assistant_pairing_codes_attempts_bounded', sql`${t.attempts} BETWEEN 0 AND 5`),
+  ],
+);
+
+export const assistantZulipBots = declareTable(
+  'assistant_zulip_bots',
+  {
+    harnessId: uuid('harness_id').primaryKey(),
+    personId: uuid('person_id').notNull(),
+    botUserId: bigint('bot_user_id', { mode: 'number' }).notNull(),
+    botEmail: text('bot_email').notNull(),
+    fullName: text('full_name').notNull(),
+    keyCipher: text('key_cipher').notNull(),
+    keyCiphertext: text('key_ciphertext').notNull(),
+    keyNonce: text('key_nonce').notNull(),
+    keyWrapped: text('key_wrapped').notNull(),
+    keyId: text('key_id').notNull(),
+    webhookTokenDigest: text('webhook_token_digest').notNull(),
+    status: text('status').notNull(),
+    createdAt: instant('created_at').notNull(),
+    updatedAt: instant('updated_at').notNull(),
+  },
+  restrictedNever,
+  (t) => [
+    personalHarnessOf('assistant_zulip_bots_personal_harness_fk', t.harnessId, t.personId),
+    check('assistant_zulip_bots_status_known', oneOf(t.status, ['active', 'deactivated'])),
+    check('assistant_zulip_bots_token_digest_shape', sha256Hex(t.webhookTokenDigest)),
+    check('assistant_zulip_bots_user_positive', sql`${t.botUserId} > 0`),
+    check('assistant_zulip_bots_email_length', sql`char_length(${t.botEmail}) BETWEEN 3 AND 254`),
+    check(
+      'assistant_zulip_bots_full_name_length',
+      sql`char_length(${t.fullName}) BETWEEN 1 AND 100`,
+    ),
+    uniqueIndex('assistant_zulip_bots_user_once').on(t.botUserId),
+    uniqueIndex('assistant_zulip_bots_email_once').on(t.botEmail),
+    index('assistant_zulip_bots_person').on(t.personId),
+  ],
+);
+
+export const assistantZulipSends = declareTable(
+  'assistant_zulip_sends',
+  {
+    effectId: uuid('effect_id').primaryKey(),
+    harnessId: uuid('harness_id')
+      .notNull()
+      .references(() => harnesses.id),
+    status: text('status').notNull(),
+    zulipMessageId: bigint('zulip_message_id', { mode: 'number' }),
+    claimedAt: instant('claimed_at').notNull(),
+    sentAt: instant('sent_at'),
+  },
+  { classification: 'internal', offlineEligibility: 'never' },
+  (t) => [
+    check('assistant_zulip_sends_status_known', oneOf(t.status, ['sending', 'sent'])),
+    check(
+      'assistant_zulip_sends_sent_has_message',
+      sql`(${t.status} = 'sent') = (${t.zulipMessageId} IS NOT NULL AND ${t.sentAt} IS NOT NULL)`,
+    ),
+  ],
+);
+
+export const assistantBudgets = declareTable(
+  'assistant_budgets',
+  {
+    harnessId: uuid('harness_id').primaryKey(),
+    personId: uuid('person_id').notNull(),
+    monthlyMinor: integer('monthly_minor').notNull(),
+    setBy: uuid('set_by').notNull(),
+    setAt: instant('set_at').notNull(),
+  },
+  { classification: 'internal', offlineEligibility: 'never' },
+  (t) => [
+    personalHarnessOf('assistant_budgets_personal_harness_fk', t.harnessId, t.personId),
+    foreignKey({
+      name: 'assistant_budgets_set_by_fk',
+      columns: [t.setBy],
+      foreignColumns: [people.id],
+    }),
+    check('assistant_budgets_monthly_bounded', sql`${t.monthlyMinor} BETWEEN 0 AND 1000000`),
+  ],
+);
+
+export const assistantCalendarHolds = declareTable(
+  'assistant_calendar_holds',
+  {
+    id: uuid('id').primaryKey(),
+    harnessId: uuid('harness_id').notNull(),
+    personId: uuid('person_id').notNull(),
+    eventId: text('event_id').notNull(),
+    title: text('title').notNull(),
+    startsAt: instant('starts_at').notNull(),
+    endsAt: instant('ends_at').notNull(),
+    status: text('status').notNull(),
+    releasedEffectId: uuid('released_effect_id'),
+    releasedAt: instant('released_at'),
+    createdAt: instant('created_at').notNull(),
+    redactedAt: instant('redacted_at'),
+  },
+  restrictedNever,
+  (t) => [
+    personalHarnessOf('assistant_calendar_holds_personal_harness_fk', t.harnessId, t.personId),
+    foreignKey({
+      name: 'assistant_calendar_holds_effect_harness_fk',
+      columns: [t.id, t.harnessId],
+      foreignColumns: [assistantEffects.id, assistantEffects.harnessId],
+    }),
+    foreignKey({
+      name: 'assistant_calendar_holds_released_effect_fk',
+      columns: [t.releasedEffectId, t.harnessId],
+      foreignColumns: [assistantEffects.id, assistantEffects.harnessId],
+    }),
+    check(
+      'assistant_calendar_holds_status_known',
+      oneOf(t.status, assistantHoldStatusSchema.options),
+    ),
+    check(
+      'assistant_calendar_holds_released_when_done',
+      sql`(${t.status} = 'released') = (${t.releasedAt} IS NOT NULL) AND (${t.releasedEffectId} IS NULL OR ${t.status} = 'released')`,
+    ),
+    check(
+      'assistant_calendar_holds_at_most_a_day',
+      sql`${t.endsAt} > ${t.startsAt} AND ${t.endsAt} - ${t.startsAt} <= interval '24 hours'`,
+    ),
+    check(
+      'assistant_calendar_holds_title_length',
+      sql`(${t.redactedAt} IS NULL AND char_length(${t.title}) BETWEEN 1 AND 200) OR (${t.redactedAt} IS NOT NULL AND ${t.title} = '')`,
+    ),
+    check(
+      'assistant_calendar_holds_event_id_shape',
+      sql`${t.eventId} ~ '^[0-9a-v]{5,}$' AND char_length(${t.eventId}) <= 1024`,
+    ),
+    uniqueIndex('assistant_calendar_holds_event_once').on(t.harnessId, t.eventId),
+    index('assistant_calendar_holds_harness').on(t.harnessId, t.status, t.startsAt),
+  ],
+);
+
+export const assistantMailboxes = declareTable(
+  'assistant_mailboxes',
+  {
+    harnessId: uuid('harness_id').primaryKey(),
+    personId: uuid('person_id').notNull(),
+    address: text('address').notNull(),
+    googleUserId: text('google_user_id'),
+    status: text('status').notNull(),
+    createdAt: instant('created_at').notNull(),
+    updatedAt: instant('updated_at').notNull(),
+    historyId: text('history_id'),
+    processedLabelId: text('processed_label_id'),
+    sweptAt: instant('swept_at'),
+  },
+  { classification: 'internal', offlineEligibility: 'never' },
+  (t) => [
+    personalHarnessOf('assistant_mailboxes_personal_harness_fk', t.harnessId, t.personId),
+    check('assistant_mailboxes_history_id_shape', sql`${t.historyId} ~ '^[0-9]{1,20}$'`),
+    check(
+      'assistant_mailboxes_label_id_shape',
+      sql`${t.processedLabelId} ~ '^[A-Za-z0-9_]{1,64}$'`,
+    ),
+    check(
+      'assistant_mailboxes_address_shape',
+      sql`${t.address} ~ '^[a-z0-9][a-z0-9.-]{0,63}@[a-z0-9][a-z0-9.-]{0,188}$'`,
+    ),
+    check('assistant_mailboxes_status_known', oneOf(t.status, ['active', 'suspended', 'deleted'])),
+    uniqueIndex('assistant_mailboxes_address_once').on(t.address),
+    index('assistant_mailboxes_person').on(t.personId),
+    index('assistant_mailboxes_sweep').on(t.status, t.sweptAt),
+  ],
+);
+
+export const assistantMailSends = declareTable(
+  'assistant_mail_sends',
+  {
+    effectId: uuid('effect_id').primaryKey(),
+    harnessId: uuid('harness_id')
+      .notNull()
+      .references(() => harnesses.id),
+    status: text('status').notNull(),
+    gmailMessageId: text('gmail_message_id'),
+    claimedAt: instant('claimed_at').notNull(),
+    sentAt: instant('sent_at'),
+  },
+  { classification: 'internal', offlineEligibility: 'never' },
+  (t) => [
+    check('assistant_mail_sends_status_known', oneOf(t.status, ['sending', 'sent'])),
+    check(
+      'assistant_mail_sends_sent_has_message',
+      sql`(${t.status} = 'sent') = (${t.gmailMessageId} IS NOT NULL AND ${t.sentAt} IS NOT NULL)`,
+    ),
+    check('assistant_mail_sends_message_shape', sql`${t.gmailMessageId} ~ '^[0-9a-zA-Z_-]{1,64}$'`),
+  ],
+);

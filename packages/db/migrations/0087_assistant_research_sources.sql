@@ -1,0 +1,4 @@
+ALTER TABLE "assistant_requests" DROP CONSTRAINT "assistant_requests_redacted_empty";--> statement-breakpoint
+ALTER TABLE "assistant_requests" ADD COLUMN "research_sources" jsonb DEFAULT '[]'::jsonb NOT NULL;--> statement-breakpoint
+ALTER TABLE "assistant_requests" ADD CONSTRAINT "assistant_requests_research_sources_bounded" CHECK (jsonb_typeof("assistant_requests"."research_sources") = 'array' AND jsonb_array_length("assistant_requests"."research_sources") <= 50);--> statement-breakpoint
+ALTER TABLE "assistant_requests" ADD CONSTRAINT "assistant_requests_redacted_empty" CHECK ("assistant_requests"."redacted_at" IS NULL OR ("assistant_requests"."note" = '' AND "assistant_requests"."untrusted_parts" = '[]'::jsonb AND "assistant_requests"."research_sources" = '[]'::jsonb));

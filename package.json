@@ -37,7 +37,8 @@
     "ui:css": "node tools/ui/build-css.ts",
     "ui:islands": "node tools/ui/build-islands.ts",
     "github-apps:page": "node tools/github-apps/run-page.ts",
-    "github-apps:convert": "node tools/github-apps/run-convert.ts"
+    "github-apps:convert": "node tools/github-apps/run-convert.ts",
+    "probe:assistants": "node apps/uw-platform/bin/probe-assistants.ts"
   },
   "devDependencies": {
     "@cloudflare/vitest-pool-workers": "^0.22.0",

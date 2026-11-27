@@ -17,8 +17,7 @@
         "islands/editor/main.ts",
         "islands/worker/sw.ts"
       ],
-      "project": ["**/*.ts", "**/*.tsx"],
-      "ignoreDependencies": ["cloudflare"]
+      "project": ["**/*.ts", "**/*.tsx"]
     },
     "apps/uw-ingest": {
       "entry": ["index.ts", "**/*.test.ts"],

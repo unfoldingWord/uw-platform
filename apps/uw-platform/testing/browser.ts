@@ -8,7 +8,7 @@ export function fakeBrowser(): BrowserBinding & {
   const calls: PdfQuickAction[] = [];
   return {
     quickAction: async (_action, options) => {
-      calls.push(options);
+      if ('html' in options) calls.push(options);
       return new Response(Uint8Array.from(pdfBytes), {
         headers: { 'content-type': 'application/pdf' },
       });

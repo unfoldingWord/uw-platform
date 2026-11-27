@@ -1,0 +1,6 @@
+{
+  "to": ["ana@example.org"],
+  "bcc": ["ben@example.org"],
+  "subject": "Notes",
+  "body": "Notes"
+}

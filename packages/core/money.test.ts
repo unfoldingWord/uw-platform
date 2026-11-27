@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatCount, formatFigure, formatMoney } from './money.ts';
+import { formatCount, formatFigure, formatMoney, parseMoney } from './money.ts';
 
 describe('WB-11 money is formatted once from integer minor units', () => {
   it('WB-11 formats US dollars with grouping and two decimals', () => {
@@ -53,6 +53,30 @@ describe('formatCount', () => {
     expect(formatCount(0)).toBe('0');
     expect(formatCount(1234567)).toBe('1,234,567');
     expect(formatCount(-4200)).toBe('-4,200');
+  });
+});
+
+describe('PA-19 a decimal price read as minor units', () => {
+  it('reads a price in the minor units of its currency', () => {
+    expect(parseMoney('842.10', 'USD')).toEqual({ amountMinor: 84_210, currency: 'USD' });
+    expect(parseMoney('842.1', 'EUR')).toEqual({ amountMinor: 84_210, currency: 'EUR' });
+    expect(parseMoney('250', 'CHF')).toEqual({ amountMinor: 25_000, currency: 'CHF' });
+    expect(parseMoney('12000', 'JPY')).toEqual({ amountMinor: 12_000, currency: 'JPY' });
+    expect(parseMoney('12.500', 'KWD')).toEqual({ amountMinor: 12_500, currency: 'KWD' });
+  });
+
+  it('refuses a price it cannot read exactly', () => {
+    for (const [amount, currency] of [
+      ['842.105', 'USD'],
+      ['12000.5', 'JPY'],
+      ['-5.00', 'USD'],
+      ['1e3', 'USD'],
+      ['842.10', 'usd'],
+      ['842.10', 'XYZ1'],
+    ] as const) {
+      expect(parseMoney(amount, currency)).toBeNull();
+    }
+    expect(parseMoney('842.100', 'USD')).toEqual({ amountMinor: 84_210, currency: 'USD' });
   });
 });
 

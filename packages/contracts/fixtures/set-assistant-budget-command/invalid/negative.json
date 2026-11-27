@@ -1,0 +1,6 @@
+{
+  "command": "set_assistant_budget",
+  "requestId": "00000000-0000-4000-8000-0000000000e1",
+  "personId": "00000000-0000-4000-8000-0000000000e2",
+  "monthlyMinor": -100
+}

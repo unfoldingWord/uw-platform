@@ -291,6 +291,158 @@ The Zulip bot is an outgoing-webhook bot. Its endpoint URL is `https://<uw-inges
 
 A post reaches everyone in its channel, and the platform does not check who that is. Every channel in `ZULIP_CHANNELS` must therefore be a private channel (never public or web-public) whose members are exactly the people who can read that area: anyone with a live grant on the area or a live org grant, and no one else (ADR 0015: a grant on another area reads nothing here). Whoever configures the realm keeps membership in step with grants: a person granted read on an area joins its channel, and a person whose grant is revoked or expires leaves it. Otherwise a person who cannot read the area sees its harness key, its repository names and issue numbers, and that a gate, a lapse or a failed run is waiting. The post carries only the harness key, the item ref, one fixed sentence and the link, never an item's title or body.
 
+## Personal assistants on Zulip: one bot per person (PA-6)
+
+Each person's assistant is its own Zulip bot user, with its own name and API key (ADR 0038). The platform creates the bot when the person turns their assistant on, deactivates it when they turn it off, and reactivates it when they turn it back on within 30 days. It signs in to Zulip as one org-admin service account to do that. Each bot is an outgoing-webhook bot pointed at `uw-ingest`, so a direct message to it arrives as a delivery; the platform replies through the Zulip REST API as that bot.
+
+Variables, in `infra/uw-platform/wrangler.go-live.toml` (and `wrangler.toml`) under staging and production (`set-at-go-live` until then):
+
+| Variable | Value |
+|---|---|
+| `ZULIP_ADMIN_EMAIL` | The email of the org-admin service account that creates the assistant bots |
+| `ASSISTANT_WEBHOOK_BASE` | The `uw-ingest` Worker's `https://` origin with no path; every assistant bot posts to `<origin>/webhooks/zulip-assistant` |
+
+`ZULIP_SITE` is the notifier's. Secret, set in the store as the table below names it:
+
+```bash
+# uw-platform (from infra/uw-platform)
+wrangler secret put ZULIP_ADMIN_API_KEY --env <name>   # the service admin account's API key
+```
+
+One-time steps in Zulip, by a realm owner, once per realm (staging and production may share the realm; each environment then has its own service account so its bots are told apart):
+
+1. **The service account.** Invite a dedicated account, for example `platform-assistants@unfoldingword.org`, that is no person's own account, and sign in as it once. Organization settings, Users: make it an **Organization administrator**. Bots it creates are owned by it; deactivating it may deactivate every assistant bot, so it stays active for as long as assistants exist. Its email is `ZULIP_ADMIN_EMAIL`.
+2. **Its API key.** Signed in as that account: Personal settings, Account and privacy, API key, Manage your API key, then Generate API key. Store it as `ZULIP_ADMIN_API_KEY` (`UW_<ENV>_ZULIP_ADMIN_API_KEY`, at the hidden prompt of `wrangler secrets-store secret create`, as in "Platform secrets" below). Regenerating the key ends the old one at once.
+3. **Who can create bots.** Organization settings, Organization permissions, Who can create bots: administrators at least (everyone is fine too). Who can add custom emoji and other permissions are untouched.
+4. **Outgoing webhooks reach uw-ingest.** Each assistant bot posts to `<ASSISTANT_WEBHOOK_BASE>/webhooks/zulip-assistant`. Zulip Cloud posts from its own servers, so the `uw-ingest` route must be public (it is: it verifies each delivery by the bot's own token, not by Access).
+5. **Direct messages to bots.** Organization settings, Organization permissions, Who can send direct messages: must allow members to message bots (the default does). If direct messages are restricted to administrators, no one can reach an assistant.
+6. **Probe it.** With `ZULIP_SITE`, `ZULIP_ADMIN_EMAIL`, `ZULIP_ADMIN_API_KEY`, `ASSISTANT_WEBHOOK_BASE` and `PROBE_PERSON_EMAIL` (a test person's Zulip email) in an env file, run `node --env-file=<file> apps/uw-platform/bin/probe-assistants.ts`, then again with `--write`. The Zulip probes (`s3.1` to `s3.5`, `s6.5`) create a bot (`POST /api/v1/bots`, `bot_type=3`), read its webhook token (`GET /api/v1/bots`), look the person up by email (`GET /api/v1/users/{email}`), send them one direct message as the bot (`POST /api/v1/messages`, `type=direct`), rename the bot (`PATCH /api/v1/bots/{id}`), deactivate and reactivate it (`DELETE /api/v1/bots/{id}`, `GET /api/v1/users/{id}` to read `is_active` when Zulip refuses, `POST /api/v1/users/{id}/reactivate`), and leave it deactivated. The probe bot is named `uwprobe<six hex>`; nothing else uses that name, and it can be left deactivated.
+
+`uw-ingest` verifies each assistant delivery by the SHA-256 digest of that bot's own webhook token, looked up by the bot's email in `assistant_zulip_bots`; the stream bot keeps `ZULIP_WEBHOOK_TOKEN` and `/webhooks/zulip`. A bot's API key is sealed with the credentials KMS key (`CREDENTIALS_KMS_*`) under its own encryption context, so the per-bot keys never enter the Secrets Store. Until `ZULIP_ADMIN_API_KEY`, `ZULIP_ADMIN_EMAIL` and `ASSISTANT_WEBHOOK_BASE` are set, no bot can be created; until `ZULIP_SITE` is set, an assistant reply is recorded `not_wired`.
+
+### The hosted turn and the assistants pool (PA-16, PA-17)
+
+Each recorded request starts one `AssistantTurn` Cloudflare Workflow, named by the request id: `assistant-turn-staging` and `assistant-turn-production`, both bound as `ASSISTANT_TURN` to the class `AssistantTurn` (`apps/uw-platform/assistants/turn/workflow.ts`), declared under `staging` and `production` only, in `wrangler.toml` and `wrangler.go-live.toml`, like `HARNESS_RUN` (ADR 0039). Preview declares no Workflow, so a direct message there is recorded and its turn is not started. The turn calls the model through the platform's OpenRouter engine (`OPENROUTER_API_KEY` and the AI Gateway settings of the hosted agents section) and asks OpenRouter for zero-data-retention endpoints only; the account's own ZDR lock stays on as well.
+
+Assistants spend their own pool, outside `AI_SPEND_CAP_MINOR`: USD 20 a month for each assistant with a live `assist` delegation, unless an org admin sets one person's budget with the `set_assistant_budget` command (`POST /api/acl/commands/set_assistant_budget`, `monthlyMinor` in cents, `null` for the default). An optional hard ceiling on the whole pool, in cents, is the variable `ASSISTANT_SPEND_CAP_MINOR`; it is declared empty (`""`) under staging and production in both wrangler files, which means no ceiling, and the pool is then just the sum of the budgets. Set it to a positive whole number of cents to cap the pool; anything else reads as no ceiling. The platform's spend breaker leaves assistant spend out of its reading. The minute cron starts the turn of a request whose start was lost (two minutes after it was recorded, for a day) and closes a turn left open an hour after it started, so a crashed turn's reservation is released.
+
+Staging checks, before go-live (the staging-probes list has the exact requests): one OpenRouter call for `z-ai/glm-5.3-flash` pinned to `z-ai` with `provider.zdr = true` answers with a ZDR endpoint, and a direct message to a provisioned bot on staging gets one reply from that bot.
+
+### Google Workspace: calendar now, mail and directory next (PA-8, PA-9)
+
+The platform reaches Google with one service account that has domain-wide delegation (ADR 0040). It acts as a person for that person's calendar, as an assistant mailbox for Gmail, and as one admin account for the directory, and the code refuses, before it signs, any other subject or scope.
+
+Variables, in `infra/uw-platform/wrangler.go-live.toml` (and `wrangler.toml`) under staging and production:
+
+| Variable | Value |
+|---|---|
+| `GOOGLE_WORKSPACE_DOMAIN` | The Workspace domain, `unfoldingword.org`; only people whose address is in it can be acted as |
+| `GOOGLE_WORKSPACE_ADMIN_SUBJECT` | The one Workspace admin account the platform acts as for the directory, to create, suspend, restore and delete assistant users; `set-at-go-live`. A dedicated admin account, never a person's own |
+| `GOOGLE_ASSISTANT_OU` | The organizational unit path the assistant users are created in, `/Assistants` |
+
+Secret, set in the store as the table below names it:
+
+```bash
+# uw-platform (from infra/uw-platform)
+wrangler secret put GOOGLE_WORKSPACE_KEY --env <name>   # the service account's whole JSON key file
+```
+
+One-time steps, by a Google Cloud project owner and a Workspace super-admin:
+
+1. In Google Cloud, create a project for the platform, enable the Google Calendar API, the Gmail API and the Admin SDK API, create a service account, and create one JSON key for it. Put the whole JSON file into `GOOGLE_WORKSPACE_KEY`; nothing else keeps a copy.
+2. In the Workspace admin console (Security, Access and data control, API controls, Domain-wide delegation), a super-admin adds the service account's client id with exactly these scopes: `https://www.googleapis.com/auth/calendar.events`, `https://www.googleapis.com/auth/calendar.freebusy`, `https://www.googleapis.com/auth/gmail.modify`, `https://www.googleapis.com/auth/admin.directory.user`, `https://www.googleapis.com/auth/admin.directory.group.readonly`.
+3. Turn on a Workspace audit alert for token grants to the service account's client id for any subject that is not a person, an assistant mailbox or the admin subject.
+4. Rotate the key at least every 90 days: create a new key, store it, then delete the old one in Google Cloud.
+5. Run the Google staging probes in the assistants' staging-probes list before go-live, as one test person: a token for `calendar.events`, listing today's events, free/busy for two people, inserting a hold with a chosen id (and inserting it again, expecting a conflict), reading and deleting it.
+
+Until `GOOGLE_WORKSPACE_KEY` and `GOOGLE_WORKSPACE_DOMAIN` are set, every calendar verb is refused `calendar_not_wired` and a drafted hold is recorded failed `not_wired`.
+
+The whole one-time setup, step by step with the commands and the checks after each, is in [`infra/google/README.md`](google/README.md).
+
+### Turning an assistant on and off (PA-14)
+
+A person turns their own assistant on with `POST /api/assistant/commands/enable_assistant` (`{ "command": "enable_assistant", "requestId": "<uuid>", "name": "barnabas" }`), and off with `disable_assistant`; `grant_assist` (`expiresAt` or `null` for the default) lends it authority (ADR 0041). The name becomes `<name>@<GOOGLE_WORKSPACE_DOMAIN>` and the bot's name, and the assistant takes the lowest free number from 10.51 in area 10-19. The platform then makes, as `agent:assistant-provisioner`: the Workspace user in `GOOGLE_ASSISTANT_OU`, with a random password it keeps nowhere; the Zulip bot, paired with the person by email; and the active persona; then it waits for the person's `assist` grant. Turning off suspends the user and deactivates the bot at once. The minute cron re-drives unfinished steps (step `assistant-provisioning` in its log, five assistants a minute, backing off up to an hour after a failure), and the nightly cron (`cron assistant deletion`) deletes the Workspace user of an assistant turned off 30 days ago and frees its number; the bot stays deactivated.
+
+Each environment needs, before anyone turns an assistant on: `GOOGLE_WORKSPACE_KEY`, `GOOGLE_WORKSPACE_DOMAIN`, `GOOGLE_WORKSPACE_ADMIN_SUBJECT` and `GOOGLE_ASSISTANT_OU` (this section), and `ZULIP_SITE`, `ZULIP_ADMIN_EMAIL`, `ZULIP_ADMIN_API_KEY`, `ASSISTANT_WEBHOOK_BASE` and the `CREDENTIALS_KMS_*` secrets (the Zulip section and the key service section). Until then every step is recorded failed with `workspace_not_wired` or `zulip_not_wired` (event `assistant_provisioning_failed`) and retried.
+
+One-time steps in the Workspace admin console, by a super-admin:
+
+1. Create the organizational unit named in `GOOGLE_ASSISTANT_OU` (`/Assistants`). Restrict it so its users receive mail only from inside the domain, and turn off services an assistant does not need (Drive sharing outside the domain, Meet, Chat).
+2. Make `GOOGLE_WORKSPACE_ADMIN_SUBJECT` a dedicated admin account with the User management privileges (create, update, suspend and delete users) for that unit, and Groups: Read for the domain; the service account's `admin.directory.user` and `admin.directory.group.readonly` scopes act only as it. The group scope lets the name check refuse, before anything is made, a name a Google group already uses as its address or alias (`groups.get`, 404 means free).
+3. Confirm there are enough Workspace licences: every assistant turned on or turned off within the last 30 days holds one; final deletion frees it.
+4. Run the directory staging probes in the assistants' staging-probes list as the admin subject: `users.get` for a free address, a user and an alias; `users.insert` with an external id; a second insert (expecting a conflict); `users.update` with `suspended` true and false; `users.delete`; and `groups.get` for a free address (s13.1, expecting 404).
+
+When a person leaves (owner decision 15, PA-20, ADR 0048), their assistant is turned off through the same path as their own Turn off: its `assist` delegation is revoked, its Workspace user suspended, its bot deactivated, and 30 days later the user is deleted and its number freed. Two ways reach it:
+
+- **The person is no longer active.** Every minute the cron step `assistant-leavers` (`kernel.assistants.disableLeavers`, as `agent:assistant-provisioner`, 20 a minute) turns off every enabled assistant whose person's status is not `active`; the next step, `assistant-provisioning`, suspends the user and deactivates the bot. Its log line counts `disabled`. An org admin makes a leaver inactive on **Access** (`/access`), under **Deactivate a person** (`POST /api/acl/commands/deactivate_person`, `{ "command": "deactivate_person", "requestId": "<uuid>", "personId": "<uuid>" }`, org admin checked at the route and again with the grants locked, never the admin's own record, audited in `person_audit` as `deactivate`; ADR 0049). The person is refused at sign-in at once and their assistant is turned off within a minute. Suspending them in Google alone does not change their status here. To bring them back, approve them again under **Waiting for access**; their assistant stays off until they turn it on.
+- **An org admin turns it off.** On a person's profile, the "Assistant" link opens `/assistant?person=<id>`, where an org admin sees the accounts, the budget and **Turn off this assistant** (`POST /api/acl/commands/disable_person_assistant`, `{ "command": "disable_person_assistant", "requestId": "<uuid>", "personId": "<uuid>" }`, checked for org admin at the route and again, with the grants locked, in the kernel). The minute cron suspends the user and deactivates the bot within a minute. Its person can turn it on again within 30 days.
+
+### My Assistant and retention (PA-7, PA-15)
+
+A person does all of the above on the My Assistant screen at `/assistant` (sidebar, 10-19), which posts to the same endpoint; it also customises the assistant (`customise_assistant`), renews and revokes `assist` (`renew_assist`, `revoke_assist`), undoes a reminder or hold (`undo_assistant_effect`) and deletes the person's history (`delete_my_assistant_history`), and a pairing code is issued by `POST /assistant/pairing` (ADR 0042). An org admin opens `/assistant?person=<personId>` to see an assistant's accounts and spend and to change its monthly budget; the admin never sees what its person asked.
+
+The nightly cron runs `cron assistant retention` after the deletion job: it empties request text, untrusted parts, replies, effect drafts and passed reminder and hold text recorded more than 365 days ago (owner decision 8), at most 10,000 requests a night, and records `assistant_history_redacted` on each assistant's harness. Its log line carries `outcome: history_redacted`, the count and `done: false` when a backlog remains for the next night. It needs no configuration beyond the database. Nothing restores redacted text; a backup taken before the run still holds it until the backup itself expires.
+
+### Email to an assistant (PA-10, PA-11)
+
+A person writes to their assistant's mailbox, or forwards mail to it, and gets one reply by email on the same thread (ADR 0043). The minute cron's step `assistant-mail` reads up to 25 active assistant mailboxes a minute through the Gmail API as each mailbox, ten new messages each, within 20 seconds, and labels every message it handled `uw/processed` (a hidden label it creates in the mailbox). Its log line carries `outcome: assistant_mail_swept` with counts (`mailboxes`, `admitted`, `declined`, `started`, `failed`) and the flag, or `assistant_mail_not_configured` until `GOOGLE_WORKSPACE_KEY` and `GOOGLE_WORKSPACE_DOMAIN` are set. A mail that may not instruct the assistant is recorded on the assistant's harness as `assistant_mail_declined` with its reason and nothing else.
+
+| Variable | Value |
+|---|---|
+| `ASSISTANT_EMAIL_INSTRUCTIONS` | `on` to honour mail that passes the sender checks; anything else declines it as `email_instructions_off`. `on` in staging, `off` in production until the DMARC probe below passes |
+
+Mail counts only from the person's own address, alone in From, when the one `Authentication-Results` header that names `mx.google.com`, on top, shows `spf=pass` with the person's exact address as `smtp.mailfrom`, together with `dmarc=pass` or `dkim=pass` for their domain (ADR 0046). Domain DMARC alone is not enough. A relay allowed to send as any address in the domain (Workspace SMTP relay, a CRM holding the domain's DKIM key) could still pass with the person's own envelope address, so keep such relays from using staff addresses as the envelope sender. Automatic mail (out-of-office, lists, bounces, another assistant) never starts a turn, and every reply carries `Auto-Submitted: auto-replied`. The person's own address is bound to the assistant when its Workspace user is made.
+
+Before turning the flag on in production, run the email staging probes in the assistants' staging-probes list as one test person: send a mail from the person's own account to their assistant and read the raw message in the assistant mailbox, confirming the top `Authentication-Results` header and its `dmarc` or `spf` and `dkim` results; confirm `history.list` answers 404 for an old history id; confirm the label search; send a reply and confirm it threads in the person's inbox. If Gmail does not mark mail inside the domain as passing, keep the flag `off` and ask the owner.
+
+### Proposals and meeting transcripts (PA-12, PA-13)
+
+An assistant never sends mail to anyone else, invites anyone or writes a shared page on its own: it proposes, and the person accepts or declines each proposal on My Assistant (ADR 0044). The person hears of a proposal by web push (`proposal_waiting`) and in the assistant's reply, both linking to `/assistant#proposal-<id>` on `APP_ORIGIN`. Accepting posts `decide_assistant_proposal` to `/api/assistant/commands` and runs the proposal once: an email from the assistant's mailbox with the person as Reply-To (Gmail, the existing `gmail.modify` scope), an invitation created on the person's calendar with `sendUpdates=all` so Google sends it (the existing `calendar.events` scope), or text added at the end of a page the person can write, saved by the person. Nothing new is configured: the Google settings above and `APP_ORIGIN` are all it uses. A proposal waits seven days; the nightly cron's `cron assistant proposal expiry` marks the rest expired and logs `outcome: expired` with a count.
+
+Before relying on proposals in production, run the proposal staging probes in the assistants' staging-probes list as one test person: accept a proposed email and confirm it arrives from the assistant's address with `Reply-To` the person, once; accept a proposed invitation and confirm the attendee receives Google's invitation from the person; accept a page addition and confirm the page's history shows the person as the saver. A failed or unknown send is shown on My Assistant and never retried; the person proposes it again by asking the assistant.
+
+### Web research and flights (PA-19)
+
+An assistant can search the web, read a public page and find priced flight offers for its person, and replies citing each address and price (ADR 0047). It never books, buys or holds anything. Three verbs, served only in an assistant turn: `search_web` asks the Brave Search API (`GET https://api.search.brave.com/res/v1/web/search`, header `X-Subscription-Token: <BRAVE_SEARCH_API_KEY>`); `read_web_page` fetches the page itself with plain `fetch` and, only when the page is a script shell with almost no text, asks Browser Run's `markdown` quick action through the `BROWSER` binding the PDFs already use (no new credential), with `allowRequestPattern` holding the headless browser to the checked site; `find_flights` creates a Duffel offer request (`POST https://api.duffel.com/air/offer_requests?return_offers=false`, headers `Authorization: Bearer <DUFFEL_ACCESS_TOKEN>` and `Duffel-Version: v2`) and lists its eight cheapest offers (`GET /air/offers?offer_request_id=...&sort=total_amount&limit=8`). Nothing calls Duffel's orders or payments.
+
+A page address must be `http` or `https`, carry no user name or password, use port 80 or 443, and name a host that is not loopback, private, link-local, carrier-grade NAT, multicast, reserved or a local name (`localhost`, `*.local`, `*.internal`, a name without a dot), checked on the address as written and on every address the name resolves to (DNS over HTTPS at `cloudflare-dns.com`), again after each of at most three redirects. Before any of that, the address must be one this request offered: one of its search results, or one the person wrote in their own message (ADR 0049); an address the model composed, or found in a forwarded message or a page, is refused `address_not_offered` and reaches nothing, so a hidden instruction cannot make the assistant send private text out in an address. A page is read for at most eight seconds and 1.5 MB, and at most 20,000 characters reach the model. Every result reaches the model inside an untrusted fence (`search_result`, `web_page`, `flight_offer`).
+
+Each use is recorded as `assistant_research_used` with the request, the turn and the kind (`web_search`, `page_read`, `page_rendered`, `flight_search`) and nothing else: never the words searched, the address or the route. A request may make 5 searches, 6 page reads, 2 renderings and 3 flight searches; an assistant 30, 40, 10 and 10 in any 24 hours (`RESEARCH_PER_REQUEST` and `RESEARCH_PER_DAY` in `packages/harness/assistants/research-ledger.ts`). These calls are not model spend and do not count against the assistant's budget; the caps bound their cost.
+
+Setting it up, per environment: create a Brave Search API key (a plan whose terms allow the use; the free plan is rate-limited to one query a second) and a Duffel access token (a test token `duffel_test_*` answers with Duffel's test airline only; a live token answers real fares), store them as `UW_<ENV>_BRAVE_SEARCH_API_KEY` and `UW_<ENV>_DUFFEL_ACCESS_TOKEN` ("Platform secrets" below), and run the research probes (`s12.*`) with `pnpm probe:assistants`. Until `BRAVE_SEARCH_API_KEY` is set `search_web` is refused `research_not_wired`, and until `DUFFEL_ACCESS_TOKEN` is set `find_flights` is; `read_web_page` needs neither, and without `BROWSER` a page that needs a browser is refused `page_unreadable`. To stop it at once, remove the secret; nothing else breaks.
+
+### Going live with personal assistants (PA-18)
+
+The order, for each environment, staging first. Every setting below is declared for staging and production in both wrangler files, and `tools/infra/assistants-config.test.ts` fails when one is missing or malformed (production's `ASSISTANT_EMAIL_INSTRUCTIONS` must be `off`).
+
+| Setting | Kind | Set to |
+|---|---|---|
+| `GOOGLE_WORKSPACE_KEY` | secret | the service account's JSON key ([`infra/google/README.md`](google/README.md) steps 1-4) |
+| `ZULIP_ADMIN_API_KEY` | secret | the Zulip service account's API key (the Zulip steps above) |
+| `BRAVE_SEARCH_API_KEY` | secret | the Brave Search API subscription token ("Web research and flights" below) |
+| `DUFFEL_ACCESS_TOKEN` | secret | a Duffel access token ("Web research and flights" below) |
+| `BROWSER` | binding | Browser Run, already bound in both environments for PDFs; renders a page only when it needs a browser |
+| `CREDENTIALS_KMS_*`, `OPENROUTER_API_KEY`, `AI_GATEWAY_*` | secrets and variables | already set for the platform; bot keys are sealed with the KMS key, turns run on OpenRouter |
+| `GOOGLE_WORKSPACE_DOMAIN` | variable | `unfoldingword.org` |
+| `GOOGLE_WORKSPACE_ADMIN_SUBJECT` | variable | the dedicated directory admin account |
+| `GOOGLE_ASSISTANT_OU` | variable | `/Assistants` |
+| `ZULIP_SITE`, `ZULIP_ADMIN_EMAIL` | variables | the realm's origin; the Zulip service account's email |
+| `ASSISTANT_WEBHOOK_BASE` | variable | `uw-ingest`'s `https://` origin |
+| `ASSISTANT_EMAIL_INSTRUCTIONS` | variable | `on` in staging; `off` in production until the DMARC probe passes and the owner agrees |
+| `ASSISTANT_SPEND_CAP_MINOR` | variable | `""` (no ceiling) or a whole number of cents |
+| `APP_ORIGIN` | variable | the app's origin; proposal links start with it |
+
+The assistants' area, 10-19, is not a setting: the numbering 10.51 upward is fixed in the contracts (`ASSISTANT_JD_CATEGORY`), and `apps/uw-platform/assistants/area.ts` names the area the platform passes to the kernel; the same test keeps the two in step and refuses an `ASSISTANTS_AREA` variable, which could only disagree.
+
+1. **Google, once:** [`infra/google/README.md`](google/README.md) steps 1-8.
+2. **Zulip, once:** the steps in "Personal assistants on Zulip" above.
+3. **Variables:** replace each `set-at-go-live` above in `infra/uw-platform/wrangler.toml` and `wrangler.go-live.toml` in one pull request, and run `pnpm exec vitest run tools/infra`.
+4. **Secrets:** store the four new ones (`GOOGLE_WORKSPACE_KEY`, `ZULIP_ADMIN_API_KEY`, `BRAVE_SEARCH_API_KEY`, `DUFFEL_ACCESS_TOKEN`) and copy their blocks into `wrangler.toml` ("Platform secrets" below). Merging deploys staging.
+5. **Read probes:** `node --env-file=<file> apps/uw-platform/bin/probe-assistants.ts` (or `pnpm probe:assistants` with the settings exported). Every line must be `PASS`, `SKIP` with a reason you accept, or `MANUAL`. The env file holds the same names as the Worker plus `GOOGLE_WORKSPACE_KEY_FILE` and the three `PROBE_*` addresses; it never goes into the repository.
+6. **Write probes:** the same with `--write`. They create and remove a probe Workspace user `uwprobe<six hex>@<domain>`, a probe hold on the test person's calendar 30 days ahead, and a probe Zulip bot, and send the test person one direct message and one email. Each is removed, or left deactivated for the bot, before the command ends; a `FAIL` line says what was left.
+7. **The walk, as one real person on staging** (the same path `sim/scenarios/PA-18.a-*` runs against the test adapters): turn the assistant on at `/assistant` with a name, and wait for the screen to show the Workspace user, the bot and the persona; grant it; DM the bot "what is on my schedule today?" and get one reply; ask it to remind you in two minutes and get one reminder; ask it to hold an hour tomorrow and see a private event with no guests; forward it an email from your own address and get one email reply on that thread; ask it to email a colleague, accept the proposal on My Assistant, and see the colleague receive it once; undo the hold; turn the assistant off and see the bot stop answering. Then work through the `MANUAL` lines of the probe output.
+8. **Production:** repeat 1-6 for production with an owner's word, as part of a release. Keep `ASSISTANT_EMAIL_INSTRUCTIONS = "off"` until the sender probes (`s8.1`, `s11.1`, `s11.2`) pass in production too.
+
 ## Platform secrets in Cloudflare Secrets Store (#160)
 
 The secrets the platform itself runs on live in the account's Cloudflare Secrets Store, and each Worker binds only the ones it reads. `uw-ingest` binds its two; `uw-platform` binds the rest; a per-PR Worker (`preview`) binds none. The list is `infra/secrets-store.json`, under 30-39 Infrastructure: each secret with what it is, who issues it, its owner and the date to rotate it by, per environment. `tools/infra/secrets-store.test.ts` keeps the list, the wrangler files and the code naming the same secrets, and fails when a binding named like a credential is added to a Worker without a row.
@@ -301,20 +453,24 @@ The secrets the platform itself runs on live in the account's Cloudflare Secrets
 | `AI_GATEWAY_ANALYTICS_TOKEN` | uw-platform | `STORE_AI_GATEWAY_ANALYTICS_TOKEN` | `UW_<ENV>_AI_GATEWAY_ANALYTICS_TOKEN` |
 | `AI_GATEWAY_TOKEN` | uw-platform | `STORE_AI_GATEWAY_TOKEN` | `UW_<ENV>_AI_GATEWAY_TOKEN` |
 | `ANTHROPIC_API_KEY` | uw-platform | `STORE_ANTHROPIC_API_KEY` | `UW_<ENV>_ANTHROPIC_API_KEY` |
+| `BRAVE_SEARCH_API_KEY` | uw-platform | `STORE_BRAVE_SEARCH_API_KEY` | `UW_<ENV>_BRAVE_SEARCH_API_KEY` |
 | `BUILDER_GITHUB_APP_PRIVATE_KEY` | uw-platform | `STORE_BUILDER_GITHUB_APP_PRIVATE_KEY` | `UW_<ENV>_BUILDER_GITHUB_APP_PRIVATE_KEY` |
 | `CREDENTIALS_KMS_ACCESS_KEY_ID` | uw-platform | `STORE_CREDENTIALS_KMS_ACCESS_KEY_ID` | `UW_<ENV>_CREDENTIALS_KMS_ACCESS_KEY_ID` |
 | `CREDENTIALS_KMS_SECRET_ACCESS_KEY` | uw-platform | `STORE_CREDENTIALS_KMS_SECRET_ACCESS_KEY` | `UW_<ENV>_CREDENTIALS_KMS_SECRET_ACCESS_KEY` |
+| `DUFFEL_ACCESS_TOKEN` | uw-platform | `STORE_DUFFEL_ACCESS_TOKEN` | `UW_<ENV>_DUFFEL_ACCESS_TOKEN` |
 | `GITHUB_APP_PRIVATE_KEY` | uw-platform | `STORE_GITHUB_APP_PRIVATE_KEY` | `UW_<ENV>_GITHUB_APP_PRIVATE_KEY` |
+| `GOOGLE_WORKSPACE_KEY` | uw-platform | `STORE_GOOGLE_WORKSPACE_KEY` | `UW_<ENV>_GOOGLE_WORKSPACE_KEY` |
 | `OPENAI_API_KEY` | uw-platform | `STORE_OPENAI_API_KEY` | `UW_<ENV>_OPENAI_API_KEY` |
 | `OPENROUTER_API_KEY` | uw-platform | `STORE_OPENROUTER_API_KEY` | `UW_<ENV>_OPENROUTER_API_KEY` |
 | `REVIEWER_CODEX_GITHUB_APP_PRIVATE_KEY` | uw-platform | `STORE_REVIEWER_CODEX_GITHUB_APP_PRIVATE_KEY` | `UW_<ENV>_REVIEWER_CODEX_GITHUB_APP_PRIVATE_KEY` |
 | `REVIEWER_GITHUB_APP_PRIVATE_KEY` | uw-platform | `STORE_REVIEWER_GITHUB_APP_PRIVATE_KEY` | `UW_<ENV>_REVIEWER_GITHUB_APP_PRIVATE_KEY` |
 | `VAPID_PRIVATE_JWK` | uw-platform | `STORE_VAPID_PRIVATE_JWK` | `UW_<ENV>_VAPID_PRIVATE_JWK` |
+| `ZULIP_ADMIN_API_KEY` | uw-platform | `STORE_ZULIP_ADMIN_API_KEY` | `UW_<ENV>_ZULIP_ADMIN_API_KEY` |
 | `ZULIP_BOT_API_KEY` | uw-platform | `STORE_ZULIP_BOT_API_KEY` | `UW_<ENV>_ZULIP_BOT_API_KEY` |
 | `GITHUB_WEBHOOK_SECRET` | uw-ingest | `STORE_GITHUB_WEBHOOK_SECRET` | `UW_<ENV>_GITHUB_WEBHOOK_SECRET` |
 | `ZULIP_WEBHOOK_TOKEN` | uw-ingest | `STORE_ZULIP_WEBHOOK_TOKEN` | `UW_<ENV>_ZULIP_WEBHOOK_TOKEN` |
 
-`<ENV>` is `STAGING` or `PRODUCTION`. An account has one store, and a name is unique in it, so the environment is part of the name: 32 secrets of the 100 an account may hold. The GitHub App ids and installation ids (`*_GITHUB_APP_ID`, `*_GITHUB_APP_INSTALLATION_ID`) are not secrets; they stay Worker settings and are not in the store.
+`<ENV>` is `STAGING` or `PRODUCTION`. An account has one store, and a name is unique in it, so the environment is part of the name: 40 secrets of the 100 an account may hold. The GitHub App ids and installation ids (`*_GITHUB_APP_ID`, `*_GITHUB_APP_INSTALLATION_ID`) are not secrets; they stay Worker settings and are not in the store.
 
 ### How a secret is read
 
@@ -501,7 +657,7 @@ GL-1 switches the wiring above on. It writes no code: each step creates a resour
 1. **The database (FD-12).** A Postgres 16 or later database for staging and one for production (AWS RDS, or any Postgres the Hyperdrive config and the GitHub runner can reach). In the repository settings set `DATABASE_URL_STAGING` and `DATABASE_URL_PRODUCTION` as secrets (the table above); the deploy migrates through them, so the database must accept connections from GitHub's runners while it does. When the database is reachable only through a Cloudflare Tunnel (AWS Aurora, set up with the infrastructure team), set `DATABASE_TUNNEL_HOST_STAGING` and `DATABASE_TUNNEL_HOST_PRODUCTION` as variables and `DATABASE_TUNNEL_CLIENT_ID` and `DATABASE_TUNNEL_CLIENT_SECRET` as secrets: the tunnel needs a TCP route to the database behind a Cloudflare Access application that admits that service token, and each migrate job opens it with `.github/scripts/db-tunnel.sh` before migrating, with the `DATABASE_URL_*` secret pointing at `127.0.0.1:15432`.
 2. **Hyperdrive (FD-12, FD-6).** `wrangler hyperdrive create uw-staging --connection-string=<pooled staging string>`, and the same for `uw-production`. Put each Hyperdrive id in place of `set-at-go-live` in `[[env.staging.hyperdrive]]` and `[[env.production.hyperdrive]]` of both go-live files, and staging's Hyperdrive id in uw-platform's `[[env.preview.hyperdrive]]` (P33).
 3. **Queues, hosts and the deploy token (FD-10).** Create the four queues listed above with `wrangler queues create`. In the repository settings set `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` as secrets (the table above). Until the token is set, `deploy-pr`, `cleanup-pr`, `deploy-staging`, `deploy-ingest-staging`, `deploy-production` and `deploy-ingest-production` each log the notice "CLOUDFLARE_API_TOKEN is not set" and stay green; check that each now runs its steps. Read the account's `workers.dev` subdomain in the Cloudflare dashboard; if it is not `unfoldingword`, correct `STAGING_URL` and `INGEST_URL` in `.github/workflows/deploy-staging.yml` and the address in step 7.
-4. **Access and origins (FD-7).** Apply the three applications as the Access section says. Put the app application's AUD tag in `ACCESS_AUD`, the `mcp` application's in `ACCESS_MCP_AUD` and the team domain in `ACCESS_TEAM_DOMAIN`, under staging, production and preview of `uw-platform/wrangler.go-live.toml`, and the staging origin in `APP_ORIGIN`. `VAPID_PUBLIC_KEY`, `VAPID_SUBJECT`, `ZULIP_SITE` and `ZULIP_BOT_EMAIL` come from the notifier section; the push and Zulip halves read their secrets (`VAPID_PRIVATE_JWK`, `ZULIP_BOT_API_KEY`) before these values, so they stay off until those secrets are set.
+4. **Access and origins (FD-7).** Apply the three applications as the Access section says. Put the app application's AUD tag in `ACCESS_AUD`, the `mcp` application's in `ACCESS_MCP_AUD` and the team domain in `ACCESS_TEAM_DOMAIN`, under staging, production and preview of `uw-platform/wrangler.go-live.toml`, and the staging origin in `APP_ORIGIN`. `VAPID_PUBLIC_KEY`, `VAPID_SUBJECT`, `ZULIP_SITE` and `ZULIP_BOT_EMAIL` come from the notifier section, `ZULIP_ADMIN_EMAIL` and `ASSISTANT_WEBHOOK_BASE` from the personal assistants section, and `GOOGLE_WORKSPACE_ADMIN_SUBJECT` from its Google Workspace section; the push and Zulip halves read their secrets (`VAPID_PRIVATE_JWK`, `ZULIP_BOT_API_KEY`) before these values, so they stay off until those secrets are set.
 5. **Worker secrets (FD-10, GH-1).** Once an org owner has registered the GitHub App (the GitHub App section), set `GITHUB_WEBHOOK_SECRET` on uw-ingest and the `GITHUB_APP_*` secrets on uw-platform with `wrangler secret put <name> --env staging`, as that section lists. The other Worker secrets are set the same way and listed where they are used: the Reviewer Apps section, the Builder GitHub App section, and the notifier section (`VAPID_PRIVATE_JWK`, `ZULIP_BOT_API_KEY`). Step 7's probe does not need them; the FD-10 webhook check and the delegated merge's live run do.
 6. **The switch pull request.** In one pull request: copy `uw-platform/wrangler.go-live.toml` over `uw-platform/wrangler.toml` and `uw-ingest/wrangler.go-live.toml` over `uw-ingest/wrangler.toml`, and set `"switchedOn": true` in `infra/go-live.json`. `pnpm verify` must be green: with the flag on, the live-file tests require each live file to carry everything its go-live twin declares, and with it off they require none of it, so a half switch fails. Merge it on a green CI `test` job; `deploy-staging.yml` then runs `migrate-staging` and deploys both Workers. The deploy builds the sandbox images, so the runner needs Docker (the sandbox section).
 7. **The release gate: the staging probe through Hyperdrive.** Run

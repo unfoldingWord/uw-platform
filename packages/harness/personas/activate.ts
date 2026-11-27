@@ -21,6 +21,7 @@ import { refused, type KernelOutcome, type Refused } from '../outcome.ts';
 import type { PageFacts, StoreTransaction } from '../ports.ts';
 import { agentRefusal } from '../stages/rules.ts';
 import { dryRunThenFlip } from './flip.ts';
+import { personaHarnessRefusal } from './harness-guard.ts';
 import { toolCheck, type ToolCheckFailure } from './tool-check.ts';
 import type {
   ActivatedPersona,
@@ -74,6 +75,8 @@ async function personaOf(
   if (parsed.data.harness !== harnessId) return refused('page_not_found', { pageId: page.id });
   const harness = await tx.harnesses.read.byId(parsed.data.harness);
   if (harness === null) return refused('harness_not_found', { harnessId: parsed.data.harness });
+  const mismatch = personaHarnessRefusal(parsed.data.identity, harness);
+  if (mismatch !== null) return mismatch;
   return { page, frontmatter: parsed.data, harness };
 }
 

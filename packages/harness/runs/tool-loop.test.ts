@@ -210,6 +210,57 @@ async function engineRefusalEnds(): Promise<void> {
   expect(tools.calls).toEqual([]);
 }
 
+const history = [
+  { role: 'user' as const, text: 'What is on today?' },
+  { role: 'assistant' as const, text: 'Nothing is booked.', toolCalls: [] },
+];
+
+async function historyPrepended(): Promise<void> {
+  const { turn, requests } = scripted([result()]);
+  await runToolLoop(turn, fine(), { ...request, history }, noop);
+  expect(requests[0]?.messages).toEqual([...history, { role: 'user', text: 'Work the item.' }]);
+  expect(requests[0]).not.toHaveProperty('history');
+  expect(requests[0]).not.toHaveProperty('turnLimit');
+}
+
+async function noHistoryUnchanged(): Promise<void> {
+  const { turn, requests } = scripted([result()]);
+  await runToolLoop(turn, fine(), request, noop);
+  const { prompt, ...rest } = request;
+  expect(requests[0]).toStrictEqual({ ...rest, messages: [{ role: 'user', text: prompt }] });
+}
+
+async function turnsUntil(turnLimit: number): Promise<number> {
+  const { turn } = scripted([result({ toolCalls: [call('a', 'read_page')] })]);
+  return (await runToolLoop(turn, fine(), { ...request, turnLimit }, noop)).turns;
+}
+
+async function turnLimitClamped(): Promise<void> {
+  expect(await turnsUntil(3)).toBe(3);
+  expect(await turnsUntil(1000)).toBe(TURN_LIMIT);
+}
+
+async function invalidTurnLimitHeld(): Promise<void> {
+  for (const limit of [Number.NaN, 0, -3, 2.5, Number.POSITIVE_INFINITY, 2 ** 53]) {
+    expect(await turnsUntil(limit)).toBe(TURN_LIMIT);
+  }
+  expect(await turnsUntil(TURN_LIMIT + 1)).toBe(TURN_LIMIT);
+  expect(await turnsUntil(1)).toBe(1);
+}
+
+describe('PA-2 the tool loop for an assistant turn', () => {
+  it('prepends the thread history in order before the prompt', historyPrepended);
+
+  it('sends exactly the request it sent before when no history is given', noHistoryUnchanged);
+
+  it('stops at a lower turn limit and clamps a higher one to 40', turnLimitClamped);
+
+  it(
+    'holds the hard cap of 40 for a turn limit that is not a positive safe integer',
+    invalidTurnLimitHeld,
+  );
+});
+
 describe('the tool loop', () => {
   it(
     'GD-3 ends refused on a turn the engine refused, and calls no tool after it',

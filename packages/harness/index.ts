@@ -1,11 +1,13 @@
 export { effectPaths, walk, WalkError } from './walk.ts';
 export type { EffectPath, WalkPath, WalkStage, WalkStep } from './walk.ts';
 export { portNames } from './ports.ts';
+export { allowed } from './access.ts';
 export type * from './ports.ts';
 export { chooseInWindow, POSTING_REASONS, wakeRank } from './notify/rank.ts';
 export type { CooldownWindow } from './notify/rank.ts';
 export { createKernel } from './kernel.ts';
 export type { Kernel, KernelHealth } from './kernel.ts';
+export type { KernelSettings } from './kernel-settings.ts';
 export type { ViewReads } from './views/index.ts';
 export type {
   BoardCard,
@@ -49,6 +51,7 @@ export {
   notWiredCall,
   PortNotWiredError,
   ProviderMismatchError,
+  ZeroRetentionUnavailableError,
   RunTransitionError,
   storeRefusalOf,
   ToolOutsideToolsetError,
@@ -174,3 +177,71 @@ export type { OpenDraft, StageControlsView } from './views/controls.ts';
 export type { AgentSummary, AgentsView, StandingPermission } from './views/agents.ts';
 export type { RunInput, RunMark, RunSpend, RunSummary, RunsView, RunView } from './views/runs.ts';
 export type { ActivationCheck, ActivationCheckKey } from './personas/checks.ts';
+export {
+  ASSISTANT_TOOLSET,
+  ASSISTANT_TURN_LIMIT,
+  ASSISTANT_VERBS,
+  assistantPersonaDraft,
+  assistantRole,
+  assistantTemplate,
+  classifyEffect,
+  emailSenderVerdict,
+  splitForward,
+  splitTranscript,
+  transcriptParts,
+  TRUSTED_AUTHSERV_ID,
+  privateAddress,
+  webAddressRefusal,
+  RESEARCH_PER_DAY,
+  RESEARCH_PER_REQUEST,
+  attendingPerson,
+  copiedToPerson,
+} from './assistants/index.ts';
+export type {
+  AssistantCommands,
+  AssistantLoop,
+  BudgetSet,
+  SetBudgetInput,
+  SettledLoop,
+  SweepInput,
+  Swept,
+  AssistantRole,
+  BeginInput,
+  CustomiseInput,
+  Delivered,
+  EffectClass,
+  Finished,
+  FinishInput,
+  ProvisionInput,
+  RecordedRequest,
+  RequestInput,
+  Turn,
+  AssistantOverview,
+  OverviewEffect,
+  OverviewProposal,
+  OverviewRequest,
+  Redacted,
+  Undone,
+  AdmitMailInput,
+  InboundMail,
+  MailAttachment,
+  MailHeader,
+  SenderVerdict,
+  SplitMail,
+  TranscriptSplit,
+  Proposed,
+  ProposeInput,
+  ProposalDecided,
+  ProposalDecideInput,
+  Expired,
+  ExpireInput,
+  WebAddressParts,
+  ResearchCounts,
+  FindFlightsInput,
+  FlightsFound,
+  ReadWebPageInput,
+  SearchWebInput,
+  WebPageRead,
+  WebSearched,
+} from './assistants/index.ts';
+export type { PersonaFixture, PersonaPageDraft } from './templates/personas.ts';

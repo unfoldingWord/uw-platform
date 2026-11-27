@@ -48,6 +48,7 @@ function harnessesGateway(harness: Harness): HarnessesGateway {
       byId: async (id) => (id === harness.id ? harness : null),
       byKey: unused,
       byRepository: unused,
+      byPerson: unused,
       list: unused,
     },
     write: {
@@ -105,6 +106,10 @@ function eventsGateway(appended: HarnessEvent[]): HarnessEventsGateway {
       lastPositions: unused,
       latestForItems: unused,
       countForPersona: unused,
+      assistantLedger: unused,
+      assistantSpend: unused,
+      assistantPoolSpend: unused,
+      assistantStaleTurns: unused,
     },
     write: {
       append: async (events: readonly NewHarnessEvent[]) => {

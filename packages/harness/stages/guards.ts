@@ -5,6 +5,10 @@ import { lockKeys } from '../lock-keys.ts';
 import { refused, type Refused } from '../outcome.ts';
 import type { StageCursor, StoreTransaction } from '../ports.ts';
 
+export function personalRefusal(harness: Pick<Harness, 'personId'>): Refused | null {
+  return harness.personId === null ? null : refused('not_permitted', { why: 'personal_harness' });
+}
+
 export async function instructionsRefusal(
   tx: StoreTransaction,
   harness: Harness,

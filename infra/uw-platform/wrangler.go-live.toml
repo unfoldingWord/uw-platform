@@ -48,6 +48,13 @@ VAPID_PUBLIC_KEY = "set-at-go-live"
 VAPID_SUBJECT = "set-at-go-live"
 ZULIP_SITE = "set-at-go-live"
 ZULIP_BOT_EMAIL = "set-at-go-live"
+ZULIP_ADMIN_EMAIL = "set-at-go-live"
+ASSISTANT_WEBHOOK_BASE = "set-at-go-live"
+GOOGLE_WORKSPACE_DOMAIN = "unfoldingword.org"
+GOOGLE_WORKSPACE_ADMIN_SUBJECT = "set-at-go-live"
+GOOGLE_ASSISTANT_OU = "/Assistants"
+ASSISTANT_EMAIL_INSTRUCTIONS = "on"
+ASSISTANT_SPEND_CAP_MINOR = ""
 ZULIP_CHANNELS = "{}"
 AI_GATEWAY_ACCOUNT_ID = "5a3ffd86280d3ed086be76d955829242"
 AI_GATEWAY_ID = "uw-platform-staging"
@@ -104,6 +111,11 @@ class_name = "HarnessRun"
 name = "pdf-export-staging"
 binding = "PDF_EXPORT"
 class_name = "PdfExportRun"
+
+[[env.staging.workflows]]
+name = "assistant-turn-staging"
+binding = "ASSISTANT_TURN"
+class_name = "AssistantTurn"
 
 [[env.staging.workflows]]
 name = "measure-run-staging"
@@ -210,6 +222,26 @@ binding = "STORE_ZULIP_BOT_API_KEY"
 store_id = "set-at-go-live"
 secret_name = "UW_STAGING_ZULIP_BOT_API_KEY"
 
+[[env.staging.secrets_store_secrets]]
+binding = "STORE_ZULIP_ADMIN_API_KEY"
+store_id = "set-at-go-live"
+secret_name = "UW_STAGING_ZULIP_ADMIN_API_KEY"
+
+[[env.staging.secrets_store_secrets]]
+binding = "STORE_GOOGLE_WORKSPACE_KEY"
+store_id = "set-at-go-live"
+secret_name = "UW_STAGING_GOOGLE_WORKSPACE_KEY"
+
+[[env.staging.secrets_store_secrets]]
+binding = "STORE_BRAVE_SEARCH_API_KEY"
+store_id = "set-at-go-live"
+secret_name = "UW_STAGING_BRAVE_SEARCH_API_KEY"
+
+[[env.staging.secrets_store_secrets]]
+binding = "STORE_DUFFEL_ACCESS_TOKEN"
+store_id = "set-at-go-live"
+secret_name = "UW_STAGING_DUFFEL_ACCESS_TOKEN"
+
 [env.production]
 name = "uw-platform"
 workers_dev = true
@@ -227,6 +259,13 @@ VAPID_PUBLIC_KEY = "set-at-go-live"
 VAPID_SUBJECT = "set-at-go-live"
 ZULIP_SITE = "set-at-go-live"
 ZULIP_BOT_EMAIL = "set-at-go-live"
+ZULIP_ADMIN_EMAIL = "set-at-go-live"
+ASSISTANT_WEBHOOK_BASE = "set-at-go-live"
+GOOGLE_WORKSPACE_DOMAIN = "unfoldingword.org"
+GOOGLE_WORKSPACE_ADMIN_SUBJECT = "set-at-go-live"
+GOOGLE_ASSISTANT_OU = "/Assistants"
+ASSISTANT_EMAIL_INSTRUCTIONS = "off"
+ASSISTANT_SPEND_CAP_MINOR = ""
 ZULIP_CHANNELS = "{}"
 AI_GATEWAY_ACCOUNT_ID = "5a3ffd86280d3ed086be76d955829242"
 AI_GATEWAY_ID = "uw-platform-production"
@@ -283,6 +322,11 @@ class_name = "HarnessRun"
 name = "pdf-export-production"
 binding = "PDF_EXPORT"
 class_name = "PdfExportRun"
+
+[[env.production.workflows]]
+name = "assistant-turn-production"
+binding = "ASSISTANT_TURN"
+class_name = "AssistantTurn"
 
 [[env.production.workflows]]
 name = "measure-run-production"
@@ -388,6 +432,26 @@ secret_name = "UW_PRODUCTION_VAPID_PRIVATE_JWK"
 binding = "STORE_ZULIP_BOT_API_KEY"
 store_id = "set-at-go-live"
 secret_name = "UW_PRODUCTION_ZULIP_BOT_API_KEY"
+
+[[env.production.secrets_store_secrets]]
+binding = "STORE_ZULIP_ADMIN_API_KEY"
+store_id = "set-at-go-live"
+secret_name = "UW_PRODUCTION_ZULIP_ADMIN_API_KEY"
+
+[[env.production.secrets_store_secrets]]
+binding = "STORE_GOOGLE_WORKSPACE_KEY"
+store_id = "set-at-go-live"
+secret_name = "UW_PRODUCTION_GOOGLE_WORKSPACE_KEY"
+
+[[env.production.secrets_store_secrets]]
+binding = "STORE_BRAVE_SEARCH_API_KEY"
+store_id = "set-at-go-live"
+secret_name = "UW_PRODUCTION_BRAVE_SEARCH_API_KEY"
+
+[[env.production.secrets_store_secrets]]
+binding = "STORE_DUFFEL_ACCESS_TOKEN"
+store_id = "set-at-go-live"
+secret_name = "UW_PRODUCTION_DUFFEL_ACCESS_TOKEN"
 
 [env.preview]
 workers_dev = true

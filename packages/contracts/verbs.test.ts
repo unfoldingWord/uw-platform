@@ -44,30 +44,45 @@ function groupOf(name: string): string | undefined {
   return findVerb(name)?.group;
 }
 
+const registered = [
+  'search_pages',
+  'read_page',
+  'write_page',
+  'attach_file',
+  'render_pdf',
+  'resolve_context',
+  'query_entities',
+  'create_task',
+  'read_collection',
+  'read_view',
+  'create_row',
+  'set_property',
+  'list_gifts',
+  'create_draft_journal_entry',
+  'poll_queue',
+  'claim_item',
+  'submit_to_gate',
+  'record_run_step',
+  'get_health',
+  'set_reminder',
+  'cancel_reminder',
+  'list_reminders',
+  'read_my_calendar',
+  'find_free_time',
+  'hold_time',
+  'release_hold',
+  'propose_email',
+  'propose_invite',
+  'propose_page_append',
+  'search_web',
+  'read_web_page',
+  'find_flights',
+  ...measureVerbs,
+];
+
 describe('CT-2 the verb registry', () => {
-  it('registers the thirteen verbs of PRD section 8.2, attach_file, render_pdf, the four collection verbs and the seven measure verbs', () => {
-    expect(names()).toEqual([
-      'search_pages',
-      'read_page',
-      'write_page',
-      'attach_file',
-      'render_pdf',
-      'resolve_context',
-      'query_entities',
-      'create_task',
-      'read_collection',
-      'read_view',
-      'create_row',
-      'set_property',
-      'list_gifts',
-      'create_draft_journal_entry',
-      'poll_queue',
-      'claim_item',
-      'submit_to_gate',
-      'record_run_step',
-      'get_health',
-      ...measureVerbs,
-    ]);
+  it('registers the thirteen verbs of PRD section 8.2, attach_file, render_pdf, the four collection verbs, the thirteen assistant verbs and the seven measure verbs', () => {
+    expect(names()).toEqual(registered);
     expect(names()).toEqual([...verbNames]);
   });
 
@@ -80,9 +95,25 @@ describe('CT-2 the verb registry', () => {
     expect(findVerb('resolve_policies')).toBeUndefined();
   });
 
-  it('serves every verb in v1 except the two role-gated ones and the measure verbs not yet handled', () => {
+  it('serves every verb in v1 except the two role-gated ones and the assistant ones', () => {
     const unserved = verbRegistry.filter((entry) => !entry.servedInV1).map((entry) => entry.name);
-    expect(unserved).toEqual(['list_gifts', 'create_draft_journal_entry']);
+    expect(unserved).toEqual([
+      'list_gifts',
+      'create_draft_journal_entry',
+      'set_reminder',
+      'cancel_reminder',
+      'list_reminders',
+      'read_my_calendar',
+      'find_free_time',
+      'hold_time',
+      'release_hold',
+      'propose_email',
+      'propose_invite',
+      'propose_page_append',
+      'search_web',
+      'read_web_page',
+      'find_flights',
+    ]);
   });
 
   it('declares every grant in a shape verbGrantSchema accepts', () => {
@@ -156,7 +187,7 @@ describe('CT-2 the verb manifest is contract data', () => {
   it('is plain JSON-serialisable contract data', () => {
     const manifest = verbManifest();
     expect(JSON.parse(JSON.stringify(manifest))).toEqual(manifest);
-    expect(manifest).toHaveLength(26);
+    expect(manifest).toHaveLength(39);
   });
 
   it('serialises the registry with its Zod schemas stripped', () => {

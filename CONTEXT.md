@@ -167,7 +167,7 @@ A job an agent does, defined as configuration: an identity, a harness subscripti
 _Avoid_: agent (an agent is the identity a persona runs as), bot, worker, role
 
 **Activation**:
-A person with `admin` on the area turning a `suggested` persona or measure page `active`, at the version they saw: a persona after the tool check and the **dry run**, a measure after its **trial run**, or a measure paused for any reason but retirement, when the person activating it becomes its activator. The only way a persona or a measure runs. For a persona it flips the page's status, writes the `personas` projection and records `persona_activated` in one transaction.
+A person with `admin` on the harness's area turning a `suggested` persona or measure page `active`, at the version they saw: a persona after the tool check and the **dry run**, a measure after its **trial run**, or a measure paused for any reason but retirement, when the person activating it becomes its activator. The only way a persona or a measure runs. For a persona it flips the page's status, writes the `personas` projection and records `persona_activated` in one transaction. On a **personal harness**, only the **assistant role**'s identity for that harness's person may be activated.
 _Avoid_: enable, publish, deploy (those are gate words), confirm (that is for learnings and skills)
 
 **Dry run**:
@@ -195,7 +195,7 @@ The fenced `harness-scout` block that opens the answer of a scout step: the prem
 _Avoid_: scout result, triage outcome
 
 **Delegation**:
-A row that lets unattended work run: a person holding `admin` on the harness's area grants a persona one capability word for a bounded time. Every **beat** (an unattended claim, on any host) presents a live delegation or is refused.
+A row that lets unattended work run: a person holding `admin` on the harness's area grants a persona one capability word for a bounded time. Every **beat** (an unattended claim, on any host) presents a live delegation or is refused. An **assist** delegation is granted by the personal harness's person, not an area admin.
 _Avoid_: schedule, cron, impersonation, service token (that is how a routine authenticates; the delegation is what lets it act)
 
 **Lease**:
@@ -225,7 +225,7 @@ The pure core in `packages/harness`: the stage machine, the ship rule, the fold 
 _Avoid_: engine (that is the model-vendor seam), core (that is `packages/core`), service, backend
 
 **Port**:
-An interface the kernel needs from the world: Clock, Ids, Store, Grants, GitHubFacts, Connectors, ModelEngine, Hub, Notifier, Runs. Each has a platform adapter, a test adapter and one contract test run against both.
+An interface the kernel needs from the world: Clock, Ids, Store, Grants, GitHubFacts, Connectors, ModelEngine, Hub, Notifier, Runs, DirectMessages. Each has a platform adapter, a test adapter and one contract test run against both.
 _Avoid_: interface (too general), driver, provider, memory adapter (the test adapter for Store is real Postgres)
 
 **Adapter**:
@@ -241,7 +241,7 @@ The kernel on test adapters, run in Node: `sim/`. `pnpm sim -- <scenario>` runs 
 _Avoid_: simulator, harness (that is the pipeline), test bed
 
 **World**:
-What a scenario runs in: one embedded Postgres with the real migrations, the ten test adapters, one clock, and the kernel built over them. Built by `createWorld()`.
+What a scenario runs in: one embedded Postgres with the real migrations, the eleven test adapters, one clock, and the kernel built over them. Built by `createWorld()`.
 _Avoid_: fixture (that is data), context, environment
 
 **Scenario**:
@@ -791,6 +791,156 @@ _Avoid_: widget, client app, SPA
 **Fragment refresh**:
 Re-rendering `<main>` from the server after a wake, merged into the page without a reload.
 _Avoid_: hot reload, polling (that is the hub's fallback)
+
+## Assistants
+
+**Assistant**:
+A person's own persona, `agent:assistant-<personId>`, one per person, working only for that person, on that person's **personal harness**. Its display name is the person's choice.
+_Avoid_: bot, personal agent, secretary, role
+
+**Personal harness**:
+A harness whose `person_id` is set: an `assistant` harness with no stages, holding one person's assistant persona, its **assist** delegation and its content-free events. Its person, not the area's admins, lends it authority and decides its **proposals**.
+_Avoid_: private workflow, my harness
+
+**Assistant role**:
+The predefined persona fixture every assistant starts from: instructions, toolset, engine, model and monthly budget, versioned in code.
+_Avoid_: role (alone), template persona, preset
+
+**Customisation**:
+The person's owner-only overlay on the assistant role: display name, instructions addendum (at most 8,000 characters) and timezone. It is appended after the role and never removes the role's rules.
+_Avoid_: settings, profile, prompt
+
+**Assist**:
+The capability word a person grants their own assistant on their personal harness. It reaches no stage.
+_Avoid_: assistant delegation (say "an `assist` delegation"), enablement, standing
+
+**Request**:
+One instruction from an assistant's person, by Zulip direct message or email. The person's own text is the instruction. Anything forwarded, quoted or attached is untrusted content. Stored owner-only.
+_Avoid_: command (that is a person's action on a harness), message (alone), ticket, conversation
+
+**Assistant turn**:
+One model loop answering one request, hosted by the `AssistantTurn` Workflow named by that request. Not a **run**: it has no item and no stage. A turn whose host died is **abandoned** when the minute cron closes it.
+_Avoid_: run, session, job
+
+**Assistants pool**:
+The month's spend allowance all assistants share, outside the platform's AI spend cap: the sum of the budgets of every assistant with a live `assist` delegation or that spent this month, under an optional ceiling. A turn is refused once it is spent.
+_Avoid_: sub-cap, assistant cap (say "the assistants pool"), quota
+
+**Direct effect**:
+An effect in the closed low-risk set (ADR 0037), done at the end of a turn with no person deciding.
+_Avoid_: auto-action, safe action, low-risk action (say "direct effect")
+
+**Proposal**:
+An effect outside the closed set, drafted by an assistant, which runs only after its person decides it on the web app: an email to other people, an invitation from the person's calendar, or text added at the end of a page the person can edit. It waits seven days, then expires.
+_Avoid_: draft (that is a private copy of a harness's stages, or a working draft of a page), suggestion, pending action
+
+**Proposal digest**:
+The SHA-256 of a proposal's stored payload, computed by the database. The person's decision names the digest of what their page showed, and a decision on any other digest is refused.
+_Avoid_: hash, checksum, version (a page's version is a different thing)
+
+**Page addition**:
+Text an accepted proposal adds at the end of a page, saved by the person who accepted it as a new version, with a line naming the assistant and the day.
+_Avoid_: append (in prose), page edit, transcript import
+
+**Meeting transcript**:
+A transcript of a meeting, pasted into a direct message or attached to an email, which reaches the assistant fenced as untrusted `meeting_transcript` text.
+_Avoid_: recording, notes (the notes are the page it may be added to)
+
+**Web research**:
+What an assistant does with `search_web`, `read_web_page` and `find_flights`: read-only searches of the public web (Brave), reads of one public page (rendered by Browser Run only when it needs a browser) and priced flight offers (Duffel), each counted as `assistant_research_used`, capped per request and per day, fenced as untrusted and cited in the reply.
+_Avoid_: browsing, booking, scraping
+
+**Web address guard**:
+The check every page address passes before the platform fetches it, and again after each redirect: `http` or `https`, no user name or password, port 80 or 443, and a host that, as written and as it resolves, is not private, loopback, link-local, a metadata address or a local name. A refused address is `blocked` with a closed reason (`webAddressRefusal`). A rendered page is held to the checked site.
+
+**Offered address**:
+An address a research read may take: one of this request's search results, or one written in the person's own message. Any other is refused `address_not_offered` before anything is fetched, so an injected instruction cannot choose where the assistant sends a request.
+_Avoid_: allowlist, whitelist
+_Avoid_: allowlist, firewall
+
+**Flight offer**:
+One priced way to fly a route on given dates, from Duffel, with its airline, legs, total in minor units and currency, and the time it expires. An assistant shows offers and never books one; their text is fenced as untrusted `flight_offer`.
+_Avoid_: booking, ticket, fare (a fare is part of an offer)
+
+**Staging probe**:
+One check that an external service answers the way the platform's code assumes, run against staging with `pnpm probe:assistants` and reported as pass, fail, skip or manual. Each is a numbered entry of the assistants' staging-probes list.
+_Avoid_: smoke test, health check (that is `/health/probe`, the Worker's own indicators)
+
+**Reminder**:
+A note to an assistant's person, due at an instant, delivered only to that person. It is set when the turn that drafted it ends, fires once, and is recorded undelivered, never sent, when the person's `assist` delegation has lapsed by then.
+_Avoid_: alarm (that word belongs to the silence alarm), task, due date
+
+**Hold**:
+A private event an assistant places on its person's own calendar, with no attendees and no notice to anyone, carrying a marker that names that assistant. The assistant can remove only its own holds.
+_Avoid_: booking, invite, reservation, block
+
+**Pairing**:
+Binding a person's Zulip account to their assistant: by the person's email when the assistant's bot is created, or by sending the bot a one-time code the person started on the platform.
+_Avoid_: linking, verification
+
+**Binding**:
+The one verified address an assistant's person has on a channel, such as their Zulip user id. A request counts only from it, and a reply goes only to it.
+_Avoid_: pairing (the act; the binding is what it leaves), contact, handle
+
+**Assistant bot**:
+The Zulip bot user that is one person's assistant in Zulip, with its own name and key. The bot that posts wakes to streams is not an assistant bot.
+_Avoid_: the bot (say which), service bot
+
+**Assistant mailbox**:
+The assistant's own Google Workspace address, from which it receives forwarded mail and sends replies.
+_Avoid_: service account, bot email
+
+**Mail sweep**:
+The minute cron's pass over the assistant mailboxes that turns each new message into a request or a declined mail, and labels it processed.
+_Avoid_: mail poll, inbox sync, Gmail watch (a push the platform does not use)
+
+**Sender verdict**:
+Whether a mail may instruct an assistant: automatic, from someone else, unproven, or passing. Only the topmost `Authentication-Results` header that Google's own mail server wrote is read, and it must show SPF passing for the person's exact address as the envelope sender.
+_Avoid_: spam check, trust score
+
+**Declined mail**:
+A mail to an assistant that started nothing, recorded without content as `assistant_mail_declined` with its closed reason.
+_Avoid_: rejected mail, bounce (the platform sends none)
+
+**Assistant name**:
+The name a person picks when they turn their assistant on. It is the assistant mailbox's address exactly (`<name>@unfoldingword.org`, no suffix) and its bot's name: lowercase letters, digits, dots and hyphens, 2 to 30 characters, free in Google Workspace and among assistants.
+_Avoid_: handle, username, display name (that is the **customisation**'s)
+
+**Assistant number**:
+The JD id an assistant holds in area 10-19, the lowest free one from 10.51 upward when it is turned on. It stays while the assistant is turned off and is freed only by **final deletion**.
+_Avoid_: assistant id, slot
+
+**Turning on**, **turning off**:
+What a person does to their own assistant. Turning on numbers it and starts **provisioning**; turning off suspends its mailbox, deactivates its bot and revokes its `assist` delegation at once. Turning back on within 30 days restores both. Only the person turns it on; it is also turned off by the platform when its person is no longer active (a **leaver**), and by an org admin.
+_Avoid_: enable, activate (activation is a persona's), install
+
+**Leaver**:
+A person whose status is no longer `active`, usually because an org admin **deactivated** them (`deactivate_person`). Every minute the platform turns off a leaver's assistant through the same path as the person's own turning off.
+_Avoid_: offboarded, departed
+
+**Provisioning**:
+The platform's resumable steps after turning on or off: the Workspace user, the bot and its pairing, the active persona, then waiting for the `assist` delegation; or suspending the user and deactivating the bot. Each step is idempotent and run by `agent:assistant-provisioner`, a platform identity no persona can take.
+_Avoid_: setup, onboarding
+
+**Final deletion**:
+Deleting an assistant's Workspace user 30 days after it was turned off, which frees its **assistant number**. Its bot stays deactivated and its events stay.
+_Avoid_: purge, retire (the kernel's name for the step)
+
+**Workspace key**:
+The platform secret (`GOOGLE_WORKSPACE_KEY`) holding the one domain-wide-delegated Google service account the platform signs tokens with: for Gmail only as an active assistant mailbox, for the calendar only as an active person in the organization's domain, and for the directory only as the one configured admin subject (ADR 0040).
+_Avoid_: service account, OAuth token
+
+**My Assistant**:
+The person's own screen for their assistant (`/assistant`): turning it on or off, its accounts and pairing, its `assist` permission, its **customisation**, spend against budget, recent requests and what it did, undo, what waits for the person, and deleting their history. An org admin sees another person's assistant there without its content.
+_Avoid_: assistant settings, assistant admin
+
+**Undo**:
+The person's one-step reversal of an assistant effect still in force: cancelling a reminder that has not fired, or removing a hold that has not ended. It is the person's action, recorded as `assistant_effect_undone`, never an assistant effect.
+_Avoid_: revert, rollback
+
+**Redaction**:
+Emptying an assistant's stored text (a request's note and untrusted parts, its effects' payloads, a passed reminder's text or hold's title) while keeping the row and its events. It happens 365 days after a request was recorded (**retention**) or when the person deletes their history.
+_Avoid_: purge, delete (the rows stay)
 
 ## The repo and the build
 

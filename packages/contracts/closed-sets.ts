@@ -24,7 +24,15 @@ export const engineSchema = z.enum([
   'openrouter-messages',
 ]);
 export const costBasisSchema = z.enum(['metered', 'subscription']);
-export const capabilityWordSchema = z.enum(['none', 'iterate', 'build', 'review', 'merge', 'fix']);
+export const capabilityWordSchema = z.enum([
+  'none',
+  'iterate',
+  'build',
+  'review',
+  'merge',
+  'fix',
+  'assist',
+]);
 export const intakeViaSchema = z.enum(['import', 'kickstart', 'enqueue_epic']);
 export const findingWeightSchema = z.enum(['real', 'plausible', 'theoretical']);
 export const approveAtSchema = z.enum(['zero_findings', 'no_real_or_plausible']);
@@ -36,6 +44,14 @@ export const untrustedSourceSchema = z.enum([
   'review_comment',
   'page_from_agent',
   'pr_title',
+  'chat_quote',
+  'calendar_event',
+  'email_forwarded',
+  'email_attachment',
+  'meeting_transcript',
+  'web_page',
+  'search_result',
+  'flight_offer',
 ]);
 export const gateDecisionSchema = z.enum(['approve', 'reject', 'take_over', 'override']);
 export const personStatusSchema = z.enum(['active', 'pending', 'disabled']);
@@ -48,6 +64,8 @@ export const wakeReasonSchema = z.enum([
   'handed_to_person',
   'delegated_merge',
   'silence_alarm',
+  'proposal_waiting',
+  'assistant_refused',
 ]);
 export const liveScreenSchema = z.enum([
   'home',

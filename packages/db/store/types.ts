@@ -23,6 +23,28 @@ import type {
   RunStepRecord,
   Stage,
 } from '@uw/contracts';
+import type {
+  AssistantBindingsGateway,
+  AssistantBudgetsGateway,
+  AssistantStaleTurn,
+  AssistantStaleTurnQuery,
+  AssistantLedgerQuery,
+  AssistantMonthQuery,
+  AssistantMonthSpend,
+  AssistantEffectsGateway,
+  AssistantHoldsGateway,
+  AssistantPairingCodesGateway,
+  AssistantRemindersGateway,
+  AssistantRequestsGateway,
+  AssistantSettingsGateway,
+} from './types-assistants.ts';
+
+import type { AssistantAccountsGateway } from './types-accounts.ts';
+import type { AssistantProposalsGateway } from './types-proposals.ts';
+
+export type * from './types-assistants.ts';
+export type * from './types-accounts.ts';
+export type * from './types-proposals.ts';
 
 type DataSourceKind = EventEvidence['measurement_recorded']['source'];
 
@@ -54,6 +76,7 @@ export type HarnessesGateway = {
     byId(harnessId: string): Promise<Harness | null>;
     byKey(key: string): Promise<Harness | null>;
     byRepository(repository: string): Promise<Harness | null>;
+    byPerson(personId: string): Promise<Harness | null>;
     list(): Promise<readonly Harness[]>;
   };
   readonly write: {
@@ -212,6 +235,10 @@ export type HarnessEventsGateway = {
     enteredStage(harnessId: string, itemIds: readonly string[]): Promise<readonly StageEntry[]>;
     enteredStages(itemIds: readonly string[]): Promise<readonly StageEntry[]>;
     recent(query: RecentEvents): Promise<readonly HarnessEvent[]>;
+    assistantLedger(query: AssistantLedgerQuery): Promise<readonly HarnessEvent[]>;
+    assistantSpend(query: AssistantMonthQuery): Promise<AssistantMonthSpend>;
+    assistantPoolSpend(since: Date): Promise<AssistantMonthSpend>;
+    assistantStaleTurns(query: AssistantStaleTurnQuery): Promise<readonly AssistantStaleTurn[]>;
     lastPosition(harnessId: string): Promise<number>;
     lastPositions(harnessIds: readonly string[]): Promise<readonly HarnessPosition[]>;
     latestForItems(
@@ -397,4 +424,14 @@ export type DrizzleTransaction = {
   readonly pages: PagesGateway;
   readonly personas: PersonasGateway;
   readonly measurements: MeasurementsGateway;
+  readonly assistantSettings: AssistantSettingsGateway;
+  readonly assistantRequests: AssistantRequestsGateway;
+  readonly assistantEffects: AssistantEffectsGateway;
+  readonly assistantReminders: AssistantRemindersGateway;
+  readonly assistantHolds: AssistantHoldsGateway;
+  readonly assistantBindings: AssistantBindingsGateway;
+  readonly assistantPairingCodes: AssistantPairingCodesGateway;
+  readonly assistantBudgets: AssistantBudgetsGateway;
+  readonly assistantAccounts: AssistantAccountsGateway;
+  readonly assistantProposals: AssistantProposalsGateway;
 };

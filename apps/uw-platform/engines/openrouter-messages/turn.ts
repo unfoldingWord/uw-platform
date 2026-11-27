@@ -21,8 +21,17 @@ import {
 import type { EngineConfig } from '../config.ts';
 import { toolSchema } from '../tool-schemas.ts';
 
+type ProviderPreferences = {
+  readonly order?: readonly string[];
+  readonly allow_fallbacks?: false;
+  readonly zdr?: true;
+  readonly data_collection?: 'deny';
+};
+
+const zeroRetention = { zdr: true, data_collection: 'deny' } as const;
+
 type OpenRouterBody = ChatCompletionCreateParamsNonStreaming & {
-  readonly provider?: { readonly order: readonly string[]; readonly allow_fallbacks: false };
+  readonly provider?: ProviderPreferences;
   readonly usage: { readonly include: true };
 };
 
@@ -92,14 +101,22 @@ function toolsOf(verbs: readonly VerbName[]): ChatCompletionTool[] {
   }));
 }
 
-function bodyOf(request: TurnRequest): OpenRouterBody {
+function providerOf(request: TurnRequest): ProviderPreferences | null {
   const pin = request.pinnedProvider;
+  const pinned = pin === null ? {} : { order: [pin], allow_fallbacks: false as const };
+  const retention = request.zeroRetention === true ? zeroRetention : {};
+  const preferences = { ...pinned, ...retention };
+  return Object.keys(preferences).length === 0 ? null : preferences;
+}
+
+function bodyOf(request: TurnRequest): OpenRouterBody {
+  const provider = providerOf(request);
   return {
     model: request.model,
     messages: historyOf(request),
     tools: toolsOf(request.tools),
     tool_choice: 'auto',
-    ...(pin === null ? {} : { provider: { order: [pin], allow_fallbacks: false } }),
+    ...(provider === null ? {} : { provider }),
     usage: { include: true },
   };
 }

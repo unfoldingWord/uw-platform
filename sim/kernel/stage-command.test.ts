@@ -1,9 +1,9 @@
 import { defaultCiChecks, type Harness, type PageType, type Stage } from '@uw/contracts';
 import { closeEmbeddedTemplate } from '@uw/db/embedded';
 import { revokeSeededGrant, seedPage } from '@uw/db/test-seed';
-import { readAllEvents, software, type Caller } from '@uw/harness';
+import { assistantTemplate, readAllEvents, software, type Caller } from '@uw/harness';
 import { afterAll, describe, expect, it } from 'vitest';
-import { createSimHarness, simAgent, simCaller, simPerson } from '../fixtures.ts';
+import { createSimHarness, simAgent, simCaller, simPerson, simPersonId } from '../fixtures.ts';
 import { createWorld, type World } from '../world.ts';
 
 afterAll(closeEmbeddedTemplate);
@@ -235,6 +235,42 @@ describe('KN-18 activating a second harness with a taken key', () => {
     });
     expect(outcome).toMatchObject({ status: 'error', reason: 'harness_exists' });
   });
+});
+
+describe('KN-18 only the assistant template activates without stages', () => {
+  harnessIt(
+    'refuses an ordinary template with no stages and an assistant template with stages',
+    async (world, _harness, rowan) => {
+      const bare = await world.kernel.stages.activate(rowan, {
+        harnessId: world.adapters.ids.next(),
+        harnessKey: 'bare',
+        jdArea: '30-39',
+        template: { ...software, stages: [] },
+        repository: null,
+        requiredChecks: [...defaultCiChecks],
+      });
+      const staged = await world.kernel.stages.activate(rowan, {
+        harnessId: world.adapters.ids.next(),
+        harnessKey: 'staged-assistant',
+        jdArea: '30-39',
+        template: { ...assistantTemplate, stages: software.stages },
+        repository: null,
+        requiredChecks: [],
+        personId: simPersonId(5),
+      });
+      const refusal = {
+        status: 'error',
+        reason: 'malformed_command',
+        detail: { why: 'template_stages' },
+      };
+      expect([bare, staged]).toMatchObject([refusal, refusal]);
+      const found = await world.adapters.store.transaction(async (tx) => [
+        await tx.harnesses.read.byKey('bare'),
+        await tx.harnesses.read.byKey('staged-assistant'),
+      ]);
+      expect(found).toEqual([null, null]);
+    },
+  );
 });
 
 describe('KN-18 the stage command reads the admin grant again inside its transaction', () => {

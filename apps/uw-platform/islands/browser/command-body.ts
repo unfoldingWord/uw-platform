@@ -4,6 +4,7 @@ import {
   confirmRevealCommandSchema,
   createCredentialCommandSchema,
   declareJdMapCommandSchema,
+  deactivatePersonCommandSchema,
   declinePersonCommandSchema,
   grantRevealCommandSchema,
   grantRoleCommandSchema,
@@ -19,6 +20,7 @@ import {
   unbindCredentialCommandSchema,
 } from '@uw/contracts';
 import type { ZodType } from 'zod';
+import { assistantSchemas, assistantShapes } from './assistant-body.ts';
 import { collectionSchemas, collectionShapes } from './collection-body.ts';
 import { measureSchemas, measureShapes } from './measure-body.ts';
 
@@ -27,11 +29,13 @@ export type CommandFields = Readonly<Record<string, string>>;
 const schemas = new Map<string, ZodType>([
   ...Object.entries(harnessCommandSchemas),
   ...collectionSchemas,
+  ...assistantSchemas,
   ...measureSchemas,
   ['grant_role', grantRoleCommandSchema],
   ['revoke_role', revokeRoleCommandSchema],
   ['approve_person', approvePersonCommandSchema],
   ['decline_person', declinePersonCommandSchema],
+  ['deactivate_person', deactivatePersonCommandSchema],
   ['save_profile_body', saveProfileBodyCommandSchema],
   ['name_category', nameCategoryCommandSchema],
   ['declare_jd_map', declareJdMapCommandSchema],
@@ -177,6 +181,7 @@ function stageRuleOf(row: ReadonlyMap<string, string>): Readonly<Record<string, 
 
 const shapes: ReadonlyMap<string, Shape> = new Map<string, Shape>([
   ...collectionShapes,
+  ...assistantShapes,
   ...measureShapes,
   ['open_workflow_draft', none],
   ['set_stage_rules', (given) => ({ stages: rowsOf(given).map(stageRuleOf) })],
@@ -199,6 +204,7 @@ const shapes: ReadonlyMap<string, Shape> = new Map<string, Shape>([
   ['revoke_role', (given) => ({ grantId: given.get('grantId') })],
   ['approve_person', personOnly],
   ['decline_person', personOnly],
+  ['deactivate_person', personOnly],
   [
     'save_profile_body',
     (given) => ({

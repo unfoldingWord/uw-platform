@@ -35,6 +35,12 @@ export const declinePersonCommandSchema = z.object({
   personId: z.uuid(),
 });
 
+export const deactivatePersonCommandSchema = z.object({
+  command: z.literal('deactivate_person'),
+  requestId: z.uuid(),
+  personId: z.uuid(),
+});
+
 export const PROFILE_BODY_MOST = 100_000;
 
 export const saveProfileBodyCommandSchema = z.object({
@@ -49,4 +55,5 @@ export type GrantRoleCommand = z.infer<typeof grantRoleCommandSchema>;
 export type RevokeRoleCommand = z.infer<typeof revokeRoleCommandSchema>;
 export type ApprovePersonCommand = z.infer<typeof approvePersonCommandSchema>;
 export type DeclinePersonCommand = z.infer<typeof declinePersonCommandSchema>;
+export type DeactivatePersonCommand = z.infer<typeof deactivatePersonCommandSchema>;
 export type SaveProfileBodyCommand = z.infer<typeof saveProfileBodyCommandSchema>;

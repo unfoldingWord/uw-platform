@@ -1,0 +1,12 @@
+Delivered-To: barnabas@example.org
+Authentication-Results: mx.google.com;
+       dkim=pass header.i=@example.org header.s=google;
+       spf=pass (google.com: domain of ana@example.org designates 2607:f8b0::1 as permitted sender) smtp.mailfrom=ana@example.org
+From: =?UTF-8?Q?Ana_Ex=C3=A1mple?= <ana@example.org>
+To: barnabas@example.org
+Subject: Today
+Message-ID: <aligned01@mail.gmail.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="UTF-8"
+
+What is on my schedule today?

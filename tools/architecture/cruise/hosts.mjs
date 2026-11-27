@@ -37,11 +37,11 @@ export const hostRules = [
   {
     name: 'verb-server-only-in-the-hosts',
     comment:
-      'The verb server is built only by the HTTP route and the in-process host (and the test helpers), so no third site serves verbs under a principal of its choosing.',
+      "The verb server is built only by the HTTP route, the in-process host and the assistant turn's host (and the test helpers), so no other site serves verbs under a principal of its choosing.",
     severity: 'error',
     from: {
       pathNot: [
-        '^apps/uw-platform/mcp/(routes|in-process|server)\\.ts$',
+        '^apps/uw-platform/mcp/(routes|in-process|assistant-host|server)\\.ts$',
         '^apps/uw-platform/testing/',
         testFile,
       ],
@@ -75,13 +75,13 @@ export const hostRules = [
   {
     name: 'persona-activation-only-in-the-person-surface',
     comment:
-      'Only an admin makes a persona active, so the kernel and its package index carry no activation: the activation module is built only by the person activation, the app test helpers, the simulator and tests (S10-R18).',
+      'Only an admin makes a persona active, so the kernel and its package index carry no activation: the activation module is built only by the person activation, the app test helpers, the simulator and tests (S10-R18). The one exception is the assistant provisioner activation, which flips only the suggested persona of a personal assistant harness, only for agent:assistant-provisioner (ADR 0041, docs/exceptions.md).',
     severity: 'error',
     from: {
       pathNot: [
         personActivation,
         '^packages/harness/persona-activation\\.ts$',
-        '^packages/harness/personas/(commands|activate)\\.ts$',
+        '^packages/harness/personas/(commands|activate|assistant-activation)\\.ts$',
         appTesting,
         '^sim/',
         testFile,

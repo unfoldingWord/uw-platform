@@ -217,14 +217,16 @@ function strayWorkflows(config: Block): string[] {
   );
 }
 
-describe('HE-1 the HarnessRun, PdfExportRun and MeasureRun Workflows are declared for go-live only, in staging and production', () => {
-  it('#198 binds HARNESS_RUN, PDF_EXPORT and MEASURE_RUN to their classes under staging and production only', () => {
+describe('HE-1 the HarnessRun, PdfExportRun, AssistantTurn and MeasureRun Workflows are declared for go-live only, in staging and production', () => {
+  it('#198 PA-17 binds HARNESS_RUN, PDF_EXPORT, ASSISTANT_TURN and MEASURE_RUN to their classes under staging and production only', () => {
     expect(workflowSites(load(`infra/uw-platform/${goLive}`))).toEqual([
       'staging: HARNESS_RUN harness-run-staging HarnessRun',
       'staging: PDF_EXPORT pdf-export-staging PdfExportRun',
+      'staging: ASSISTANT_TURN assistant-turn-staging AssistantTurn',
       'staging: MEASURE_RUN measure-run-staging MeasureRun',
       'production: HARNESS_RUN harness-run-production HarnessRun',
       'production: PDF_EXPORT pdf-export-production PdfExportRun',
+      'production: ASSISTANT_TURN assistant-turn-production AssistantTurn',
       'production: MEASURE_RUN measure-run-production MeasureRun',
     ]);
   });

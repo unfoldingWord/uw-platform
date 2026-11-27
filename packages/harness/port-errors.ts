@@ -69,6 +69,16 @@ export class EngineNotAvailableError extends Error {
   }
 }
 
+export class ZeroRetentionUnavailableError extends Error {
+  readonly engine: string;
+
+  constructor(engine: string) {
+    super(`the engine ${engine} cannot route a turn only to zero-data-retention endpoints`);
+    this.name = 'ZeroRetentionUnavailableError';
+    this.engine = engine;
+  }
+}
+
 export function notWiredCall(port: PortName, method: string): Promise<never> {
   return Promise.reject(new PortNotWiredError(port, method));
 }

@@ -159,7 +159,7 @@ describe('#154 the Access command bodies', () => {
       requestId,
       grantId: person,
     });
-    for (const command of ['approve_person', 'decline_person']) {
+    for (const command of ['approve_person', 'decline_person', 'deactivate_person']) {
       expect(commandBody(command, { personId: person }, requestId)).toEqual({
         command,
         requestId,
