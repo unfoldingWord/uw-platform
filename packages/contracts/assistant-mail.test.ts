@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import lock from './contract-lock.json' with { type: 'json' };
 import { assistantMailRefusalSchema } from './assistant-mail.ts';
 import { untrustedSourceSchema } from './closed-sets.ts';
 import { eventEvidenceSchemas } from './event-evidence.ts';
@@ -32,7 +33,13 @@ describe('PA-10 mail to my assistant', () => {
     expect(declined.safeParse({ why: 'spam' }).success).toBe(false);
   });
 
-  it('is published at contract version 14.22.0', () => {
-    expect(CONTRACT_VERSION).toBe('14.22.0');
+  it('was published at contract version 14.22.0 and is kept in every later version', () => {
+    const published = lock.versions.find((entry) => entry.version === '14.22.0');
+    expect(published?.sets['assistant-mail-refusal']).toEqual([
+      ...assistantMailRefusalSchema.options,
+    ]);
+    const latest = lock.versions.at(-1);
+    expect(latest?.version).toBe(CONTRACT_VERSION);
+    expect(latest?.sets['assistant-mail-refusal']).toEqual([...assistantMailRefusalSchema.options]);
   });
 });

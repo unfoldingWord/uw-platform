@@ -3,6 +3,7 @@ import type { FreeBusyAnswer, Workspace } from '@uw/harness';
 import { deleteHold, freeBusy, insertHold, listEvents } from '../assistants/google/calendar.ts';
 import { orgAddresses, personMailOf } from '../assistants/google/subjects.ts';
 import type { TokenDeps } from '../assistants/google/token.ts';
+import { sendInviteOf, sendMailOf } from '../assistants/google/workspace-sends.ts';
 
 export type WorkspaceDeps = {
   readonly db: Executor;
@@ -38,5 +39,7 @@ export function platformWorkspace(deps: WorkspaceDeps): Workspace {
       const email = await mailOf(removal.personId);
       return email === null ? { outcome: 'refused' } : deleteHold(deps.tokens, email, removal);
     },
+    sendMail: sendMailOf(deps),
+    sendInvite: sendInviteOf(deps),
   };
 }

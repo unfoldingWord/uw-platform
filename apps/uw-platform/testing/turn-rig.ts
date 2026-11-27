@@ -76,7 +76,7 @@ function setupKernel(db: Database, start: Date): Kernel {
   const handle = { db, ping: async () => undefined, release: async () => undefined };
   return createKernel(
     { ...platformPorts(handle), clock: { now: () => start }, modelEngine: quietEngine(start) },
-    { assistantsArea: '90-99', assistantSpendCapMinor: null },
+    { assistantsArea: '90-99', assistantSpendCapMinor: null, appOrigin: null },
   );
 }
 

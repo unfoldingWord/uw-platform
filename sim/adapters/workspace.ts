@@ -3,22 +3,16 @@ import type {
   CalendarEntry,
   CalendarFailure,
   FreeBusyAnswer,
-  HoldMarker,
   Workspace,
 } from '@uw/harness';
-
-type SimCalendarEvent = {
-  readonly eventId: string;
-  readonly title: string;
-  readonly startsAt: Date;
-  readonly endsAt: Date;
-  readonly description: string;
-  readonly attendees: readonly string[];
-  readonly organisedBySelf: boolean;
-  readonly visibility: 'private' | 'default';
-  readonly notified: boolean;
-  readonly hold: HoldMarker | null;
-};
+import { inviteIn, mailIn } from './workspace/sends.ts';
+import {
+  calendarOf,
+  failure,
+  type SimCalendarEvent,
+  type SimMail,
+  type SimWorkspaceState,
+} from './workspace/state.ts';
 
 type SimEventInput = {
   readonly title: string;
@@ -29,6 +23,8 @@ type SimEventInput = {
 };
 
 export type SimWorkspace = Workspace & {
+  addMailbox(harnessId: string, address: string): void;
+  mails(): readonly SimMail[];
   addPerson(personId: string, email: string): void;
   addEvent(personId: string, event: SimEventInput): string;
   events(personId: string): readonly SimCalendarEvent[];
@@ -36,30 +32,7 @@ export type SimWorkspace = Workspace & {
   failNextWith(outcome: CalendarFailure): void;
 };
 
-type State = {
-  readonly emails: Map<string, string>;
-  readonly calendars: Map<string, SimCalendarEvent[]>;
-  readonly reached: string[];
-  next: number;
-  failing: CalendarFailure | null;
-};
-
 const LIST_MOST = 100;
-
-function calendarOf(state: State, personId: string): SimCalendarEvent[] {
-  const found = state.calendars.get(personId);
-  if (found !== undefined) return found;
-  const created: SimCalendarEvent[] = [];
-  state.calendars.set(personId, created);
-  return created;
-}
-
-function failure(state: State, personId: string): CalendarFailure | null {
-  const failing = state.failing;
-  state.failing = null;
-  if (failing !== null) return failing;
-  return state.emails.has(personId) ? null : 'refused';
-}
 
 function overlaps(event: SimCalendarEvent, from: Date, to: Date): boolean {
   return event.startsAt.getTime() < to.getTime() && event.endsAt.getTime() > from.getTime();
@@ -84,7 +57,7 @@ function byStart(a: SimCalendarEvent, b: SimCalendarEvent): number {
   return a.startsAt.getTime() - b.startsAt.getTime();
 }
 
-function listIn(state: State): Workspace['listEvents'] {
+function listIn(state: SimWorkspaceState): Workspace['listEvents'] {
   return async ({ personId, from, to }) => {
     const failed = failure(state, personId);
     if (failed !== null) return { outcome: failed };
@@ -99,18 +72,18 @@ function listIn(state: State): Workspace['listEvents'] {
   };
 }
 
-function personByEmail(state: State, email: string): string | null {
+function personByEmail(state: SimWorkspaceState, email: string): string | null {
   for (const [personId, known] of state.emails) if (known === email.toLowerCase()) return personId;
   return null;
 }
 
-function busyOf(state: State, personId: string, from: Date, to: Date): BusyRange[] {
+function busyOf(state: SimWorkspaceState, personId: string, from: Date, to: Date): BusyRange[] {
   return calendarOf(state, personId)
     .filter((event) => overlaps(event, from, to))
     .map((event) => ({ startsAt: event.startsAt, endsAt: event.endsAt }));
 }
 
-function freeBusyIn(state: State): Workspace['freeBusy'] {
+function freeBusyIn(state: SimWorkspaceState): Workspace['freeBusy'] {
   return async ({ personId, colleagues, from, to }): Promise<FreeBusyAnswer> => {
     const outside = colleagues.filter((email) => personByEmail(state, email) === null);
     if (outside.length > 0) return { outcome: 'outside_organization', addresses: outside };
@@ -130,7 +103,7 @@ function eventIdOf(holdId: string): string {
   return holdId.replaceAll('-', '');
 }
 
-function placeIn(state: State): Workspace['placeHold'] {
+function placeIn(state: SimWorkspaceState): Workspace['placeHold'] {
   return async (hold) => {
     const failed = failure(state, hold.personId);
     if (failed !== null) return { outcome: failed };
@@ -154,7 +127,7 @@ function placeIn(state: State): Workspace['placeHold'] {
   };
 }
 
-function removeIn(state: State): Workspace['removeHold'] {
+function removeIn(state: SimWorkspaceState): Workspace['removeHold'] {
   return async (removal) => {
     const failed = failure(state, removal.personId);
     if (failed !== null) return { outcome: failed };
@@ -170,7 +143,7 @@ function removeIn(state: State): Workspace['removeHold'] {
   };
 }
 
-function addEventIn(state: State, personId: string, event: SimEventInput): string {
+function addEventIn(state: SimWorkspaceState, personId: string, event: SimEventInput): string {
   state.next += 1;
   const eventId = `sim${String(state.next).padStart(6, '0')}`;
   calendarOf(state, personId).push({
@@ -189,7 +162,9 @@ function addEventIn(state: State, personId: string, event: SimEventInput): strin
 }
 
 export function createSimWorkspace(): SimWorkspace {
-  const state: State = {
+  const state: SimWorkspaceState = {
+    mailboxes: new Map(),
+    sent: new Map(),
     emails: new Map(),
     calendars: new Map(),
     reached: [],
@@ -201,6 +176,12 @@ export function createSimWorkspace(): SimWorkspace {
     freeBusy: freeBusyIn(state),
     placeHold: placeIn(state),
     removeHold: removeIn(state),
+    sendMail: mailIn(state),
+    sendInvite: inviteIn(state),
+    addMailbox: (harnessId, address) => {
+      state.mailboxes.set(harnessId, address);
+    },
+    mails: () => [...state.sent.values()],
     addPerson: (personId, email) => {
       state.emails.set(personId, email.toLowerCase());
     },

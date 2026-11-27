@@ -2,6 +2,7 @@ import { Hono, type Context } from 'hono';
 import type { ZodType } from 'zod';
 import {
   customiseAssistantCommandSchema,
+  decideAssistantProposalCommandSchema,
   deleteMyAssistantHistoryCommandSchema,
   disableAssistantCommandSchema,
   enableAssistantCommandSchema,
@@ -27,6 +28,7 @@ import {
   undoAssistantEffect,
 } from './person/assistant-screen.ts';
 import { assistantCommandDepsOf, type AssistantCommandHost } from './assistant-deps.ts';
+import { decideAssistantProposal } from './person/assistant-proposals.ts';
 
 type Host = Omit<AssistantCommandHost, 'requestId'>;
 type Handler = {
@@ -52,6 +54,10 @@ const handlers = new Map<string, Handler>([
   [
     'delete_my_assistant_history',
     handler(deleteMyAssistantHistoryCommandSchema, deleteMyAssistantHistory),
+  ],
+  [
+    'decide_assistant_proposal',
+    handler(decideAssistantProposalCommandSchema, decideAssistantProposal),
   ],
 ]);
 

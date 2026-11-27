@@ -25,6 +25,8 @@ import { hubNotWired } from './ports/hub.not-wired.ts';
 import { randomIds } from './ports/ids.ts';
 import { modelEngineNotWired } from './ports/model-engine.not-wired.ts';
 import { notifierNotWired } from './ports/notifier.not-wired.ts';
+import { platformPageAppends } from './ports/page-appends.ts';
+import { pageAppendsNotWired } from './ports/page-appends.not-wired.ts';
 import { runsNotWired } from './ports/runs.not-wired.ts';
 import { platformStore } from './ports/store.ts';
 import { storeNotWired } from './ports/store.not-wired.ts';
@@ -97,6 +99,7 @@ export function platformPorts(
     runs: wiring.runs,
     directMessages: wiring.directMessages,
     workspace: wiring.workspace,
+    pageAppends: database ? platformPageAppends(database.db, clock) : pageAppendsNotWired,
   };
 }
 

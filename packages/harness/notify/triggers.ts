@@ -10,6 +10,7 @@ const direct: ReadonlyMap<string, WakeReason> = new Map<string, WakeReason>([
   ['handed_to_person', 'handed_to_person'],
   ['delegated_merge', 'delegated_merge'],
   ['silence_alarm', 'silence_alarm'],
+  ['assistant_proposal_drafted', 'proposal_waiting'],
 ]);
 
 function approvedItems(events: readonly HarnessEvent[]): ReadonlySet<string> {

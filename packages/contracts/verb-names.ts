@@ -27,6 +27,9 @@ export const verbNames = [
   'find_free_time',
   'hold_time',
   'release_hold',
+  'propose_email',
+  'propose_invite',
+  'propose_page_append',
 ] as const;
 
 export const FORBIDDEN_VERBS = ['approve', 'merge', 'deploy', 'publish', 'advance'] as const;

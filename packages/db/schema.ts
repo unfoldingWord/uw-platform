@@ -66,6 +66,7 @@ export * from './schema-exports.ts';
 export * from './schema-suggestions.ts';
 export * from './schema-assistants.ts';
 export * from './schema-assistant-accounts.ts';
+export * from './schema-assistant-proposals.ts';
 
 const internalSync = { classification: 'internal', offlineEligibility: 'sync' } as const;
 const restrictedNever = { classification: 'restricted', offlineEligibility: 'never' } as const;

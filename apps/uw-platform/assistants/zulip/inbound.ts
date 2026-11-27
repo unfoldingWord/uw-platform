@@ -11,7 +11,7 @@ import type { IngestHandler } from '../../queue/consumer.ts';
 import type { TurnStarter } from '../turn/start.ts';
 import { botByEmail, deliveryTarget, type BotRow } from './bots.ts';
 import { codeDigestOf, pairingCodeIn } from './pairing-code.ts';
-import { fenceQuotes } from './quotes.ts';
+import { dmRequestOf } from './dm-parts.ts';
 
 export type AssistantDmDeps = {
   readonly db: Executor;
@@ -59,7 +59,7 @@ function receivedAtOf(message: Message, now: () => Date): string {
 
 async function recordFrom(deps: AssistantDmDeps, direct: Direct): Promise<void> {
   const { envelope, message, bot, address, logger } = direct;
-  const fenced = fenceQuotes(message.content);
+  const fenced = dmRequestOf(message.content);
   const recorded = await deps.kernel.assistants.recordRequest(callerOf(envelope), {
     personId: bot.personId,
     channel: 'zulip_dm',
@@ -68,7 +68,7 @@ async function recordFrom(deps: AssistantDmDeps, direct: Direct): Promise<void> 
     replyAddress: address,
     receivedAt: receivedAtOf(message, deps.now),
     note: fenced.note,
-    untrustedParts: fenced.quotes.map((text) => ({ source: 'chat_quote' as const, text })),
+    untrustedParts: fenced.untrustedParts,
   });
   const fields = { delivery_id: envelope.deliveryId, harness_id: bot.harnessId };
   if (recorded.status === 'accepted') {

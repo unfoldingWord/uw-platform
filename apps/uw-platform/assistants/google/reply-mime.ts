@@ -13,7 +13,7 @@ const WORD_CHARACTERS = 30;
 const MESSAGE_ID = /<[^<>\s]{1,250}>/g;
 const PRINTABLE_ASCII = /^[\x20-\x7e]*$/;
 
-function oneLine(value: string): string {
+export function oneLine(value: string): string {
   return value
     .replace(/[\r\n]+/g, ' ')
     .replace(/\s+/g, ' ')
@@ -26,7 +26,7 @@ function base64Of(text: string): string {
   return btoa(binary);
 }
 
-function encodedWords(value: string): string {
+export function encodedWords(value: string): string {
   if (PRINTABLE_ASCII.test(value)) return value;
   const characters = [...value];
   const words: string[] = [];
@@ -42,7 +42,7 @@ function messageIds(value: string | null): string | null {
   return ids.length === 0 ? null : ids.join(' ');
 }
 
-function wrapped(text: string): string {
+export function wrapped(text: string): string {
   const encoded = base64Of(text);
   const lines: string[] = [];
   for (let start = 0; start < encoded.length; start += LINE) {

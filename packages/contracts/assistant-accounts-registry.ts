@@ -20,6 +20,14 @@ import {
   undoAssistantEffectCommandSchema,
 } from './assistant-history.ts';
 import { assistantMailRefusalSchema } from './assistant-mail.ts';
+import {
+  assistantProposalDecisionSchema,
+  assistantProposalKindSchema,
+  assistantProposalRefusalSchema,
+  assistantProposalStatusSchema,
+  decideAssistantProposalCommandSchema,
+} from './assistant-proposals.ts';
+import { assistantProposedEffectSchema } from './assistants.ts';
 
 export const assistantAccountSchemaRegistry: Record<string, ZodType> = {
   'assistant-account-status': assistantAccountStatusSchema,
@@ -39,4 +47,10 @@ export const assistantAccountSchemaRegistry: Record<string, ZodType> = {
   'undo-assistant-effect-command': undoAssistantEffectCommandSchema,
   'delete-my-assistant-history-command': deleteMyAssistantHistoryCommandSchema,
   'assistant-mail-refusal': assistantMailRefusalSchema,
+  'assistant-proposal-kind': assistantProposalKindSchema,
+  'assistant-proposal-status': assistantProposalStatusSchema,
+  'assistant-proposal-decision': assistantProposalDecisionSchema,
+  'assistant-proposal-refusal': assistantProposalRefusalSchema,
+  'assistant-proposed-effect': assistantProposedEffectSchema,
+  'decide-assistant-proposal-command': decideAssistantProposalCommandSchema,
 };

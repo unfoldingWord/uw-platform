@@ -10,7 +10,8 @@ import { accountsSummary, type AccountsSummary } from '../../assistants/summary.
 import { startZulipPairing } from '../../assistants/zulip/pairing-start.ts';
 import { renderScreen, screenKernel, screenRefusal, type ScreenKernel } from '../parts/frame.tsx';
 import { Accounts, Budget, Permission, TurnOff, TurnOn } from '../parts/my-assistant-setup.tsx';
-import { History, Proposals, Reminders, Requests, Settings } from '../parts/my-assistant-work.tsx';
+import { History, Reminders, Requests, Settings } from '../parts/my-assistant-work.tsx';
+import { Proposals } from '../parts/my-assistant-proposals.tsx';
 import { moduleCodes, pageNames } from '../parts/names.ts';
 import { idParam } from '../parts/params.ts';
 import { myAssistantPath } from '../parts/paths.ts';
@@ -40,7 +41,7 @@ function OwnBody(props: { readonly shown: Shown }) {
       <Accounts overview={overview} summary={summary} />
       <Permission overview={overview} />
       <Budget overview={overview} admin={admin} />
-      <Proposals />
+      <Proposals overview={overview} />
       <Requests overview={overview} />
       <Reminders overview={overview} />
       <Settings overview={overview} />

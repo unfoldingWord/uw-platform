@@ -103,6 +103,9 @@ export const eventNames = [
   'assistant_effect_undone',
   'assistant_history_redacted',
   'assistant_mail_declined',
+  'assistant_proposal_drafted',
+  'assistant_proposal_decided',
+  'assistant_proposal_expired',
 ] as const;
 
 export const eventNameSchema = z.enum(eventNames);

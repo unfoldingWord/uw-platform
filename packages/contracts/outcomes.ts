@@ -145,6 +145,7 @@ export const errorReasonSchema = z.enum([
   'assistant_name_invalid',
   'assistant_name_reserved',
   'effect_not_undoable',
+  'proposal_not_decidable',
 ]);
 
 export const refusalSchema = z.object({

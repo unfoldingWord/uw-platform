@@ -103,7 +103,10 @@ function touchingPorts(touched: string[]): Ports {
       freeBusy: touch('workspace.freeBusy'),
       placeHold: touch('workspace.placeHold'),
       removeHold: touch('workspace.removeHold'),
+      sendMail: touch('workspace.sendMail'),
+      sendInvite: touch('workspace.sendInvite'),
     },
+    pageAppends: { append: touch('pageAppends') },
   };
 }
 

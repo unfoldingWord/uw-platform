@@ -10,6 +10,7 @@ import type {
   ItemState,
   JdArea,
   LiveScreen,
+  Principal,
   PullRequestDeclaration,
   ReadFinding,
   ReviewVerdict,
@@ -305,11 +306,47 @@ export type HoldPlacement =
   { readonly outcome: 'held'; readonly eventId: string } | { readonly outcome: CalendarFailure };
 export type HoldRemoval = HoldMarker & { readonly personId: string; readonly eventId: string };
 export type HoldRemoved = { readonly outcome: 'released' | 'not_own_hold' | CalendarFailure };
+export type ProposalMarker = { readonly harnessId: string; readonly proposalId: string };
+export type OutgoingMail = ProposalMarker & {
+  readonly personId: string;
+  readonly effectId: string;
+  readonly to: readonly string[];
+  readonly cc: readonly string[];
+  readonly subject: string;
+  readonly body: string;
+};
+export type MailSent =
+  { readonly outcome: 'sent' } | { readonly outcome: CalendarFailure | 'outcome_unknown' };
+export type CalendarInvite = ProposalMarker & {
+  readonly personId: string;
+  readonly title: string;
+  readonly startsAt: Date;
+  readonly endsAt: Date;
+  readonly attendees: readonly string[];
+  readonly description: string;
+};
+export type InviteSent =
+  { readonly outcome: 'invited'; readonly eventId: string } | { readonly outcome: CalendarFailure };
 export type Workspace = {
   listEvents(window: CalendarWindow): Promise<CalendarListing>;
   freeBusy(query: FreeBusyQuery): Promise<FreeBusyAnswer>;
   placeHold(hold: CalendarHold): Promise<HoldPlacement>;
   removeHold(removal: HoldRemoval): Promise<HoldRemoved>;
+  sendMail(mail: OutgoingMail): Promise<MailSent>;
+  sendInvite(invite: CalendarInvite): Promise<InviteSent>;
+};
+
+export type PageAppend = {
+  readonly pageId: string;
+  readonly block: string;
+  readonly requestId: string;
+  readonly traceId: string;
+};
+export type PageAppended =
+  | { readonly outcome: 'appended'; readonly version: number }
+  | { readonly outcome: 'page_not_found' | 'not_permitted' | 'refused' };
+export type PageAppends = {
+  append(actor: Principal, append: PageAppend): Promise<PageAppended>;
 };
 
 export type RunState = 'running' | 'hibernated' | 'stopped' | 'completed' | 'failed';
@@ -344,6 +381,7 @@ export type Ports = {
   readonly runs: Runs;
   readonly directMessages: DirectMessages;
   readonly workspace: Workspace;
+  readonly pageAppends: PageAppends;
 };
 
 export type PortName = keyof Ports;
@@ -361,6 +399,7 @@ const portKeys: Readonly<Record<PortName, true>> = {
   runs: true,
   directMessages: true,
   workspace: true,
+  pageAppends: true,
 };
 
 export const portNames = Object.keys(portKeys) as readonly PortName[];

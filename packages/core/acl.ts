@@ -85,6 +85,7 @@ export const rowReadRules = {
   assistant_effects: ownerOnly,
   assistant_reminders: ownerOnly,
   assistant_calendar_holds: ownerOnly,
+  assistant_proposals: ownerOnly,
   assistant_bindings: ownerOnly,
   assistant_pairing_codes: ownerOnly,
   assistant_zulip_bots: ownerOnly,

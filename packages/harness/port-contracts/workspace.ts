@@ -1,32 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import type { CalendarHold, HoldMarker, Workspace } from '../ports.ts';
+import type { CalendarHold, Workspace } from '../ports.ts';
 import { describeNotWired } from './not-wired-cases.ts';
+import { describeWorkspaceSends } from './workspace-sends.ts';
+import type { WorkspaceSubject } from './workspace-subject.ts';
 
-export type RecordedEvent = {
-  readonly eventId: string;
-  readonly title: string;
-  readonly startsAt: Date;
-  readonly endsAt: Date;
-  readonly attendees: readonly string[];
-  readonly visibility: 'private' | 'default';
-  readonly notified: boolean;
-  readonly hold: HoldMarker | null;
-};
-export type SeededEvent = {
-  readonly title: string;
-  readonly startsAt: Date;
-  readonly endsAt: Date;
-  readonly description?: string;
-  readonly attendees?: readonly string[];
-};
-export type WorkspaceSubject = {
-  readonly workspace: Workspace;
-  readonly outsider: string;
-  addPerson(email: string): Promise<string>;
-  addEvent(personId: string, event: SeededEvent): Promise<string>;
-  events(personId: string): Promise<readonly RecordedEvent[]>;
-  addressesReached(): Promise<readonly string[]>;
-};
+export type {
+  RecordedEvent,
+  SeededEvent,
+  SentMail,
+  WorkspaceSubject,
+} from './workspace-subject.ts';
 
 type Open = () => Promise<WorkspaceSubject>;
 
@@ -196,6 +179,7 @@ export function describeWorkspaceContract(adapter: string, open: Open): void {
     describeHolds(open);
     describeRemovals(open);
     describeFreeBusy(open);
+    describeWorkspaceSends(open);
   });
 }
 
@@ -205,5 +189,7 @@ export function describeWorkspaceNotWired(adapter: string, workspace: Workspace)
     freeBusy: true,
     placeHold: true,
     removeHold: true,
+    sendMail: true,
+    sendInvite: true,
   } satisfies Record<keyof Workspace, true>);
 }

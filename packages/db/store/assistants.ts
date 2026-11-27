@@ -62,6 +62,7 @@ function toEffect(row: typeof assistantEffects.$inferSelect): AssistantEffectRow
     idempotencyKey: row.idempotencyKey,
     payload: payloadOf(row.payload),
     createdAt: row.createdAt,
+    ...(row.proposalId === null ? {} : { proposalId: row.proposalId }),
   };
 }
 

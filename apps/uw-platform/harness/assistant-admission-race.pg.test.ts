@@ -58,7 +58,7 @@ function kernelOn(db: Database, overrides: { readonly grants?: Grants } = {}): K
   const handle = { db, ping: async () => undefined, release: async () => undefined };
   return createKernel(
     { ...platformPorts(handle), clock, modelEngine: quietEngine, ...overrides },
-    { assistantsArea: '90-99', assistantSpendCapMinor: null },
+    { assistantsArea: '90-99', assistantSpendCapMinor: null, appOrigin: null },
   );
 }
 

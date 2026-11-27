@@ -10,7 +10,9 @@ import type {
   Ports,
   StoreTransaction,
 } from '../ports.ts';
+import type { KernelSettings } from '../kernel-settings.ts';
 import { applyCalendarDrafts } from './calendar-apply.ts';
+import { proposalNotes } from './proposal-notes.ts';
 import { boundAssist } from './delegation.ts';
 import { deliver, type Delivered } from './deliver.ts';
 import { replyKeyOf } from './history.ts';
@@ -159,13 +161,16 @@ async function closeIn(
 
 export async function finishTurn(
   ports: FinishPorts,
+  settings: Pick<KernelSettings, 'appOrigin'>,
   caller: Caller,
   input: FinishInput,
 ): Promise<KernelOutcome<Finished>> {
   if (!isSystemPrincipal(caller.actor)) {
     return refused('not_permitted', { actor: caller.actor.identity });
   }
-  const notes = await applyCalendarDrafts(ports, caller, input);
+  const calendar = await applyCalendarDrafts(ports, caller, input);
+  const proposed = await proposalNotes(ports, input.requestId, settings.appOrigin);
+  const notes = [...calendar, ...proposed];
   const context = recordContext(ports, caller, ports.clock.now());
   const plan = await ports.store.transaction((tx) => planIn({ tx, ports, context, input, notes }));
   if ('status' in plan) return plan;

@@ -40,9 +40,11 @@ import type {
 } from './types-assistants.ts';
 
 import type { AssistantAccountsGateway } from './types-accounts.ts';
+import type { AssistantProposalsGateway } from './types-proposals.ts';
 
 export type * from './types-assistants.ts';
 export type * from './types-accounts.ts';
+export type * from './types-proposals.ts';
 
 type DataSourceKind = EventEvidence['measurement_recorded']['source'];
 
@@ -431,4 +433,5 @@ export type DrizzleTransaction = {
   readonly assistantPairingCodes: AssistantPairingCodesGateway;
   readonly assistantBudgets: AssistantBudgetsGateway;
   readonly assistantAccounts: AssistantAccountsGateway;
+  readonly assistantProposals: AssistantProposalsGateway;
 };

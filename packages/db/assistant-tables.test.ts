@@ -194,12 +194,14 @@ function effectRules(db: () => AnyDatabase): void {
     });
   });
 
-  it('refuses an effect outside the closed low-risk set', async () => {
-    const effect = { id: uid(22), kind: 'email_to_others', key: 'email:1' };
-    expect(await refusal(addEffect(db(), effect))).toEqual({
-      code: '23514',
-      constraint: 'assistant_effects_direct_only',
-    });
+  it('refuses an effect outside the closed low-risk set without a decided proposal', async () => {
+    for (const kind of ['email_to_others', 'email_sent']) {
+      const effect = { id: uid(22), kind, key: `${kind}:1` };
+      expect(await refusal(addEffect(db(), effect))).toEqual({
+        code: '23514',
+        constraint: 'assistant_effects_direct_or_decided',
+      });
+    }
   });
 
   it("refuses an effect on one personal harness for another personal harness's request", async () => {

@@ -49,6 +49,7 @@ export const restrictedReads: ReadonlyMap<string, ReadGovernance> = new Map<stri
     ['packages/db/bootstrap-admin.ts', platform],
     ['packages/db/store/assistant-history.ts', platform],
     ['packages/db/store/assistant-holds.ts', platform],
+    ['packages/db/store/assistant-proposals.ts', platform],
     ['packages/db/store/assistant-pairing.ts', platform],
     ['packages/db/store/assistant-reminders.ts', platform],
     ['packages/db/store/assistant-unstarted.ts', platform],

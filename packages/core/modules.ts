@@ -164,6 +164,9 @@ export const modules = [
       'find_free_time',
       'hold_time',
       'release_hold',
+      'propose_email',
+      'propose_invite',
+      'propose_page_append',
     ],
     name: 'Agents',
     summary:

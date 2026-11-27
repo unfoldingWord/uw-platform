@@ -3,6 +3,7 @@ import { sql } from 'drizzle-orm';
 import { JSDOM } from 'jsdom';
 import { describe, expect, it } from 'vitest';
 import type { Database } from '@uw/db/client';
+import { proposalLink } from '@uw/contracts';
 import { seedGrant, seedPerson } from '@uw/db/test-seed';
 import { post } from '../testing/commands.ts';
 import { testServer, withAppDatabase } from '../testing/postgres.ts';
@@ -160,6 +161,69 @@ async function givesAPairingCode(db: Database): Promise<void> {
   const refused = await postForm(db, BEN, '/assistant/pairing', new URLSearchParams(), ORIGIN);
   expect(documentOf(refused).querySelector('[role="note"]')?.textContent).toBe('No assistant');
 }
+
+async function seedProposal(db: Database): Promise<string> {
+  const rows = await db.execute<{ harness_id: string }>(
+    sql`SELECT harness_id FROM assistant_accounts WHERE person_id = ${anaId}`,
+  );
+  const harnessId = rows[0]?.harness_id ?? '';
+  const requestId = randomUUID();
+  const proposalId = randomUUID();
+  const now = new Date().toISOString();
+  await db.execute(sql`INSERT INTO assistant_requests
+      (id, harness_id, person_id, channel, external_id, thread_key, reply_address, note,
+       untrusted_parts, received_at, recorded_at)
+    VALUES (${requestId}, ${harnessId}, ${anaId}, 'zulip_dm', ${requestId}, 'dm', 'zulip:5005',
+      'Send Ben the notes', '[]'::jsonb, ${now}::timestamptz, ${now}::timestamptz)`);
+  const mail = { to: ['ben@example.org'], subject: 'Ruth 2 notes', body: 'Here are the notes.' };
+  await db.execute(sql`INSERT INTO assistant_proposals
+      (id, harness_id, person_id, request_id, kind, payload, status, expires_at, created_at)
+    VALUES (${proposalId}, ${harnessId}, ${anaId}, ${requestId}, 'email',
+      ${JSON.stringify(mail)}::jsonb, 'pending', ${now}::timestamptz + interval '7 days',
+      ${now}::timestamptz)`);
+  return proposalId;
+}
+
+function cardOf(document: Document, proposalId: string): Element | null {
+  return document.querySelector(`#proposal-${proposalId}`);
+}
+
+async function showsAProposalInFullWithItsDecision(db: Database): Promise<void> {
+  await scene(db);
+  const proposalId = await seedProposal(db);
+  const page = await getHtml(db, ANA, '/assistant');
+  await sound(page);
+  const card = cardOf(documentOf(page), proposalId);
+  if (card === null) throw new Error('the proposal is not on the page');
+  const text = card.textContent;
+  for (const shown of ['ben@example.org', 'Ruth 2 notes', 'Here are the notes.']) {
+    expect(text).toContain(shown);
+  }
+  const deciding = [...card.querySelectorAll('form[data-command]')];
+  expect(deciding.map((form) => form.getAttribute('data-command'))).toEqual([
+    'decide_assistant_proposal',
+    'decide_assistant_proposal',
+  ]);
+  const digest = card.querySelector('input[name="digest"]')?.getAttribute('value') ?? '';
+  expect(digest).toMatch(/^[0-9a-f]{64}$/);
+  const accept = card.querySelector('button[aria-label^="Accept"]');
+  expect(accept?.getAttribute('class')).toContain('bg-human');
+  await linksAndHides(db, proposalId);
+}
+
+async function linksAndHides(db: Database, proposalId: string): Promise<void> {
+  const page = documentOf(await getHtml(db, ANA, '/assistant'));
+  const [path, anchor] = proposalLink(proposalId).split('#');
+  expect(path).toBe('/assistant');
+  expect(page.getElementById(anchor ?? '')).not.toBeNull();
+  const others = documentOf(await getHtml(db, BEN, '/assistant'));
+  expect(others.querySelector('main')?.textContent).not.toContain('Ruth 2 notes');
+}
+
+describe.skipIf(!testServer)('PA-12 proposals wait on My Assistant for the person', () => {
+  it('shows a pending proposal in full with Accept and Reject on its digest', () =>
+    withAppDatabase(showsAProposalInFullWithItsDecision));
+});
 
 describe.skipIf(!testServer)('PA-7 the My Assistant screen', () => {
   it('shows the person their accounts, permission, requests, effects with undo and reminders', () =>

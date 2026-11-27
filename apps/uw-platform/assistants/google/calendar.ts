@@ -3,6 +3,8 @@ import type {
   CalendarEntry,
   CalendarFailure,
   CalendarHold,
+  CalendarInvite,
+  InviteSent,
   CalendarListing,
   HoldMarker,
   HoldPlacement,
@@ -17,6 +19,7 @@ const EVENTS = `${CALENDAR}/calendars/primary/events`;
 const LIST_MOST = 100;
 const HARNESS_KEY = 'uwAssistantHarness';
 const HOLD_KEY = 'uwAssistantHold';
+const PROPOSAL_KEY = 'uwAssistantProposal';
 const eventsScope = [GOOGLE_SCOPES.calendarEvents];
 
 const when = z.object({ dateTime: z.string().optional(), date: z.string().optional() });
@@ -219,4 +222,50 @@ export async function deleteHold(
   });
   if (deleted.ok || gone(deleted)) return { outcome: 'released' };
   return { outcome: failureOf(deleted) };
+}
+
+function inviteBody(invite: CalendarInvite) {
+  return {
+    id: eventIdOf(invite.proposalId),
+    summary: invite.title,
+    description: invite.description,
+    start: { dateTime: invite.startsAt.toISOString() },
+    end: { dateTime: invite.endsAt.toISOString() },
+    attendees: invite.attendees.map((email) => ({ email })),
+    guestsCanInviteOthers: false,
+    extendedProperties: {
+      private: { [HARNESS_KEY]: invite.harnessId, [PROPOSAL_KEY]: invite.proposalId },
+    },
+  };
+}
+
+function invitedBy(body: unknown, invite: CalendarInvite): boolean {
+  const parsed = eventSchema.safeParse(body);
+  if (!parsed.success) return false;
+  const props = new Map(Object.entries(parsed.data.extendedProperties?.private ?? {}));
+  return (
+    props.get(HARNESS_KEY) === invite.harnessId && props.get(PROPOSAL_KEY) === invite.proposalId
+  );
+}
+
+export async function insertInvite(
+  deps: TokenDeps,
+  email: string,
+  invite: CalendarInvite,
+): Promise<InviteSent> {
+  const eventId = eventIdOf(invite.proposalId);
+  const answer = await googleCall(deps, {
+    subject: email,
+    scopes: eventsScope,
+    method: 'POST',
+    url: `${EVENTS}?sendUpdates=all`,
+    body: inviteBody(invite),
+  });
+  if (answer.ok) return { outcome: 'invited', eventId };
+  if (answer.failure !== 'conflict') return { outcome: failureOf(answer) };
+  const existing = await readEvent(deps, email, eventId);
+  if (!existing.ok) return { outcome: failureOf(existing) };
+  return invitedBy(existing.body, invite)
+    ? { outcome: 'invited', eventId }
+    : { outcome: 'refused' };
 }

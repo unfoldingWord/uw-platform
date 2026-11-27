@@ -18,6 +18,7 @@ import {
   assistantDirectEffectSchema,
   assistantHoldStatusSchema,
   assistantPairingViaSchema,
+  assistantProposedEffectSchema,
   assistantReminderStatusSchema,
 } from '@uw/contracts';
 import { oneOf } from './checks.ts';
@@ -131,6 +132,7 @@ export const assistantEffects = declareTable(
     payload: jsonb('payload').notNull(),
     createdAt: instant('created_at').notNull(),
     redactedAt: instant('redacted_at'),
+    proposalId: uuid('proposal_id'),
   },
   restrictedNever,
   (t) => [
@@ -139,7 +141,10 @@ export const assistantEffects = declareTable(
       columns: [t.requestId, t.harnessId],
       foreignColumns: [assistantRequests.id, assistantRequests.harnessId],
     }),
-    check('assistant_effects_direct_only', oneOf(t.kind, assistantDirectEffectSchema.options)),
+    check(
+      'assistant_effects_direct_or_decided',
+      sql`(${oneOf(t.kind, assistantDirectEffectSchema.options)} AND ${t.proposalId} IS NULL) OR (${oneOf(t.kind, assistantProposedEffectSchema.options)} AND ${t.proposalId} IS NOT NULL)`,
+    ),
     check('assistant_effects_payload_object', sql`jsonb_typeof(${t.payload}) = 'object'`),
     check(
       'assistant_effects_redacted_empty',
@@ -152,6 +157,7 @@ export const assistantEffects = declareTable(
     uniqueIndex('assistant_effects_key_once').on(t.harnessId, t.idempotencyKey),
     unique('assistant_effects_id_harness').on(t.id, t.harnessId),
     index('assistant_effects_request').on(t.requestId),
+    uniqueIndex('assistant_effects_proposal_once').on(t.proposalId),
   ],
 );
 

@@ -1,6 +1,7 @@
 export { effectPaths, walk, WalkError } from './walk.ts';
 export type { EffectPath, WalkPath, WalkStage, WalkStep } from './walk.ts';
 export { portNames } from './ports.ts';
+export { allowed } from './access.ts';
 export type * from './ports.ts';
 export { chooseInWindow, POSTING_REASONS, wakeRank } from './notify/rank.ts';
 export type { CooldownWindow } from './notify/rank.ts';
@@ -186,6 +187,8 @@ export {
   classifyEffect,
   emailSenderVerdict,
   splitForward,
+  splitTranscript,
+  transcriptParts,
   TRUSTED_AUTHSERV_ID,
 } from './assistants/index.ts';
 export type {
@@ -209,6 +212,7 @@ export type {
   Turn,
   AssistantOverview,
   OverviewEffect,
+  OverviewProposal,
   OverviewRequest,
   Redacted,
   Undone,
@@ -218,5 +222,12 @@ export type {
   MailHeader,
   SenderVerdict,
   SplitMail,
+  TranscriptSplit,
+  Proposed,
+  ProposeInput,
+  ProposalDecided,
+  ProposalDecideInput,
+  Expired,
+  ExpireInput,
 } from './assistants/index.ts';
 export type { PersonaFixture, PersonaPageDraft } from './templates/personas.ts';

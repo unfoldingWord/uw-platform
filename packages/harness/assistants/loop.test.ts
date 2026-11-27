@@ -43,7 +43,7 @@ describe('PA-2 the role toolset bounds the page toolset', () => {
 });
 
 describe('PA-17 a hosted turn offers the assistant verbs beside the read verbs', () => {
-  it('adds the reminder and calendar verbs to the role-bounded toolset and nothing else', () => {
+  it('adds the reminder, calendar and proposal verbs to the role-bounded toolset and nothing else', () => {
     const verbs = [
       'set_reminder',
       'cancel_reminder',
@@ -52,6 +52,9 @@ describe('PA-17 a hosted turn offers the assistant verbs beside the read verbs',
       'find_free_time',
       'hold_time',
       'release_hold',
+      'propose_email',
+      'propose_invite',
+      'propose_page_append',
     ];
     const tools = turnToolsOf({ toolset: ['read_page', 'write_page'] });
     expect(tools).toEqual(['read_page', ...verbs]);

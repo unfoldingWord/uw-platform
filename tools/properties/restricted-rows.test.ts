@@ -121,6 +121,7 @@ const written = new Map<string, { areaRank: number | null; owner: boolean; orgAd
   ['assistant_effects', { areaRank: null, owner: true, orgAdmin: false }],
   ['assistant_reminders', { areaRank: null, owner: true, orgAdmin: false }],
   ['assistant_calendar_holds', { areaRank: null, owner: true, orgAdmin: false }],
+  ['assistant_proposals', { areaRank: null, owner: true, orgAdmin: false }],
   ['assistant_bindings', { areaRank: null, owner: true, orgAdmin: false }],
   ['assistant_pairing_codes', { areaRank: null, owner: true, orgAdmin: false }],
   ['assistant_zulip_bots', { areaRank: null, owner: true, orgAdmin: false }],

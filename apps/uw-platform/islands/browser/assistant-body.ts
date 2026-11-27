@@ -1,5 +1,6 @@
 import {
   customiseAssistantCommandSchema,
+  decideAssistantProposalCommandSchema,
   deleteMyAssistantHistoryCommandSchema,
   disableAssistantCommandSchema,
   enableAssistantCommandSchema,
@@ -45,6 +46,14 @@ export const assistantShapes: ReadonlyMap<string, Shape> = new Map<string, Shape
   ['delete_my_assistant_history', none],
   ['undo_assistant_effect', (given) => ({ effectId: given.get('effectId') })],
   [
+    'decide_assistant_proposal',
+    (given) => ({
+      proposalId: given.get('proposalId'),
+      decision: given.get('decision'),
+      digest: given.get('digest'),
+    }),
+  ],
+  [
     'customise_assistant',
     (given) => ({
       displayName: given.get('displayName'),
@@ -72,4 +81,5 @@ export const assistantSchemas: ReadonlyMap<string, ZodType> = new Map<string, Zo
   ['undo_assistant_effect', undoAssistantEffectCommandSchema],
   ['customise_assistant', customiseAssistantCommandSchema],
   ['set_assistant_budget', setAssistantBudgetCommandSchema],
+  ['decide_assistant_proposal', decideAssistantProposalCommandSchema],
 ]);

@@ -68,4 +68,18 @@ describe('PA-7 the My Assistant undo and budget forms build their command bodies
       commandBody('set_assistant_budget', { personId, monthlyDollars: 'lots' }, requestId),
     ).toBe(null);
   });
+
+  it('decides one proposal on the digest the page showed', () => {
+    const fields = { proposalId: effectId, decision: 'accept', digest: 'a'.repeat(64) };
+    expect(commandBody('decide_assistant_proposal', fields, requestId)).toEqual({
+      command: 'decide_assistant_proposal',
+      requestId,
+      proposalId: effectId,
+      decision: 'accept',
+      digest: 'a'.repeat(64),
+    });
+    expect(
+      commandBody('decide_assistant_proposal', { ...fields, digest: 'short' }, requestId),
+    ).toBeNull();
+  });
 });

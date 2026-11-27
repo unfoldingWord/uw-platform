@@ -6,4 +6,5 @@ export const ASSISTANTS_AREA: JdArea = '10-19';
 export const platformKernelSettings: KernelSettings = {
   assistantsArea: ASSISTANTS_AREA,
   assistantSpendCapMinor: null,
+  appOrigin: null,
 };

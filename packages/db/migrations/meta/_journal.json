@@ -561,6 +561,20 @@
       "when": 1795753895680,
       "tag": "0081_assistant_mail",
       "breakpoints": true
+    },
+    {
+      "idx": 82,
+      "version": "7",
+      "when": 1795761536000,
+      "tag": "0082_assistant_proposals",
+      "breakpoints": true
+    },
+    {
+      "idx": 83,
+      "version": "7",
+      "when": 1795761537668,
+      "tag": "0083_assistant_proposals_settled",
+      "breakpoints": true
     }
   ]
 }

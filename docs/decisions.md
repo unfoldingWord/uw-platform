@@ -709,7 +709,7 @@ A policy's page and the Policies screen show its level, target, enforcement, dat
 
 ## 0036 A person's assistant is a persona on their own harness, lent authority by that person, acting directly only within a closed low-risk set
 
-*2026-11-26. Changes 0002, 0003, 0005, 0015 and 0020. Changed by 0037, 0038, 0039, 0040, 0041 and 0042.*
+*2026-11-26. Changes 0002, 0003, 0005, 0015 and 0020. Changed by 0037, 0038, 0039, 0040, 0041, 0042 and 0043.*
 
 **Decision.**
 
@@ -795,7 +795,7 @@ A policy's page and the Policies screen show its level, target, enforcement, dat
 
 ## 0039 The platform reaches Google with one domain-wide-delegated service account, allowlisted in code before it signs
 
-*2026-11-26. Changes 0036. Changed by 0040, 0041 and 0042.*
+*2026-11-26. Changes 0036. Changed by 0040, 0041, 0042 and 0043.*
 
 **Decision.**
 
@@ -893,6 +893,32 @@ A policy's page and the Policies screen show its level, target, enforcement, dat
 **Consequences.** Gmail's exact shapes (history 404 on an expired id, the label search spelling, the `Authentication-Results` Gmail writes on mail inside the domain) come from Google's published API, not a live call; the staging probes confirm them before the flag is turned on in production. A person whose own address changes keeps the old binding until their assistant is turned off and on. A declined mail retried after a failed label is recorded declined again.
 
 **Changes / changed by.** Changes 0036 (item 9: the email rule is the verdict above, SPF with DKIM accepted beside DMARC, and a declined mail is recorded without content) and 0039 (the assistant mailbox subject reads, labels and sends its own mail).
+
+## 0043 An assistant proposes; only its person decides, on the digest they saw, and the decision runs once as that person
+
+*2026-11-27. Changes 0036 and 0039.*
+
+**Decision.**
+
+1. **Three proposal kinds, drafted at once.** `propose_email` (from the assistant's own mailbox to up to ten people and ten in copy), `propose_invite` (an event on the person's own calendar with attendees) and `propose_page_append` (text added at the end of a page the person can write) are assistant verbs served only in an assistant turn. Each writes a pending row in the owner-only `assistant_proposals` table and records `assistant_proposal_drafted` with ids and the kind only. Five a request, twenty a day; an invitation at most twelve hours long, not in the past, starting within about eighteen months; a page addition only to a page the person can write now. A proposal expires seven days after it was drafted.
+2. **The digest is the database's.** A trigger sets `digest` to the SHA-256 of the payload as Postgres stores it on every write, so it cannot be forged or left stale, and another trigger keeps the payload as drafted (redaction aside) and a decided row as decided. The person's page carries that digest; the decision names it; the kernel compares it under the harness lock and the store's update binds it again in its `WHERE`.
+3. **Only the person decides.** `decide_assistant_proposal` exists only on the person endpoint. `decideProposal` accepts only the interactive person whose personal harness holds the proposal, after locking and re-reading their grants; `decided_by` must match `human:%` in a check constraint; an architecture test fails when any other function writes the decision, any file outside `commands/person/` asks the kernel for it, or anything an assistant turn reaches imports the decider. A chat or email "yes" is a new request.
+4. **An accepted proposal runs once, as the person.** One `assistant_effects` row per proposal (`proposal_id`, unique; a trigger refuses it unless the proposal is accepted, on the same harness and of the matching kind), run through a port after the decision commits and settled done or failed; it is never retried. The email goes through `Workspace.sendMail` from the assistant's mailbox with the person as Reply-To, at most once per effect; the invitation through `Workspace.sendInvite` on the person's calendar with `sendUpdates=all` and an event id derived from the proposal; the page addition through a new `PageAppends` port whose platform adapter saves the page with the person's own principal through the normal page update path, the effect id as the save's request id, appending to the page's current version (an addition does not overwrite, so a moved page is not refused).
+5. **The person is told twice.** The drafted event wakes the person (`proposal_waiting`, personal, web push) with the deep link `/assistant#proposal-<id>`, and the turn's reply names each pending proposal with the same link on the app origin. My Assistant shows each pending proposal in full with Accept (the human-action colour) and Decline; a proposal's statuses are `pending`, `accepted`, `declined` and `expired`, never a gate's "reject".
+6. **Meeting transcripts are their own untrusted source.** `meeting_transcript` fences a transcript pasted in a direct message (WebVTT, or three or more cue or time-stamped speaker lines) or attached to an email (`.vtt`, `.srt` or a text file of that shape). The PRD's "add a Zoom transcript to the project notes" is a page-addition proposal of the assistant's summary or the transcript.
+
+**Why.** The owner wants the whole feature working, and 0036 made everything outside the closed set wait for its person. A digest the database computes is the only one nobody can make disagree with its payload. Running the page addition through the normal save, as the person, keeps page history, links and checks exactly as for a person's own edit.
+
+**Rejected.**
+- Reusing page suggestion sets or item gates: any area editor or admin could decide them, not only the person.
+- A kernel-side hash: the kernel has no crypto library and none could be added; a hash in the application could disagree with what is stored.
+- A whole-body snapshot for a page addition (refused on any later edit): an addition is meant to survive other edits.
+- Sending the email as the person: 0039 gives the platform Gmail only as the assistant mailbox.
+- A separate screen per proposal: the proposals live on My Assistant, which the deep link opens at the proposal.
+
+**Consequences.** Gmail's send as the assistant mailbox with a Reply-To, and the calendar insert with attendees and `sendUpdates=all`, are staging probes. A send whose outcome is unknown is recorded failed `outcome_unknown` and never retried. Expiry runs nightly; a proposal past its week is refused and shown expired before the job marks it.
+
+**Changes / changed by.** Changes 0036 (item 6: the proposal kinds, the decision path and the effect check are built as above) and 0039 (the Workspace port also sends a proposed mail as the assistant mailbox and an invitation as the person).
 
 # Part 2. Workflow design decisions
 

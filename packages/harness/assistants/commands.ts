@@ -63,6 +63,13 @@ import { redactHistory, type RedactInput, type Redacted } from './redaction.ts';
 import { undoEffect, type Undone, type UndoInput } from './undo.ts';
 import { unstartedRequests, type Unstarted, type UnstartedInput } from './unstarted.ts';
 import { beginTurn, type BeginInput, type Turn } from './turn.ts';
+import { propose, type ProposeInput, type Proposed } from './proposal-drafts.ts';
+import {
+  decideProposal,
+  type ProposalDecided,
+  type ProposalDecideInput,
+} from './proposal-decide.ts';
+import { expireProposals, type Expired, type ExpireInput } from './proposal-expiry.ts';
 
 export type AssistantCommands = {
   provision(caller: Caller, input: ProvisionInput): Promise<KernelOutcome<Activated>>;
@@ -95,11 +102,19 @@ export type AssistantCommands = {
   unstartedRequests(caller: Caller, input: UnstartedInput): Promise<KernelOutcome<Unstarted>>;
   undoEffect(caller: Caller, input: UndoInput): Promise<KernelOutcome<Undone>>;
   redactHistory(caller: Caller, input: RedactInput): Promise<KernelOutcome<Redacted>>;
+  proposeEmail(caller: Caller, input: ProposeInput): Promise<KernelOutcome<Proposed>>;
+  proposeInvite(caller: Caller, input: ProposeInput): Promise<KernelOutcome<Proposed>>;
+  proposePageAppend(caller: Caller, input: ProposeInput): Promise<KernelOutcome<Proposed>>;
+  decideProposal(
+    caller: Caller,
+    input: ProposalDecideInput,
+  ): Promise<KernelOutcome<ProposalDecided>>;
+  expireProposals(caller: Caller, input: ExpireInput): Promise<KernelOutcome<Expired>>;
 };
 
 type AssistantPorts = Pick<
   Ports,
-  'clock' | 'grants' | 'ids' | 'store' | 'directMessages' | 'workspace'
+  'clock' | 'grants' | 'ids' | 'store' | 'directMessages' | 'workspace' | 'pageAppends'
 >;
 
 export function createAssistantCommands(
@@ -117,7 +132,7 @@ export function createAssistantCommands(
     recordRequest: (caller, input) => recordRequest(ports, caller, input),
     admitMail: (caller, input) => admitMail(ports, caller, input),
     beginTurn: (caller, input) => beginTurn(ports, settings, caller, input),
-    finishTurn: (caller, input) => finishTurn(ports, caller, input),
+    finishTurn: (caller, input) => finishTurn(ports, settings, caller, input),
     setReminder: (caller, input) => setReminder(ports, caller, input),
     cancelReminder: (caller, input) => cancelReminder(ports, caller, input),
     listReminders: (caller, input) => listReminders(ports, caller, input),
@@ -134,5 +149,10 @@ export function createAssistantCommands(
     unstartedRequests: (caller, input) => unstartedRequests(ports, caller, input),
     undoEffect: (caller, input) => undoEffect(ports, caller, input),
     redactHistory: (caller) => redactHistory(ports, caller),
+    proposeEmail: (caller, input) => propose(ports, caller, 'email', input),
+    proposeInvite: (caller, input) => propose(ports, caller, 'invite', input),
+    proposePageAppend: (caller, input) => propose(ports, caller, 'page_append', input),
+    decideProposal: (caller, input) => decideProposal(ports, caller, input),
+    expireProposals: (caller, input) => expireProposals(ports, caller, input),
   };
 }

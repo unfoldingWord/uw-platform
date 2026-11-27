@@ -37,12 +37,13 @@ async function batchIn(tx: StoreTransaction, context: RecordContext, sweep: Swee
   );
   const reminders = await tx.assistantReminders.write.redact(query);
   const holds = await tx.assistantHolds.write.redact(query);
+  const proposals = await tx.assistantProposals.write.redact(query);
   for (const [harnessId, count] of countsBy(requests.map((row) => row.harnessId))) {
     await recordHarnessEvents(tx, context, harnessId, [
       draft('assistant_history_redacted', { why: sweep.why, requests: count }),
     ]);
   }
-  const full = requests.length === BATCH || reminders === BATCH || holds === BATCH;
+  const full = [requests.length, reminders, holds, proposals].some((count) => count === BATCH);
   return { requests: requests.length, full };
 }
 

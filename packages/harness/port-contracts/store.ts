@@ -39,6 +39,7 @@ const transactionMembers = [
   'assistantEffects',
   'assistantHolds',
   'assistantPairingCodes',
+  'assistantProposals',
   'assistantReminders',
   'assistantRequests',
   'assistantSettings',

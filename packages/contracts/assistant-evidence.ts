@@ -17,6 +17,10 @@ import {
 import { ASSISTANT_BUDGET_MOST_MINOR } from './assistant-commands.ts';
 import { assistantRedactionWhySchema } from './assistant-history.ts';
 import { assistantMailRefusalSchema } from './assistant-mail.ts';
+import {
+  assistantProposalDecisionSchema,
+  assistantProposalKindSchema,
+} from './assistant-proposals.ts';
 import { verbNameSchema } from './verb-names.ts';
 
 const id = z.uuid();
@@ -100,4 +104,15 @@ export const assistantEvidence = {
     requests: count,
   }),
   assistant_mail_declined: z.strictObject({ why: assistantMailRefusalSchema }),
+  assistant_proposal_drafted: z.strictObject({
+    proposalId: id,
+    requestId: id,
+    kind: assistantProposalKindSchema,
+  }),
+  assistant_proposal_decided: z.strictObject({
+    proposalId: id,
+    kind: assistantProposalKindSchema,
+    decision: assistantProposalDecisionSchema,
+  }),
+  assistant_proposal_expired: z.strictObject({ proposalId: id }),
 };

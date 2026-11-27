@@ -777,8 +777,20 @@ An effect in the closed low-risk set (ADR 0036), done at the end of a turn with 
 _Avoid_: auto-action, safe action, low-risk action (say "direct effect")
 
 **Proposal**:
-An effect outside the closed set, drafted by an assistant, which runs only after its person decides it on the web app.
+An effect outside the closed set, drafted by an assistant, which runs only after its person decides it on the web app: an email to other people, an invitation from the person's calendar, or text added at the end of a page the person can edit. It waits seven days, then expires.
 _Avoid_: draft (that is a private copy of a harness's stages, or a working draft of a page), suggestion, pending action
+
+**Proposal digest**:
+The SHA-256 of a proposal's stored payload, computed by the database. The person's decision names the digest of what their page showed, and a decision on any other digest is refused.
+_Avoid_: hash, checksum, version (a page's version is a different thing)
+
+**Page addition**:
+Text an accepted proposal adds at the end of a page, saved by the person who accepted it as a new version, with a line naming the assistant and the day.
+_Avoid_: append (in prose), page edit, transcript import
+
+**Meeting transcript**:
+A transcript of a meeting, pasted into a direct message or attached to an email, which reaches the assistant fenced as untrusted `meeting_transcript` text.
+_Avoid_: recording, notes (the notes are the page it may be added to)
 
 **Reminder**:
 A note to an assistant's person, due at an instant, delivered only to that person. It is set when the turn that drafted it ends, fires once, and is recorded undelivered, never sent, when the person's `assist` delegation has lapsed by then.

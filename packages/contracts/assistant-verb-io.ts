@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { assistantProposalPayloadSchemas as proposalOf } from './assistant-proposals.ts';
 
 const reminderText = z.string().trim().min(1).max(500);
 const drafted = z.object({ effectId: z.uuid(), status: z.literal('drafted') });
@@ -14,6 +15,7 @@ const calendarEvent = z.object({
   holdId: z.uuid().nullable(),
   details: z.string(),
 });
+const proposed = z.object({ proposalId: z.uuid(), status: z.literal('pending') });
 const freeSlot = z.object({ startAt: z.iso.datetime(), endAt: z.iso.datetime(), when: z.string() });
 
 export const assistantVerbIo = {
@@ -71,4 +73,7 @@ export const assistantVerbIo = {
     input: z.strictObject({ holdId: z.uuid() }),
     output: drafted,
   },
+  propose_email: { input: proposalOf.email, output: proposed },
+  propose_invite: { input: proposalOf.invite, output: proposed },
+  propose_page_append: { input: proposalOf.page_append, output: proposed },
 };

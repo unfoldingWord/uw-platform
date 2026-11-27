@@ -34,7 +34,11 @@ export const assistantDirectEffectSchema = z.enum([
   'calendar_hold_changed',
   'calendar_hold_removed',
 ]);
-export const assistantEffectKindSchema = z.enum([...assistantDirectEffectSchema.options]);
+export const assistantProposedEffectSchema = z.enum(['email_sent', 'invite_sent', 'page_appended']);
+export const assistantEffectKindSchema = z.enum([
+  ...assistantDirectEffectSchema.options,
+  ...assistantProposedEffectSchema.options,
+]);
 export const assistantTurnRefusalSchema = z.enum([
   'delegation_required',
   'persona_inactive',
@@ -62,6 +66,9 @@ export const assistantEffectFailureSchema = z.enum([
   'calendar_refused',
   'calendar_unavailable',
   'not_own_hold',
+  'workspace_refused',
+  'workspace_unavailable',
+  'page_refused',
 ]);
 export const assistantReminderStatusSchema = z.enum(['set', 'fired', 'cancelled', 'undelivered']);
 export const assistantReminderRefusalSchema = z.enum([
@@ -124,6 +131,7 @@ export const assistantSettingsSchema = z.strictObject({
 
 export type AssistantChannel = z.infer<typeof assistantChannelSchema>;
 export type AssistantDirectEffect = z.infer<typeof assistantDirectEffectSchema>;
+export type AssistantProposedEffect = z.infer<typeof assistantProposedEffectSchema>;
 export type AssistantEffectKind = z.infer<typeof assistantEffectKindSchema>;
 export type AssistantTurnRefusal = z.infer<typeof assistantTurnRefusalSchema>;
 export type AssistantTurnOutcome = z.infer<typeof assistantTurnOutcomeSchema>;

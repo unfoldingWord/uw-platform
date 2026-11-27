@@ -81,6 +81,7 @@ export type AssistantEffectRow = {
   readonly idempotencyKey: string;
   readonly payload: AssistantEffectPayload;
   readonly createdAt: Date;
+  readonly proposalId?: string;
 };
 export type AssistantEffectsGateway = {
   readonly read: {

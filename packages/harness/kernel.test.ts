@@ -43,12 +43,19 @@ function notWiredPorts(): Ports {
       status: () => notWiredCall('runs', 'status'),
     },
     directMessages: { send: () => notWiredCall('directMessages', 'send') },
-    workspace: {
-      listEvents: () => notWiredCall('workspace', 'listEvents'),
-      freeBusy: () => notWiredCall('workspace', 'freeBusy'),
-      placeHold: () => notWiredCall('workspace', 'placeHold'),
-      removeHold: () => notWiredCall('workspace', 'removeHold'),
-    },
+    workspace: notWiredWorkspace(),
+    pageAppends: { append: () => notWiredCall('pageAppends', 'append') },
+  };
+}
+
+function notWiredWorkspace(): Ports['workspace'] {
+  return {
+    listEvents: () => notWiredCall('workspace', 'listEvents'),
+    freeBusy: () => notWiredCall('workspace', 'freeBusy'),
+    placeHold: () => notWiredCall('workspace', 'placeHold'),
+    removeHold: () => notWiredCall('workspace', 'removeHold'),
+    sendMail: () => notWiredCall('workspace', 'sendMail'),
+    sendInvite: () => notWiredCall('workspace', 'sendInvite'),
   };
 }
 
@@ -74,12 +81,20 @@ function throwingPorts(): Ports {
     notifier: { notify: refuse },
     runs: { start: refuse, hibernate: refuse, resume: refuse, stop: refuse, status: refuse },
     directMessages: { send: refuse },
-    workspace: { listEvents: refuse, freeBusy: refuse, placeHold: refuse, removeHold: refuse },
+    workspace: {
+      listEvents: refuse,
+      freeBusy: refuse,
+      placeHold: refuse,
+      removeHold: refuse,
+      sendMail: refuse,
+      sendInvite: refuse,
+    },
+    pageAppends: { append: refuse },
   };
 }
 
 describe('DX-1 createKernel(ports)', () => {
-  it('builds over twelve ports without calling one', () => {
+  it('builds over thirteen ports without calling one', () => {
     expect(() => createKernel(throwingPorts())).not.toThrow();
   });
 

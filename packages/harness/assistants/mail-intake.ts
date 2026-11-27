@@ -7,6 +7,7 @@ import type { Ports, StoreTransaction } from '../ports.ts';
 import { splitForward } from './mail-split.ts';
 import { emailSenderVerdict, type MailHeader } from './mail-verdict.ts';
 import { recordRequest, type RecordedRequest } from './requests.ts';
+import { isTranscriptAttachment } from './transcripts.ts';
 
 export type MailAttachment = { readonly filename: string; readonly text: string };
 export type InboundMail = {
@@ -39,7 +40,9 @@ function partsOf(forwarded: readonly string[], attachments: readonly MailAttachm
   const wanted: UntrustedPart[] = [
     ...forwarded.map((text) => ({ source: 'email_forwarded' as const, text })),
     ...attachments.map((each) => ({
-      source: 'email_attachment' as const,
+      source: isTranscriptAttachment(each.filename, each.text)
+        ? ('meeting_transcript' as const)
+        : ('email_attachment' as const),
       text: `${each.filename}\n\n${each.text}`,
     })),
   ];

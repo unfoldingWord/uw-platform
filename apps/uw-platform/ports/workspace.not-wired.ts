@@ -5,4 +5,6 @@ export const workspaceNotWired: Workspace = {
   freeBusy: () => notWiredCall('workspace', 'freeBusy'),
   placeHold: () => notWiredCall('workspace', 'placeHold'),
   removeHold: () => notWiredCall('workspace', 'removeHold'),
+  sendMail: () => notWiredCall('workspace', 'sendMail'),
+  sendInvite: () => notWiredCall('workspace', 'sendInvite'),
 };

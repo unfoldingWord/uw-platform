@@ -7,14 +7,16 @@ import { seedPerson } from '@uw/db/test-seed';
 import {
   describeWorkspaceContract,
   type RecordedEvent,
+  type SeededEvent,
 } from '@uw/harness/port-contracts/workspace';
-import { personMailOf, subjectKindOf } from '../assistants/google/subjects.ts';
+import type { SentMail } from '@uw/harness/port-contracts/workspace';
+import { personMailOf, putMailbox, subjectKindOf } from '../assistants/google/subjects.ts';
 import {
   fakeGoogle,
   type FakeEvent,
   type FakeGoogle,
 } from '../assistants/google/testing/fake-google.ts';
-import { platformWorkspace } from './workspace.ts';
+import { platformWorkspace, type WorkspaceDeps } from './workspace.ts';
 
 const domain = 'example.org';
 const personIds = [
@@ -30,9 +32,12 @@ async function fresh(): Promise<Database> {
     const database = await createMigratedDatabase(testServer ?? '');
     opened = { database, db: createClient(database.connectionString) };
   }
-  await opened.db.execute(
-    sql`DELETE FROM people WHERE id IN (${personIds[0]}, ${personIds[1]}, ${personIds[2]})`,
-  );
+  const ids = sql`(${personIds[0]}, ${personIds[1]}, ${personIds[2]})`;
+  const harnessIds = sql`(SELECT id FROM harnesses WHERE person_id IN ${ids})`;
+  await opened.db.execute(sql`DELETE FROM assistant_mail_sends WHERE harness_id IN ${harnessIds}`);
+  await opened.db.execute(sql`DELETE FROM assistant_mailboxes WHERE person_id IN ${ids}`);
+  await opened.db.execute(sql`DELETE FROM harnesses WHERE person_id IN ${ids}`);
+  await opened.db.execute(sql`DELETE FROM people WHERE id IN ${ids}`);
   return opened.db;
 }
 
@@ -62,6 +67,48 @@ function recorded(google: FakeGoogle, event: FakeEvent): RecordedEvent {
   };
 }
 
+function headerOf(raw: string, name: string): string | null {
+  const head = raw.split('\r\n\r\n')[0] ?? '';
+  const line = head.split('\r\n').find((each) => each.startsWith(`${name}: `));
+  return line === undefined ? null : line.slice(name.length + 2);
+}
+
+function listOf(value: string | null): readonly string[] {
+  return value === null ? [] : value.split(', ');
+}
+
+function bodyOf(raw: string): string {
+  const encoded = (raw.split('\r\n\r\n')[1] ?? '').replaceAll('\r\n', '');
+  const binary = atob(encoded);
+  return new TextDecoder().decode(Uint8Array.from(binary, (c) => c.charCodeAt(0)));
+}
+
+function mailOf(from: string, raw: string): SentMail {
+  return {
+    from,
+    to: listOf(headerOf(raw, 'To')),
+    cc: listOf(headerOf(raw, 'Cc')),
+    replyTo: headerOf(raw, 'Reply-To'),
+    subject: headerOf(raw, 'Subject') ?? '',
+    body: bodyOf(raw),
+  };
+}
+
+async function addMailbox(db: Database, google: FakeGoogle, mailbox: MailboxSeed): Promise<void> {
+  await db.execute(sql`INSERT INTO harnesses (id, key, title, template, jd_area, created_at, person_id)
+    VALUES (${mailbox.harnessId}, ${`assistant-${mailbox.personId}`}, 'Assistant', 'assistant',
+      '10-19', now(), ${mailbox.personId}) ON CONFLICT DO NOTHING`);
+  const at = new Date();
+  await putMailbox(db, { ...mailbox, googleUserId: null, status: 'active', at });
+  google.addUser(mailbox.address);
+}
+
+type MailboxSeed = {
+  readonly harnessId: string;
+  readonly personId: string;
+  readonly address: string;
+};
+
 function reached(google: FakeGoogle): readonly string[] {
   return google.requests().flatMap((request) => {
     const items = (request.body as { items?: { id: string }[] } | null)?.items ?? [];
@@ -72,28 +119,47 @@ function reached(google: FakeGoogle): readonly string[] {
   });
 }
 
+async function depsOn(db: Database, google: FakeGoogle): Promise<WorkspaceDeps> {
+  const pair = await generateKeyPair('RS256', { extractable: true });
+  google.trust(pair.publicKey);
+  const account = {
+    clientEmail: 'assistants@uw-platform.iam.gserviceaccount.com',
+    privateKey: await exportPKCS8(pair.privateKey),
+  };
+  return {
+    db,
+    domain,
+    tokens: {
+      account,
+      fetcher: google.fetch,
+      now: () => new Date(),
+      lookup: (email) => subjectKindOf(db, email, domain),
+      cache: new Map(),
+    },
+  };
+}
+
+function sentMails(google: FakeGoogle, boxes: readonly string[]): readonly SentMail[] {
+  return boxes.flatMap((box) => google.gmail.sent(box).map((mail) => mailOf(box, mail.raw)));
+}
+
+function eventOf(event: SeededEvent) {
+  return {
+    summary: event.title,
+    start: { dateTime: event.startsAt.toISOString() },
+    end: { dateTime: event.endsAt.toISOString() },
+    ...(event.description === undefined ? {} : { description: event.description }),
+    attendees: (event.attendees ?? []).map((email) => ({ email })),
+  };
+}
+
 describe.skipIf(!testServer)('DX-3 the Google Workspace adapter on Postgres', () => {
   describeWorkspaceContract('domain-wide delegation, against the recorded-shape fake', async () => {
     const db = await fresh();
     const google = fakeGoogle();
-    const pair = await generateKeyPair('RS256', { extractable: true });
-    google.trust(pair.publicKey);
-    const account = {
-      clientEmail: 'assistants@uw-platform.iam.gserviceaccount.com',
-      privateKey: await exportPKCS8(pair.privateKey),
-    };
-    const workspace = platformWorkspace({
-      db,
-      domain,
-      tokens: {
-        account,
-        fetcher: google.fetch,
-        now: () => new Date(),
-        lookup: (email) => subjectKindOf(db, email, domain),
-        cache: new Map(),
-      },
-    });
+    const workspace = platformWorkspace(await depsOn(db, google));
     let added = 0;
+    const boxes: string[] = [];
     const emailOf = async (personId: string) => (await personMailOf(db, personId, domain)) ?? '';
     return {
       workspace,
@@ -105,17 +171,15 @@ describe.skipIf(!testServer)('DX-3 the Google Workspace adapter on Postgres', ()
         google.addUser(email);
         return id;
       },
-      addEvent: async (personId, event) =>
-        google.addEvent(await emailOf(personId), {
-          summary: event.title,
-          start: { dateTime: event.startsAt.toISOString() },
-          end: { dateTime: event.endsAt.toISOString() },
-          ...(event.description === undefined ? {} : { description: event.description }),
-          attendees: (event.attendees ?? []).map((email) => ({ email })),
-        }),
+      addEvent: async (personId, event) => google.addEvent(await emailOf(personId), eventOf(event)),
       events: async (personId) =>
         google.events(await emailOf(personId)).map((event) => recorded(google, event)),
       addressesReached: async () => reached(google),
+      addMailbox: async (harnessId, personId, address) => {
+        boxes.push(address);
+        await addMailbox(db, google, { harnessId, personId, address });
+      },
+      mails: async () => sentMails(google, boxes),
     };
   });
 });

@@ -218,6 +218,27 @@ export const verbRegistry: readonly VerbDefinition[] = [
     "Draft removing a hold you placed on your person's calendar; it is removed when your turn ends. Served only in your person's assistant turn.",
     false,
   ),
+  verb(
+    'propose_email',
+    'assistant',
+    null,
+    'Propose an email from your mailbox to other people; nothing is sent unless your person accepts it on the web app within seven days. Served only in an assistant turn.',
+    false,
+  ),
+  verb(
+    'propose_invite',
+    'assistant',
+    null,
+    "Propose a meeting invitation from your person's calendar; nothing is sent unless your person accepts it on the web app within seven days. Served only in an assistant turn.",
+    false,
+  ),
+  verb(
+    'propose_page_append',
+    'assistant',
+    null,
+    'Propose adding text to the end of a page your person can edit, such as meeting notes; nothing is written unless your person accepts it within seven days. Served only in an assistant turn.',
+    false,
+  ),
 ];
 
 const byName = new Map<string, VerbDefinition>(verbRegistry.map((entry) => [entry.name, entry]));

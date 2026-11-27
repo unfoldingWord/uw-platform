@@ -8,4 +8,5 @@ export const owns = [
   'assistant_pairing_codes',
   'assistant_budgets',
   'assistant_accounts',
+  'assistant_proposals',
 ] as const;

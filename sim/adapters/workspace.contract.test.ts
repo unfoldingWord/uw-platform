@@ -22,5 +22,7 @@ describeWorkspaceContract('the recording sim workspace', async () => {
     addEvent: async (personId, event) => workspace.addEvent(personId, event),
     events: async (personId) => workspace.events(personId),
     addressesReached: async () => workspace.addressesReached(),
+    addMailbox: async (harnessId, _personId, address) => workspace.addMailbox(harnessId, address),
+    mails: async () => workspace.mails(),
   };
 });

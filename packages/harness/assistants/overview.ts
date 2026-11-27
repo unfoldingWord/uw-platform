@@ -11,6 +11,7 @@ import { accepted, refused, type KernelOutcome, type Refused } from '../outcome.
 import type { Harness } from '@uw/contracts';
 import type {
   AssistantAccountRow,
+  AssistantProposalRow,
   AssistantSettingsRow,
   Ports,
   StoreTransaction,
@@ -24,6 +25,7 @@ import { spendThisMonth, spentMicros } from './spend.ts';
 export type { OverviewEffect, OverviewRequest } from './overview-effects.ts';
 
 export type OverviewInput = { readonly personId: string | null };
+export type OverviewProposal = AssistantProposalRow & { readonly pageTitle: string | null };
 export type AssistantOverview = {
   readonly self: boolean;
   readonly personId: string;
@@ -44,6 +46,7 @@ export type AssistantOverview = {
   };
   readonly paired: { readonly via: AssistantPairingVia; readonly boundAt: Date } | null;
   readonly requests: readonly OverviewRequest[];
+  readonly proposals: readonly OverviewProposal[];
   readonly reminders: readonly {
     readonly effectId: string;
     readonly text: string;
@@ -61,6 +64,7 @@ type OverviewPorts = Pick<Ports, 'clock' | 'store'>;
 type Viewer = { readonly personId: string; readonly self: boolean };
 
 const REQUESTS_SHOWN = 15;
+const PROPOSALS_SHOWN = 50;
 const LIVE_MOST = 200;
 const MICROS_PER_MINOR = 10_000;
 
@@ -94,6 +98,26 @@ async function assistOf(tx: StoreTransaction, harness: Harness, personId: string
   return found === undefined ? null : { delegationId: found.id, expiresAt: found.expiresAt };
 }
 
+function shownStatus(row: AssistantProposalRow, at: Date): AssistantProposalRow['status'] {
+  return row.status === 'pending' && row.expiresAt.getTime() <= at.getTime()
+    ? 'expired'
+    : row.status;
+}
+
+async function proposalsOf(tx: StoreTransaction, harnessId: string, at: Date) {
+  const rows = await tx.assistantProposals.read.recent(harnessId, PROPOSALS_SHOWN);
+  const pageIds = rows.flatMap((row) => {
+    const pageId = row.payload['pageId'];
+    return typeof pageId === 'string' ? [pageId] : [];
+  });
+  const titles = new Map((await tx.pages.read.facts(pageIds)).map((page) => [page.id, page.title]));
+  return rows.map((row) => {
+    const pageId = row.payload['pageId'];
+    const pageTitle = typeof pageId === 'string' ? (titles.get(pageId) ?? null) : null;
+    return { ...row, status: shownStatus(row, at), pageTitle };
+  });
+}
+
 async function contentOf(tx: StoreTransaction, harnessId: string, at: Date) {
   const live: Live = {
     reminders: await tx.assistantReminders.read.pending(harnessId, LIVE_MOST),
@@ -107,6 +131,7 @@ async function contentOf(tx: StoreTransaction, harnessId: string, at: Date) {
   return {
     settings: await tx.assistantSettings.read.byHarness(harnessId),
     requests: requestsOf(recent, effects, events, live),
+    proposals: await proposalsOf(tx, harnessId, at),
     reminders: live.reminders.map((row) => ({
       effectId: row.effectId,
       text: row.text,
@@ -121,7 +146,7 @@ async function contentOf(tx: StoreTransaction, harnessId: string, at: Date) {
   };
 }
 
-const noContent = { settings: null, requests: [], reminders: [], holds: [] };
+const noContent = { settings: null, requests: [], proposals: [], reminders: [], holds: [] };
 
 function accountOf(account: AssistantAccountRow | null): AssistantOverview['account'] {
   if (account === null) return null;

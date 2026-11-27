@@ -25,6 +25,9 @@ const kindWords: Readonly<Record<AssistantEffectKind, string>> = {
   calendar_hold_added: 'Held time',
   calendar_hold_changed: 'Changed a hold',
   calendar_hold_removed: 'Removed a hold',
+  email_sent: 'Sent an email you accepted',
+  invite_sent: 'Sent an invitation you accepted',
+  page_appended: 'Added to a page you accepted',
 };
 
 const stateTones: Readonly<Record<OverviewEffect['state'], BadgeTone>> = {
@@ -228,17 +231,6 @@ export function Settings(props: { readonly overview: AssistantOverview }) {
           <SettingsRead settings={settings} />
         </div>
       </div>
-    </Section>
-  );
-}
-
-export function Proposals() {
-  return (
-    <Section title="Waiting for you" sub="What your assistant proposes and you decide">
-      <EmptyState
-        title="Nothing waits for your decision."
-        text="When your assistant drafts an email, an invitation or a page change, it waits here until you accept or reject it."
-      />
     </Section>
   );
 }

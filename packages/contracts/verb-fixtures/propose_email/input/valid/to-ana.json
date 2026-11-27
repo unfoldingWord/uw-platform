@@ -1,0 +1,5 @@
+{
+  "to": ["ana@example.org"],
+  "subject": "Meeting notes",
+  "body": "Here are the notes from today."
+}

@@ -32,6 +32,7 @@ export const platformCommandNameSchema = z.enum([
   'revoke_assist',
   'undo_assistant_effect',
   'delete_my_assistant_history',
+  'decide_assistant_proposal',
 ]);
 
 export type PlatformCommandName = z.infer<typeof platformCommandNameSchema>;

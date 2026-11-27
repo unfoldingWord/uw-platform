@@ -13,6 +13,21 @@ describe('PA-16 the optional assistants spend ceiling', () => {
 
   it('caps the pool at the configured minor units', () => {
     const settings = assistantKernelSettings({ ASSISTANT_SPEND_CAP_MINOR: '20000' });
-    expect(settings).toEqual({ assistantsArea: '10-19', assistantSpendCapMinor: 20000 });
+    expect(settings).toEqual({
+      assistantsArea: '10-19',
+      assistantSpendCapMinor: 20000,
+      appOrigin: null,
+    });
+  });
+});
+
+describe('PA-12 the link a proposal note carries', () => {
+  it('takes the https app origin without a trailing slash, and nothing else', () => {
+    expect(assistantKernelSettings({ APP_ORIGIN: 'https://uw.example.org/' }).appOrigin).toBe(
+      'https://uw.example.org',
+    );
+    for (const value of ['http://uw.example.org', 'https://uw.example.org/path', 'javascript:x']) {
+      expect(assistantKernelSettings({ APP_ORIGIN: value }).appOrigin).toBeNull();
+    }
   });
 });

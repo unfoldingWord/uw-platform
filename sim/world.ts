@@ -17,6 +17,7 @@ import { createSimHub, type SimHub } from './adapters/hub.ts';
 import { createSimIds, type SimIds } from './adapters/ids.ts';
 import { createSimModelEngine, type SimModelEngine } from './adapters/model-engine.ts';
 import { createSimNotifier, type SimNotifier } from './adapters/notifier.ts';
+import { createSimPageAppends, type SimPageAppends } from './adapters/page-appends.ts';
 import { createSimRuns } from './adapters/runs.ts';
 import { createSimStore } from './adapters/store.ts';
 import { createSimWorkspace, type SimWorkspace } from './adapters/workspace.ts';
@@ -24,10 +25,12 @@ import { createSimWorkspace, type SimWorkspace } from './adapters/workspace.ts';
 const worldStart = new Date('2026-10-01T09:00:00.000Z');
 
 export const simAssistantsArea: JdArea = '10-19';
+export const simAppOrigin = 'https://platform.sim.example';
 
 const simSettings: KernelSettings = {
   assistantsArea: simAssistantsArea,
   assistantSpendCapMinor: null,
+  appOrigin: simAppOrigin,
 };
 
 type SimAdapters = {
@@ -43,6 +46,7 @@ type SimAdapters = {
   readonly runs: Runs;
   readonly directMessages: SimDirectMessages;
   readonly workspace: SimWorkspace;
+  readonly pageAppends: SimPageAppends;
 };
 
 export type World = {
@@ -67,6 +71,7 @@ function simAdapters(database: EmbeddedDatabase, start: Date): SimAdapters {
     runs: createSimRuns(),
     directMessages: createSimDirectMessages(clock),
     workspace: createSimWorkspace(),
+    pageAppends: createSimPageAppends(() => clock.now()),
   };
 }
 

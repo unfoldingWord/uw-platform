@@ -1,0 +1,6 @@
+{
+  "command": "decide_assistant_proposal",
+  "requestId": "00000000-0000-4000-8000-0000000000f1",
+  "proposalId": "00000000-0000-4000-8000-0000000000f2",
+  "decision": "accept"
+}

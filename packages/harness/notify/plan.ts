@@ -3,6 +3,7 @@ import {
   healthLink,
   homeLink,
   itemLink,
+  proposalLink,
   type DeepLink,
   type Harness,
   type HarnessEvent,
@@ -48,8 +49,14 @@ async function holdersFor(
   return holders;
 }
 
+function proposalOf(trigger: Trigger): DeepLink | null {
+  const proposalId = trigger.event.evidence['proposalId'];
+  return typeof proposalId === 'string' ? proposalLink(proposalId) : null;
+}
+
 function linkOf(trigger: Trigger, harness: Harness, itemId: string | null): DeepLink | null {
   if (trigger.reason === 'silence_alarm') return healthLink('silence_alarm');
+  if (trigger.reason === 'proposal_waiting') return proposalOf(trigger);
   if (trigger.reason === 'delegation_lapsed') return homeLink;
   if (itemId === null) return null;
   return trigger.reason === 'gate_waiting'

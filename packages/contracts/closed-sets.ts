@@ -48,6 +48,7 @@ export const untrustedSourceSchema = z.enum([
   'calendar_event',
   'email_forwarded',
   'email_attachment',
+  'meeting_transcript',
 ]);
 export const gateDecisionSchema = z.enum(['approve', 'reject', 'take_over', 'override']);
 export const personStatusSchema = z.enum(['active', 'pending', 'disabled']);
@@ -60,6 +61,7 @@ export const wakeReasonSchema = z.enum([
   'handed_to_person',
   'delegated_merge',
   'silence_alarm',
+  'proposal_waiting',
 ]);
 export const liveScreenSchema = z.enum([
   'home',
