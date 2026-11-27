@@ -19,6 +19,7 @@ import { createSimModelEngine, type SimModelEngine } from './adapters/model-engi
 import { createSimNotifier, type SimNotifier } from './adapters/notifier.ts';
 import { createSimRuns } from './adapters/runs.ts';
 import { createSimStore } from './adapters/store.ts';
+import { createSimWorkspace, type SimWorkspace } from './adapters/workspace.ts';
 
 const worldStart = new Date('2026-10-01T09:00:00.000Z');
 
@@ -41,6 +42,7 @@ type SimAdapters = {
   readonly notifier: SimNotifier;
   readonly runs: Runs;
   readonly directMessages: SimDirectMessages;
+  readonly workspace: SimWorkspace;
 };
 
 export type World = {
@@ -64,6 +66,7 @@ function simAdapters(database: EmbeddedDatabase, start: Date): SimAdapters {
     notifier: createSimNotifier(),
     runs: createSimRuns(),
     directMessages: createSimDirectMessages(clock),
+    workspace: createSimWorkspace(),
   };
 }
 

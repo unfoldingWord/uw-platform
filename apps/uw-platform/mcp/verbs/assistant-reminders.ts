@@ -4,7 +4,7 @@ import { fromKernel, refusal, turnHandler, type VerbRefusal } from '../handler.t
 
 type TurnAddress = { readonly requestId: string; readonly turnId: string };
 
-function turnOf(context: VerbContext): TurnAddress | VerbRefusal {
+export function turnOf(context: VerbContext): TurnAddress | VerbRefusal {
   const { turn } = context;
   if (context.host !== 'assistant' || turn === undefined || turn === null) {
     return refusal('not_permitted', { why: 'assistant_turn_only' });

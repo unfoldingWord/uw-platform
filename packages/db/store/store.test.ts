@@ -76,6 +76,7 @@ describe('DX-2 executorOf', () => {
       assistantRequests: untouched(),
       assistantEffects: untouched(),
       assistantReminders: untouched(),
+      assistantHolds: untouched(),
       assistantBindings: untouched(),
       assistantPairingCodes: untouched(),
       assistantBudgets: untouched(),

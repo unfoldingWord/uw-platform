@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { portNames } from './index.ts';
 
-describe('DX-1 the ports are the eleven PRD section 9 names', () => {
+describe('DX-1 the ports are the twelve PRD section 9 names', () => {
   it('lists them in order', () => {
     expect(portNames).toEqual([
       'clock',
@@ -15,6 +15,7 @@ describe('DX-1 the ports are the eleven PRD section 9 names', () => {
       'notifier',
       'runs',
       'directMessages',
+      'workspace',
     ]);
   });
 });

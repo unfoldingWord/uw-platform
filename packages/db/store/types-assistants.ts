@@ -1,6 +1,7 @@
 import type {
   AssistantChannel,
   AssistantEffectKind,
+  AssistantHoldStatus,
   AssistantPairingVia,
   AssistantReminderStatus,
   EventName,
@@ -190,5 +191,30 @@ export type AssistantBudgetsGateway = {
   readonly write: {
     put(row: AssistantBudgetRow): Promise<void>;
     remove(harnessId: string): Promise<void>;
+  };
+};
+
+export type AssistantHoldRow = {
+  readonly id: string;
+  readonly harnessId: string;
+  readonly personId: string;
+  readonly eventId: string;
+  readonly title: string;
+  readonly startsAt: Date;
+  readonly endsAt: Date;
+  readonly status: AssistantHoldStatus;
+  readonly releasedEffectId: string | null;
+  readonly releasedAt: Date | null;
+  readonly createdAt: Date;
+};
+export type HoldRelease = { readonly id: string; readonly effectId: string; readonly at: Date };
+export type AssistantHoldsGateway = {
+  readonly read: {
+    byId(holdId: string): Promise<AssistantHoldRow | null>;
+    held(harnessId: string, limit: number): Promise<readonly AssistantHoldRow[]>;
+  };
+  readonly write: {
+    insert(row: AssistantHoldRow): Promise<boolean>;
+    release(change: HoldRelease): Promise<boolean>;
   };
 };

@@ -59,6 +59,9 @@ export const assistantEffectFailureSchema = z.enum([
   'delegation_lapsed',
   'deadline_passed',
   'reminder_closed',
+  'calendar_refused',
+  'calendar_unavailable',
+  'not_own_hold',
 ]);
 export const assistantReminderStatusSchema = z.enum(['set', 'fired', 'cancelled', 'undelivered']);
 export const assistantReminderRefusalSchema = z.enum([
@@ -67,6 +70,18 @@ export const assistantReminderRefusalSchema = z.enum([
   'effects_capped',
   'reminders_capped',
   'reminder_not_found',
+]);
+export const assistantHoldStatusSchema = z.enum(['held', 'released']);
+export const assistantCalendarRefusalSchema = z.enum([
+  'outside_organization',
+  'hold_in_past',
+  'hold_too_long',
+  'hold_too_far',
+  'holds_capped',
+  'hold_not_found',
+  'calendar_refused',
+  'calendar_unavailable',
+  'calendar_not_wired',
 ]);
 export const assistantPairingViaSchema = z.enum(['email_match', 'pairing_code']);
 export const assistantPairingRefusalSchema = z.enum([
@@ -115,6 +130,8 @@ export type AssistantTurnOutcome = z.infer<typeof assistantTurnOutcomeSchema>;
 export type AssistantEffectFailure = z.infer<typeof assistantEffectFailureSchema>;
 export type AssistantReminderStatus = z.infer<typeof assistantReminderStatusSchema>;
 export type AssistantReminderRefusal = z.infer<typeof assistantReminderRefusalSchema>;
+export type AssistantHoldStatus = z.infer<typeof assistantHoldStatusSchema>;
+export type AssistantCalendarRefusal = z.infer<typeof assistantCalendarRefusalSchema>;
 export type AssistantPairingVia = z.infer<typeof assistantPairingViaSchema>;
 export type AssistantPairingRefusal = z.infer<typeof assistantPairingRefusalSchema>;
 export type AssistantSettingField = z.infer<typeof assistantSettingFieldSchema>;

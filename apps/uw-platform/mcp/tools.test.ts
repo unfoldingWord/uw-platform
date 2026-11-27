@@ -79,7 +79,15 @@ describe('AB-2 a role-gated verb is offered only to a principal whose owner hold
 });
 
 describe('PA-17 the assistant verbs are served only to an assistant turn', () => {
-  const assistantVerbs = ['set_reminder', 'cancel_reminder', 'list_reminders'];
+  const assistantVerbs = [
+    'set_reminder',
+    'cancel_reminder',
+    'list_reminders',
+    'read_my_calendar',
+    'find_free_time',
+    'hold_time',
+    'release_hold',
+  ];
   const principal = agent([editorIn('10-19')]);
 
   it('never offers them on the external host', () => {

@@ -120,6 +120,9 @@ export type Bindings = {
   GITHUB_APP_ID?: string;
   GITHUB_APP_INSTALLATION_ID?: string;
   GITHUB_APP_PRIVATE_KEY?: string;
+  GOOGLE_WORKSPACE_ADMIN_SUBJECT?: string;
+  GOOGLE_WORKSPACE_DOMAIN?: string;
+  GOOGLE_WORKSPACE_KEY?: string;
   HARNESS_HUB?: HubNamespace;
   HARNESS_RUN?: WorkflowBinding;
   HYPERDRIVE?: HyperdriveBinding;

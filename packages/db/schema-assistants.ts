@@ -16,6 +16,7 @@ import {
 import {
   assistantChannelSchema,
   assistantDirectEffectSchema,
+  assistantHoldStatusSchema,
   assistantPairingViaSchema,
   assistantReminderStatusSchema,
 } from '@uw/contracts';
@@ -320,5 +321,79 @@ export const assistantBudgets = declareTable(
       foreignColumns: [people.id],
     }),
     check('assistant_budgets_monthly_bounded', sql`${t.monthlyMinor} BETWEEN 0 AND 1000000`),
+  ],
+);
+
+export const assistantCalendarHolds = declareTable(
+  'assistant_calendar_holds',
+  {
+    id: uuid('id').primaryKey(),
+    harnessId: uuid('harness_id').notNull(),
+    personId: uuid('person_id').notNull(),
+    eventId: text('event_id').notNull(),
+    title: text('title').notNull(),
+    startsAt: instant('starts_at').notNull(),
+    endsAt: instant('ends_at').notNull(),
+    status: text('status').notNull(),
+    releasedEffectId: uuid('released_effect_id'),
+    releasedAt: instant('released_at'),
+    createdAt: instant('created_at').notNull(),
+  },
+  restrictedNever,
+  (t) => [
+    personalHarnessOf('assistant_calendar_holds_personal_harness_fk', t.harnessId, t.personId),
+    foreignKey({
+      name: 'assistant_calendar_holds_effect_harness_fk',
+      columns: [t.id, t.harnessId],
+      foreignColumns: [assistantEffects.id, assistantEffects.harnessId],
+    }),
+    foreignKey({
+      name: 'assistant_calendar_holds_released_effect_fk',
+      columns: [t.releasedEffectId, t.harnessId],
+      foreignColumns: [assistantEffects.id, assistantEffects.harnessId],
+    }),
+    check(
+      'assistant_calendar_holds_status_known',
+      oneOf(t.status, assistantHoldStatusSchema.options),
+    ),
+    check(
+      'assistant_calendar_holds_released_when_done',
+      sql`(${t.status} = 'released') = (${t.releasedAt} IS NOT NULL AND ${t.releasedEffectId} IS NOT NULL)`,
+    ),
+    check(
+      'assistant_calendar_holds_at_most_a_day',
+      sql`${t.endsAt} > ${t.startsAt} AND ${t.endsAt} - ${t.startsAt} <= interval '24 hours'`,
+    ),
+    check('assistant_calendar_holds_title_length', sql`char_length(${t.title}) BETWEEN 1 AND 200`),
+    check(
+      'assistant_calendar_holds_event_id_shape',
+      sql`${t.eventId} ~ '^[0-9a-v]{5,}$' AND char_length(${t.eventId}) <= 1024`,
+    ),
+    uniqueIndex('assistant_calendar_holds_event_once').on(t.harnessId, t.eventId),
+    index('assistant_calendar_holds_harness').on(t.harnessId, t.status, t.startsAt),
+  ],
+);
+
+export const assistantMailboxes = declareTable(
+  'assistant_mailboxes',
+  {
+    harnessId: uuid('harness_id').primaryKey(),
+    personId: uuid('person_id').notNull(),
+    address: text('address').notNull(),
+    googleUserId: text('google_user_id'),
+    status: text('status').notNull(),
+    createdAt: instant('created_at').notNull(),
+    updatedAt: instant('updated_at').notNull(),
+  },
+  { classification: 'internal', offlineEligibility: 'never' },
+  (t) => [
+    personalHarnessOf('assistant_mailboxes_personal_harness_fk', t.harnessId, t.personId),
+    check(
+      'assistant_mailboxes_address_shape',
+      sql`${t.address} ~ '^[a-z0-9][a-z0-9.-]{0,63}@[a-z0-9][a-z0-9.-]{0,188}$'`,
+    ),
+    check('assistant_mailboxes_status_known', oneOf(t.status, ['active', 'suspended', 'deleted'])),
+    uniqueIndex('assistant_mailboxes_address_once').on(t.address),
+    index('assistant_mailboxes_person').on(t.personId),
   ],
 );

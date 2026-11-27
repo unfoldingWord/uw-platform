@@ -13,7 +13,15 @@ describe('every served verb has exactly one handler and nothing else has one', (
 
   it('PA-17 gives a handler to an unserved verb only when it belongs to the assistant group', () => {
     const unserved = [...verbHandlers.keys()].filter((name) => findVerb(name)?.servedInV1 !== true);
-    expect(unserved.sort()).toEqual(['cancel_reminder', 'list_reminders', 'set_reminder']);
+    expect(unserved.sort()).toEqual([
+      'cancel_reminder',
+      'find_free_time',
+      'hold_time',
+      'list_reminders',
+      'read_my_calendar',
+      'release_hold',
+      'set_reminder',
+    ]);
   });
 
   it('registers each handler under its own name', () => {

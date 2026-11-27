@@ -8,6 +8,11 @@ import {
   isoDateSchema,
   parseDate,
   yearsAfter,
+  zonedDateOf,
+  zonedInstant,
+  formatZonedMinute,
+  daysAfterDate,
+  weekdayOfDate,
 } from './dates.ts';
 
 describe('formatDate', () => {
@@ -131,5 +136,48 @@ describe('PA-5 yearsAfter moves an instant by whole calendar years in UTC', () =
     expect(yearsAfter(new Date('2028-02-29T12:00:00.000Z'), 1)).toEqual(
       new Date('2029-02-28T12:00:00.000Z'),
     );
+  });
+});
+
+describe('PA-8 the person timezone helpers read wall time through the zone', () => {
+  it('names the local date of an instant in a zone', () => {
+    const late = new Date('2026-11-26T23:30:00.000Z');
+    expect(zonedDateOf(late, 'Europe/Berlin')).toBe('2026-11-27');
+    expect(zonedDateOf(late, 'America/Los_Angeles')).toBe('2026-11-26');
+    expect(zonedDateOf(late, 'UTC')).toBe('2026-11-26');
+  });
+
+  it('finds the instant of a local wall time, across a daylight saving change', () => {
+    expect(zonedInstant('2026-11-27', 0, 'Europe/Berlin')).toEqual(
+      new Date('2026-11-26T23:00:00.000Z'),
+    );
+    expect(zonedInstant('2026-07-01', 9 * 60, 'Europe/Berlin')).toEqual(
+      new Date('2026-07-01T07:00:00.000Z'),
+    );
+    expect(zonedInstant('2026-03-29', 12 * 60, 'Europe/Berlin')).toEqual(
+      new Date('2026-03-29T10:00:00.000Z'),
+    );
+    expect(zonedInstant('2026-11-26', 0, 'America/Los_Angeles')).toEqual(
+      new Date('2026-11-26T08:00:00.000Z'),
+    );
+  });
+
+  it('formats an instant as local date and minute in the zone', () => {
+    const at = new Date('2026-11-26T08:05:00.000Z');
+    expect(formatZonedMinute(at, 'Europe/Berlin')).toBe('2026-11-26 09:05');
+    expect(formatZonedMinute(at, 'Asia/Kolkata')).toBe('2026-11-26 13:35');
+  });
+
+  it('falls back to UTC for a zone it does not know', () => {
+    const at = new Date('2026-11-26T08:05:00.000Z');
+    expect(formatZonedMinute(at, 'Mars/Olympus')).toBe('2026-11-26 08:05');
+    expect(zonedInstant('2026-11-26', 60, 'Mars/Olympus')).toEqual(
+      new Date('2026-11-26T01:00:00.000Z'),
+    );
+  });
+
+  it('steps a date by whole days and names its weekday', () => {
+    expect(daysAfterDate('2026-12-31', 1)).toBe('2027-01-01');
+    expect(weekdayOfDate('2026-11-28')).toBe(6);
   });
 });

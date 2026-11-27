@@ -317,6 +317,34 @@ Assistants spend their own pool, outside `AI_SPEND_CAP_MINOR`: USD 20 a month fo
 
 Staging checks, before go-live (the staging-probes list has the exact requests): one OpenRouter call for `z-ai/glm-5.3-flash` pinned to `z-ai` with `provider.zdr = true` answers with a ZDR endpoint, and a direct message to a provisioned bot on staging gets one reply from that bot.
 
+### Google Workspace: calendar now, mail and directory next (PA-8, PA-9)
+
+The platform reaches Google with one service account that has domain-wide delegation (ADR 0039). It acts as a person for that person's calendar, as an assistant mailbox for Gmail, and as one admin account for the directory, and the code refuses, before it signs, any other subject or scope.
+
+Variables, in `infra/uw-platform/wrangler.go-live.toml` (and `wrangler.toml`) under staging and production:
+
+| Variable | Value |
+|---|---|
+| `GOOGLE_WORKSPACE_DOMAIN` | The Workspace domain, `unfoldingword.org`; only people whose address is in it can be acted as |
+| `GOOGLE_WORKSPACE_ADMIN_SUBJECT` | The one Workspace admin account the platform acts as for the directory (provisioning, a later slice); `set-at-go-live`. A dedicated admin account, never a person's own |
+
+Secret, set in the store as the table below names it:
+
+```bash
+# uw-platform (from infra/uw-platform)
+wrangler secret put GOOGLE_WORKSPACE_KEY --env <name>   # the service account's whole JSON key file
+```
+
+One-time steps, by a Google Cloud project owner and a Workspace super-admin:
+
+1. In Google Cloud, create a project for the platform, enable the Google Calendar API, the Gmail API and the Admin SDK API, create a service account, and create one JSON key for it. Put the whole JSON file into `GOOGLE_WORKSPACE_KEY`; nothing else keeps a copy.
+2. In the Workspace admin console (Security, Access and data control, API controls, Domain-wide delegation), a super-admin adds the service account's client id with exactly these scopes: `https://www.googleapis.com/auth/calendar.events`, `https://www.googleapis.com/auth/calendar.freebusy`, `https://www.googleapis.com/auth/gmail.modify`, `https://www.googleapis.com/auth/admin.directory.user`.
+3. Turn on a Workspace audit alert for token grants to the service account's client id for any subject that is not a person, an assistant mailbox or the admin subject.
+4. Rotate the key at least every 90 days: create a new key, store it, then delete the old one in Google Cloud.
+5. Run the Google staging probes in the assistants' staging-probes list before go-live, as one test person: a token for `calendar.events`, listing today's events, free/busy for two people, inserting a hold with a chosen id (and inserting it again, expecting a conflict), reading and deleting it.
+
+Until `GOOGLE_WORKSPACE_KEY` and `GOOGLE_WORKSPACE_DOMAIN` are set, every calendar verb is refused `calendar_not_wired` and a drafted hold is recorded failed `not_wired`.
+
 ## Platform secrets in Cloudflare Secrets Store (#160)
 
 The secrets the platform itself runs on live in the account's Cloudflare Secrets Store, and each Worker binds only the ones it reads. `uw-ingest` binds its two; `uw-platform` binds the rest; a per-PR Worker (`preview`) binds none. The list is `infra/secrets-store.json`, under 30-39 Infrastructure: each secret with what it is, who issues it, its owner and the date to rotate it by, per environment. `tools/infra/secrets-store.test.ts` keeps the list, the wrangler files and the code naming the same secrets, and fails when a binding named like a credential is added to a Worker without a row.
@@ -331,6 +359,7 @@ The secrets the platform itself runs on live in the account's Cloudflare Secrets
 | `CREDENTIALS_KMS_ACCESS_KEY_ID` | uw-platform | `STORE_CREDENTIALS_KMS_ACCESS_KEY_ID` | `UW_<ENV>_CREDENTIALS_KMS_ACCESS_KEY_ID` |
 | `CREDENTIALS_KMS_SECRET_ACCESS_KEY` | uw-platform | `STORE_CREDENTIALS_KMS_SECRET_ACCESS_KEY` | `UW_<ENV>_CREDENTIALS_KMS_SECRET_ACCESS_KEY` |
 | `GITHUB_APP_PRIVATE_KEY` | uw-platform | `STORE_GITHUB_APP_PRIVATE_KEY` | `UW_<ENV>_GITHUB_APP_PRIVATE_KEY` |
+| `GOOGLE_WORKSPACE_KEY` | uw-platform | `STORE_GOOGLE_WORKSPACE_KEY` | `UW_<ENV>_GOOGLE_WORKSPACE_KEY` |
 | `OPENAI_API_KEY` | uw-platform | `STORE_OPENAI_API_KEY` | `UW_<ENV>_OPENAI_API_KEY` |
 | `OPENROUTER_API_KEY` | uw-platform | `STORE_OPENROUTER_API_KEY` | `UW_<ENV>_OPENROUTER_API_KEY` |
 | `REVIEWER_CODEX_GITHUB_APP_PRIVATE_KEY` | uw-platform | `STORE_REVIEWER_CODEX_GITHUB_APP_PRIVATE_KEY` | `UW_<ENV>_REVIEWER_CODEX_GITHUB_APP_PRIVATE_KEY` |
@@ -528,7 +557,7 @@ GL-1 switches the wiring above on. It writes no code: each step creates a resour
 1. **The database (FD-12).** A Postgres 16 or later database for staging and one for production (AWS RDS, or any Postgres the Hyperdrive config and the GitHub runner can reach). In the repository settings set `DATABASE_URL_STAGING` and `DATABASE_URL_PRODUCTION` as secrets (the table above); the deploy migrates through them, so the database must accept connections from GitHub's runners while it does. When the database is reachable only through a Cloudflare Tunnel (AWS Aurora, set up with the infrastructure team), set `DATABASE_TUNNEL_HOST_STAGING` and `DATABASE_TUNNEL_HOST_PRODUCTION` as variables and `DATABASE_TUNNEL_CLIENT_ID` and `DATABASE_TUNNEL_CLIENT_SECRET` as secrets: the tunnel needs a TCP route to the database behind a Cloudflare Access application that admits that service token, and each migrate job opens it with `.github/scripts/db-tunnel.sh` before migrating, with the `DATABASE_URL_*` secret pointing at `127.0.0.1:15432`.
 2. **Hyperdrive (FD-12, FD-6).** `wrangler hyperdrive create uw-staging --connection-string=<pooled staging string>`, and the same for `uw-production`. Put each Hyperdrive id in place of `set-at-go-live` in `[[env.staging.hyperdrive]]` and `[[env.production.hyperdrive]]` of both go-live files, and staging's Hyperdrive id in uw-platform's `[[env.preview.hyperdrive]]` (P33).
 3. **Queues, hosts and the deploy token (FD-10).** Create the four queues listed above with `wrangler queues create`. In the repository settings set `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` as secrets (the table above). Until the token is set, `deploy-pr`, `cleanup-pr`, `deploy-staging`, `deploy-ingest-staging`, `deploy-production` and `deploy-ingest-production` each log the notice "CLOUDFLARE_API_TOKEN is not set" and stay green; check that each now runs its steps. Read the account's `workers.dev` subdomain in the Cloudflare dashboard; if it is not `unfoldingword`, correct `STAGING_URL` and `INGEST_URL` in `.github/workflows/deploy-staging.yml` and the address in step 7.
-4. **Access and origins (FD-7).** Apply the three applications as the Access section says. Put the app application's AUD tag in `ACCESS_AUD`, the `mcp` application's in `ACCESS_MCP_AUD` and the team domain in `ACCESS_TEAM_DOMAIN`, under staging, production and preview of `uw-platform/wrangler.go-live.toml`, and the staging origin in `APP_ORIGIN`. `VAPID_PUBLIC_KEY`, `VAPID_SUBJECT`, `ZULIP_SITE` and `ZULIP_BOT_EMAIL` come from the notifier section, and `ZULIP_ADMIN_EMAIL` and `ASSISTANT_WEBHOOK_BASE` from the personal assistants section; the push and Zulip halves read their secrets (`VAPID_PRIVATE_JWK`, `ZULIP_BOT_API_KEY`) before these values, so they stay off until those secrets are set.
+4. **Access and origins (FD-7).** Apply the three applications as the Access section says. Put the app application's AUD tag in `ACCESS_AUD`, the `mcp` application's in `ACCESS_MCP_AUD` and the team domain in `ACCESS_TEAM_DOMAIN`, under staging, production and preview of `uw-platform/wrangler.go-live.toml`, and the staging origin in `APP_ORIGIN`. `VAPID_PUBLIC_KEY`, `VAPID_SUBJECT`, `ZULIP_SITE` and `ZULIP_BOT_EMAIL` come from the notifier section, `ZULIP_ADMIN_EMAIL` and `ASSISTANT_WEBHOOK_BASE` from the personal assistants section, and `GOOGLE_WORKSPACE_ADMIN_SUBJECT` from its Google Workspace section; the push and Zulip halves read their secrets (`VAPID_PRIVATE_JWK`, `ZULIP_BOT_API_KEY`) before these values, so they stay off until those secrets are set.
 5. **Worker secrets (FD-10, GH-1).** Once an org owner has registered the GitHub App (the GitHub App section), set `GITHUB_WEBHOOK_SECRET` on uw-ingest and the `GITHUB_APP_*` secrets on uw-platform with `wrangler secret put <name> --env staging`, as that section lists. The other Worker secrets are set the same way and listed where they are used: the Reviewer Apps section, the Builder GitHub App section, and the notifier section (`VAPID_PRIVATE_JWK`, `ZULIP_BOT_API_KEY`). Step 7's probe does not need them; the FD-10 webhook check and the delegated merge's live run do.
 6. **The switch pull request.** In one pull request: copy `uw-platform/wrangler.go-live.toml` over `uw-platform/wrangler.toml` and `uw-ingest/wrangler.go-live.toml` over `uw-ingest/wrangler.toml`, and set `"switchedOn": true` in `infra/go-live.json`. `pnpm verify` must be green: with the flag on, the live-file tests require each live file to carry everything its go-live twin declares, and with it off they require none of it, so a half switch fails. Merge it on a green CI `test` job; `deploy-staging.yml` then runs `migrate-staging` and deploys both Workers. The deploy builds the sandbox images, so the runner needs Docker (the sandbox section).
 7. **The release gate: the staging probe through Hyperdrive.** Run

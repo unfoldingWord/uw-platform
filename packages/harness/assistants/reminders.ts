@@ -6,6 +6,7 @@ import type { AssistantEffectRow, AssistantRequestRow, Ports } from '../ports.ts
 import type { RecordContext } from '../items/record.ts';
 import type { StoreTransaction } from '../ports.ts';
 import { addressed, turnSceneOf, type TurnAddress } from './reminder-turn.ts';
+import { unsettledDrafts } from './settled.ts';
 
 type ListedReminder = {
   readonly reminderId: string;
@@ -17,7 +18,6 @@ export type ListedReminders = { readonly reminders: readonly ListedReminder[] };
 type ListPorts = Pick<Ports, 'clock' | 'grants' | 'ids' | 'store'>;
 
 const LIST_MOST = 50;
-const REPLY = 'reply_to_requester';
 
 export async function listReminders(
   ports: ListPorts,
@@ -93,9 +93,7 @@ export async function applyReminderDrafts(
   request: AssistantRequestRow,
   live: boolean,
 ): Promise<void> {
-  const drafts = (await tx.assistantEffects.read.forRequests([request.id])).filter(
-    (effect) => effect.requestId === request.id && effect.kind !== REPLY,
-  );
+  const drafts = await unsettledDrafts(tx, request);
   const events: EventDraft[] = [];
   for (const effect of drafts) {
     if (!live) events.push(failed(effect, 'delegation_lapsed'));

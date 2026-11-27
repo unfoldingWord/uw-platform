@@ -56,10 +56,14 @@ const registered = [
   'set_reminder',
   'cancel_reminder',
   'list_reminders',
+  'read_my_calendar',
+  'find_free_time',
+  'hold_time',
+  'release_hold',
 ];
 
 describe('CT-2 the verb registry', () => {
-  it('registers the thirteen verbs of PRD section 8.2, attach_file, render_pdf, the four collection verbs and the three assistant verbs', () => {
+  it('registers the thirteen verbs of PRD section 8.2, attach_file, render_pdf, the four collection verbs and the seven assistant verbs', () => {
     expect(names()).toEqual(registered);
     expect(names()).toEqual([...verbNames]);
   });
@@ -81,6 +85,10 @@ describe('CT-2 the verb registry', () => {
       'set_reminder',
       'cancel_reminder',
       'list_reminders',
+      'read_my_calendar',
+      'find_free_time',
+      'hold_time',
+      'release_hold',
     ]);
   });
 
@@ -119,7 +127,7 @@ describe('CT-2 the verb manifest is contract data', () => {
   it('is plain JSON-serialisable contract data', () => {
     const manifest = verbManifest();
     expect(JSON.parse(JSON.stringify(manifest))).toEqual(manifest);
-    expect(manifest).toHaveLength(22);
+    expect(manifest).toHaveLength(26);
   });
 
   it('serialises the registry with its Zod schemas stripped', () => {

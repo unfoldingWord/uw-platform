@@ -43,6 +43,7 @@ function tracking(tx: StoreTransaction, appended: HarnessEvent[]): StoreTransact
     assistantRequests: tx.assistantRequests,
     assistantEffects: tx.assistantEffects,
     assistantReminders: tx.assistantReminders,
+    assistantHolds: tx.assistantHolds,
     assistantBindings: tx.assistantBindings,
     assistantPairingCodes: tx.assistantPairingCodes,
     assistantBudgets: tx.assistantBudgets,

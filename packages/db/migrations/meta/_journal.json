@@ -533,6 +533,13 @@
       "when": 1795732559517,
       "tag": "0077_assistant_budgets",
       "breakpoints": true
+    },
+    {
+      "idx": 78,
+      "version": "7",
+      "when": 1795736926985,
+      "tag": "0078_assistant_calendar",
+      "breakpoints": true
     }
   ]
 }

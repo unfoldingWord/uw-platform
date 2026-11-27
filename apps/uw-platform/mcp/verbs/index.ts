@@ -1,4 +1,10 @@
 import type { VerbHandler } from '../handler.ts';
+import {
+  findFreeTimeVerb,
+  holdTimeVerb,
+  readMyCalendarVerb,
+  releaseHoldVerb,
+} from './assistant-calendar.ts';
 import { cancelReminderVerb, listRemindersVerb, setReminderVerb } from './assistant-reminders.ts';
 import { attachFileVerb } from './attach-file.ts';
 import { claimItem } from './claim-item.ts';
@@ -36,6 +42,10 @@ const handlers: readonly VerbHandler[] = [
   setReminderVerb,
   cancelReminderVerb,
   listRemindersVerb,
+  readMyCalendarVerb,
+  findFreeTimeVerb,
+  holdTimeVerb,
+  releaseHoldVerb,
 ];
 
 export const verbHandlers: ReadonlyMap<string, VerbHandler> = new Map(

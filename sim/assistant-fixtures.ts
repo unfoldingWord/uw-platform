@@ -103,6 +103,7 @@ export async function assistantScene(world: World): Promise<AssistantScene> {
   await seedAssistantPersona(world, harness, rowan);
   world.adapters.directMessages.bind(personOf(person), 'zulip_dm', 'zulip:5005');
   world.adapters.directMessages.bind(personOf(person), 'email', 'p5@example.org');
+  world.adapters.workspace.addPerson(personOf(person), 'person5@unfoldingword.org');
   return { world, rowan, person, harness, pageId: assistantPageId };
 }
 

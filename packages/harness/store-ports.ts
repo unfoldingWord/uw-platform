@@ -32,6 +32,7 @@ import type {
   AssistantMonthQuery,
   AssistantMonthSpend,
   AssistantEffectsGateway,
+  AssistantHoldsGateway,
   AssistantPairingCodesGateway,
   AssistantRemindersGateway,
   AssistantRequestsGateway,
@@ -422,6 +423,7 @@ export type StoreTransaction = {
   readonly assistantRequests: AssistantRequestsGateway;
   readonly assistantEffects: AssistantEffectsGateway;
   readonly assistantReminders: AssistantRemindersGateway;
+  readonly assistantHolds: AssistantHoldsGateway;
   readonly assistantBindings: AssistantBindingsGateway;
   readonly assistantPairingCodes: AssistantPairingCodesGateway;
   readonly assistantBudgets: AssistantBudgetsGateway;

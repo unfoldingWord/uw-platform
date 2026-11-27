@@ -160,6 +160,10 @@ export const modules = [
       'set_reminder',
       'cancel_reminder',
       'list_reminders',
+      'read_my_calendar',
+      'find_free_time',
+      'hold_time',
+      'release_hold',
     ],
     name: 'Agents',
     summary:

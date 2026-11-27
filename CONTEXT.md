@@ -784,6 +784,10 @@ _Avoid_: draft (that is a private copy of a harness's stages, or a working draft
 A note to an assistant's person, due at an instant, delivered only to that person. It is set when the turn that drafted it ends, fires once, and is recorded undelivered, never sent, when the person's `assist` delegation has lapsed by then.
 _Avoid_: alarm (that word belongs to the silence alarm), task, due date
 
+**Hold**:
+A private event an assistant places on its person's own calendar, with no attendees and no notice to anyone, carrying a marker that names that assistant. The assistant can remove only its own holds.
+_Avoid_: booking, invite, reservation, block
+
 **Pairing**:
 Binding a person's Zulip account to their assistant: by the person's email when the assistant's bot is created, or by sending the bot a one-time code the person started on the platform.
 _Avoid_: linking, verification
@@ -801,7 +805,7 @@ The assistant's own Google Workspace address, from which it receives forwarded m
 _Avoid_: service account, bot email
 
 **Workspace key**:
-The platform secret the Google adapter signs tokens with, usable only for assistant mailboxes.
+The platform secret (`GOOGLE_WORKSPACE_KEY`) holding the one domain-wide-delegated Google service account the platform signs tokens with: for Gmail only as an active assistant mailbox, for the calendar only as an active person in the organization's domain, and for the directory only as the one configured admin subject (ADR 0039).
 _Avoid_: service account, OAuth token
 
 ## The repo and the build

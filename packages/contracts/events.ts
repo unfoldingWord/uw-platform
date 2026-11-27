@@ -93,6 +93,8 @@ export const eventNames = [
   'assistant_paired',
   'assistant_pairing_refused',
   'assistant_budget_set',
+  'assistant_hold_placed',
+  'assistant_hold_released',
 ] as const;
 
 export const eventNameSchema = z.enum(eventNames);

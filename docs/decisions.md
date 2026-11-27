@@ -709,7 +709,7 @@ A policy's page and the Policies screen show its level, target, enforcement, dat
 
 ## 0036 A person's assistant is a persona on their own harness, lent authority by that person, acting directly only within a closed low-risk set
 
-*2026-11-26. Changes 0002, 0003, 0005, 0015 and 0020. Changed by 0037 and 0038.*
+*2026-11-26. Changes 0002, 0003, 0005, 0015 and 0020. Changed by 0037, 0038 and 0039.*
 
 **Decision.**
 
@@ -792,6 +792,30 @@ A policy's page and the Policies screen show its level, target, enforcement, dat
 **Consequences.** `ASSISTANT_TURN` is bound in staging and production, in `wrangler.toml` and `wrangler.go-live.toml`. Preview has no Workflows, so a direct message there is recorded and its turn is not started (`not_wired` in the log). An abandoned turn counts no cost in the pool, so a dead host's model calls are spent but uncounted for that month. Whether assistants should keep running while the platform breaker pauses the platform's agents is open for the owner.
 
 **Changes / changed by.** Changes 0006 (a third hosted shape, the assistant turn, billed to the platform's OpenRouter account) and 0036 (item 10: the cap on all assistants together is the pool above, outside the platform cap).
+
+## 0039 The platform reaches Google with one domain-wide-delegated service account, allowlisted in code before it signs
+
+*2026-11-26. Changes 0036.*
+
+**Decision.**
+
+1. **One service account with domain-wide delegation.** The owner ruled it (issue #123, decision 1): one Google Cloud service account, its JSON key held as the platform secret `GOOGLE_WORKSPACE_KEY` in the Secrets Store (0022), uw-platform only, approved once by a Workspace super-admin for the scopes `gmail.modify`, `calendar.events`, `calendar.freebusy` and `admin.directory.user`. No person grants the platform their own Google consent, and no refresh token is stored.
+2. **An allowlist in code, checked before signing.** `apps/uw-platform/assistants/google/token.ts` refuses, before it signs an assertion, any subject or scope outside one table: an active assistant mailbox (`assistant_mailboxes`) may be the subject for Gmail; an active person whose address is in `GOOGLE_WORKSPACE_DOMAIN` may be the subject for the calendar; only the one `GOOGLE_WORKSPACE_ADMIN_SUBJECT` may be the subject for the directory. Every other combination answers `not_allowed` and nothing reaches Google.
+3. **The calendar is reached as the person, not through a share.** The owner ruled that the account impersonates each person for Calendar, replacing 0036's design in which people shared their calendar with their assistant's mailbox. Calendar calls are keyed by the person's id; the adapter resolves the address from `people` and refuses anyone who is not active in the domain.
+4. **A hold is the assistant's own, provably.** A hold is a private event on the person's primary calendar, inserted with `sendUpdates=none`, no attendees and a private extended property naming the harness and the hold; its Google event id is the hold id's hex, so a retried insert meets Google's conflict and places nothing new. Removal reads the event first and deletes only one carrying this assistant's marker. Free/busy is asked only for addresses that are active people in the domain.
+5. **A plain `fetch` client.** No Google SDK is added (AGENTS.md section 5): `googleapis` and `google-auth-library` depend on Node's HTTP stack and do not run on Workers, so the client is `fetch` plus `jose` (already a dependency) for RS256, with a five-second timeout per call. Access tokens are cached in the isolate's memory per service account, subject and scope set until five minutes before they expire; an access token is minted from a platform secret, not a vault credential, so 0020's rule against caching opened credential values does not reach it. A 401 forgets the cached token and mints once more.
+
+**Why.** The owner chose domain-wide delegation so that assistants work for everyone without each person granting consent, and asked that calendar access act as the person. The allowlist keeps the key from acting as anyone the platform has not named, and a hold's marker keeps an assistant from editing events it did not make.
+
+**Rejected.**
+- A share from each person's calendar to their assistant's mailbox (0036's design). Overruled by the owner; it also needed a probe per person.
+- An OAuth token per person or per assistant. It needs a consent flow and stored refresh tokens, and the owner chose delegation.
+- The Google Node client libraries. They do not run on Workers.
+- Caching tokens across isolates (KV or the cache API). An extra token request per cold isolate is cheap, and a shared cache would hold live tokens outside memory.
+
+**Consequences.** A leaked key can act as any user in the domain for the delegated scopes; Google cannot limit delegation to some users. The mitigations are the allowlist, the four scopes, key rotation and Workspace audit alerts on unexpected subjects. Scope names, the token exchange, the conflict on a reused event id and the free/busy shape come from Google's published API, not a live call; staging confirms them before go-live.
+
+**Changes / changed by.** Changes 0036 (calendar holds are placed acting as the person through domain-wide delegation, not through the person's share to the assistant mailbox).
 
 # Part 2. Workflow design decisions
 

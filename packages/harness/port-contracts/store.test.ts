@@ -24,6 +24,7 @@ const refusingTransaction: StoreTransaction = {
   assistantRequests: untouched(),
   assistantEffects: untouched(),
   assistantReminders: untouched(),
+  assistantHolds: untouched(),
   assistantBindings: untouched(),
   assistantPairingCodes: untouched(),
   assistantBudgets: untouched(),

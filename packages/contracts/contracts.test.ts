@@ -213,6 +213,7 @@ describe('closed sets added for v0.2.0', () => {
       'page_from_agent',
       'pr_title',
       'chat_quote',
+      'calendar_event',
     ]);
   });
 

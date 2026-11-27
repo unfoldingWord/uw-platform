@@ -98,6 +98,12 @@ function touchingPorts(touched: string[]): Ports {
       status: touch('runs'),
     },
     directMessages: { send: touch('directMessages') },
+    workspace: {
+      listEvents: touch('workspace.listEvents'),
+      freeBusy: touch('workspace.freeBusy'),
+      placeHold: touch('workspace.placeHold'),
+      removeHold: touch('workspace.removeHold'),
+    },
   };
 }
 

@@ -65,6 +65,8 @@ export const assistantEvidence = {
     reminderId: id,
     why: assistantEffectFailureSchema,
   }),
+  assistant_hold_placed: z.strictObject({ holdId: id, effectId: id }),
+  assistant_hold_released: z.strictObject({ holdId: id, effectId: id }),
   assistant_budget_set: z.strictObject({
     monthlyMinor: z.number().int().min(0).max(ASSISTANT_BUDGET_MOST_MINOR).nullable(),
   }),

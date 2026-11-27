@@ -23,6 +23,20 @@ import {
   type DraftedEffect,
   type SetReminderInput,
 } from './reminder-drafts.ts';
+import {
+  findFreeTime,
+  readMyCalendar,
+  type CalendarRead,
+  type FindTimeInput,
+  type FreeTime,
+  type ReadCalendarInput,
+} from './calendar-reads.ts';
+import {
+  holdTime,
+  releaseHold,
+  type HoldTimeInput,
+  type ReleaseHoldInput,
+} from './calendar-drafts.ts';
 import { fireDueReminders, type FireInput, type Fired } from './reminder-fire.ts';
 import type { TurnAddress } from './reminder-turn.ts';
 import { listReminders, type ListedReminders } from './reminders.ts';
@@ -42,6 +56,10 @@ export type AssistantCommands = {
   cancelReminder(caller: Caller, input: CancelReminderInput): Promise<KernelOutcome<DraftedEffect>>;
   listReminders(caller: Caller, input: TurnAddress): Promise<KernelOutcome<ListedReminders>>;
   fireDueReminders(caller: Caller, input: FireInput): Promise<KernelOutcome<Fired>>;
+  readMyCalendar(caller: Caller, input: ReadCalendarInput): Promise<KernelOutcome<CalendarRead>>;
+  findFreeTime(caller: Caller, input: FindTimeInput): Promise<KernelOutcome<FreeTime>>;
+  holdTime(caller: Caller, input: HoldTimeInput): Promise<KernelOutcome<DraftedEffect>>;
+  releaseHold(caller: Caller, input: ReleaseHoldInput): Promise<KernelOutcome<DraftedEffect>>;
   startPairing(caller: Caller, input: StartPairingInput): Promise<KernelOutcome<StartedPairing>>;
   completePairing(caller: Caller, input: CompletePairingInput): Promise<KernelOutcome<Paired>>;
   bindAddress(caller: Caller, input: BindAddressInput): Promise<KernelOutcome<Paired>>;
@@ -50,7 +68,10 @@ export type AssistantCommands = {
   unstartedRequests(caller: Caller, input: UnstartedInput): Promise<KernelOutcome<Unstarted>>;
 };
 
-type AssistantPorts = Pick<Ports, 'clock' | 'grants' | 'ids' | 'store' | 'directMessages'>;
+type AssistantPorts = Pick<
+  Ports,
+  'clock' | 'grants' | 'ids' | 'store' | 'directMessages' | 'workspace'
+>;
 
 export function createAssistantCommands(
   ports: AssistantPorts,
@@ -66,6 +87,10 @@ export function createAssistantCommands(
     cancelReminder: (caller, input) => cancelReminder(ports, caller, input),
     listReminders: (caller, input) => listReminders(ports, caller, input),
     fireDueReminders: (caller, input) => fireDueReminders(ports, caller, input),
+    readMyCalendar: (caller, input) => readMyCalendar(ports, caller, input),
+    findFreeTime: (caller, input) => findFreeTime(ports, caller, input),
+    holdTime: (caller, input) => holdTime(ports, caller, input),
+    releaseHold: (caller, input) => releaseHold(ports, caller, input),
     startPairing: (caller, input) => startPairing(ports, caller, input),
     completePairing: (caller, input) => completePairing(ports, caller, input),
     bindAddress: (caller, input) => bindAddress(ports, caller, input),

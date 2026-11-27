@@ -10,6 +10,7 @@ import type {
   Ports,
   StoreTransaction,
 } from '../ports.ts';
+import { applyCalendarDrafts } from './calendar-apply.ts';
 import { boundAssist } from './delegation.ts';
 import { deliver, type Delivered } from './deliver.ts';
 import { replyKeyOf } from './history.ts';
@@ -29,12 +30,16 @@ import {
 
 export type { FinishInput, Finished } from './settle.ts';
 
-type FinishPorts = Pick<Ports, 'clock' | 'grants' | 'ids' | 'store' | 'directMessages'>;
+type FinishPorts = Pick<
+  Ports,
+  'clock' | 'grants' | 'ids' | 'store' | 'directMessages' | 'workspace'
+>;
 type Scene = {
   readonly tx: StoreTransaction;
   readonly ports: FinishPorts;
   readonly context: RecordContext;
   readonly input: FinishInput;
+  readonly notes: readonly string[];
 };
 type OpenTurn = {
   readonly request: AssistantRequestRow;
@@ -93,7 +98,7 @@ async function claimed(scene: Scene, request: AssistantRequestRow): Promise<Assi
     requestId: request.id,
     kind: REPLY,
     idempotencyKey: replyKeyOf(request.id),
-    payload: { text: replyTextOf(input.result) },
+    payload: { text: [replyTextOf(input.result), ...scene.notes].join('\n\n') },
     createdAt: context.at,
   };
   if (!(await tx.assistantEffects.write.insert(effect))) {
@@ -160,8 +165,9 @@ export async function finishTurn(
   if (!isSystemPrincipal(caller.actor)) {
     return refused('not_permitted', { actor: caller.actor.identity });
   }
+  const notes = await applyCalendarDrafts(ports, caller, input);
   const context = recordContext(ports, caller, ports.clock.now());
-  const plan = await ports.store.transaction((tx) => planIn({ tx, ports, context, input }));
+  const plan = await ports.store.transaction((tx) => planIn({ tx, ports, context, input, notes }));
   if ('status' in plan) return plan;
   if (!plan.send) return accepted(plan.finished);
   const delivery = await deliver(
@@ -170,6 +176,6 @@ export async function finishTurn(
   );
   const closing = recordContext(ports, caller, ports.clock.now());
   return ports.store.transaction((tx) =>
-    closeIn({ tx, ports, context: closing, input }, plan.effect, delivery),
+    closeIn({ tx, ports, context: closing, input, notes }, plan.effect, delivery),
   );
 }

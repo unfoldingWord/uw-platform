@@ -86,3 +86,70 @@ export function knownTimeZone(name: string): boolean {
     return false;
   }
 }
+
+type WallTime = {
+  readonly year: number;
+  readonly month: number;
+  readonly day: number;
+  readonly hour: number;
+  readonly minute: number;
+};
+
+const DAY_MS = DAY_HOURS * HOUR_MINUTES * MINUTE_MS;
+
+function zoneOrUtc(timeZone: string): string {
+  return knownTimeZone(timeZone) ? timeZone : 'UTC';
+}
+
+function wallTimeOf(instant: Date, timeZone: string): WallTime {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: zoneOrUtc(timeZone),
+    hourCycle: 'h23',
+    year: 'numeric',
+    month: 'numeric',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: 'numeric',
+  }).formatToParts(instant);
+  const part = (type: Intl.DateTimeFormatPartTypes) =>
+    Number(parts.find((each) => each.type === type)?.value ?? '0');
+  return {
+    year: part('year'),
+    month: part('month'),
+    day: part('day'),
+    hour: part('hour') % DAY_HOURS,
+    minute: part('minute'),
+  };
+}
+
+function offsetMs(instant: Date, timeZone: string): number {
+  const wall = wallTimeOf(instant, timeZone);
+  const asUtc = Date.UTC(wall.year, wall.month - 1, wall.day, wall.hour, wall.minute);
+  const truncated = Math.floor(instant.getTime() / MINUTE_MS) * MINUTE_MS;
+  return asUtc - truncated;
+}
+
+export function zonedDateOf(instant: Date, timeZone: string): IsoDate {
+  const wall = wallTimeOf(instant, timeZone);
+  return formatDate(new Date(Date.UTC(wall.year, wall.month - 1, wall.day)));
+}
+
+export function zonedInstant(day: string, minuteOfDay: number, timeZone: string): Date {
+  const guess = parseDate(day).getTime() + minuteOfDay * MINUTE_MS;
+  const first = guess - offsetMs(new Date(guess), timeZone);
+  return new Date(guess - offsetMs(new Date(first), timeZone));
+}
+
+export function formatZonedMinute(instant: Date, timeZone: string): string {
+  const wall = wallTimeOf(instant, timeZone);
+  const date = formatDate(new Date(Date.UTC(wall.year, wall.month - 1, wall.day)));
+  return `${date} ${twoDigits(wall.hour)}:${twoDigits(wall.minute)}`;
+}
+
+export function daysAfterDate(day: string, days: number): IsoDate {
+  return formatDate(new Date(parseDate(day).getTime() + days * DAY_MS));
+}
+
+export function weekdayOfDate(day: string): number {
+  return parseDate(day).getUTCDay();
+}

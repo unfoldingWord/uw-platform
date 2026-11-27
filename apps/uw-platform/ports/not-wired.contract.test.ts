@@ -14,6 +14,8 @@ import { modelEngineNotWired } from './model-engine.not-wired.ts';
 import { notifierNotWired } from './notifier.not-wired.ts';
 import { runsNotWired } from './runs.not-wired.ts';
 import { storeNotWired } from './store.not-wired.ts';
+import { workspaceNotWired } from './workspace.not-wired.ts';
+import { describeWorkspaceNotWired } from '@uw/harness/port-contracts/workspace';
 
 describeStoreNotWired('uw-platform with no database', storeNotWired);
 describeGrantsNotWired('uw-platform with no database', grantsNotWired);
@@ -26,3 +28,4 @@ describeDirectMessagesNotWired(
   'uw-platform until the Zulip direct message slice',
   directMessagesNotWired,
 );
+describeWorkspaceNotWired('uw-platform with no Google Workspace key', workspaceNotWired);

@@ -262,6 +262,8 @@ export const unchangedNames: ReadonlySet<EventName> = new Set<EventName>([
   'assistant_paired',
   'assistant_pairing_refused',
   'assistant_budget_set',
+  'assistant_hold_placed',
+  'assistant_hold_released',
 ]);
 
 export const steppedNames: readonly EventName[] = [...steps.keys()];

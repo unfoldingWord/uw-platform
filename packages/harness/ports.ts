@@ -263,6 +263,55 @@ export type DirectDelivery =
   { readonly outcome: 'sent' } | { readonly outcome: 'not_paired' | 'dropped' | 'deadline_passed' };
 export type DirectMessages = { send(message: DirectMessage): Promise<DirectDelivery> };
 
+export type CalendarFailure = 'refused' | 'unavailable';
+export type HoldMarker = { readonly harnessId: string; readonly holdId: string };
+export type CalendarEntry = {
+  readonly eventId: string;
+  readonly startsAt: Date;
+  readonly endsAt: Date;
+  readonly allDay: boolean;
+  readonly title: string;
+  readonly location: string;
+  readonly description: string;
+  readonly organisedBySelf: boolean;
+  readonly attendees: number;
+  readonly hold: HoldMarker | null;
+};
+export type CalendarWindow = { readonly personId: string; readonly from: Date; readonly to: Date };
+export type CalendarListing =
+  | {
+      readonly outcome: 'listed';
+      readonly entries: readonly CalendarEntry[];
+      readonly truncated: boolean;
+    }
+  | { readonly outcome: CalendarFailure };
+export type FreeBusyQuery = CalendarWindow & { readonly colleagues: readonly string[] };
+export type BusyRange = { readonly startsAt: Date; readonly endsAt: Date };
+export type FreeBusyAnswer =
+  | {
+      readonly outcome: 'answered';
+      readonly busy: readonly BusyRange[];
+      readonly unknown: readonly string[];
+    }
+  | { readonly outcome: 'outside_organization'; readonly addresses: readonly string[] }
+  | { readonly outcome: CalendarFailure };
+export type CalendarHold = HoldMarker & {
+  readonly personId: string;
+  readonly title: string;
+  readonly startsAt: Date;
+  readonly endsAt: Date;
+};
+export type HoldPlacement =
+  { readonly outcome: 'held'; readonly eventId: string } | { readonly outcome: CalendarFailure };
+export type HoldRemoval = HoldMarker & { readonly personId: string; readonly eventId: string };
+export type HoldRemoved = { readonly outcome: 'released' | 'not_own_hold' | CalendarFailure };
+export type Workspace = {
+  listEvents(window: CalendarWindow): Promise<CalendarListing>;
+  freeBusy(query: FreeBusyQuery): Promise<FreeBusyAnswer>;
+  placeHold(hold: CalendarHold): Promise<HoldPlacement>;
+  removeHold(removal: HoldRemoval): Promise<HoldRemoved>;
+};
+
 export type RunState = 'running' | 'hibernated' | 'stopped' | 'completed' | 'failed';
 export type RunAction = 'start' | 'hibernate' | 'resume' | 'stop';
 export type RunStart = {
@@ -294,6 +343,7 @@ export type Ports = {
   readonly notifier: Notifier;
   readonly runs: Runs;
   readonly directMessages: DirectMessages;
+  readonly workspace: Workspace;
 };
 
 export type PortName = keyof Ports;
@@ -310,6 +360,7 @@ const portKeys: Readonly<Record<PortName, true>> = {
   notifier: true,
   runs: true,
   directMessages: true,
+  workspace: true,
 };
 
 export const portNames = Object.keys(portKeys) as readonly PortName[];

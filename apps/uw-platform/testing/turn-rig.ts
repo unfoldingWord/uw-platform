@@ -29,12 +29,15 @@ import {
   type FakeZulip,
 } from '../assistants/zulip/testing/fake-zulip.ts';
 import { turnStarterOf } from '../assistants/turn/start.ts';
+import { exportPKCS8, generateKeyPair } from 'jose';
+import { fakeGoogle, type FakeGoogle } from '../assistants/google/testing/fake-google.ts';
 
 export type TurnRig = {
   readonly db: Database;
   readonly env: Bindings;
   readonly harnessId: string;
   readonly zulip: FakeZulip;
+  readonly google: FakeGoogle;
   readonly gateway: FakeFetch;
   readonly fetcher: typeof fetch;
   readonly started: AssistantTurnStart[];
@@ -45,6 +48,8 @@ export type TurnRig = {
 const rowanId = '00000000-0000-4000-8000-000000000001';
 const pageId = '00000000-0000-4000-8000-000000008901';
 const GATEWAY = 'https://gateway.ai.cloudflare.com/';
+const GOOGLE_TOKEN = 'https://oauth2.googleapis.com/';
+const GOOGLE_APIS = 'https://www.googleapis.com/';
 
 function caller(actor: Principal): Caller {
   return { actor, traceId: randomUUID(), requestId: null };
@@ -111,8 +116,22 @@ function urlOf(input: Parameters<typeof fetch>[0]): string {
   return typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
 }
 
+async function googleFor(email: string) {
+  const google = fakeGoogle();
+  const pair = await generateKeyPair('RS256', { extractable: true });
+  google.trust(pair.publicKey);
+  google.addUser(email);
+  const key = JSON.stringify({
+    type: 'service_account',
+    client_email: 'assistants@uw-platform.iam.gserviceaccount.com',
+    private_key: await exportPKCS8(pair.privateKey),
+  });
+  return { google, key };
+}
+
 async function world(connectionString: string) {
   const kms = await fakeKms();
+  const { google, key } = await googleFor('rowan.test@unfoldingword.org');
   const zulip = fakeZulip();
   zulip.addUser('rowan.test@unfoldingword.org', 'Rowan', 5001);
   const gateway = fakeFetch();
@@ -120,6 +139,8 @@ async function world(connectionString: string) {
     const url = urlOf(input);
     if (url.startsWith(FAKE_ZULIP_SITE)) return zulip.fetch(input, init);
     if (url.startsWith(GATEWAY)) return gateway.fetch(input, init);
+    if (url.startsWith(GOOGLE_TOKEN) || url.startsWith(GOOGLE_APIS))
+      return google.fetch(input, init);
     return kms.fetcher(input, init);
   };
   const env: Bindings = {
@@ -132,8 +153,10 @@ async function world(connectionString: string) {
     OPENROUTER_API_KEY: 'openrouter-key',
     AI_GATEWAY_ACCOUNT_ID: 'account',
     AI_GATEWAY_ID: 'gateway',
+    GOOGLE_WORKSPACE_KEY: key,
+    GOOGLE_WORKSPACE_DOMAIN: 'unfoldingword.org',
   };
-  return { zulip, gateway, fetcher, env };
+  return { zulip, google, gateway, fetcher, env };
 }
 
 async function botFor(

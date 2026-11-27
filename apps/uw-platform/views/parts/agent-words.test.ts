@@ -7,6 +7,8 @@ describe('PA-17 the agent card does not call the assistant verbs unbuilt', () =>
     expect(names).not.toContain('set_reminder');
     expect(names).not.toContain('cancel_reminder');
     expect(names).not.toContain('list_reminders');
+    expect(names).not.toContain('read_my_calendar');
+    expect(names).not.toContain('hold_time');
     expect(names).toContain('list_gifts');
   });
 });

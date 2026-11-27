@@ -13,6 +13,7 @@ import { hubOf } from '../../ports/hub.ts';
 import { platformModelEngine } from '../../ports/model-engine.ts';
 import { notifierOf } from '../../ports/notifier.ts';
 import { directMessagesOf } from '../direct-messages.ts';
+import { workspaceOf } from '../workspace.ts';
 import { connectAssistantHost } from '../../mcp/assistant-host.ts';
 import type { AssistantTurnDeps, HostOpener } from './run.ts';
 import { assistantKernelSettings } from './settings.ts';
@@ -36,10 +37,11 @@ type Fetcher = typeof fetch;
 function kernelOf(env: Bindings, database: DatabaseHandle, logger: Logger, send: Fetcher): Kernel {
   const notifier = notifierOf(env, database, consoleSink);
   const directMessages = directMessagesOf({ env, database, fetch: send });
+  const workspace = workspaceOf({ env, database, fetch: send });
   return platformKernel(
     database,
     systemClock,
-    hubWiring(hubOf(env, logger), { notifier, directMessages }),
+    hubWiring(hubOf(env, logger), { notifier, directMessages, workspace }),
     assistantKernelSettings(env),
   );
 }
