@@ -56,7 +56,12 @@ export async function redactRequests(
     .limit(bounded(query.limit, REDACT_MOST, 'a redaction'));
   const rows = await executor
     .update(assistantRequests)
-    .set({ note: '', untrustedParts: sql`'[]'::jsonb`, redactedAt: query.at })
+    .set({
+      note: '',
+      untrustedParts: sql`'[]'::jsonb`,
+      researchSources: sql`'[]'::jsonb`,
+      redactedAt: query.at,
+    })
     .where(inArray(assistantRequests.id, due))
     .returning({ id: assistantRequests.id, harnessId: assistantRequests.harnessId });
   return rows.sort((a, b) => (a.id < b.id ? -1 : 1));

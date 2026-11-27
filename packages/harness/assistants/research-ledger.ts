@@ -72,11 +72,18 @@ function under(kind: AssistantResearchKind, request: Counted, day: Counted): boo
   return inRequest < limitOf(RESEARCH_PER_REQUEST, kind) && inDay < limitOf(RESEARCH_PER_DAY, kind);
 }
 
+export type Admission = (scene: TurnScene) => Promise<Refused | null>;
+
+const admitted: Admission = async () => null;
+
 async function reservedIn(
   scene: TurnScene,
   kind: AssistantResearchKind,
   turnId: string,
+  admit: Admission,
 ): Promise<Reserved | Refused> {
+  const refusal = await admit(scene);
+  if (refusal !== null) return refusal;
   const request = await usedInRequest(scene);
   const day = await usedToday(scene);
   if (!under(kind, request, day)) {
@@ -100,11 +107,12 @@ export function reserveResearch(
   caller: Caller,
   input: TurnAddress,
   kind: AssistantResearchKind,
+  admit: Admission = admitted,
 ): Promise<Reserved | Refused> {
   const context = recordContext(ports, caller, ports.clock.now());
   return ports.store.transaction(async (tx) => {
     const scene = await turnSceneOf(tx, ports, context, caller, input);
-    return 'status' in scene ? scene : reservedIn(scene, kind, input.turnId);
+    return 'status' in scene ? scene : reservedIn(scene, kind, input.turnId, admit);
   });
 }
 

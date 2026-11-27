@@ -106,7 +106,7 @@ export const personAudit = declareTable(
   },
   { classification: 'restricted', offlineEligibility: 'never' },
   (t) => [
-    check('person_audit_action_known', oneOf(t.action, ['approve', 'decline'])),
+    check('person_audit_action_known', oneOf(t.action, ['approve', 'decline', 'deactivate'])),
     check('person_audit_actor_is_human', matches(t.actor, HUMAN_IDENTITY_PATTERN)),
     check('person_audit_before_known', oneOf(t.before, personStatusSchema.options)),
     check('person_audit_after_known', oneOf(t.after, personStatusSchema.options)),

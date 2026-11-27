@@ -797,7 +797,11 @@ What an assistant does with `search_web`, `read_web_page` and `find_flights`: re
 _Avoid_: browsing, booking, scraping
 
 **Web address guard**:
-The check every page address passes before the platform fetches it, and again after each redirect: `http` or `https`, no user name or password, port 80 or 443, and a host that, as written and as it resolves, is not private, loopback, link-local, a metadata address or a local name. A refused address is `blocked` with a closed reason (`webAddressRefusal`).
+The check every page address passes before the platform fetches it, and again after each redirect: `http` or `https`, no user name or password, port 80 or 443, and a host that, as written and as it resolves, is not private, loopback, link-local, a metadata address or a local name. A refused address is `blocked` with a closed reason (`webAddressRefusal`). A rendered page is held to the checked site.
+
+**Offered address**:
+An address a research read may take: one of this request's search results, or one written in the person's own message. Any other is refused `address_not_offered` before anything is fetched, so an injected instruction cannot choose where the assistant sends a request.
+_Avoid_: allowlist, whitelist
 _Avoid_: allowlist, firewall
 
 **Flight offer**:
@@ -857,7 +861,7 @@ What a person does to their own assistant. Turning on numbers it and starts **pr
 _Avoid_: enable, activate (activation is a persona's), install
 
 **Leaver**:
-A person whose status is no longer `active`. Every minute the platform turns off a leaver's assistant through the same path as the person's own turning off.
+A person whose status is no longer `active`, usually because an org admin **deactivated** them (`deactivate_person`). Every minute the platform turns off a leaver's assistant through the same path as the person's own turning off.
 _Avoid_: offboarded, departed
 
 **Provisioning**:

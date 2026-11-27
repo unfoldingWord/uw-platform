@@ -10,6 +10,7 @@ import { assistantEffects, assistantRequests, assistantSettings } from '../schem
 import { effectSettled } from './assistant-pool.ts';
 import { effectSettledSql } from './assistant-spend-sql.ts';
 import { recentRequests, redactEffects, redactRequests } from './assistant-history.ts';
+import { addResearchSources, researchSources } from './assistant-research-sources.ts';
 import { unstartedRequests } from './assistant-unstarted.ts';
 import { deliveredReplyFor } from './events.ts';
 import { refusing } from './refusal.ts';
@@ -178,6 +179,7 @@ export function bindAssistantRequests(executor: AnyExecutor): AssistantRequestsG
       countSince: (harnessId, since) => requestsSince(executor, harnessId, since),
       unstarted: (query) => unstartedRequests(executor, query),
       recent: (harnessId, limit) => recentRequests(executor, harnessId, limit, toRequest),
+      researchSources: (requestId) => researchSources(executor, requestId),
     },
     write: {
       insert: (row) =>
@@ -187,6 +189,8 @@ export function bindAssistantRequests(executor: AnyExecutor): AssistantRequestsG
             .values({ ...row, untrustedParts: [...row.untrustedParts] });
         }),
       redact: (query) => refusing(() => redactRequests(executor, query)),
+      addResearchSources: (requestId, urls) =>
+        refusing(() => addResearchSources(executor, requestId, urls)),
     },
   };
 }

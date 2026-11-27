@@ -21,6 +21,7 @@ const reply = `The conference is in Geneva (${site}). An early bird ticket is 25
 function seed(rig: TurnRig): void {
   rig.research.addResults('Geneva translation conference 2027 tickets', [
     { title: 'Bible Translation Conference 2027', url: site, snippet: 'Geneva, March 2027' },
+    { title: 'Tickets', url: tickets, snippet: 'Early bird tickets' },
   ]);
   rig.research.addPage(tickets, {
     title: 'Tickets',
@@ -93,7 +94,7 @@ async function researchesAndCites(rig: TurnRig): Promise<void> {
   const kinds = events
     .filter((event) => event.name === 'assistant_research_used')
     .map((event) => event.evidence['kind']);
-  expect(kinds).toEqual(['web_search', 'page_read', 'page_rendered', 'page_read', 'flight_search']);
+  expect(kinds).toEqual(['web_search', 'page_read', 'page_rendered', 'flight_search']);
   expect(JSON.stringify(events)).not.toContain('btc2027');
 }
 

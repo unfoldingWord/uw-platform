@@ -743,7 +743,7 @@ A policy's page and the Policies screen show its level, target, enforcement, dat
 
 **Consequences.** PRD section 4.2 gains "Assistants" with requirements PA-1 onward. "An agent can produce a deliverable and cannot send it" and "no route reaches an external effect without crossing a human gate" each gain one named exception: the closed set above. A reply direct-messaged to its own person carries content; nothing posted to a stream does. Content-free assistant events are internal like every harness's events: readers of the assistants area and org-scope readers (0015) can see that a request, turn or effect kind happened and when, and never what it said. The request text goes to the model vendor; which provider, how long text is kept, which area holds the personal harnesses and how Google is reached are open questions in the PRD.
 
-**Changes / changed by.** Changes 0002 (the registry may gain verbs that draft effects which take effect without a person, only within this set), 0003 (the Ship constraint is untouched; a twin constraint holds the assistant's set), 0005 (the grantor of `assist` is the harness's person, not an area admin), 0015 (the principal under an `assist` delegation holds its person's grants clamped to `viewer`, in every area the person reads) and 0020 (an assistant effect is not a connector; it runs at the turn's exit through its own port). Changed by 0046 (the read-only research verbs).
+**Changes / changed by.** Changes 0002 (the registry may gain verbs that draft effects which take effect without a person, only within this set), 0003 (the Ship constraint is untouched; a twin constraint holds the assistant's set), 0005 (the grantor of `assist` is the harness's person, not an area admin), 0015 (the principal under an `assist` delegation holds its person's grants clamped to `viewer`, in every area the person reads) and 0020 (an assistant effect is not a connector; it runs at the turn's exit through its own port). Changed by 0046 (the read-only research verbs) and 0048 (a turn reads the role from code, not the stored persona body).
 
 ## 0037 One Zulip bot per person, paired by email or a one-time code, its key sealed by KMS
 
@@ -995,7 +995,7 @@ A policy's page and the Policies screen show its level, target, enforcement, dat
 
 **Consequences.** DNS over HTTPS is checked before the Worker's own fetch resolves the name, so a name that changes its answer between the two (rebinding) is still refused only if Cloudflare's egress refuses private addresses; that, Brave's and Duffel's response shapes, the Browser Run `markdown` quick action on the binding and its answer shape are staging probes (s12.1 to s12.6). A test Duffel token answers only Duffel's test airline. Brave's plan terms (rate, storage of results) and Duffel's search-to-book terms are the owner's to accept.
 
-**Changes / changed by.** Adds to 0036 the research verbs, which reach no person and change nothing.
+**Changes / changed by.** Adds to 0036 the research verbs, which reach no person and change nothing. Changed by 0048: a read needs an address this request offered, and a rendered page stays on its checked site.
 
 ## 0047 A leaver's assistant is turned off by the platform, an org admin can turn off any, names are checked against groups, and every proposal copies its person
 
@@ -1019,7 +1019,33 @@ A policy's page and the Policies screen show its level, target, enforcement, dat
 
 **Consequences.** The platform has no command that turns an active person's status to `disabled`; declining applies only to a pending person. Until one exists, a leaver offboarded by revoking grants and suspending them in Google keeps status `active`, so an org admin turns their assistant off from its admin view (PRD open question 32). The group scope must be added to domain-wide delegation and the admin subject given Groups: Read before staging probe s13.1 passes.
 
-**Changes / changed by.** Changes 0039's scope list (a fifth scope, for the admin subject only), 0040 (turning off is no longer only the person's own command) and 0043 (every proposed send includes its person).
+**Changes / changed by.** Changes 0039's scope list (a fifth scope, for the admin subject only), 0040 (turning off is no longer only the person's own command) and 0043 (every proposed send includes its person). Changed by 0048: an org admin can now deactivate an active person.
+
+## 0048 A research read takes only an offered address, a rendered page stays on its site, an org admin deactivates a leaver, and a turn follows the role in code
+
+*2026-11-27. Changes 0036, 0046 and 0047. Review fixes.*
+
+**Decision.**
+
+1. **`read_web_page` reads only an address this request offered.** The kernel (`offeredOnly`, `packages/harness/assistants/research-sources.ts`) admits a read only when the address, normalised (scheme and host lower case, a bare host given `/`), is one of this request's search results or is written in the person's own note. Search results are kept in `assistant_requests.research_sources` (at most 50, written by `searchWeb` after Brave answers, cleared with the note when the request is redacted, held by `assistant_requests_redacted_empty`). Any other address is refused `not_permitted` with `address_not_offered`, before it is counted and before any port call, so neither the page fetch nor the DNS over HTTPS lookup of its host carries text the model composed. Addresses inside forwarded or quoted parts, inside pages read, and from another request are not offered.
+2. **A rendered page stays on the site that was checked.** The Browser Run markdown quick action carries `allowRequestPattern: ["^<checked origin>/"]` (`browser-rendering.ts`), so every request the headless browser makes, a redirect or a script's navigation included, must stay on the scheme, host and port the guard passed; anything else is aborted. The cited address is that checked one.
+3. **An org admin deactivates a person.** `deactivate_person` (`POST /api/acl/commands/deactivate_person`, platform command, contract 14.27.0) moves an `active` person to `disabled`, refuses the actor's own record, and is checked for org admin at the route and again inside the transaction with grants locked, like approve and decline; it writes `person_audit` with action `deactivate`. The person is refused at the edge on the next request, and the minute job's `assistant-leavers` step turns their assistant off (0047). Approving them again restores them. Access shows it to org admins as "Deactivate a person".
+4. **A turn's instructions come from the role in code.** `loopOf` builds the instructions from `assistantRoleBody(persona.identity)`, the same text a new persona page is seeded with, plus the person's addendum and the context. The stored persona page body is no longer read for an assistant's turn, so a change to the role reaches every assistant at once, including those provisioned before it.
+
+**Why.** Review found four gaps. A model that reads private pages and untrusted text in one turn could be told by an injected page to call `read_web_page` with private text in the address; the fence is only an instruction, so the kernel must decide which addresses exist. An address that came from Brave, or that the person typed, existed before the turn read anything private, so it cannot carry what the turn read. The headless browser loads the page again by itself and would follow a redirect or a script anywhere, unchecked. No command moved an active person out of `active`, so the leaver sweep could not fire for a real leaver. And an assistant provisioned before the research verbs had the verbs but not the rules for them.
+
+**Rejected.**
+- Stripping the query and refusing long path segments: the host name alone carries text, through the DNS lookup.
+- Refusing `read_web_page` after a private read in the same turn: it needs taint tracking across every read verb, and it would refuse the itinerary the issue asks for.
+- Following links found on pages read: a page's links are chosen by its author and widen what an injected page can steer; asked of the owner.
+- Recording offered addresses in `harness_events`: events stay content-free and outlive the request's redaction.
+- Checking the browser's final address: the markdown quick action does not report it.
+- Rewriting stored persona bodies by migration: every later change to the role would need another, and a migration cannot know which persona page is current.
+- Syncing Google Workspace suspension into the person's status: a directory call per person per minute; the platform's status is the record, and an org admin's command is the decision.
+
+**Consequences.** The model must search before it reads a page the person did not name, which costs a search from the cap. A rendered page whose scripts load from another site renders without them and may come back thin or `unreadable`. Whether Browser Run accepts `allowRequestPattern` on the markdown quick action and aborts a cross-site navigation is staging probe s14.1; s14.2 and s14.3 walk the other two fixes. The stored persona page body is now a record of the seed, not the instructions.
+
+**Changes / changed by.** Changes 0036 (item 2: the role is read from code at every turn), 0046 (items 3 and 4: a read needs an offered address, and rendering is pinned to the checked site) and 0047 (its consequence: an active person can now be deactivated).
 
 # Part 2. Workflow design decisions
 

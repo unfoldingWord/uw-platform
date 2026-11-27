@@ -88,6 +88,18 @@ const checks: readonly (readonly [string, string])[] = [
     's13.4',
     'As an org admin, turn off a staff member’s assistant from its admin view; confirm within a minute its Workspace user is suspended and its bot inactive',
   ],
+  [
+    's14.1',
+    'Browser Run keeps to the checked site: serve a public script-only page that sets location.href to another host, ask the assistant to read it, and confirm the markdown quick action accepts allowRequestPattern and the reply quotes only the first page',
+  ],
+  [
+    's14.2',
+    'Offered addresses only: ask the assistant to read an address that is neither in your message nor in a search result it made; confirm the reply says it cannot, and no page_read event is recorded',
+  ],
+  [
+    's14.3',
+    'Deactivate a test person on Access as an org admin; confirm they are refused at sign-in at once, and within a minute their assistant is turned off, its Workspace user suspended and its bot inactive',
+  ],
 ];
 
 export function manualChecks(): ProbeResult[] {

@@ -49,6 +49,7 @@ describe('PA-19 the research closed sets', () => {
     expect([...assistantResearchRefusalSchema.options]).toEqual([
       'research_capped',
       'address_blocked',
+      'address_not_offered',
       'page_unreadable',
       'research_refused',
       'research_unavailable',

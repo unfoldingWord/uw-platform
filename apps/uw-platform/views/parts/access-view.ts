@@ -31,6 +31,7 @@ export type AccessView = {
   readonly orgAdmin: boolean;
   readonly grantScopes: readonly Choice[];
   readonly grantable: readonly Choice[];
+  readonly deactivatable: readonly Choice[];
   readonly waiting: readonly AccessPerson[];
   readonly holders: readonly Holder[];
   readonly filterScopes: readonly Choice[];
@@ -120,6 +121,7 @@ const actionWords: ReadonlyMap<string, string> = new Map([
   ['bootstrap', 'Granted at setup'],
   ['approve', 'Approved'],
   ['decline', 'Declined'],
+  ['deactivate', 'Deactivated'],
 ]);
 
 const noLongerListed = 'Someone no longer listed';
@@ -197,6 +199,11 @@ export function accessViewOf(
     grantable: records.people
       .filter((person) => person.status === 'active' || (orgAdmin && person.status === 'pending'))
       .map(personChoice),
+    deactivatable: orgAdmin
+      ? records.people
+          .filter((person) => person.status === 'active' && person.personId !== viewer.personId)
+          .map(personChoice)
+      : [],
     waiting: admin ? waitingOf(records, orgAdmin) : [],
     holders: holdersOf(
       records.people,

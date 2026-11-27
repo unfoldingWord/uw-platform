@@ -13,6 +13,7 @@ export const platformCommandNameSchema = z.enum([
   'revoke_routine',
   'approve_person',
   'decline_person',
+  'deactivate_person',
   'save_profile_body',
   'create_credential',
   'rotate_credential',

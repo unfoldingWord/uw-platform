@@ -4,7 +4,12 @@ import type { RunPersona } from '../runs/types.ts';
 import { renderUntrusted, untrusted } from '../untrusted.ts';
 import { HISTORY_PAIRS, HISTORY_WINDOW_MS, historyOf } from './history.ts';
 import { instructionsOf } from './instructions.ts';
-import { ASSISTANT_TOOLSET, ASSISTANT_TURN_LIMIT, ASSISTANT_VERBS } from './role.ts';
+import {
+  ASSISTANT_TOOLSET,
+  ASSISTANT_TURN_LIMIT,
+  ASSISTANT_VERBS,
+  assistantRoleBody,
+} from './role.ts';
 
 export type AssistantLoop = {
   readonly engine: Engine;
@@ -70,7 +75,7 @@ export async function loopOf(tx: StoreTransaction, scene: LoopScene): Promise<As
     model: persona.model,
     pinnedProvider: persona.provider,
     persona: persona.identity,
-    instructions: instructionsOf(persona.instructions, settings, {
+    instructions: instructionsOf(assistantRoleBody(persona.identity), settings, {
       now: at,
       channel: request.channel,
     }),

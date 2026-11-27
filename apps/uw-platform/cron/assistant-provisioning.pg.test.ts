@@ -7,6 +7,7 @@ import { createKernel, type Kernel } from '@uw/harness';
 import { platformKernelSettings } from '../assistants/area.ts';
 import { directMessagesOf } from '../assistants/direct-messages.ts';
 import type { Bindings } from '../env.ts';
+import { deactivatePerson } from '../people/approval.ts';
 import { platformPorts } from '../kernel.ts';
 import { allEvents } from '../testing/commands.ts';
 import { personOn } from '../testing/kernel.ts';
@@ -138,9 +139,51 @@ async function turnsOffALeaver(db: Database, env: Bindings): Promise<void> {
   expect(provisioned.map((event) => event.evidence)).toEqual([{ goal: 'disabled' }]);
 }
 
+const orgAdminId = '00000000-0000-4000-8000-0000000e1602';
+
+async function orgAdminOn(db: Database) {
+  await seedPerson(db, { id: orgAdminId, email: 'org.admin@unfoldingword.org' });
+  await seedGrant(db, {
+    id: randomUUID(),
+    personId: orgAdminId,
+    role: 'admin',
+    scopeKind: 'org',
+    scopeArea: null,
+    grantedAt: new Date(start.getTime() - DAY_MS),
+    expiresAt: null,
+  });
+  return personOn(db, orgAdminId, 'org.admin@unfoldingword.org', start);
+}
+
+async function deactivatedLeaver(db: Database, env: Bindings): Promise<void> {
+  const ana = await anaOn(db);
+  const admin = await orgAdminOn(db);
+  const caller = { actor: ana, traceId: randomUUID(), requestId: null };
+  const on = await kernelAt(db, start).assistants.enable(caller, {
+    harnessId: randomUUID(),
+    name: 'barnabas',
+  });
+  if (on.status !== 'accepted') throw new Error(on.reason);
+  const command = {
+    command: 'deactivate_person' as const,
+    requestId: randomUUID(),
+    personId: anaId,
+  };
+  expect(await deactivatePerson(db, admin, command, randomUUID(), start)).toEqual({ ok: true });
+  const lines: Line[] = [];
+  await minuteJob(env, depsAt(new Date(start.getTime() + 60_000), lines));
+  const step = lines.filter((line) => line['step'] === 'assistant-leavers');
+  expect(step.map((line) => line['disabled'])).toEqual([1]);
+  const names = (await allEvents(db, on.value.harnessId)).map((event) => event.name);
+  expect(names).toContain('assistant_disabled');
+}
+
 describe.skipIf(!testServer)("PA-20 the minute job turns off a leaver's assistant", () => {
   it('turns off the assistant of a person no longer active and drives its suspension', () =>
     withDatabase(turnsOffALeaver));
+
+  it('turns off the assistant of a person an org admin deactivated', () =>
+    withDatabase(deactivatedLeaver));
 });
 
 describe.skipIf(!testServer)('PA-14 the crons that provision and delete assistants', () => {

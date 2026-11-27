@@ -1,6 +1,7 @@
 import { Hono, type Context } from 'hono';
 import {
   approvePersonCommandSchema,
+  deactivatePersonCommandSchema,
   declinePersonCommandSchema,
   disablePersonAssistantCommandSchema,
   grantRoleCommandSchema,
@@ -17,7 +18,7 @@ import { setAssistantBudget } from '../assistants/budget-command.ts';
 import { disablePersonAssistant } from '../assistants/turn-off-command.ts';
 import { malformed, readJson, toOutcome, type CommandResult } from '../http/commands.ts';
 import { refuse, reply } from '../http/outcomes.ts';
-import { approvePerson, declinePerson } from '../people/approval.ts';
+import { approvePerson, deactivatePerson, declinePerson } from '../people/approval.ts';
 import { saveProfileBody } from '../people/profile-body.ts';
 import { accessScreen } from '../views/screens/access.tsx';
 import { grantRole, revokeRole } from './grant-commands.ts';
@@ -66,6 +67,15 @@ const handlers = new Map<string, Run>([
       const parsed = declinePersonCommandSchema.safeParse(body);
       if (!parsed.success) return null;
       const result = await declinePerson(db, actor, parsed.data, traceId, at);
+      return { requestId: parsed.data.requestId, result };
+    },
+  ],
+  [
+    'deactivate_person',
+    async (db, actor, body, traceId, at) => {
+      const parsed = deactivatePersonCommandSchema.safeParse(body);
+      if (!parsed.success) return null;
+      const result = await deactivatePerson(db, actor, parsed.data, traceId, at);
       return { requestId: parsed.data.requestId, result };
     },
   ],

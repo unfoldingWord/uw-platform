@@ -4,6 +4,7 @@ import {
   confirmRevealCommandSchema,
   createCredentialCommandSchema,
   declareJdMapCommandSchema,
+  deactivatePersonCommandSchema,
   declinePersonCommandSchema,
   grantRevealCommandSchema,
   grantRoleCommandSchema,
@@ -32,6 +33,7 @@ const schemas = new Map<string, ZodType>([
   ['revoke_role', revokeRoleCommandSchema],
   ['approve_person', approvePersonCommandSchema],
   ['decline_person', declinePersonCommandSchema],
+  ['deactivate_person', deactivatePersonCommandSchema],
   ['save_profile_body', saveProfileBodyCommandSchema],
   ['name_category', nameCategoryCommandSchema],
   ['declare_jd_map', declareJdMapCommandSchema],
@@ -199,6 +201,7 @@ const shapes: ReadonlyMap<string, Shape> = new Map<string, Shape>([
   ['revoke_role', (given) => ({ grantId: given.get('grantId') })],
   ['approve_person', personOnly],
   ['decline_person', personOnly],
+  ['deactivate_person', personOnly],
   [
     'save_profile_body',
     (given) => ({

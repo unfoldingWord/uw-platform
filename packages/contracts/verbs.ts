@@ -250,7 +250,7 @@ export const verbRegistry: readonly VerbDefinition[] = [
     'read_web_page',
     'assistant',
     null,
-    'Read the untrusted text of one public http or https page; private, local and odd-port addresses are refused; capped per turn and per day. Served only in an assistant turn.',
+    "Read one public page whose exact address came from this request's search results or the person's message; others, and private or odd-port ones, are refused. Served only in an assistant turn.",
     false,
   ),
   verb(

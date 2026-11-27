@@ -1,0 +1,2 @@
+ALTER TABLE "person_audit" DROP CONSTRAINT "person_audit_action_known";--> statement-breakpoint
+ALTER TABLE "person_audit" ADD CONSTRAINT "person_audit_action_known" CHECK ("person_audit"."action" IN ('approve', 'decline', 'deactivate'));

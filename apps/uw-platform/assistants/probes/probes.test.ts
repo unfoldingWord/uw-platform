@@ -288,3 +288,12 @@ describe('go-live: a probe whose answer departs from the recorded shape fails', 
     expect(reportLines(results).some((line) => /^FAIL\s+s3\.3/.test(line))).toBe(true);
   });
 });
+
+describe('the probes of the review fixes', () => {
+  it('lists the rendering, offered-address and deactivation checks as manual', async () => {
+    const results = await probed(world(), true);
+    const manual = results.filter((result) => result.status === 'manual').map((r) => r.id);
+    expect(manual).toEqual(expect.arrayContaining(['s14.1', 's14.2', 's14.3']));
+    expect(results.find((result) => result.id === 's14.1')?.detail).toMatch(/allowRequestPattern/);
+  });
+});

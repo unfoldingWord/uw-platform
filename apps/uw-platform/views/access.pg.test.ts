@@ -120,6 +120,11 @@ async function orgAdminSeesEverything(db: Database): Promise<void> {
   expect(scopeChoices(document)[0]).toBe('Whole organization');
   expect(scopeChoices(document)).toHaveLength(11);
   expect(document.querySelector('button[value="approve_person"]')).not.toBeNull();
+  expect(document.querySelector('button[value="deactivate_person"]')).not.toBeNull();
+  const leaving = [...document.querySelectorAll('select[name="personId"]')].at(-1);
+  const choices = [...(leaving?.querySelectorAll('option') ?? [])].map((o) => o.textContent);
+  expect(choices).toContain(INFRA.email);
+  expect(choices.some((choice) => choice?.includes('rowan'))).toBe(false);
   expect(document.querySelector('nav a[href="/access"]')).not.toBeNull();
   expect(await screenProblems(text)).toEqual([]);
 }
@@ -134,6 +139,7 @@ async function areaAdminStaysInTheirArea(db: Database): Promise<void> {
   expect(text).not.toContain('80-89 Tech');
   expect(scopeChoices(document)).toEqual(['30-39 Infrastructure']);
   expect(document.querySelector('button[value="approve_person"]')).toBeNull();
+  expect(document.querySelector('button[value="deactivate_person"]')).toBeNull();
   expect(text).toContain('An org admin approves sign-ins');
   const other = await send(db, INFRA.email, {
     command: 'revoke_role',

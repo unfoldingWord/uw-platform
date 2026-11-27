@@ -7,6 +7,7 @@ type FakePage = {
   readonly text: string;
   readonly needsRendering?: boolean;
   readonly contentType?: string;
+  readonly navigatesTo?: string;
 };
 type FakeRequest = {
   readonly method: string;
@@ -154,12 +155,38 @@ function routed(state: State, url: URL, init: RequestInit | undefined): Response
   return web(state, url);
 }
 
+function prefixOf(pattern: string): string | null {
+  if (!pattern.startsWith('^')) return null;
+  const literal = pattern.slice(1).replace(/\\(.)/g, '$1');
+  return /[*+?()[\]{}|$]/.test(literal) ? null : literal;
+}
+
+function allowedBy(patterns: readonly string[] | undefined, url: string): boolean {
+  if (patterns === undefined) return true;
+  return patterns.some((pattern) => {
+    const prefix = prefixOf(pattern);
+    if (prefix === null)
+      throw new RangeError(`the fake browser reads only prefix patterns: ${pattern}`);
+    return url.startsWith(prefix);
+  });
+}
+
+function landedOn(state: State, start: string, patterns: readonly string[] | undefined) {
+  const page = state.pages.get(start);
+  const next = page?.navigatesTo;
+  if (next === undefined || !allowedBy(patterns, next)) return page;
+  state.rendered.push(next);
+  return state.pages.get(next) ?? { title: 'Elsewhere', text: `Loaded ${next}` };
+}
+
 function browserOf(state: State): FakeResearch['browser'] {
   return {
     quickAction: async (action, options) => {
       if (action !== 'markdown' || !('url' in options)) return new Response('no', { status: 400 });
+      const patterns = 'allowRequestPattern' in options ? options.allowRequestPattern : undefined;
+      if (!allowedBy(patterns, options.url)) return json({ success: false, errors: [] }, 422);
       state.rendered.push(options.url);
-      const page = state.pages.get(options.url);
+      const page = landedOn(state, options.url, patterns);
       if (page === undefined) return json({ success: false, errors: [] }, 422);
       return json({ success: true, result: `# ${page.title}\n\n${page.text}` });
     },

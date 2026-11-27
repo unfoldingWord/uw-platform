@@ -5,6 +5,7 @@ export const FLIGHT_OFFERS_MOST = 8;
 export const WEB_ADDRESS_LONGEST = 2048;
 export const WEB_PAGE_TEXT_MOST = 20_000;
 export const WEB_REDIRECTS_MOST = 3;
+export const RESEARCH_SOURCES_MOST = 50;
 
 export const assistantResearchKindSchema = z.enum([
   'web_search',
@@ -15,6 +16,7 @@ export const assistantResearchKindSchema = z.enum([
 export const assistantResearchRefusalSchema = z.enum([
   'research_capped',
   'address_blocked',
+  'address_not_offered',
   'page_unreadable',
   'research_refused',
   'research_unavailable',

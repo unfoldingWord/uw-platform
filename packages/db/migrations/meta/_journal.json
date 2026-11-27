@@ -589,6 +589,20 @@
       "when": 1795792227920,
       "tag": "0085_assistant_research",
       "breakpoints": true
+    },
+    {
+      "idx": 86,
+      "version": "7",
+      "when": 1795801754100,
+      "tag": "0086_assistant_research_sources",
+      "breakpoints": true
+    },
+    {
+      "idx": 87,
+      "version": "7",
+      "when": 1795802127227,
+      "tag": "0087_person_deactivate",
+      "breakpoints": true
     }
   ]
 }

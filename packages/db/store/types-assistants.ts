@@ -65,10 +65,12 @@ export type AssistantRequestsGateway = {
     deliveredInThread(query: ThreadQuery): Promise<readonly AssistantRequestRow[]>;
     countSince(harnessId: string, since: Date): Promise<number>;
     recent(harnessId: string, limit: number): Promise<readonly RecentRequest[]>;
+    researchSources(requestId: string): Promise<readonly string[]>;
   };
   readonly write: {
     insert(row: AssistantRequestRow): Promise<void>;
     redact(query: RedactQuery): Promise<readonly RedactedRequest[]>;
+    addResearchSources(requestId: string, urls: readonly string[]): Promise<void>;
   };
 };
 

@@ -73,7 +73,7 @@ export async function lockPerson(db: Executor, personId: string): Promise<Person
 
 export type StatusChange = {
   readonly actor: Principal;
-  readonly action: 'approve' | 'decline';
+  readonly action: 'approve' | 'decline' | 'deactivate';
   readonly traceId: string;
   readonly at: Date;
 };

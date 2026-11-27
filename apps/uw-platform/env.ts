@@ -71,6 +71,7 @@ export type PdfQuickAction = {
 };
 export type MarkdownQuickAction = {
   readonly url: string;
+  readonly allowRequestPattern: readonly string[];
   readonly rejectResourceTypes: readonly string[];
   readonly gotoOptions: { readonly waitUntil: 'networkidle2'; readonly timeout: number };
   readonly cacheTTL: 0;

@@ -11,9 +11,18 @@ const MARKDOWN_MOST = 400_000;
 
 const renderedSchema = z.object({ success: z.literal(true), result: z.string() });
 
+function escaped(text: string): string {
+  return text.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&');
+}
+
+function sameOriginPattern(url: string): string {
+  return `^${escaped(new URL(url).origin)}/`;
+}
+
 function actionOf(url: string): MarkdownQuickAction {
   return {
     url,
+    allowRequestPattern: [sameOriginPattern(url)],
     rejectResourceTypes: ['image', 'media', 'font'],
     gotoOptions: { waitUntil: 'networkidle2', timeout: PAGE_WAIT_MS },
     cacheTTL: 0,

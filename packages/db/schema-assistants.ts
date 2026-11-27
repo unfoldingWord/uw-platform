@@ -20,6 +20,7 @@ import {
   assistantPairingViaSchema,
   assistantProposedEffectSchema,
   assistantReminderStatusSchema,
+  RESEARCH_SOURCES_MOST,
 } from '@uw/contracts';
 import { oneOf } from './checks.ts';
 import { instant } from './columns.ts';
@@ -79,6 +80,9 @@ export const assistantRequests = declareTable(
     replyAddress: text('reply_address').notNull(),
     note: text('note').notNull(),
     untrustedParts: jsonb('untrusted_parts').notNull(),
+    researchSources: jsonb('research_sources')
+      .notNull()
+      .default(sql`'[]'::jsonb`),
     receivedAt: instant('received_at').notNull(),
     recordedAt: instant('recorded_at').notNull(),
     redactedAt: instant('redacted_at'),
@@ -92,6 +96,10 @@ export const assistantRequests = declareTable(
     }),
     check('assistant_requests_channel_known', oneOf(t.channel, assistantChannelSchema.options)),
     check('assistant_requests_untrusted_parts_bounded', jsonArray(t.untrustedParts, 20)),
+    check(
+      'assistant_requests_research_sources_bounded',
+      jsonArray(t.researchSources, RESEARCH_SOURCES_MOST),
+    ),
     check(
       'assistant_requests_external_id_length',
       sql`char_length(${t.externalId}) BETWEEN 1 AND 200`,
@@ -107,7 +115,7 @@ export const assistantRequests = declareTable(
     check('assistant_requests_note_length', lengthAtMost(t.note, 20000)),
     check(
       'assistant_requests_redacted_empty',
-      sql`${t.redactedAt} IS NULL OR (${t.note} = '' AND ${t.untrustedParts} = '[]'::jsonb)`,
+      sql`${t.redactedAt} IS NULL OR (${t.note} = '' AND ${t.untrustedParts} = '[]'::jsonb AND ${t.researchSources} = '[]'::jsonb)`,
     ),
     uniqueIndex('assistant_requests_external_once').on(t.channel, t.externalId),
     unique('assistant_requests_id_harness').on(t.id, t.harnessId),

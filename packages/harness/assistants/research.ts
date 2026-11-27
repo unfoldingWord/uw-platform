@@ -7,9 +7,11 @@ import { renderUntrusted, untrusted } from '../untrusted.ts';
 import {
   recordRendered,
   reserveResearch,
+  type Admission,
   type Reserved,
   type ResearchPorts,
 } from './research-ledger.ts';
+import { offeredOnly, recordSources } from './research-sources.ts';
 import { addressed, type TurnAddress } from './reminder-turn.ts';
 
 export type SearchWebInput = TurnAddress & {
@@ -71,8 +73,14 @@ async function reserve(
   caller: Caller,
   input: TurnAddress,
   kind: AssistantResearchKind,
+  admit?: Admission,
 ): Promise<Reserved | Refused> {
-  return reserveResearch(ports, caller, { requestId: input.requestId, turnId: input.turnId }, kind);
+  const address = { requestId: input.requestId, turnId: input.turnId };
+  return reserveResearch(ports, caller, address, kind, admit);
+}
+
+function urlsOf(results: readonly { readonly url: string }[]): readonly string[] {
+  return results.map((result) => result.url);
 }
 
 function fenced(source: 'search_result' | 'web_page' | 'flight_offer', text: string): string {
@@ -100,6 +108,7 @@ export async function searchWeb(
       `Title: ${result.title.slice(0, TITLE_MOST)}\nAddress: ${result.url}\nSnippet: ${result.snippet.slice(0, SNIPPET_MOST)}`,
     ),
   }));
+  await recordSources(ports, input, urlsOf(results));
   return accepted({ results });
 }
 
@@ -110,7 +119,7 @@ export async function readWebPage(
 ): Promise<KernelOutcome<WebPageRead>> {
   const parsed = verbIo.read_web_page.input.safeParse({ url: input.url });
   if (!parsed.success || !addressed(input)) return inputRefusal();
-  const reserved = await reserve(ports, caller, input, 'page_read');
+  const reserved = await reserve(ports, caller, input, 'page_read', offeredOnly(parsed.data.url));
   if ('status' in reserved) return reserved;
   const request = { url: parsed.data.url, mayRender: reserved.mayRender };
   const read = await asked(() => ports.research.read(request));

@@ -48,6 +48,7 @@ export const restrictedReads: ReadonlyMap<string, ReadGovernance> = new Map<stri
     ['apps/uw-platform/notify/push/store.ts', platform],
     ['packages/db/bootstrap-admin.ts', platform],
     ['packages/db/store/assistant-history.ts', platform],
+    ['packages/db/store/assistant-research-sources.ts', platform],
     ['packages/db/store/assistant-holds.ts', platform],
     ['packages/db/store/assistant-proposals.ts', platform],
     ['packages/db/store/assistant-pairing.ts', platform],

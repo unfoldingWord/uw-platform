@@ -112,7 +112,7 @@ node --env-file="$TMPDIR/uw-probe.env" apps/uw-platform/bin/probe-assistants.ts
 node --env-file="$TMPDIR/uw-probe.env" apps/uw-platform/bin/probe-assistants.ts --write
 ```
 
-The same command also runs the research probes (`s12.*`, [`infra/README.md`](../README.md) "Web research and flights") when `BRAVE_SEARCH_API_KEY`, `DUFFEL_ACCESS_TOKEN` and `PROBE_WEB_PAGE` are in the file; they need nothing from Google.
+The same command also runs the research probes (`s12.*`, [`infra/README.md`](../README.md) "Web research and flights") when `BRAVE_SEARCH_API_KEY`, `DUFFEL_ACCESS_TOKEN` and `PROBE_WEB_PAGE` are in the file; they need nothing from Google. It lists `s14.1` (Browser Run held to the checked site by `allowRequestPattern`), `s14.2` (a read of an address no search or message offered is refused) and `s14.3` (deactivating a person on Access turns their assistant off, suspends its Workspace user and deactivates its bot) as `MANUAL`; work through them on staging (ADR 0048).
 
 Each line is `PASS`, `FAIL`, `SKIP` (a setting is missing, or the probe writes and `--write` was not given) or `MANUAL` (only a person on staging can check it; the line says how). The probe ids are the numbered entries of the assistants' staging-probes list, which names the exact request and the answer the code expects for each. The command exits 1 if any probe failed. A Google failure reads as the code reads it: `refused` is a 400, 401 or 403 (a scope not delegated, a subject Google does not know, a missing privilege), `unavailable` is anything else.
 

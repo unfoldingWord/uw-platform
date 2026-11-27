@@ -145,6 +145,37 @@ describe('PA-19 the page reader renders only what needs it, or gives up', () => 
   });
 });
 
+describe('PA-19 a rendered page stays on the site that was checked', () => {
+  it('keeps the browser on the checked address, so a script cannot send it to a private one', async () => {
+    const fake = fakeResearch();
+    const internal = 'http://10.0.0.5/admin';
+    fake.addPage(agenda, {
+      title: 'Tickets',
+      text: 'Loading',
+      needsRendering: true,
+      navigatesTo: internal,
+    });
+    fake.addPage(internal, { title: 'Admin', text: 'internal secrets' });
+    const read = await researchOn(fake).read({ url: agenda, mayRender: true });
+    expect(JSON.stringify(read)).not.toContain('internal secrets');
+    expect(fake.browser.rendered()).toEqual([agenda]);
+  });
+
+  it('keeps the browser off another public site the page sends it to', async () => {
+    const fake = fakeResearch();
+    const elsewhere = 'https://btc2027.example.org.attacker.example/fake-agenda';
+    fake.addPage(agenda, {
+      title: 'Tickets',
+      text: 'Loading',
+      needsRendering: true,
+      navigatesTo: elsewhere,
+    });
+    const read = await researchOn(fake).read({ url: agenda, mayRender: true });
+    expect(read).toMatchObject({ outcome: 'read', url: agenda, text: '# Tickets\n\nLoading' });
+    expect(fake.browser.rendered()).toEqual([agenda]);
+  });
+});
+
 const kenyaAirways = {
   airline: 'Kenya Airways',
   totalMinor: 168_420,
