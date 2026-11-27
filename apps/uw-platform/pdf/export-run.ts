@@ -1,5 +1,10 @@
 import { z } from 'zod';
-import { binderRequestSchema, principalSchema, type ErrorReason } from '@uw/contracts';
+import {
+  binderRequestSchema,
+  principalSchema,
+  type ErrorReason,
+  type RenderChannel,
+} from '@uw/contracts';
 import { formatDate } from '@uw/core/dates';
 import type { Principal } from '@uw/core/principal';
 import type { Database } from '@uw/db/client';
@@ -7,7 +12,14 @@ import { resolveGrants } from '@uw/db/store';
 import type { PdfExportStart } from '../env.ts';
 import type { FileStore } from '../pages/file-store.ts';
 import { personById } from '../people/directory.ts';
-import { exportKey, exportPath, finishExport, queuedExport, type QueuedExport } from './exports.ts';
+import {
+  exportKey,
+  exportPath,
+  finishExport,
+  finishReadyExport,
+  queuedExport,
+  type QueuedExport,
+} from './exports.ts';
 import { printJob, sourceHashOf, type Printed } from './print-document.ts';
 import { fileImages } from './print-images.ts';
 import type { Printable } from './print-kernel.ts';
@@ -31,6 +43,7 @@ type Rendering = {
   readonly actor: Principal;
   readonly printable: Printable;
   readonly queued: QueuedExport;
+  readonly channel: RenderChannel;
 };
 
 const queuedRequestSchema = z.object({ target: binderRequestSchema });
@@ -78,10 +91,10 @@ async function rendered(
   renderer: PdfRenderer,
   rendering: Rendering,
 ): Promise<PdfExportResult> {
-  const { actor, printable, queued } = rendering;
+  const { actor, printable, queued, channel } = rendering;
   const { db, files, origin } = run.deps;
   const provenance = await provenanceOf(run, actor, printable.printed);
-  const image = fileImages(db, files, { actor, at: run.at }, origin);
+  const image = fileImages(db, files, { actor, at: run.at, channel }, origin);
   const { title, bodyHtml } = printable;
   const pdf = await renderer.render(await printJob({ title, bodyHtml, provenance, origin, image }));
   if (pdf === null) return failed(run, 'pdf_render_failed');
@@ -89,9 +102,17 @@ async function rendered(
   await files.put(r2Key, { bytes: pdf, contentType: PDF });
   const hashes = { sourceSha256: provenance.sourceSha256, fileSha256: await sha256Hex(pdf) };
   const areas = [...new Set([...queued.areas, ...printable.areas])];
-  const ready = { kind: 'ready', r2Key, ...hashes, bytes: pdf.byteLength, areas } as const;
-  await finishExport(db, run.exportId, ready, run.at);
-  return 'ready';
+  const drawn = { channel, stories: printable.stories };
+  const ready = {
+    kind: 'ready',
+    r2Key,
+    ...hashes,
+    bytes: pdf.byteLength,
+    areas,
+    ...drawn,
+  } as const;
+  const finished = await finishReadyExport(db, run.exportId, ready, actor.identity, run.at);
+  return finished ? 'ready' : 'skipped';
 }
 
 export async function runPdfExport(
@@ -110,7 +131,8 @@ export async function runPdfExport(
   const plan = await binderPlan(deps.db, principal, target, run.at);
   if (typeof plan === 'string') return failed(run, plan);
   const printable = await printPlannedBinder(deps.db, principal, plan, run.at, deps.commit);
-  return rendered(run, deps.renderer, { actor: principal, printable, queued });
+  const channel = plan.channel;
+  return rendered(run, deps.renderer, { actor: principal, printable, queued, channel });
 }
 
 export async function abandonPdfExport(

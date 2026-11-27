@@ -24,7 +24,7 @@ import { provenanceOf, type ExternalWriter } from './provenance.ts';
 import { REPLAY_INDEX, replayOf } from './replay.ts';
 import { checkFrontmatter } from './validate.ts';
 
-export { readPage, toPage } from './page-row.ts';
+export { readPage, readPageIn, toPage } from './page-row.ts';
 
 export const owns = [
   'pages',
@@ -38,10 +38,13 @@ export const owns = [
   'area_homes',
   'page_renders',
   'page_suggestion_sets',
+  'page_review_sets',
+  'page_suggested_changes',
+  'page_review_decisions',
 ] as const;
 
 export type PageResult =
-  | { readonly ok: true; readonly page: Page; readonly suggestionId?: string }
+  | { readonly ok: true; readonly page: Page; readonly reviewSetId?: string }
   | { readonly ok: false; readonly reason: ErrorReason };
 
 export type PageRefusal = {
@@ -77,6 +80,12 @@ function refused(reason: ErrorReason): PageResult {
 const collectionRow: PageRefusal = { ok: false, reason: 'collection_row', detail: {} };
 
 const activationRequired: PageRefusal = { ok: false, reason: 'activation_required', detail: {} };
+
+const gatedForAgents: PageRefusal = {
+  ok: false,
+  reason: 'not_permitted',
+  detail: { why: 'gated_page' },
+};
 
 const ISSUE_MIRROR = 'issue';
 
@@ -418,7 +427,7 @@ export function updateWithin(
   tx: Transaction,
   actor: Principal,
   checked: CheckedSave,
-  request: { readonly traceId: string; readonly at: Date },
+  request: UpdateRequest,
 ): Promise<PageResult | PageRefusal> {
   return updateInTransaction(tx, { actor, checked, ...request });
 }
@@ -448,19 +457,26 @@ export type UpdateRequest = {
   readonly effects?: PageEffects;
 };
 
+export function ordinaryEditStatus(
+  actor: Principal,
+  requested: (stored: Page) => PageStatus,
+): CheckedSave['statusFor'] {
+  return (stored) => {
+    const wanted = requested(stored);
+    if (stored.type === ISSUE_MIRROR) return issueMirror;
+    if (actor.kind !== 'person' && isGatedType(stored.type)) return gatedForAgents;
+    if (returnsToSuggested(stored.type, stored.status, wanted)) return 'suggested';
+    return activates(stored.type, stored.status, wanted) ? activationRequired : wanted;
+  };
+}
+
 export function updatePageWith(
   db: Database,
   actor: Principal,
   command: UpdatePageCommand,
   request: UpdateRequest,
 ): Promise<PageResult | PageRefusal> {
-  const statusFor = (stored: Page): PageStatus | PageRefusal => {
-    if (stored.type === ISSUE_MIRROR) return issueMirror;
-    if (returnsToSuggested(stored.type, stored.status, command.status)) return 'suggested';
-    return activates(stored.type, stored.status, command.status)
-      ? activationRequired
-      : command.status;
-  };
+  const statusFor = ordinaryEditStatus(actor, () => command.status);
   return saveChecked(db, { actor, checked: { command, statusFor }, ...request });
 }
 

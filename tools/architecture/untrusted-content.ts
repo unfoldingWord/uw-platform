@@ -28,6 +28,7 @@ const outsideReads = [
   /\bgh_(?:issues|prs|reviews|check_runs|milestones)\b/,
   /['"`](?:resolve_context|read_page|search_pages|query_entities)['"`]/,
   /['"`](?:read_metric|read_observations|read_measure_run|preview_dashboard)['"`]/,
+  /['"`](?:read_story|list_stories)['"`]/,
   /\bbodyMd\b/,
   /\bfindings\b/,
   /\bissue\s*\??\.\s*(?:title|body)\b/,

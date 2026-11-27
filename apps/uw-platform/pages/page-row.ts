@@ -1,9 +1,11 @@
-import { eq } from 'drizzle-orm';
-import { pageSchema, type Page } from '@uw/contracts';
+import { and, eq } from 'drizzle-orm';
+import { pageSchema, type Page, type RenderChannel } from '@uw/contracts';
 import { can } from '@uw/core/acl';
 import type { Principal } from '@uw/core/principal';
 import type { Executor } from '@uw/db/client';
 import { pages } from '@uw/db/schema';
+import { storyChannelFilter } from '../stories/channel-filter.ts';
+import { pageAtChannel } from '../stories/place.ts';
 import { withoutWithheld } from './property-rules.ts';
 
 export type PageRow = typeof pages.$inferSelect;
@@ -28,10 +30,28 @@ export async function readPage(
   actor: Principal,
   pageId: string,
   at: Date,
+  channel: RenderChannel = 'platform',
 ): Promise<Page | null> {
-  const [row] = await db.select().from(pages).where(eq(pages.id, pageId));
+  const shown = and(eq(pages.id, pageId), storyChannelFilter(channel, at));
+  const [row] = await db.select().from(pages).where(shown);
   if (!row) return null;
   const page = toPage(row);
   if (!can(actor, 'read', { kind: 'area', area: page.jdArea }, at)) return null;
   return withoutWithheld(db, actor, page, row.collectionId, at);
+}
+
+export type ChannelRead = Page | 'story_above_channel' | null;
+
+export async function readPageIn(
+  db: Executor,
+  actor: Principal,
+  pageId: string,
+  at: Date,
+  channel: RenderChannel,
+): Promise<ChannelRead> {
+  const page = await readPage(db, actor, pageId, at, channel);
+  if (page !== null) return pageAtChannel(db, page, channel);
+  if (channel === 'platform') return page;
+  const inside = await readPage(db, actor, pageId, at);
+  return inside === null ? null : 'story_above_channel';
 }

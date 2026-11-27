@@ -79,6 +79,8 @@ export const rowReadRules = {
   credential_bindings: managedRecord,
   credential_access_log: managedRecord,
   directory_private: lentRecord,
+  story_consents: areaRecord,
+  story_consent_history: areaRecord,
 } as const satisfies Readonly<Record<string, RowReadRule>>;
 
 export type RestrictedTable = keyof typeof rowReadRules;

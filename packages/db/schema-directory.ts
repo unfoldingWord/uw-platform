@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm';
-import { check, date, text, uuid } from 'drizzle-orm/pg-core';
+import { check, date, integer, text, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
 import { IDENTITY_PATTERN, matches } from './checks.ts';
 import { instant } from './columns.ts';
 import { declareTable } from './declarations.ts';
@@ -72,5 +72,61 @@ export const directoryPrivate = declareTable(
       sql`${t.complianceStatus} IS NULL OR ${matches(t.complianceStatus, OPTION_PATTERN)}`,
     ),
     check('directory_private_updated_by_is_identity', matches(t.updatedBy, IDENTITY_PATTERN)),
+  ],
+);
+
+const cacheReadonly = { classification: 'internal', offlineEligibility: 'cache_readonly' } as const;
+
+export const staffAllocations = declareTable(
+  'staff_allocations',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    personId: uuid('person_id')
+      .notNull()
+      .references(() => people.id),
+    programPageId: uuid('program_page_id').references(() => pages.id),
+    portfolioPageId: uuid('portfolio_page_id').references(() => pages.id),
+    percent: integer('percent'),
+    updatedBy: text('updated_by').notNull(),
+    updatedAt: instant('updated_at').notNull(),
+  },
+  cacheReadonly,
+  (t) => [
+    check(
+      'staff_allocations_one_target',
+      sql`(${t.programPageId} IS NULL) <> (${t.portfolioPageId} IS NULL)`,
+    ),
+    check(
+      'staff_allocations_percent_range',
+      sql`${t.percent} IS NULL OR ${t.percent} BETWEEN 0 AND 100`,
+    ),
+    check('staff_allocations_updated_by_is_identity', matches(t.updatedBy, IDENTITY_PATTERN)),
+    uniqueIndex('staff_allocations_one_per_program').on(t.personId, t.programPageId),
+    uniqueIndex('staff_allocations_one_per_portfolio').on(t.personId, t.portfolioPageId),
+  ],
+);
+
+export const personCommitments = declareTable(
+  'person_commitments',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    fromPersonId: uuid('from_person_id')
+      .notNull()
+      .references(() => people.id),
+    toPersonId: uuid('to_person_id').references(() => people.id),
+    toText: text('to_text'),
+    updatedBy: text('updated_by').notNull(),
+    updatedAt: instant('updated_at').notNull(),
+  },
+  cacheReadonly,
+  (t) => [
+    check('person_commitments_one_target', sql`(${t.toPersonId} IS NULL) <> (${t.toText} IS NULL)`),
+    check('person_commitments_to_text_bounded', bounded(t.toText, 200)),
+    check(
+      'person_commitments_not_to_self',
+      sql`${t.toPersonId} IS NULL OR ${t.toPersonId} <> ${t.fromPersonId}`,
+    ),
+    check('person_commitments_updated_by_is_identity', matches(t.updatedBy, IDENTITY_PATTERN)),
+    uniqueIndex('person_commitments_one_per_pair').on(t.fromPersonId, t.toPersonId),
   ],
 );

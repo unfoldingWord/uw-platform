@@ -1,4 +1,4 @@
-import type { BinderRequest, PdfExportReply } from '@uw/contracts';
+import type { BinderRequest, PdfExportReply, RenderChannel } from '@uw/contracts';
 import { formatDate } from '@uw/core/dates';
 import { ensureBuiltIns } from '../../collections/builtins/seed.ts';
 import { loadCollectionById } from '../../collections/definitions.ts';
@@ -18,7 +18,7 @@ import { fileImages } from '../../pdf/print-images.ts';
 import {
   binderPlan,
   binderReference,
-  printPage,
+  printPageIn,
   printView,
   type BinderPlan,
   type Printable,
@@ -52,22 +52,27 @@ async function viewArea(context: VerbContext, target: Extract<Target, { kind: 'v
   return { resource: { kind: 'area' as const, area: stored.definition.jdArea } };
 }
 
-function requestOf(target: Exclude<Target, Single>, title: string): BinderRequest {
-  if ('rootPageId' in target) return { ...target, title };
-  return { kind: 'binder', title, pageIds: target.pageIds };
+function requestOf(
+  target: Exclude<Target, Single>,
+  title: string,
+  channel: RenderChannel,
+): BinderRequest {
+  if ('rootPageId' in target) return { ...target, title, channel };
+  return { kind: 'binder', title, pageIds: target.pageIds, channel };
 }
 
 async function binderArea(
   context: VerbContext,
   target: Exclude<Target, Single>,
+  channel: RenderChannel,
 ): Promise<Found<Scene> | VerbRefusal> {
-  const asked = requestOf(target, target.title ?? 'Binder');
+  const asked = requestOf(target, target.title ?? 'Binder', channel);
   const planned = await binderPlan(context.db, context.principal, asked, context.at);
   if (typeof planned === 'string') return refusal(planned);
   const title = target.title ?? planned.root?.title ?? planned.pages[0]?.title ?? 'Binder';
   const plan = { ...planned, title };
   const area = plan.areas[0] ?? '';
-  const found = { kind: 'binder' as const, plan, request: requestOf(target, title) };
+  const found = { kind: 'binder' as const, plan, request: requestOf(target, title, channel) };
   return { resource: { kind: 'area', area }, found };
 }
 
@@ -76,7 +81,7 @@ async function targetArea(
   input: RenderInput,
 ): Promise<Found<Scene> | VerbRefusal> {
   const { target } = input;
-  if (target.kind === 'binder') return binderArea(context, target);
+  if (target.kind === 'binder') return binderArea(context, target, input.channel);
   const found =
     target.kind === 'page'
       ? await storedPageArea(context, target)
@@ -108,9 +113,15 @@ async function provenanceOf(
   };
 }
 
-function printableOf(context: VerbContext, target: Single): Promise<Printable | null> {
+function printableOf(
+  context: VerbContext,
+  target: Single,
+  channel: RenderChannel,
+): Promise<Printable | 'story_above_channel' | null> {
   const { db, principal, at, commit } = context;
-  if (target.kind === 'page') return printPage(db, principal, target.pageId, at, commit);
+  if (target.kind === 'page') {
+    return printPageIn(db, principal, { pageId: target.pageId, at, commit }, channel);
+  }
   return printView(db, principal, target.collection, target.viewId, at);
 }
 
@@ -119,20 +130,22 @@ async function renderNow(
   wired: Wired,
   input: RenderInput & { readonly target: Single },
 ) {
-  const { target } = input;
-  const printable = await printableOf(context, target);
+  const { target, channel } = input;
+  const printable = await printableOf(context, target, channel);
   if (printable === null) return hiddenTarget(input);
+  if (printable === 'story_above_channel') return refusal(printable);
   const { title, bodyHtml, printed, areas } = printable;
   const provenance = await provenanceOf(context, target, printed);
   const origin = context.origin ?? '';
-  const reader = { actor: context.principal, at: context.at };
+  const reader = { actor: context.principal, at: context.at, channel };
   const image = fileImages(context.db, wired.files, reader, origin);
   const pdf = await wired.pdf.render(
     await printJob({ title, bodyHtml, provenance, origin, image }),
   );
   const { reference, sourceSha256 } = provenance;
   const stored = { kind: target.kind, title, reference, areas, request: target };
-  const asked = { ...stored, actor: context.principal, at: context.at };
+  const drawn = { channel, stories: printable.stories };
+  const asked = { ...stored, ...drawn, actor: context.principal, at: context.at };
   if (pdf === null) {
     await recordRender(context.db, asked, { kind: 'failed', reason: 'pdf_render_failed' });
     return refusal('pdf_render_failed');

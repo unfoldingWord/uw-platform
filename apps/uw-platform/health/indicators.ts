@@ -63,12 +63,12 @@ function lagStatus(seconds: number): 'ok' | 'amber' | 'red' {
   return seconds < QUEUE_RED_SECONDS ? 'amber' : 'red';
 }
 
-type QueueProgress = {
+export type QueueProgress = {
   readonly watermark: Watermark | null;
   readonly oldestUnconsumed: Date | null;
 };
 
-async function queueProgress(db: Executor): Promise<QueueProgress> {
+export async function queueProgress(db: Executor): Promise<QueueProgress> {
   const watermark = await readWatermark(db, INGEST_QUEUE_KEY);
   const after = watermark ? new Date(watermark.lastEnqueuedAt.getTime() + ENQUEUE_GRACE_MS) : null;
   return { watermark, oldestUnconsumed: await oldestDeliveryReceivedAfter(db, after) };

@@ -45,6 +45,33 @@ async function targetReadable(
   return row !== undefined && can(actor, 'read', { kind: 'area', area: row.jdArea }, at);
 }
 
+function programsOf(content: CheckedContent): readonly string[] {
+  if (content.type !== 'impact_story') return [];
+  const named = content.frontmatter['programs'];
+  return Array.isArray(named) ? named.filter((id): id is string => typeof id === 'string') : [];
+}
+
+async function unreadablePrograms(
+  db: Executor,
+  actor: Principal,
+  ids: readonly string[],
+  at: Date,
+): Promise<readonly string[]> {
+  if (ids.length === 0) return [];
+  const rows = await db
+    .select({ id: pages.id, jdArea: pages.jdArea })
+    .from(pages)
+    .where(
+      and(inArray(pages.id, [...ids]), eq(pages.type, 'program'), ne(pages.status, 'retired')),
+    );
+  const readable = new Set(
+    rows
+      .filter((row) => can(actor, 'read', { kind: 'area', area: row.jdArea }, at))
+      .map((row) => row.id),
+  );
+  return ids.filter((id) => !readable.has(id));
+}
+
 export async function contentRefusal(
   db: Executor,
   actor: Principal,
@@ -54,6 +81,10 @@ export async function contentRefusal(
   const missing = missingSections(content.type, content.bodyMd);
   if (missing.length > 0) {
     return { ok: false, reason: 'sections_missing', detail: { missing } };
+  }
+  const programs = await unreadablePrograms(db, actor, programsOf(content), at);
+  if (programs.length > 0) {
+    return { ok: false, reason: 'program_not_found', detail: { programs } };
   }
   const target = appliesToOf(content);
   if (target === null || (await targetReadable(db, actor, target, at))) return null;

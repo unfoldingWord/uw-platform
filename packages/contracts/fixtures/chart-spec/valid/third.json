@@ -1,0 +1,19 @@
+{
+  "title": "Commitments network",
+  "type": "graph",
+  "query": {
+    "key": "team_commitments",
+    "params": {}
+  },
+  "encodings": {
+    "x": "from",
+    "y": ["entries"],
+    "series": null,
+    "target": "to"
+  },
+  "format": {
+    "x": "text",
+    "y": "count",
+    "currency": null
+  }
+}

@@ -96,6 +96,42 @@ const measureVerbs: readonly VerbDefinition[] = [
   ),
 ];
 
+const chartVerbs: readonly VerbDefinition[] = [
+  verb(
+    'render_chart',
+    'records',
+    onResource('viewer'),
+    'Draw a standard chart, or a chart spec over a whitelisted query, for a workflow you may read: the SVG, the table of exactly the rows it drew, and its lineage with any rows left out and any staleness.',
+  ),
+];
+
+const storyVerbs: readonly VerbDefinition[] = [
+  verb(
+    'add_story_expression',
+    'records',
+    onResource('editor'),
+    'Link one telling of a story you may edit, by its https address; it lands suggested for a person to confirm, and the same address on the same story answers the one already there.',
+  ),
+  verb(
+    'update_story_expression',
+    'records',
+    onResource('editor'),
+    'Change the fields of a story expression you added that a person has not decided yet.',
+  ),
+  verb(
+    'read_story',
+    'pages_and_context',
+    onResource('viewer'),
+    'Read a story record you may read: when, where, which programs, its level and consent state, every expression by format with its flags, and every recorded use.',
+  ),
+  verb(
+    'list_stories',
+    'pages_and_context',
+    null,
+    'List the story records you may read, by program, country, a format told or not told, and title text, with counts and flags, to find a story before adding another.',
+  ),
+];
+
 export const verbRegistry: readonly VerbDefinition[] = [
   verb(
     'search_pages',
@@ -108,7 +144,7 @@ export const verbRegistry: readonly VerbDefinition[] = [
     'write_page',
     'pages_and_context',
     onResource('editor'),
-    'Create or save a page; gated pages land as suggested, and a save to an active policy or charter is held as a suggested change for a person.',
+    'Create or save a page; gated pages land as suggested, and a save to an active policy or charter is held as a review set of suggested changes for a person, answered with its reviewSetId.',
   ),
   verb(
     'attach_file',
@@ -209,6 +245,8 @@ export const verbRegistry: readonly VerbDefinition[] = [
     'Get the agent-plane health of one harness you may see.',
   ),
   ...measureVerbs,
+  ...chartVerbs,
+  ...storyVerbs,
 ];
 
 const byName = new Map<string, VerbDefinition>(verbRegistry.map((entry) => [entry.name, entry]));

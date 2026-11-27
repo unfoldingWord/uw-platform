@@ -33,6 +33,8 @@ export const pageNames = {
   wikiReview: 'Needs Review',
   wikiPolicies: 'Policies',
   pageSuggestion: 'Suggested Change',
+  pageReviewSet: 'Review Set',
+  pageReviewNew: 'Suggest Changes',
   logOut: 'Log Out',
   collections: 'Collections',
   collectionSettings: 'Settings',
@@ -42,6 +44,9 @@ export const pageNames = {
   crosswalk: 'JD Crosswalk',
   person: 'Person',
   measures: 'Measures & Dashboards',
+  charts: 'Charts',
+  teamCharts: 'Team Charts',
+  stories: 'Story Bank',
 } as const;
 
 const smallWord = /^[a-z]/;
@@ -75,7 +80,9 @@ export type BuiltModule =
   | 'tasks'
   | 'directory'
   | 'crosswalk'
-  | 'measures';
+  | 'measures'
+  | 'teamCharts'
+  | 'stories';
 export type PlatformArea = {
   readonly code: string;
   readonly name: string;
@@ -91,6 +98,7 @@ export const platformAreas: readonly PlatformArea[] = [
       { label: 'Pages & Wiki', icon: 'file-lines', built: 'pages' },
       { label: 'Tasks', icon: 'list-check', built: 'tasks' },
       { label: 'Colleague Directory', icon: 'users', built: 'directory' },
+      { label: 'Team Charts', icon: 'diagram-project', built: 'teamCharts' },
       { label: 'Strategic Cascade', icon: 'layer-group', built: 'collections' },
       { label: 'Meetings', icon: 'calendar' },
       { label: 'JD Crosswalk', icon: 'table-cells', built: 'crosswalk' },
@@ -131,7 +139,7 @@ export const platformAreas: readonly PlatformArea[] = [
     modules: [
       { label: 'CRM & Giving', icon: 'heart' },
       { label: 'Grants', icon: 'award' },
-      { label: 'Story Bank', icon: 'book-open' },
+      { label: 'Story Bank', icon: 'book-open', built: 'stories' },
     ],
   },
   {
@@ -163,6 +171,8 @@ export const moduleCodes: Readonly<Record<BuiltModule, string>> = {
   directory: '00.05',
   crosswalk: '00',
   measures: '00',
+  teamCharts: '00.05',
+  stories: '40',
 };
 
 export const noModules = 'No modules enabled for this area';

@@ -15,6 +15,7 @@ export function personIdOf(identity: string | null | undefined): string | null {
 
 export type Someone =
   | { readonly kind: 'person'; readonly person: PersonName }
+  | { readonly kind: 'agent'; readonly person: PersonName }
   | { readonly kind: 'text'; readonly text: string };
 
 export function shownPerson(person: PersonName): Someone {
@@ -44,4 +45,22 @@ export function namesOf(
     db,
     identities.map(personIdOf).filter((id): id is string => id !== null),
   );
+}
+
+const AGENT = 'agent:';
+
+function agentPersonOf(identity: string): string | null {
+  if (!identity.startsWith(AGENT)) return null;
+  const id = identity.slice(AGENT.length).split('/')[0] ?? '';
+  return uuid.test(id) ? id : null;
+}
+
+export async function shownAuthor(db: Executor | null, identity: string): Promise<Someone> {
+  const agentPerson = agentPersonOf(identity);
+  const ids = [personIdOf(identity), agentPerson].filter((id): id is string => id !== null);
+  const names = db === null ? new Map<string, PersonName>() : await personNames(db, ids);
+  const named = shownIdentity(identity, names, () => identity);
+  if (named.kind === 'person' || agentPerson === null) return named;
+  const bound = names.get(agentPerson);
+  return bound === undefined ? shownText('An agent') : { kind: 'agent', person: bound };
 }

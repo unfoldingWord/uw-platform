@@ -12,12 +12,15 @@ import { readMetricVerb } from './read-metric.ts';
 import { readObservationsVerb } from './read-observations.ts';
 import { readPageVerb } from './read-page.ts';
 import { recordRunStep } from './record-run-step.ts';
+import { renderChartVerb } from './render-chart.ts';
 import { renderPdfVerb } from './render-pdf.ts';
 import { resolveContext } from './resolve-context.ts';
 import { runMeasureVerb } from './run-measure.ts';
 import { saveDashboardVerb } from './save-dashboard.ts';
 import { saveMeasureVerb } from './save-measure.ts';
 import { searchPagesVerb } from './search-pages.ts';
+import { listStoriesVerb } from './list-stories.ts';
+import { addStoryExpressionVerb, readStoryVerb, updateStoryExpressionVerb } from './stories.ts';
 import { submitToGate } from './submit-to-gate.ts';
 import { writePageVerb } from './write-page.ts';
 
@@ -46,6 +49,11 @@ const handlers: readonly VerbHandler[] = [
   readMetricVerb,
   readObservationsVerb,
   previewDashboardVerb,
+  renderChartVerb,
+  addStoryExpressionVerb,
+  updateStoryExpressionVerb,
+  readStoryVerb,
+  listStoriesVerb,
 ];
 
 export const verbHandlers: ReadonlyMap<string, VerbHandler> = new Map(

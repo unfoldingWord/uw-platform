@@ -17,8 +17,8 @@ const dependsOnLaterModule = (declared: (typeof modules)[number], position: numb
   declared.depends_on.some((dependency) => keys.indexOf(dependency) >= position);
 
 describe('the module registry', () => {
-  it('declares core, agents, strategy and charts', () => {
-    expect(keys).toEqual(['core', 'agents', 'strategy', 'charts']);
+  it('declares core, agents, strategy, charts and story_bank', () => {
+    expect(keys).toEqual(['core', 'agents', 'strategy', 'charts', 'story_bank']);
   });
 
   it.each(modules)('declares $key in the plan §14 shape', (declared) => {
@@ -56,12 +56,15 @@ describe('the module registry claims every page type and verb once', () => {
       'charter',
     ]);
     expect(moduleOf('charts').page_types).toEqual(['resource', 'measure', 'dashboard']);
+    expect(moduleOf('story_bank').page_types).toEqual(['impact_story']);
     expect(
-      ['agents', 'core', 'strategy', 'charts'].flatMap((key) => moduleOf(key).page_types),
+      ['agents', 'core', 'strategy', 'charts', 'story_bank'].flatMap(
+        (key) => moduleOf(key).page_types,
+      ),
     ).toEqual(Object.keys(pageTypeRegistry));
   });
 
-  it('declares the measure verbs under charts and every other registered verb under agents', () => {
+  it('declares the measure verbs and render_chart under charts, the story verbs under story_bank and every other registered verb under agents', () => {
     expect(moduleOf('charts').mcp_tools).toEqual([
       'save_measure',
       'save_dashboard',
@@ -70,10 +73,13 @@ describe('the module registry claims every page type and verb once', () => {
       'read_metric',
       'read_observations',
       'preview_dashboard',
+      'render_chart',
     ]);
-    expect([...moduleOf('agents').mcp_tools, ...moduleOf('charts').mcp_tools]).toEqual(
-      verbRegistry.map((entry) => entry.name),
-    );
+    expect([
+      ...moduleOf('agents').mcp_tools,
+      ...moduleOf('charts').mcp_tools,
+      ...moduleOf('story_bank').mcp_tools,
+    ]).toEqual(verbRegistry.map((entry) => entry.name));
   });
 
   it('ADR 0036 gives charts the measures tables, none of them offline', () => {
@@ -86,6 +92,30 @@ describe('the module registry claims every page type and verb once', () => {
 
   it('refuses a module outside the §14 shape', () => {
     expect(moduleSchema.safeParse({ key: 'core', name: 'Core' }).success).toBe(false);
+  });
+});
+
+describe('#201 the story bank module', () => {
+  it('#201 gives story_bank the story tables, restricted and never offline', () => {
+    expect(moduleOf('story_bank')).toMatchObject({
+      data_classification: 'restricted',
+      offline_eligibility: 'never',
+    });
+  });
+
+  it('ADR 0041 gives story_bank the expressions table and the four story verbs, reading program pages from strategy', () => {
+    expect(moduleOf('story_bank')).toMatchObject({
+      tables: [
+        'story_levels',
+        'story_consents',
+        'story_consent_history',
+        'story_media_levels',
+        'story_uses',
+        'story_expressions',
+      ],
+      depends_on: ['core', 'strategy'],
+      mcp_tools: ['add_story_expression', 'update_story_expression', 'read_story', 'list_stories'],
+    });
   });
 });
 

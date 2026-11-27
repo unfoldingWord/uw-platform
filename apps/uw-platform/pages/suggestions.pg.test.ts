@@ -2,14 +2,14 @@ import { describe, expect, it } from 'vitest';
 import { principalSchema, type Principal } from '@uw/contracts';
 import type { Database } from '@uw/db/client';
 import { seedGrant, seedPage, seedPerson } from '@uw/db/test-seed';
+import { seedSuggestionSet } from '@uw/db/test-suggestions';
 import { personOn } from '../testing/kernel.ts';
 import { testServer, withAppDatabase } from '../testing/postgres.ts';
-import { writePageAsAgent } from './agent-write.ts';
 import { acceptSuggestion, rejectSuggestion } from './suggestion-decisions.ts';
 import { pendingSuggestions } from './suggestions.ts';
 import { readPage } from './store.ts';
 
-const EDITOR = { id: '00000000-0000-4000-8000-000000002c01', email: 'suggest@unfoldingword.org' };
+const EDITOR = { id: '00000000-0000-4000-8000-000000002c01', email: 'suggest@example.org' };
 const AREA = '00-09';
 const ON = new Date('2026-12-01T12:00:00.000Z');
 const POLICY = '00000000-0000-4000-8000-000000002c11';
@@ -48,31 +48,9 @@ async function world(db: Database): Promise<World> {
   return { person, agent };
 }
 
-function suggest(db: Database, agent: Principal, bodyMd: string) {
-  const input = {
-    pageId: POLICY,
-    type: 'policy' as const,
-    jdArea: AREA,
-    slug: 'safeguarding',
-    title: 'Safeguarding',
-    parentId: null,
-    frontmatter,
-    bodyMd,
-    expectedVersion: 1,
-  };
-  const request = {
-    traceId: crypto.randomUUID(),
-    at: ON,
-    instructions: { namesInstructions: () => Promise.resolve(false) },
-    writer: null,
-  };
-  return writePageAsAgent(db, agent, input, request);
-}
-
-async function suggestionOf(db: Database, agent: Principal, bodyMd: string): Promise<string> {
-  const held = await suggest(db, agent, bodyMd);
-  if (!held.ok || held.suggestionId === undefined) throw new Error('no suggestion was held');
-  return held.suggestionId;
+function suggestionOf(db: Database, agent: Principal, bodyMd: string, revision = 1) {
+  const held = { title: 'Safeguarding', frontmatter, bodyMd, at: ON, revision };
+  return seedSuggestionSet(db, { pageId: POLICY, proposedBy: agent.identity, ...held });
 }
 
 const decide = (suggestionId: string, revision = 1) => ({
@@ -83,10 +61,8 @@ const decide = (suggestionId: string, revision = 1) => ({
 
 async function heldThenAccepted(db: Database): Promise<void> {
   const { person, agent } = await world(db);
-  const first = await suggestionOf(db, agent, 'Two adults are present and named.');
+  const first = await suggestionOf(db, agent, 'Two named adults are present.', 2);
   expect((await readPage(db, person, POLICY, ON))?.bodyMd).toBe('Two adults are present.');
-  const again = await suggestionOf(db, agent, 'Two named adults are present.');
-  expect(again).toBe(first);
   const page = await readPage(db, person, POLICY, ON);
   if (page === null) throw new Error('the policy is missing');
   expect((await pendingSuggestions(db, person, page, ON)).map((open) => open.id)).toEqual([first]);
@@ -144,13 +120,16 @@ async function staleOnceThePageMoves(db: Database): Promise<void> {
   });
 }
 
-describe.skipIf(!testServer)('PO-7 an agent suggests a change to an active policy', () => {
-  it('holds the change as one pending set per agent, refuses a decision on a revision the person did not see, and accepts it once as one new version', () =>
-    withAppDatabase(heldThenAccepted));
+describe.skipIf(!testServer)(
+  'PO-7 a person decides a whole-document suggestion set held before review sets',
+  () => {
+    it('refuses a decision on a revision the person did not see, and accepts the set once as one new version', () =>
+      withAppDatabase(heldThenAccepted));
 
-  it('lets a person reject it, leaves the page alone, and refuses an agent deciding', () =>
-    withAppDatabase(rejectedAndAgentsRefused));
+    it('lets a person reject it, leaves the page alone, and refuses an agent deciding', () =>
+      withAppDatabase(rejectedAndAgentsRefused));
 
-  it('refuses a set whose base version is no longer the page version', () =>
-    withAppDatabase(staleOnceThePageMoves));
-});
+    it('refuses a set whose base version is no longer the page version', () =>
+      withAppDatabase(staleOnceThePageMoves));
+  },
+);

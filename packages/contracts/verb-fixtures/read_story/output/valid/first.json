@@ -1,0 +1,73 @@
+{
+  "story": {
+    "id": "00000000-0000-4000-8000-000000004101",
+    "title": "The well in Region One",
+    "jdArea": "40-49",
+    "status": "active",
+    "version": 2,
+    "record": {
+      "jd_category": "41",
+      "country": "XA",
+      "region": "XA-01",
+      "languages": ["qaa"],
+      "illustrates": [],
+      "themes": ["reading groups"],
+      "occurred_on": "2026-03-14",
+      "place": "Region One",
+      "programs": ["00000000-0000-4000-8000-000000004104"]
+    },
+    "programs": [
+      {
+        "id": "00000000-0000-4000-8000-000000004104",
+        "title": "Reading programme"
+      }
+    ],
+    "level": "newsletter",
+    "consent": {
+      "state": "recorded",
+      "record": null
+    },
+    "expressions": [
+      {
+        "format": "annual_report",
+        "expressions": [
+          {
+            "id": "00000000-0000-4000-8000-000000004103",
+            "storyId": "00000000-0000-4000-8000-000000004101",
+            "kind": "link",
+            "title": "The well, in the annual report",
+            "format": "annual_report",
+            "venue": "2026 Annual Report",
+            "channel": "public",
+            "url": "https://docs.example.org/document/d/annual-2026/edit",
+            "nativePageId": null,
+            "language": "qaa",
+            "publishedOn": "2026-11-02",
+            "excerpt": "A reading group in Region One grew to twelve.",
+            "status": "suggested",
+            "addedBy": "agent:00000000-0000-4000-8000-000000004105/researcher",
+            "addedAt": "2026-11-20T10:00:00.000Z",
+            "decidedBy": null,
+            "decidedAt": null,
+            "flags": ["told_above_level"]
+          }
+        ]
+      }
+    ],
+    "uses": [
+      {
+        "pageId": "00000000-0000-4000-8000-000000004101",
+        "version": 2,
+        "channel": "newsletter",
+        "kind": "pdf_page",
+        "reference": "00000000-0000-4000-8000-000000004106",
+        "usedBy": "human:00000000-0000-4000-8000-000000004105",
+        "usedAt": "2026-11-20T10:00:00.000Z"
+      }
+    ],
+    "flags": {
+      "toldAboveLevel": 1,
+      "toldWithoutConsent": 0
+    }
+  }
+}

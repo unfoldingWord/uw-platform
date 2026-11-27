@@ -1,5 +1,5 @@
 import { and, eq, inArray } from 'drizzle-orm';
-import type { Page } from '@uw/contracts';
+import type { Page, RenderChannel } from '@uw/contracts';
 import { can } from '@uw/core/acl';
 import type { Principal } from '@uw/core/principal';
 import type { Executor } from '@uw/db/client';
@@ -8,10 +8,15 @@ import { fileIds, kindOfContentType, type FileKind } from '../markdown/file-vide
 import type { EmbedSource, RenderHooks } from '../markdown/page-refs.ts';
 import { renderMarkdown, type Rendered } from '../markdown/render.ts';
 import { pageRefs, wikiRefs, type Resolved } from '../markdown/wiki-syntax.ts';
+import { storyChannelFilter } from '../stories/channel-filter.ts';
 import { resolverFor, type Resolve } from './links.ts';
 import { cachedRender, keepRender, renderKey } from './render-cache.ts';
 
-type Reader = { readonly actor: Principal; readonly at: Date };
+export type Reader = {
+  readonly actor: Principal;
+  readonly at: Date;
+  readonly channel: RenderChannel;
+};
 type Titles = { readonly title: string; readonly past: ReadonlySet<string> };
 
 const EMBED_ROUNDS = 3;
@@ -19,6 +24,16 @@ const UNVERSIONED = 'unversioned';
 
 function mayRead(reader: Reader, area: string): boolean {
   return can(reader.actor, 'read', { kind: 'area', area }, reader.at);
+}
+
+async function shownIds(db: Executor, reader: Reader, ids: readonly string[]) {
+  const filter = storyChannelFilter(reader.channel, reader.at);
+  if (filter === undefined) return null;
+  const rows = await db
+    .select({ id: pages.id })
+    .from(pages)
+    .where(and(inArray(pages.id, [...ids]), filter));
+  return new Set(rows.map((row) => row.id));
 }
 
 async function sourcesOf(
@@ -34,20 +49,31 @@ async function sourcesOf(
       jdArea: pages.jdArea,
       status: pages.status,
       bodyMd: pages.bodyMd,
+      version: pages.version,
     })
     .from(pages)
     .where(inArray(pages.id, [...ids]));
+  const shown = await shownIds(db, reader, ids);
   const found = new Map<string, EmbedSource>(ids.map((id) => [id, { kind: 'missing' }]));
   for (const row of rows) {
     if (row.status === 'retired') continue;
-    found.set(
-      row.id,
-      mayRead(reader, row.jdArea)
-        ? { kind: 'page', title: row.title, bodyMd: row.bodyMd }
-        : { kind: 'denied' },
-    );
+    found.set(row.id, sourceOf(reader, row, shown));
   }
   return found;
+}
+
+type SourceRow = {
+  readonly id: string;
+  readonly title: string;
+  readonly jdArea: string;
+  readonly bodyMd: string;
+  readonly version: number;
+};
+
+function sourceOf(reader: Reader, row: SourceRow, shown: ReadonlySet<string> | null): EmbedSource {
+  if (!mayRead(reader, row.jdArea)) return { kind: 'denied' };
+  if (shown !== null && !shown.has(row.id)) return { kind: 'withheld' };
+  return { kind: 'page', title: row.title, bodyMd: row.bodyMd, version: row.version };
 }
 
 async function gatherEmbeds(
@@ -128,8 +154,17 @@ export function embedSources(
   actor: Principal,
   bodyMd: string,
   at: Date,
+  channel: RenderChannel = 'platform',
 ): Promise<ReadonlyMap<string, EmbedSource>> {
-  return gatherEmbeds(db, { actor, at }, bodyMd);
+  return gatherEmbeds(db, { actor, at, channel }, bodyMd);
+}
+
+export type DrawnPage = { readonly pageId: string; readonly version: number };
+
+export function embeddedPages(sources: ReadonlyMap<string, EmbedSource>): readonly DrawnPage[] {
+  return [...sources].flatMap(([pageId, source]) =>
+    source.kind === 'page' ? [{ pageId, version: source.version }] : [],
+  );
 }
 
 function resolvedAll(
@@ -139,14 +174,37 @@ function resolvedAll(
   return new Map(targets.map((target) => [target.toLowerCase(), wiki(target)]));
 }
 
-export async function renderPage(
+export function renderPage(
   db: Executor,
   actor: Principal,
   page: Page,
   at: Date,
   revision = UNVERSIONED,
 ): Promise<Rendered> {
-  const reader = { actor, at };
+  return renderPageIn(db, { actor, at, channel: 'platform' }, page, revision);
+}
+
+async function renderPageIn(
+  db: Executor,
+  reader: Reader,
+  page: Page,
+  revision = UNVERSIONED,
+): Promise<Rendered> {
+  return (await renderPageDrawn(db, reader, page, revision)).rendered;
+}
+
+export type PageRender = {
+  readonly rendered: Rendered;
+  readonly embeds: ReadonlyMap<string, EmbedSource>;
+};
+
+export async function renderPageDrawn(
+  db: Executor,
+  reader: Reader,
+  page: Page,
+  revision = UNVERSIONED,
+): Promise<PageRender> {
+  const { actor, at } = reader;
   const embeds = await gatherEmbeds(db, reader, page.bodyMd);
   const bodies = [
     page.bodyMd,
@@ -178,8 +236,8 @@ export async function renderPage(
   };
   const key = await renderKey(inputs);
   const cached = await cachedRender(db, page.id, key);
-  if (cached !== null) return cached;
+  if (cached !== null) return { rendered: cached, embeds };
   const rendered = renderMarkdown(page.bodyMd, hooks);
   await keepRender(db, { page, key, at }, rendered);
-  return rendered;
+  return { rendered, embeds };
 }

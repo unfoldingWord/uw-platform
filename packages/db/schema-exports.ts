@@ -1,6 +1,6 @@
 import { sql } from 'drizzle-orm';
 import { check, index, integer, jsonb, text, uuid } from 'drizzle-orm/pg-core';
-import { pdfExportKinds, pdfExportStatuses } from '@uw/contracts';
+import { pdfExportKinds, pdfExportStatuses, renderChannels } from '@uw/contracts';
 import { IDENTITY_PATTERN, matches, oneOf } from './checks.ts';
 import { instant } from './columns.ts';
 import { declareTable } from './declarations.ts';
@@ -18,6 +18,8 @@ export const pdfExports = declareTable(
     personId: uuid('person_id').references(() => people.id),
     areas: text('areas').array().notNull(),
     request: jsonb('request').notNull(),
+    channel: text('channel').notNull().default('platform'),
+    stories: jsonb('stories').notNull().default([]),
     r2Key: text('r2_key'),
     sourceSha256: text('source_sha256'),
     fileSha256: text('file_sha256'),
@@ -31,6 +33,8 @@ export const pdfExports = declareTable(
   (t) => [
     check('pdf_exports_kind_known', oneOf(t.kind, pdfExportKinds)),
     check('pdf_exports_status_known', oneOf(t.status, pdfExportStatuses)),
+    check('pdf_exports_channel_known', oneOf(t.channel, renderChannels)),
+    check('pdf_exports_stories_listed', sql`jsonb_typeof(${t.stories}) = 'array'`),
     check('pdf_exports_requested_by_identity', matches(t.requestedBy, IDENTITY_PATTERN)),
     check('pdf_exports_source_sha256_form', matches(t.sourceSha256, '^[0-9a-f]{64}$')),
     check('pdf_exports_file_sha256_form', matches(t.fileSha256, '^[0-9a-f]{64}$')),

@@ -57,6 +57,12 @@
   --color-ok: var(--uw-ok);
   --color-ok-text: var(--uw-ok-text);
   --color-ok-soft: var(--uw-ok-soft);
+  --color-series-1: var(--uw-series-1);
+  --color-series-2: var(--uw-series-2);
+  --color-series-3: var(--uw-series-3);
+  --color-series-4: var(--uw-series-4);
+  --color-series-5: var(--uw-series-5);
+  --color-series-6: var(--uw-series-6);
   --color-glow: var(--uw-glow);
   --color-glow-human: var(--uw-glow-human);
   --color-gridline: var(--uw-gridline);

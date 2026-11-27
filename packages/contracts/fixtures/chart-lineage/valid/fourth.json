@@ -1,0 +1,17 @@
+{
+  "source": "harness_events: item_created, stage_advanced and loop_edge_taken, folded per item",
+  "query": "item_burndown",
+  "asOf": "2026-11-26T09:00:00.000Z",
+  "filters": {
+    "harnessId": "00000000-0000-4000-8000-0000000019a1"
+  },
+  "excluded": {
+    "count": 0,
+    "reasons": [],
+    "entries": []
+  },
+  "stale": null,
+  "capped": {
+    "newestEvents": 4999
+  }
+}

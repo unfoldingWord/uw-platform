@@ -33,6 +33,16 @@ import {
   suggestionSetStatusSchema,
 } from './suggestions.ts';
 import {
+  acceptReviewSetCommandSchema,
+  pageExportModeSchema,
+  proposeReviewSetCommandSchema,
+  rejectReviewSetCommandSchema,
+  reviewSetStatusSchema,
+  suggestedChangeInputSchema,
+  suggestedChangeKindSchema,
+  textAnchorSchema,
+} from './review-sets.ts';
+import {
   adoptTemplateUpdateCommandSchema,
   charterFrontmatterSchema,
   charterSectionSchema,
@@ -44,9 +54,11 @@ import {
   policyFrontmatterSchema,
   policyLevelSchema,
 } from './policies.ts';
+import { chartSchemaRegistry } from './chart-registry.ts';
 import * as closedSets from './closed-sets.ts';
 import { collectionSchemaRegistry } from './collection-registry.ts';
 import { measureSchemaRegistry } from './measure-registry.ts';
+import { storySchemaRegistry } from './story-registry.ts';
 import {
   commandNameSchema,
   commandSchema,
@@ -217,6 +229,8 @@ import { zulipMessageSchema, zulipOutgoingSchema, zulipTopicSchema } from './zul
 export const schemaRegistry: Record<string, ZodType> = {
   ...collectionSchemaRegistry,
   ...measureSchemaRegistry,
+  ...storySchemaRegistry,
+  ...chartSchemaRegistry,
   command: commandSchema,
   'command-name': commandNameSchema,
   'override-command': overrideCommandSchema,
@@ -349,6 +363,14 @@ export const schemaRegistry: Record<string, ZodType> = {
   'suggestion-set-status': suggestionSetStatusSchema,
   'accept-suggestion-command': acceptSuggestionCommandSchema,
   'reject-suggestion-command': rejectSuggestionCommandSchema,
+  'suggested-change-kind': suggestedChangeKindSchema,
+  'review-set-status': reviewSetStatusSchema,
+  'page-export-mode': pageExportModeSchema,
+  'text-anchor': textAnchorSchema,
+  'suggested-change-input': suggestedChangeInputSchema,
+  'propose-review-set-command': proposeReviewSetCommandSchema,
+  'accept-review-set-command': acceptReviewSetCommandSchema,
+  'reject-review-set-command': rejectReviewSetCommandSchema,
   'template-source': templateSourceSchema,
   'copy-template-policy-command': copyTemplatePolicyCommandSchema,
   'adopt-template-update-command': adoptTemplateUpdateCommandSchema,

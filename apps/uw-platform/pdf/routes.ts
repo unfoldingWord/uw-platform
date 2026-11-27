@@ -42,6 +42,7 @@ function formFields(posted: Posted): Record<string, unknown> {
     title: filled(posted['title'])[0],
     rootPageId: filled(posted['rootPageId'])[0],
     pageIds: pageIds.length === 0 ? undefined : pageIds,
+    channel: filled(posted['channel'])[0],
   };
   return Object.fromEntries(Object.entries(fields).filter(([, value]) => value !== undefined));
 }
@@ -123,6 +124,7 @@ async function downloadExport(c: Context<AppEnv>): Promise<Response> {
   const found = await foundExport(c);
   if (found instanceof Response) return found;
   if (found.status === 'queued') return refuse(c, 'export_not_ready');
+  if (found.withheld !== null) return refuse(c, found.withheld);
   const stored = found.r2Key === null ? null : await bucketFiles(c.env.FILES).get(found.r2Key);
   const { sourceSha256, fileSha256 } = found;
   if (stored === null || sourceSha256 === null || fileSha256 === null) {

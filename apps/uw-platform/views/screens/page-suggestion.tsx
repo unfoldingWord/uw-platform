@@ -22,7 +22,8 @@ import {
 } from '../parts/page-shown.ts';
 import { idParam } from '../parts/params.ts';
 import { pagePath, pageSuggestionPath } from '../parts/paths.ts';
-import { shownText, Who } from '../parts/person.tsx';
+import { Who } from '../parts/person.tsx';
+import { shownAuthor } from '../parts/person-names.ts';
 import { notFound } from './not-found.tsx';
 
 type Found = NonNullable<Awaited<ReturnType<typeof suggestionFor>>>;
@@ -111,6 +112,7 @@ function Changes(props: { readonly review: Review }) {
 async function render(c: Context<AppEnv>, review: Review, refused: string | null) {
   const { screen, shown, found } = review;
   const reading = { reader: screen.caller.actor, at: screen.at };
+  const suggester = await shownAuthor(c.get('database')?.db ?? null, found.set.proposedBy);
   const spec = await pageScreenSpec(c, screen, shown, pageNames.pageSuggestion);
   const decided = statusWords[found.set.status] ?? null;
   return renderScreen(
@@ -122,7 +124,7 @@ async function render(c: Context<AppEnv>, review: Review, refused: string | null
           status={
             <p class="m-0 flex flex-wrap items-center gap-2">
               <span>Suggested by</span>
-              <Who reading={reading} who={shownText(found.set.proposedBy)} />
+              <Who reading={reading} who={suggester} />
               <span>{`on ${formatInstant(found.set.proposedAt)}`}</span>
             </p>
           }

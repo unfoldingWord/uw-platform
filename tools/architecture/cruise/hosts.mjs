@@ -172,6 +172,20 @@ export const hostRules = [
     to: { path: '^apps/uw-platform/pages/suggestion-decisions\\.ts$' },
   },
   {
+    name: 'review-decisions-only-from-page-routes',
+    comment:
+      'Accepting or rejecting a review set is a person deciding, so only the page routes, the review set screen and tests import it and no agent host reaches it.',
+    severity: 'error',
+    from: {
+      pathNot: [
+        '^apps/uw-platform/pages/routes\\.ts$',
+        '^apps/uw-platform/views/screens/page-review-set\\.tsx$',
+        testFile,
+      ],
+    },
+    to: { path: '^apps/uw-platform/pages/review-decisions\\.ts$' },
+  },
+  {
     name: 'cron-imports-only-the-request-ledger',
     comment:
       'The cron imports nothing of the command API but the request ledger, whose old rows it prunes, so it never reaches the gate kernel.',

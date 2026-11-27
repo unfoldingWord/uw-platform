@@ -1,5 +1,8 @@
 import { Hono, type Context } from 'hono';
 import {
+  acceptReviewSetCommandSchema,
+  proposeReviewSetCommandSchema,
+  rejectReviewSetCommandSchema,
   acceptSuggestionCommandSchema,
   adoptTemplateUpdateCommandSchema,
   rejectSuggestionCommandSchema,
@@ -32,6 +35,8 @@ import { wikiReviewScreen } from '../views/screens/wiki-review.tsx';
 import { wikiPoliciesScreen } from '../views/screens/wiki-policies.tsx';
 import { postPolicyForm } from '../views/parts/policy-forms.tsx';
 import { decideSuggestion, pageSuggestionScreen } from '../views/screens/page-suggestion.tsx';
+import { decideReviewSet, pageReviewSetScreen } from '../views/screens/page-review-set.tsx';
+import { pageReviewNewScreen, proposeFromForm } from '../views/screens/page-review-new.tsx';
 import { wikiScreen } from '../views/screens/wiki.tsx';
 import { setAreaHome } from './area-homes.ts';
 import { nameCategory } from './categories.ts';
@@ -41,6 +46,8 @@ import { downloadFile, listPageFiles, uploadFile } from './file-handlers.ts';
 import { movePage } from './move.ts';
 import { adoptTemplateUpdate, copyTemplatePolicy } from './policy-templates.ts';
 import { acceptSuggestion, rejectSuggestion } from './suggestion-decisions.ts';
+import { acceptReviewSet, rejectReviewSet } from './review-decisions.ts';
+import { proposeReviewSet } from './review-sets.ts';
 import {
   dropFavourite,
   handleComment,
@@ -61,6 +68,33 @@ type Run = (
 ) => Promise<{ readonly requestId: string; readonly result: PageResult | PageRefusal } | null>;
 
 const handlers = new Map<string, Run>([
+  [
+    'propose_review_set',
+    async (db, actor, body, traceId, at) => {
+      const parsed = proposeReviewSetCommandSchema.safeParse(body);
+      if (!parsed.success) return null;
+      const result = await proposeReviewSet(db, actor, parsed.data, traceId, at);
+      return { requestId: parsed.data.requestId, result };
+    },
+  ],
+  [
+    'accept_review_set',
+    async (db, actor, body, traceId, at) => {
+      const parsed = acceptReviewSetCommandSchema.safeParse(body);
+      if (!parsed.success) return null;
+      const result = await acceptReviewSet(db, actor, parsed.data, traceId, at);
+      return { requestId: parsed.data.requestId, result };
+    },
+  ],
+  [
+    'reject_review_set',
+    async (db, actor, body, traceId, at) => {
+      const parsed = rejectReviewSetCommandSchema.safeParse(body);
+      if (!parsed.success) return null;
+      const result = await rejectReviewSet(db, actor, parsed.data, traceId, at);
+      return { requestId: parsed.data.requestId, result };
+    },
+  ],
   [
     'accept_suggestion',
     async (db, actor, body, traceId, at) => {
@@ -214,6 +248,7 @@ async function handleCommand(c: Context<AppEnv>): Promise<Response> {
     requestId,
     pageId: result.page.id,
     version: result.page.version,
+    ...(result.reviewSetId === undefined ? {} : { reviewSetId: result.reviewSetId }),
   };
   return c.json(pageCommandAcceptedSchema.parse(saved), 200);
 }
@@ -302,6 +337,12 @@ function pageScreenRoutes(): Hono<AppEnv> {
   routes.use('/:pageId/suggestions/:suggestionId', formGuard);
   routes.get('/:pageId/suggestions/:suggestionId', pageSuggestionScreen);
   routes.post('/:pageId/suggestions/:suggestionId', decideSuggestion);
+  routes.use('/:pageId/review-sets/new', formGuard);
+  routes.get('/:pageId/review-sets/new', pageReviewNewScreen);
+  routes.post('/:pageId/review-sets/new', proposeFromForm);
+  routes.use('/:pageId/review-sets/:reviewSetId', formGuard);
+  routes.get('/:pageId/review-sets/:reviewSetId', pageReviewSetScreen);
+  routes.post('/:pageId/review-sets/:reviewSetId', decideReviewSet);
   routes.use('/:pageId/versions/:version', formGuard);
   routes.get('/:pageId/versions/:version', pageVersionScreen);
   routes.post('/:pageId/versions/:version', restoreVersion);

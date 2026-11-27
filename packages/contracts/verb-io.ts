@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { jdAreaSchema } from './areas.ts';
+import { renderChartInputSchema, renderedChartSchema } from './chart-spec.ts';
 import { costBasisSchema, evidenceLabelSchema } from './closed-sets.ts';
 import { healthReportSchema } from './health.ts';
 import { entityMeasureSchema, measureVerbIo } from './measure-verb-io.ts';
@@ -8,6 +9,8 @@ import { pdfExportReplySchema, pdfTargetSchema } from './pdf-exports.ts';
 import { pullRequestRefSchema, stageKeySchema } from './harness.ts';
 import { runStepCosts, runStepSchema } from './runs.ts';
 import { fullShaSchema } from './ship-rule.ts';
+import { renderChannelSchema } from './stories.ts';
+import { storyVerbIo } from './story-verb-io.ts';
 import { policyEnforcementSchema, policyLevelSchema } from './policies.ts';
 import {
   frontmatterSchema,
@@ -29,6 +32,7 @@ export const submitToGateResultSchema = z.enum([
 
 const json = z.record(z.string(), z.json());
 const limit = z.number().int().min(1).max(50);
+const channel = renderChannelSchema.default('platform');
 const pageSummary = pageSchema.pick({
   id: true,
   type: true,
@@ -48,11 +52,16 @@ export const recordRunStepReplySchema = lease.extend({
 
 export const verbIo = {
   search_pages: {
-    input: z.object({ query: z.string().min(1).max(200), type: pageTypeSchema.nullable(), limit }),
+    input: z.object({
+      query: z.string().min(1).max(200),
+      type: pageTypeSchema.nullable(),
+      limit,
+      channel,
+    }),
     output: z.object({ pages: z.array(pageSummary) }),
   },
   read_page: {
-    input: z.object({ pageId: z.uuid() }),
+    input: z.object({ pageId: z.uuid(), channel }),
     output: z.object({ page: pageSchema }),
   },
   write_page: {
@@ -71,7 +80,7 @@ export const verbIo = {
       pageId: z.uuid(),
       version: z.number().int().min(1),
       status: pageStatusSchema,
-      suggestionId: z.uuid().nullable(),
+      reviewSetId: z.uuid().nullable(),
     }),
   },
   attach_file: {
@@ -85,11 +94,11 @@ export const verbIo = {
     output: z.object({ file: fileSchema }),
   },
   render_pdf: {
-    input: z.strictObject({ target: pdfTargetSchema }),
+    input: z.strictObject({ target: pdfTargetSchema, channel }),
     output: pdfExportReplySchema,
   },
   resolve_context: {
-    input: z.object({ itemId: z.uuid() }),
+    input: z.object({ itemId: z.uuid(), channel }),
     output: z.object({
       instructions: pageSummary.extend({ bodyMd: pageSchema.shape.bodyMd }).nullable(),
       package: z.array(pageSummary),
@@ -252,4 +261,6 @@ export const verbIo = {
     output: healthReportSchema,
   },
   ...measureVerbIo,
+  render_chart: { input: renderChartInputSchema, output: renderedChartSchema },
+  ...storyVerbIo,
 } as const satisfies Record<VerbName, { input: z.ZodType; output: z.ZodType }>;

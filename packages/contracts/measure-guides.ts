@@ -1,4 +1,5 @@
 import { RESOURCES_COLLECTION_KEY, WEBSITES_VIEW_ID } from './resource-ids.ts';
+import { storyGuides } from './story-guides.ts';
 import type { VerbName } from './verb-names.ts';
 
 const flow = [
@@ -37,4 +38,5 @@ export const verbGuides: Readonly<Partial<Record<VerbName, string>>> = {
     "Reads the trial output again with the measure's current values, as Activate will, and names each value that does not read, by resource. A dashboard whose context kind is host needs hostPageId.",
   run_measure:
     'Only for an active measure, at most once an hour. A trial is a person pressing Run trial on the measure page; activation is a person pressing Activate.',
+  ...storyGuides,
 };

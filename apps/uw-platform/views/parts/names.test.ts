@@ -18,6 +18,7 @@ const prototypeSidebar = [
   'Pages & Wiki',
   'Tasks',
   'Colleague Directory',
+  'Team Charts',
   'Strategic Cascade',
   'Meetings',
   'JD Crosswalk',

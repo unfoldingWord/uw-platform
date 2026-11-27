@@ -60,7 +60,7 @@ async function areasInPrototypeOrder(db: Database): Promise<void> {
   const headings = [...nav.querySelectorAll('[data-area]')].map((element) =>
     element.getAttribute('data-area'),
   );
-  expect(headings).toEqual(['00-09', '10-19', '30-39', '90-99']);
+  expect(headings).toEqual(['00-09', '10-19', '30-39', '40-49', '90-99']);
 }
 
 async function unbuiltLeaveForMore(db: Database): Promise<void> {

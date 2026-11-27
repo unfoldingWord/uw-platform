@@ -14,7 +14,7 @@ import { readPage } from '../../pages/store.ts';
 import { ancestorsOf, type Ancestor } from '../../pages/tree.ts';
 import type { ScreenKernel } from './frame.tsx';
 import { moduleCodes, pageNames } from './names.ts';
-import { agentQueuesPath, pagePath, wikiPath, wikiPoliciesPath } from './paths.ts';
+import { agentQueuesPath, pagePath, storiesPath, wikiPath, wikiPoliciesPath } from './paths.ts';
 import { wikiBranch } from './wiki-tree.ts';
 
 export const pageLink =
@@ -29,6 +29,7 @@ export const typeWords: Readonly<Record<string, string>> = {
   policy: 'Policy',
   charter: 'Charter',
   decision: 'Decision',
+  impact_story: 'Impact story',
 };
 
 const BACK = /^\/harnesses\/[0-9a-f-]{36}\/controls$/;
@@ -89,8 +90,16 @@ const governanceCrumbs: ReadonlyMap<string, readonly { label: string; href: stri
   ['decision', [wikiCrumb]],
 ]);
 
+type ModuleHome = { readonly label: string; readonly href: string; readonly code: string };
+
+const moduleHomes: ReadonlyMap<string, ModuleHome> = new Map([
+  ['impact_story', { label: pageNames.stories, href: storiesPath(), code: moduleCodes.stories }],
+]);
+
 function leadOf(shown: ShownPage) {
   if (shown.page.type === 'knowledge') return knowledgeCrumbs(shown);
+  const home = moduleHomes.get(shown.page.type);
+  if (home !== undefined) return [{ label: home.label, href: home.href }];
   return (
     governanceCrumbs.get(shown.page.type) ?? [
       { label: pageNames.agentQueues, href: agentQueuesPath() },
@@ -101,6 +110,7 @@ function leadOf(shown: ShownPage) {
 export function pageSpec(shown: ShownPage, last: string | null) {
   const { page } = shown;
   const wiki = page.type === 'knowledge' || governanceCrumbs.has(page.type);
+  const home = moduleHomes.get(page.type);
   const lead = leadOf(shown);
   const here =
     last === null
@@ -108,8 +118,8 @@ export function pageSpec(shown: ShownPage, last: string | null) {
       : [{ label: page.title, href: pagePath(page.id) }, { label: last }];
   return {
     title: page.title,
-    current: wiki ? wikiPath() : pagePath(page.id),
-    code: wiki ? moduleCodes.pages : moduleCodes.agentQueues,
+    current: wiki ? wikiPath() : (home?.href ?? pagePath(page.id)),
+    code: wiki ? moduleCodes.pages : (home?.code ?? moduleCodes.agentQueues),
     crumbs: [...lead, ...here],
   };
 }

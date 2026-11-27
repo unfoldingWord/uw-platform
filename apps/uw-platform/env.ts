@@ -69,8 +69,21 @@ export type PdfQuickAction = {
   readonly allowRequestPattern: readonly string[];
   readonly cacheTTL: 0;
 };
+export type ScreenshotQuickAction = {
+  readonly html: string;
+  readonly screenshotOptions: { readonly type: 'png'; readonly omitBackground: boolean };
+  readonly viewport: {
+    readonly width: number;
+    readonly height: number;
+    readonly deviceScaleFactor: number;
+  };
+  readonly setJavaScriptEnabled: false;
+  readonly allowRequestPattern: readonly string[];
+  readonly cacheTTL: 0;
+};
 export type BrowserBinding = {
   quickAction(action: 'pdf', options: PdfQuickAction): Promise<Response>;
+  quickAction(action: 'screenshot', options: ScreenshotQuickAction): Promise<Response>;
 };
 export type PdfExportStart = { readonly exportId: string; readonly traceId: string };
 export type PdfExportBinding = {

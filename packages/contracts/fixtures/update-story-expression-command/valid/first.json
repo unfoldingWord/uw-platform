@@ -1,0 +1,13 @@
+{
+  "command": "update_story_expression",
+  "requestId": "00000000-0000-4000-8000-000000004102",
+  "expressionId": "00000000-0000-4000-8000-000000004103",
+  "title": "The well, in the annual report",
+  "format": "annual_report",
+  "venue": "2026 Annual Report",
+  "channel": "public",
+  "url": "https://docs.example.org/document/d/annual-2026/edit",
+  "language": null,
+  "publishedOn": null,
+  "excerpt": null
+}

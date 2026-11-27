@@ -10,7 +10,9 @@ import {
   pageCommentsPath,
   pageExportPath,
   pageManagePath,
+  pageMarkedExportPath,
   pagePath,
+  pageReviewNewPath,
   wikiNewPath,
 } from './paths.ts';
 
@@ -112,6 +114,9 @@ function ManageItems(props: { readonly pageId: string }) {
       <MenuLink href={pageManagePath(props.pageId)} icon="folder">
         Move, copy or retire
       </MenuLink>
+      <MenuLink href={pageReviewNewPath(props.pageId)} icon="pen">
+        Suggest changes
+      </MenuLink>
     </>
   );
 }
@@ -127,6 +132,9 @@ export function MoreMenu(props: {
       <Menu id={`page-more-${pageId}`} label="More">
         <MenuLink href={pageExportPath(pageId)} icon="file-code">
           Export as markdown
+        </MenuLink>
+        <MenuLink href={pageMarkedExportPath(pageId)} icon="file-code">
+          Export with suggested changes
         </MenuLink>
         <MenuLink href={`${pagePath(pageId)}?format=pdf`} icon="file-export">
           Export as PDF

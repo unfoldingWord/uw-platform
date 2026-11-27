@@ -1,11 +1,17 @@
+import type { RenderChannel } from '@uw/contracts';
 import type { Principal } from '@uw/core/principal';
 import type { Executor } from '@uw/db/client';
 import { kindOfContentType } from '../markdown/file-video.ts';
 import type { FileStore } from '../pages/file-store.ts';
 import { serveFile } from '../pages/files.ts';
+import { fileMayAppear } from '../stories/media.ts';
 import type { ImageOf } from './print-html.ts';
 
-type Reader = { readonly actor: Principal; readonly at: Date };
+type Reader = {
+  readonly actor: Principal;
+  readonly at: Date;
+  readonly channel?: RenderChannel;
+};
 
 const FILE_ADDRESS =
   /^\/api\/files\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/;
@@ -35,6 +41,8 @@ export function fileImages(
   return async (src) => {
     const fileId = fileIdOf(src, origin);
     if (fileId === null) return null;
+    const channel = reader.channel ?? 'platform';
+    if (!(await fileMayAppear(db, fileId, channel, reader.at))) return null;
     const served = await serveFile(db, files, reader, fileId);
     if (served === null || kindOfContentType(served.file.contentType) !== 'image') return null;
     return `data:${served.file.contentType};base64,${base64Of(served.bytes)}`;

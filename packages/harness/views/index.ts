@@ -32,6 +32,7 @@ import {
   type MyItems,
 } from './look.ts';
 import { holdsOf, type Holds } from './holds.ts';
+import { itemHistoryView, type ItemHistoryRead } from './item-history.ts';
 import { decidableGates, decideAbility, gateDecided, workflowGates } from './gates.ts';
 import { planeList } from './plane-list.ts';
 import { planeTotals } from './plane.ts';
@@ -78,6 +79,11 @@ export type ViewReads = {
     input: { readonly itemIds: readonly string[] },
     options?: ReadOptions,
   ): Promise<readonly HarnessEvent[]>;
+  itemHistory(
+    caller: Caller,
+    input: { readonly harnessId: string },
+    options?: ReadOptions,
+  ): Promise<KernelOutcome<ItemHistoryRead>>;
   refusals(
     caller: Caller,
     input: { readonly itemIds: readonly string[] },
@@ -197,7 +203,15 @@ function frameRead(
   ports: ViewPorts,
 ): Pick<
   ViewReads,
-  'frame' | 'queues' | 'daily' | 'lastEvents' | 'refusals' | 'mine' | 'flowCards' | 'creatableAreas'
+  | 'frame'
+  | 'queues'
+  | 'daily'
+  | 'lastEvents'
+  | 'itemHistory'
+  | 'refusals'
+  | 'mine'
+  | 'flowCards'
+  | 'creatableAreas'
 > {
   const at = (options?: ReadOptions): Date => options?.at ?? ports.clock.now();
   const read = <T>(work: (tx: StoreTransaction) => Promise<T>) => readOnly(ports.store, work);
@@ -206,6 +220,10 @@ function frameRead(
       read((tx) => dailyView(ports, tx, caller, { harnessId: input.harnessId, at: at(options) })),
     lastEvents: (caller, input, options) =>
       read((tx) => lastEventsView(ports, tx, caller, { itemIds: input.itemIds, at: at(options) })),
+    itemHistory: (caller, input, options) =>
+      read((tx) =>
+        itemHistoryView(ports, tx, caller, { harnessId: input.harnessId, at: at(options) }),
+      ),
     refusals: (caller, input, options) =>
       read((tx) => refusalsView(ports, tx, caller, { itemIds: input.itemIds, at: at(options) })),
     mine: (caller, options) => read((tx) => myItemsView(ports, tx, caller, at(options))),

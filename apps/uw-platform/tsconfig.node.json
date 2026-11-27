@@ -23,7 +23,10 @@
     "testing/measure-world.ts",
     "testing/measure-app.ts",
     "testing/measure-scene.ts",
-    "testing/context-rig.ts"
+    "testing/context-rig.ts",
+    "testing/chart-app.ts",
+    "testing/story-app.ts",
+    "testing/story-exports.ts"
   ],
   "exclude": ["node_modules"]
 }

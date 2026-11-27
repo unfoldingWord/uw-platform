@@ -1,16 +1,17 @@
-import { binderLimit, type BinderRequest, type Page } from '@uw/contracts';
+import { binderLimit, type BinderRequest, type Page, type RenderChannel } from '@uw/contracts';
 import { formatDate } from '@uw/core/dates';
 import type { Principal } from '@uw/core/principal';
 import type { Database } from '@uw/db/client';
 import { listPages } from '../pages/listing.ts';
-import { renderPage } from '../pages/render-page.ts';
-import { readPage } from '../pages/store.ts';
+import { embeddedPages, renderPageDrawn } from '../pages/render-page.ts';
+import { readPage, readPageIn } from '../pages/store.ts';
 import { withPanels } from '../views/parts/dashboard-panels.tsx';
 import { withViews } from '../views/parts/view-embed.tsx';
 import { binderBody, type BinderSection, type SourceHash } from './print-document.ts';
-import { screenOf, titled, type Printable } from './print-kernel.ts';
+import { pageBody, screenOf, titled, type Printable } from './print-kernel.ts';
 import { pagePrinted, pageReference, pageSourceHash } from './page-source.ts';
 import { canonicalJson, exporterOf, sha256Hex } from './provenance.ts';
+import { storiesOnly, type StoryVersion } from '../stories/uses.ts';
 
 export { printView } from './print-view.tsx';
 export type { Printable } from './print-kernel.ts';
@@ -22,21 +23,31 @@ export type BinderPlan = {
   readonly pages: readonly Page[];
   readonly root: Page | null;
   readonly areas: readonly string[];
+  readonly channel: RenderChannel;
 };
 
-type Reader = { readonly db: Database; readonly actor: Principal; readonly at: Date };
-type Section = BinderSection & SourceHash & { readonly areas: readonly string[] };
-type PageDrawn = { readonly html: string; readonly areas: readonly string[] };
+type Reader = {
+  readonly db: Database;
+  readonly actor: Principal;
+  readonly at: Date;
+  readonly channel: RenderChannel;
+};
+type Drawn = { readonly areas: readonly string[]; readonly stories: readonly StoryVersion[] };
+type Section = BinderSection & SourceHash & Drawn;
+type PageDrawn = Drawn & { readonly html: string };
 
 const DEEPEST = 20;
 const CHILDREN = 200;
 
 async function pageDrawn(reader: Reader, page: Page, commit: string): Promise<PageDrawn> {
-  const { db, actor, at } = reader;
+  const { db, actor, at, channel } = reader;
   const screen = screenOf(db, actor, at);
-  const viewed = await withViews(db, screen, await renderPage(db, actor, page, at, commit));
+  const { rendered, embeds } = await renderPageDrawn(db, { actor, at, channel }, page, commit);
+  const viewed = await withViews(db, screen, rendered);
   const { html, areas } = await withPanels(db, screen, page, viewed);
-  return { html, areas: [...new Set([page.jdArea, ...areas])] };
+  const drawn = [{ pageId: page.id, version: page.version }, ...embeddedPages(embeds)];
+  const stories = await storiesOnly(db, drawn);
+  return { html, areas: [...new Set([page.jdArea, ...areas])], stories };
 }
 
 export async function printPage(
@@ -46,22 +57,34 @@ export async function printPage(
   at: Date,
   commit: string,
 ): Promise<Printable | null> {
-  const reader = { db, actor, at };
-  const page = await readPage(db, actor, pageId, at);
-  if (page === null) return null;
+  const printed = await printPageIn(db, actor, { pageId, at, commit }, 'platform');
+  return printed === 'story_above_channel' ? null : printed;
+}
+
+export async function printPageIn(
+  db: Database,
+  actor: Principal,
+  asked: { readonly pageId: string; readonly at: Date; readonly commit: string },
+  channel: RenderChannel,
+): Promise<Printable | 'story_above_channel' | null> {
+  const { pageId, at, commit } = asked;
+  const reader = { db, actor, at, channel };
+  const page = await readPageIn(db, actor, pageId, at, channel);
+  if (page === null || page === 'story_above_channel') return page;
   const drawn = await pageDrawn(reader, page, commit);
   return {
     title: page.title,
-    bodyHtml: titled(page.title, drawn.html),
+    bodyHtml: titled(page.title, pageBody(drawn.html)),
     printed: await pagePrinted(reader, page),
     areas: drawn.areas,
+    stories: drawn.stories,
   };
 }
 
 async function readable(reader: Reader, ids: readonly string[]): Promise<readonly Page[]> {
   const found: Page[] = [];
   for (const id of new Set(ids)) {
-    const page = await readPage(reader.db, reader.actor, id, reader.at);
+    const page = await readPage(reader.db, reader.actor, id, reader.at, reader.channel);
     if (page !== null) found.push(page);
   }
   return found;
@@ -78,21 +101,27 @@ async function walk(reader: Reader, parent: string, depth: number, found: string
   }
 }
 
-function planOf(title: string, pages: readonly Page[], root: Page | null): BinderPlan {
+function planOf(
+  reader: Reader,
+  title: string,
+  pages: readonly Page[],
+  root: Page | null,
+): BinderPlan {
   const areas = [...new Set(pages.map((page) => page.jdArea))];
-  return { title, pages, root, areas };
+  return { title, pages, root, areas, channel: reader.channel };
 }
 
 async function rootPlan(
   reader: Reader,
   request: { readonly rootPageId: string; readonly title?: string | undefined },
 ): Promise<BinderPlan | BinderRefusal> {
-  const root = await readPage(reader.db, reader.actor, request.rootPageId, reader.at);
+  const { db, actor, at, channel } = reader;
+  const root = await readPage(db, actor, request.rootPageId, at, channel);
   if (root === null) return 'binder_empty';
   const found = [root.id];
   await walk(reader, root.id, 1, found);
   if (found.length > binderLimit) return 'binder_too_large';
-  return planOf(request.title ?? root.title, await readable(reader, found), root);
+  return planOf(reader, request.title ?? root.title, await readable(reader, found), root);
 }
 
 export async function binderPlan(
@@ -101,10 +130,10 @@ export async function binderPlan(
   request: BinderRequest,
   at: Date,
 ): Promise<BinderPlan | BinderRefusal> {
-  const reader = { db, actor, at };
+  const reader = { db, actor, at, channel: request.channel ?? 'platform' };
   if ('rootPageId' in request) return rootPlan(reader, request);
   const pages = await readable(reader, request.pageIds);
-  return pages.length === 0 ? 'binder_empty' : planOf(request.title, pages, null);
+  return pages.length === 0 ? 'binder_empty' : planOf(reader, request.title, pages, null);
 }
 
 async function sectionsOf(reader: Reader, plan: BinderPlan, commit: string): Promise<Section[]> {
@@ -133,7 +162,7 @@ export async function printPlannedBinder(
   at: Date,
   commit: string,
 ): Promise<Printable> {
-  const sections = await sectionsOf({ db, actor, at }, plan, commit);
+  const sections = await sectionsOf({ db, actor, at, channel: plan.channel }, plan, commit);
   const cover = { title: plan.title, exportedBy: exporterOf(actor), exportedOn: formatDate(at) };
   const hashed = sections.map(({ reference, sourceSha256 }) => ({
     reference,
@@ -149,6 +178,10 @@ export async function printPlannedBinder(
       hashInput: { kind: 'hash', sourceSha256: await sha256Hex(canonicalJson(hashed)), withheld },
     },
     areas: [...new Set([...plan.areas, ...sections.flatMap((section) => section.areas)])],
+    stories: await storiesOnly(
+      db,
+      sections.flatMap((section) => section.stories),
+    ),
   };
 }
 

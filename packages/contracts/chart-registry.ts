@@ -1,0 +1,46 @@
+import type { ZodType } from 'zod';
+import {
+  chartAxisFormatSchema,
+  chartExcludedReasonSchema,
+  chartHarnessParamsSchema,
+  chartLineageSchema,
+  chartNoParamsSchema,
+  chartQueryKeySchema,
+  chartSpecSchema,
+  chartStaleReasonSchema,
+  chartTableSchema,
+  chartTypeSchema,
+  chartValueFormatSchema,
+  renderChartInputSchema,
+  renderedChartSchema,
+  standardChartKeySchema,
+} from './chart-spec.ts';
+import {
+  addCommitmentCommandSchema,
+  allocationTargetKindSchema,
+  removeCommitmentCommandSchema,
+  removeStaffAllocationCommandSchema,
+  setStaffAllocationCommandSchema,
+} from './team-commands.ts';
+
+export const chartSchemaRegistry: Record<string, ZodType> = {
+  'chart-type': chartTypeSchema,
+  'chart-query-key': chartQueryKeySchema,
+  'standard-chart-key': standardChartKeySchema,
+  'chart-axis-format': chartAxisFormatSchema,
+  'chart-value-format': chartValueFormatSchema,
+  'chart-stale-reason': chartStaleReasonSchema,
+  'chart-excluded-reason': chartExcludedReasonSchema,
+  'chart-harness-params': chartHarnessParamsSchema,
+  'chart-no-params': chartNoParamsSchema,
+  'chart-spec': chartSpecSchema,
+  'chart-lineage': chartLineageSchema,
+  'chart-table': chartTableSchema,
+  'rendered-chart': renderedChartSchema,
+  'render-chart-input': renderChartInputSchema,
+  'allocation-target-kind': allocationTargetKindSchema,
+  'add-commitment-command': addCommitmentCommandSchema,
+  'remove-commitment-command': removeCommitmentCommandSchema,
+  'set-staff-allocation-command': setStaffAllocationCommandSchema,
+  'remove-staff-allocation-command': removeStaffAllocationCommandSchema,
+};

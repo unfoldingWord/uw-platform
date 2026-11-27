@@ -1,10 +1,10 @@
 import { and, asc, desc, eq, inArray, ne, or, sql, type SQL } from 'drizzle-orm';
-import type { JdArea, PageType } from '@uw/contracts';
+import type { JdArea, PageType, RenderChannel } from '@uw/contracts';
 import type { Principal } from '@uw/core/principal';
 import type { Executor } from '@uw/db/client';
 import { SEARCH_LANGUAGE, searchDocument, searchTerms, titleDocument } from '@uw/db/page-search';
 import { pages } from '@uw/db/schema';
-import { areaFilter, summaryColumns, summarySchema, type PageSummary } from './reads.ts';
+import { readFilter, summaryColumns, summarySchema, type PageSummary } from './reads.ts';
 
 export type SearchQuery = {
   readonly text: string;
@@ -15,6 +15,7 @@ export type SearchQuery = {
   readonly owner?: string | null;
   readonly since?: string | null;
   readonly similar?: boolean;
+  readonly channel?: RenderChannel;
   readonly limit: number;
 };
 
@@ -90,7 +91,7 @@ async function findPages(
   query: SearchQuery,
   at: Date,
 ): Promise<Found> {
-  const areas = areaFilter(actor, at);
+  const areas = readFilter(actor, at, query.channel ?? 'platform');
   if (areas === null || query.text.trim() === '') return { pages: [], match: 'words' };
   const words = await wordMatches(db, query, areas);
   if (words.length > 0 || query.similar !== true) return { pages: words, match: 'words' };

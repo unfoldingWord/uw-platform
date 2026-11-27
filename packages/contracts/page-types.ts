@@ -23,6 +23,7 @@ import {
   decisionSections,
   policyFrontmatterSchema,
 } from './policies.ts';
+import { impactStoryFrontmatterSchema } from './stories.ts';
 
 const text = z.string().min(1).max(2000);
 const distinct = <T>(values: readonly T[]) => new Set(values).size === values.length;
@@ -163,6 +164,7 @@ export const pageTypeRegistry = {
     ...internalSync,
     bodyProblems: (bodyMd: string) => decisionSections(bodyMd).missing,
     appliesToNode: true,
+    agentSuggests: true,
   },
   knowledge: { frontmatter: knowledgeFrontmatterSchema, ...internalSync },
   entry: { frontmatter: collectionFrontmatterSchema, ...internalSync },
@@ -187,6 +189,12 @@ export const pageTypeRegistry = {
   resource: { frontmatter: collectionFrontmatterSchema, ...internalSync },
   measure: { frontmatter: measureFrontmatterSchema, ...internalSync },
   dashboard: { frontmatter: dashboardFrontmatterSchema, ...internalSync },
+  impact_story: {
+    frontmatter: impactStoryFrontmatterSchema,
+    classification: 'internal',
+    offlineEligibility: 'never',
+    agentSuggests: true,
+  },
 } as const satisfies Record<PageType, PageTypeDefinition>;
 
 const byType = new Map<string, PageTypeDefinition>(Object.entries(pageTypeRegistry));

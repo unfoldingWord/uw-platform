@@ -25,6 +25,7 @@ const gatingByType = {
   resource: 'open',
   measure: 'gated',
   dashboard: 'gated',
+  impact_story: 'gated',
 } as const satisfies Record<PageType, Gating>;
 
 const gating: ReadonlyMap<string, Gating> = new Map(Object.entries(gatingByType));

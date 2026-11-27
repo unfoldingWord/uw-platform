@@ -512,6 +512,55 @@
       "when": 1795721363511,
       "tag": "0074_measures",
       "breakpoints": true
+    },
+    {
+      "idx": 75,
+      "version": "7",
+      "when": 1795725432817,
+      "tag": "0075_page_review_sets",
+      "breakpoints": true
+    },
+    {
+      "idx": 76,
+      "version": "7",
+      "when": 1795725437164,
+      "tag": "0076_page_review_sets_settled",
+      "breakpoints": true
+    },
+    {
+      "idx": 77,
+      "version": "7",
+      "when": 1795732711347,
+      "tag": "0077_team_charts",
+      "breakpoints": true
+    },
+    {
+      "idx": 78,
+      "version": "7",
+      "when": 1795735888923,
+      "tag": "0078_story_bank",
+      "breakpoints": true
+    },
+    {
+      "idx": 79,
+      "version": "7",
+      "when": 1795735895544,
+      "tag": "0079_story_uses_append_only",
+      "breakpoints": true
+    },
+    {
+      "idx": 80,
+      "version": "7",
+      "when": 1795747715069,
+      "tag": "0080_story_expressions",
+      "breakpoints": true
+    },
+    {
+      "idx": 81,
+      "version": "7",
+      "when": 1795809829776,
+      "tag": "0081_story_consent_history",
+      "breakpoints": true
     }
   ]
 }

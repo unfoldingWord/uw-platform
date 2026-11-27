@@ -2,14 +2,18 @@ import { eq } from 'drizzle-orm';
 import { describe, expect, it } from 'vitest';
 import { principalSchema, type Principal } from '@uw/contracts';
 import type { Database } from '@uw/db/client';
-import { pageSuggestionSets, pages } from '@uw/db/schema';
+import { pageReviewSets, pageSuggestionSets, pages } from '@uw/db/schema';
 import { seedGrant, seedPage, seedPerson } from '@uw/db/test-seed';
+import { seedSuggestionSet } from '@uw/db/test-suggestions';
 import { personOn } from '../testing/kernel.ts';
 import { testServer, withAppDatabase } from '../testing/postgres.ts';
 import { writePageAsAgent } from './agent-write.ts';
+import { anchorOf } from './anchors.ts';
+import { acceptReviewSet } from './review-decisions.ts';
+import { proposeReviewSet } from './review-sets.ts';
 import { acceptSuggestion } from './suggestion-decisions.ts';
 
-const EDITOR = { id: '00000000-0000-4000-8000-000000002e01', email: 'races@unfoldingword.org' };
+const EDITOR = { id: '00000000-0000-4000-8000-000000002e01', email: 'races@example.org' };
 const AREA = '00-09';
 const ON = new Date('2026-12-01T12:00:00.000Z');
 const POLICY = '00000000-0000-4000-8000-000000002e11';
@@ -71,7 +75,7 @@ async function selfEmbedRefused(db: Database): Promise<void> {
   const { agent } = await world(db);
   const held = await propose(db, agent, '![[Safeguarding]]');
   expect(held).toMatchObject({ ok: false, reason: 'embed_cycle' });
-  expect(await db.select().from(pageSuggestionSets)).toEqual([]);
+  expect(await db.select().from(pageReviewSets)).toEqual([]);
 }
 
 function pause(ms: number): Promise<void> {
@@ -80,9 +84,14 @@ function pause(ms: number): Promise<void> {
 
 async function overlapDoesNotDeadlock(db: Database): Promise<void> {
   const { person, agent } = await world(db);
-  const held = await propose(db, agent, 'Two named adults are present.');
-  if (!held.ok || held.suggestionId === undefined) throw new Error('no suggestion was held');
-  const suggestionId = held.suggestionId;
+  const suggestionId = await seedSuggestionSet(db, {
+    pageId: POLICY,
+    proposedBy: agent.identity,
+    title: 'Safeguarding',
+    frontmatter,
+    bodyMd: 'Two named adults are present.',
+    at: ON,
+  });
   let accepting: Promise<unknown> = Promise.resolve();
   const writer = db.transaction(async (tx) => {
     await tx.select().from(pages).where(eq(pages.id, POLICY)).for('update');
@@ -104,10 +113,50 @@ async function overlapDoesNotDeadlock(db: Database): Promise<void> {
   await expect(accepting).resolves.toMatchObject({ ok: true, page: { version: 2 } });
 }
 
+async function reviewOverlapDoesNotDeadlock(db: Database): Promise<void> {
+  const { person } = await world(db);
+  const proposal = {
+    command: 'propose_review_set' as const,
+    requestId: crypto.randomUUID(),
+    pageId: POLICY,
+    baseVersion: 1,
+    name: 'Ratio',
+    changes: [
+      {
+        kind: 'replacement' as const,
+        anchor: anchorOf('Two adults are present.', 0, 3),
+        text: 'Three',
+        note: null,
+      },
+    ],
+  };
+  const held = await proposeReviewSet(db, person, proposal, crypto.randomUUID(), ON);
+  if (!held.ok || held.reviewSetId === undefined) throw new Error('no review set was made');
+  const reviewSetId = held.reviewSetId;
+  let accepting: Promise<unknown> = Promise.resolve();
+  const writer = db.transaction(async (tx) => {
+    await tx.select().from(pages).where(eq(pages.id, POLICY)).for('update');
+    const command = {
+      command: 'accept_review_set' as const,
+      requestId: crypto.randomUUID(),
+      reviewSetId,
+      revision: 1,
+    };
+    accepting = acceptReviewSet(db, person, command, crypto.randomUUID(), ON);
+    await pause(300);
+    await tx.select().from(pageReviewSets).where(eq(pageReviewSets.id, reviewSetId)).for('update');
+  });
+  await expect(writer).resolves.toBeUndefined();
+  await expect(accepting).resolves.toMatchObject({ ok: true, page: { version: 2 } });
+}
+
 describe.skipIf(!testServer)('PO-7 a suggestion is checked and locked like a save', () => {
   it('refuses a proposal that would embed its own page, before storing it', () =>
     withAppDatabase(selfEmbedRefused));
 
   it('locks the page before the suggestion, so a save and a decision that overlap both finish', () =>
     withAppDatabase(overlapDoesNotDeadlock));
+
+  it('locks the page before the review set, so a save and a decision that overlap both finish', () =>
+    withAppDatabase(reviewOverlapDoesNotDeadlock));
 });

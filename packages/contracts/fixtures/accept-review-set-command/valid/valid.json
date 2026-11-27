@@ -1,0 +1,6 @@
+{
+  "command": "accept_review_set",
+  "requestId": "00000000-0000-4000-8000-0000000000a1",
+  "reviewSetId": "00000000-0000-4000-8000-0000000000a2",
+  "revision": 1
+}

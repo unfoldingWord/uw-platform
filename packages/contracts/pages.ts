@@ -24,6 +24,7 @@ export const pageTypes = [
   'resource',
   'measure',
   'dashboard',
+  'impact_story',
 ] as const;
 
 export const collectionPageTypes = [

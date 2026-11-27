@@ -5,11 +5,12 @@ import {
   learningFrontmatterSchema,
   type EvidenceLabel,
   type JdArea,
+  type RenderChannel,
 } from '@uw/contracts';
 import type { Principal } from '@uw/core/principal';
 import type { Executor } from '@uw/db/client';
 import { pages } from '@uw/db/schema';
-import { areaFilter, summaryColumns, summarySchema, type PageSummary } from './reads.ts';
+import { readFilter, summaryColumns, summarySchema, type PageSummary } from './reads.ts';
 
 const LEARNING_LIMIT = 20;
 const AREA_TIER = 3;
@@ -39,6 +40,7 @@ type ContextScope = {
   readonly itemPageId: string | null;
   readonly instructionsPageId: string | null;
   readonly area: JdArea;
+  readonly channel?: RenderChannel;
 };
 
 type Readable = SQL | undefined;
@@ -146,7 +148,7 @@ export async function contextPages(
   at: Date,
   onInvalid: OnInvalid,
 ): Promise<ContextPages> {
-  const readable = areaFilter(actor, at);
+  const readable = readFilter(actor, at, scope.channel ?? 'platform');
   if (readable === null) return nothing;
   return {
     instructions: await instructionsPage(db, scope.instructionsPageId, readable),

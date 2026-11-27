@@ -2,7 +2,7 @@ import { readdirSync } from 'node:fs';
 import { JSDOM } from 'jsdom';
 import { describe, expect, it } from 'vitest';
 import type { Database } from '@uw/db/client';
-import { pageSuggestionSets } from '@uw/db/schema';
+import { pageReviewSets, pageSuggestedChanges, pageSuggestionSets } from '@uw/db/schema';
 import { rewriteItem, seedPage } from '@uw/db/test-seed';
 import { clock } from '../github/testing/ship-rig.ts';
 import { advanced, enqueuedItem, meteredRun, subscriptionRun } from '../testing/board-world.ts';
@@ -61,6 +61,35 @@ async function seedPersona(db: Database, harnessId: string, at: Date): Promise<v
     proposedBy: 'agent:builder',
     proposedAt: at,
     status: 'pending',
+  });
+  await seedReviewSet(db, at);
+}
+
+async function seedReviewSet(db: Database, at: Date): Promise<void> {
+  await db.insert(pageReviewSets).values({
+    id: reviewSetId,
+    pageId: personaPageId,
+    name: 'Builder review',
+    baseVersion: 1,
+    status: 'pending',
+    createdBy: 'agent:builder',
+    createdAt: at,
+    requestId: crypto.randomUUID(),
+  });
+  await db.insert(pageSuggestedChanges).values({
+    id: crypto.randomUUID(),
+    reviewSetId,
+    position: 0,
+    kind: 'replacement',
+    startOffset: 51,
+    endOffset: 66,
+    exact: 'Build the item.',
+    prefix: '',
+    suffix: '',
+    proposedText: 'Build the item, then check it.',
+    note: null,
+    author: 'agent:builder',
+    createdAt: at,
   });
 }
 
@@ -129,6 +158,7 @@ async function seededExport(db: Database, email: string): Promise<string> {
 
 const personaPageId = '00000000-0000-4000-8000-00000000be11';
 const suggestionId = '00000000-0000-4000-8000-00000000be12';
+const reviewSetId = '00000000-0000-4000-8000-00000000be13';
 
 function personaFrontmatter(harnessId: string) {
   return {
@@ -155,9 +185,11 @@ function pathOf(entry: ScreenEntry, world: Seeded, email: string): string {
     .replace(':indicator', 'spend')
     .replace(':pageId', personaPageId)
     .replace(':suggestionId', suggestionId)
+    .replace(':reviewSetId', reviewSetId)
     .replace(':category', '81')
     .replace(':area', '80-89')
     .replace(':version', '1')
+    .replace(':chart', 'cumulative_flow')
     .replace(':key', 'program')
     .replace(':viewId', 'c0110000-0000-4000-8000-000000000401')
     .replace(':tier', 'program')

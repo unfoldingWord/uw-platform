@@ -52,6 +52,14 @@ export function Section(props: {
   );
 }
 
+export function SubHeading(props: { readonly id?: string | undefined; readonly title: string }) {
+  return (
+    <h3 id={props.id} class="m-0 text-sm font-semibold text-text">
+      {props.title}
+    </h3>
+  );
+}
+
 export function Hairline() {
   return <hr aria-hidden="true" class="m-0 h-px border-0 bg-line-soft" />;
 }

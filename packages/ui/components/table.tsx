@@ -29,6 +29,7 @@ export function Table(props: {
   readonly rows: readonly Readonly<Record<string, Child>>[];
   readonly bare?: boolean;
   readonly selected?: number | undefined;
+  readonly rowKeys?: readonly string[];
 }) {
   const frame = props.bare === true ? '' : '';
   return (
@@ -53,6 +54,7 @@ export function Table(props: {
             const chosen = index === props.selected;
             return (
               <tr
+                data-row-key={props.rowKeys?.at(index)}
                 aria-current={chosen ? 'true' : undefined}
                 class={`border-b border-line-soft transition-colors motion-reveal last:border-b-0 ${chosen ? 'bg-accent-soft' : 'hover:bg-raised'}`}
               >

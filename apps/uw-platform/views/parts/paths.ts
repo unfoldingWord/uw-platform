@@ -128,6 +128,18 @@ export function wikiPoliciesPath(): string {
   return '/wiki/policies';
 }
 
+export function pageReviewSetPath(pageId: string, reviewSetId: string): string {
+  return `${pagePath(pageId)}/review-sets/${segment(reviewSetId)}`;
+}
+
+export function pageReviewNewPath(pageId: string): string {
+  return `${pagePath(pageId)}/review-sets/new`;
+}
+
+export function pageMarkedExportPath(pageId: string): string {
+  return `${pageExportPath(pageId)}?mode=marked`;
+}
+
 export function pageVersionPath(pageId: string, version: number): string {
   return `${pagePath(pageId)}/versions/${String(version)}`;
 }
@@ -249,4 +261,40 @@ export function panelCsvPath(
 ): string {
   const host = hostPageId === null ? '' : `?host=${segment(hostPageId)}`;
   return `/api/measures/dashboards/${segment(dashboardId)}/panels/${String(index)}${host}`;
+}
+
+export type ChartFileFormat = 'svg' | 'png' | 'csv' | 'json';
+
+export function chartsPath(): string {
+  return '/charts';
+}
+
+export function chartPath(key: string, harnessId: string | null = null): string {
+  const query = harnessId === null ? '' : `?harnessId=${segment(harnessId)}`;
+  return `/charts/${segment(key)}${query}`;
+}
+
+export function chartFilePath(
+  key: string,
+  harnessId: string | null,
+  format: ChartFileFormat,
+): string {
+  const scope = harnessId === null ? '' : `harnessId=${segment(harnessId)}&`;
+  return `/api/charts/${segment(key)}?${scope}format=${format}`;
+}
+
+export function storiesPath(): string {
+  return '/stories';
+}
+
+export function storyCommandsPath(): string {
+  return '/api/stories/commands';
+}
+
+export function teamChartsPath(): string {
+  return '/team-charts';
+}
+
+export function teamCommandsPath(): string {
+  return '/api/team/commands';
 }

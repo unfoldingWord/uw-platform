@@ -615,8 +615,50 @@ A page of type `decision`: level-two headings Context, Decision and Consequences
 _Avoid_: ADR (that is a Decision), ruling, minute
 
 **Suggestion set**:
-A whole proposed new title, properties and text for one page over a base version, waiting for a person: a row of `page_suggestion_sets`. An agent's save to an active policy or charter becomes one, and each agent has at most one pending set per page, which a later save replaces. A person accepts it as one new version or rejects it; once decided it never changes. A set whose base is no longer the page's version can only be rejected.
+A whole proposed new title, properties and text for one page over a base version, waiting for a person: a row of `page_suggestion_sets` (ADR 0035). Agents made them before review sets; none is made now, and those still pending are decided as before: a person accepts one as one new version or rejects it, and once decided it never changes. A set whose base is no longer the page's version can only be rejected.
 _Avoid_: draft (that is a working draft), revision, proposal, pull request
+
+**Suggested change**:
+One proposed edit inside one page version, waiting in a **review set**: an insertion, a deletion, a replacement or a comment, anchored to a span of the base version's text by its start and end offsets and by a quote of that text with up to 32 characters either side (ADR 0037); the offsets span exactly the quote. Where the offsets no longer hold, the quote finds the span again; where the quote is gone or appears more than once, the change is **orphaned** and nothing is guessed. A row of `page_suggested_changes`. A comment changes no text.
+_Avoid_: revision (that is an Iterate run's draft page), edit, patch, annotation, tracked change (that is Word's)
+
+**Review set**:
+A named group of suggested changes over one base version of one page, such as "Board review 2026-12-01", accepted or rejected as a whole: a row of `page_review_sets`. Accepting applies every change in one save, under the rules of an ordinary edit (an issue mirror refuses it; an active measure or dashboard returns to suggested), making exactly one new version and one row of `page_review_decisions`; rejecting makes the row and no version. Only a person who may write the page decides, and a set whose base is no longer the page's version can only be rejected. An agent's save to an active decision page, policy, charter or impact story becomes one, worked out word by word, and each agent holds at most one pending set per page, which its next save replaces; an agent's save to any other active gated page is refused, because that type has its own path (a person confirms a skill, persona or learning whole; a measure or dashboard is trialled and activated again; the platform page is a person's alone). The review set screen shows each readable property it would change, with its value now and the value proposed. Changes in one set never overlap.
+_Avoid_: suggestion set (that is the older whole-page set), change request, changeset, batch, pull request
+
+**Marked export**:
+A page's markdown export in `marked` mode: the current version's text with the suggested changes of its pending review sets written in CriticMarkup (`{++ ++}`, `{-- --}`, `{~~ ~> ~~}`, `{== ==}{>> <<}`), which reads back into the same suggested changes. The other modes are `accepted`, the clean current text and the default, and `original`, the stored text the marks are over. Delimiters in the page's own text, a proposed text or a note are escaped with a backslash, so the text and the changes read back exactly. Every export is stamped with `source` (`slug@version`), `exported`, `sha256` (of the stored version, as in a provenance footer) and `mode`, and a marked export also with `changes_sha256` (of the suggested changes it carries); `verifyExport` checks a file against the stored version and the stored changes. A marked export pasted back on the review set form is taken only when its stamp names this page at the open version and its text under the marks is the stored text.
+_Avoid_: redline (that is the PDF mode, not built), tracked changes, diff
+
+## Charts
+
+**Chart spec**:
+What a chart is, declared rather than drawn by hand: a type from a closed set (bar, line, stacked area, graph, or a two-column graph), one **chart query** with its typed parameters, its encodings (the column on x, the columns on y, an optional column that splits the series, which then allows one column on y, and for a graph the column its edges point to and, for a two-column graph, the column that groups their targets) and its formatting (`YYYY-MM-DD` dates, counts, days, percents, or money in minor units with its currency). Validated by Zod in `packages/contracts/chart-spec.ts` and drawn on the server to SVG. A **standard chart** is a chart spec defined once by key, such as `cumulative_flow`.
+_Avoid_: chart config, widget, panel (that is a dashboard's), view (that is a collection's)
+
+**Chart query**:
+One entry of the whitelist a chart spec may name, by key: its parameters' schema, its columns and its source, run under the reader's access. A spec naming any other key is refused with `chart_query_not_allowed`; there is no free query.
+_Avoid_: data source (that is a Package page), report query, SQL
+
+**Lineage**:
+What every drawn chart says about its rows: the source, the chart query, the as-of time, the filters, the rows left out with a count per closed-set reason and, where the reader may see them, the entries themselves, whether its history read was capped and at how many of the newest events, and, when its source is behind or unreadable, since when. A downloaded SVG or PNG carries the source, as-of time and filters under its picture. A stale source is drawn with a note, never as a short series passed off as whole.
+_Avoid_: provenance (that is a page export's footer), metadata, audit trail
+
+**Data-quality note**:
+The lines a chart draws under its picture and shows on its screen for what its **lineage** left out: each ambiguous entry with the people it could name (the first 20 by name, and a count of the rest), each unresolved entry, each entry on a retired page or a page the reader cannot read, and a count of the rest. Ambiguous entries are left out and listed, never guessed (ADR 0039).
+_Avoid_: quality report, warnings, errors
+
+**Commitment**:
+A person's commitment to a colleague, a row of `person_commitments` owned by the people module: from one person to another person by id, or to a text such as a name copied from prose. A text is resolved each time a chart is drawn, by full name, loose name or a unique first name; two or more matches make it ambiguous and none makes it unresolved (ADR 0039).
+_Avoid_: CLOU (the reference dashboard's word), relationship, link
+
+**Staff allocation**:
+A person's share of time on exactly one program or portfolio, a row of `staff_allocations` owned by the people module, with a whole percent from 0 to 100 or none when it is not known ("unspecified"). Written only by the directory steward (`admin` on `10-19`) or an org admin.
+_Avoid_: assignment, FTE, capacity
+
+**Team Charts**:
+The screen at `/team-charts`, beside the Colleague Directory, that draws the commitments network, staff allocation, and people and portfolios as **standard charts** of the chart spec, each with its data-quality note, rows and downloads, and prints as a PDF. A graph's nodes are people and pages by id, labelled by name, so two colleagues or two programs with one name are two nodes. The directory steward chooses whose commitments to edit there (`?person=<id>`); a colleague edits only their own.
+_Avoid_: org chart, team dashboard
 
 ## Measures and dashboards
 
@@ -671,6 +713,44 @@ _Avoid_: widget, tile, chart (a chart is drawn by a panel), card (that is the Qu
 **Report card**:
 The dashboard a measure names to be shown, with the host page as its context, in the Measures section of every page its resources serve.
 _Avoid_: scorecard, summary, embed (alone, that is another page's text)
+
+## Story Bank
+
+**Impact story**:
+A page of type `impact_story`: one account from the field, filed under its area's `xx.96` home, tagged with a country, a region and languages as codes and with the pages it illustrates. Its sensitivity level and its consent record live beside it in the stories module, never in its frontmatter, so no page save can change them. An agent's save lands `suggested` (ADR 0040).
+_Avoid_: testimonial, case study, anecdote, story (alone, in code)
+
+**Story record**:
+The parent of everything said about one impact story: the `impact_story` page, whose title is the story's name and whose frontmatter holds who, when (`occurred_on`), where (`place`, `country`, `region`), in which languages and for which programs (ids of program pages its writer may read). Its consent record and sensitivity level hang from it. Its body is the staff summary and research notes, not a telling; the story is told in its expressions (ADR 0041).
+_Avoid_: master story, canonical story, story page (alone, any page is a page)
+
+**Story expression**:
+One telling of a story in one format and venue: a social post, a newsletter article, an annual report, a video and so on, each a row of `story_expressions` with its format, venue, channel (the audience it reached or is meant for), language, the day it was told (none while drafted or planned), a short excerpt and a status (`suggested`, `confirmed`, `retired`). Today an expression is a link to an https address outside the platform; a native expression, a platform page of its own, is reserved and not built. A telling above its story's level or without valid consent is kept and flagged, never refused. An agent adds expressions as `suggested`; only a person confirms or retires one.
+_Avoid_: version, variant, draft, revision (each is a page's), copy, post (alone, that is one format)
+
+**Sensitivity level**:
+How widely an impact story may be told, from an ordered ladder where each level includes those below it: `internal` < `private_circulation` < `newsletter` < `public`. A story is created `internal`. Raising it needs `admin` on its area and a valid consent record; lowering it is open to anyone who may write the page. An agent never sets or raises one. It is a permission, not a label.
+_Avoid_: visibility, privacy setting, tier (that is a risk tier), classification (that is a table's)
+
+**Consent record**:
+The release behind a story: a reference to the stored release, who consented, in what form and on what day, when it expires, whether the subject is anonymised, how names are used (`real`, `pseudonym`, `none`), how precise the location is (`country`, `region`, `none`), a separate photo release, a review date and, once withdrawn, when. It is **in effect** on a day from its start day up to, not including, its expiry day, unless withdrawn on or before that day; one rule decides raising, rendering and flagging. A row of the restricted `story_consents` table, read by its area's readers and org admins only; it holds the current release.
+_Avoid_: permission (that is a grant's), release form (that is the stored document), waiver
+
+**Consent history**:
+Every release interval a story has had and every withdrawal, in the order recorded, as append-only rows of the restricted `story_consent_history` table. A telling is judged against the release that covered its day, so a renewal does not flag what was told under the original release (ADR 0041).
+_Avoid_: consent log, audit trail (that is the grant's)
+
+**Render channel**:
+Where a rendering will be seen, from a closed set: `platform` (staff screens behind sign-in, the same reach as `internal`), `private_circulation`, `newsletter` and `public`. Every render path declares one; exports and verbs take it as a parameter that defaults to `platform`. A story appears in a channel only when `storyMayAppear(level, channel)` says so, and everything a rendering pulls in, embeds and images included, obeys the same channel.
+_Avoid_: audience, destination, target (that is a PDF export's), visibility
+
+**Media level**:
+The sensitivity level of one file attached to an impact story, kept apart from the story's own level, so a story can be `public` while one photograph in it stays `internal`. A file with no level of its own is `internal`; raising one also needs the consent record's photo release, and it appears above `platform` only while the current consent still holds it.
+_Avoid_: image privacy, photo tier
+
+**Story use**:
+One line of the append-only `story_uses` log: which story, at which version, went into which channel, by which kind of rendering (a markdown export, a PDF of a page or a binder, an agent read), where, by whom and when. Every story expression with a day told counts as a use too. A page's Print as PDF is a use at `platform`. Withdrawing consent drops the story to `internal` and answers with every recorded use and every expression, the **withdrawal report**; a stored PDF that drew the story into a wider channel can no longer be downloaded.
+_Avoid_: view (that is a page view), impression, citation
 
 ## What GitHub says
 

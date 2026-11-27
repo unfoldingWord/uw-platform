@@ -1,0 +1,12 @@
+{
+  "kind": "replacement",
+  "anchor": {
+    "start": 4,
+    "end": 10,
+    "exact": "adults",
+    "prefix": "Two ",
+    "suffix": " are present."
+  },
+  "text": "named adults",
+  "note": null
+}

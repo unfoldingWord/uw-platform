@@ -36,6 +36,15 @@ const measureVerbs = [
   'preview_dashboard',
 ];
 
+const storyVerbs = [
+  'add_story_expression',
+  'update_story_expression',
+  'read_story',
+  'list_stories',
+];
+
+const measureAndChartVerbs = [...measureVerbs, 'render_chart'];
+
 function names(): string[] {
   return verbRegistry.map((entry) => entry.name);
 }
@@ -44,30 +53,31 @@ function groupOf(name: string): string | undefined {
   return findVerb(name)?.group;
 }
 
+const firstVerbs = [
+  'search_pages',
+  'read_page',
+  'write_page',
+  'attach_file',
+  'render_pdf',
+  'resolve_context',
+  'query_entities',
+  'create_task',
+  'read_collection',
+  'read_view',
+  'create_row',
+  'set_property',
+  'list_gifts',
+  'create_draft_journal_entry',
+  'poll_queue',
+  'claim_item',
+  'submit_to_gate',
+  'record_run_step',
+  'get_health',
+];
+
 describe('CT-2 the verb registry', () => {
-  it('registers the thirteen verbs of PRD section 8.2, attach_file, render_pdf, the four collection verbs and the seven measure verbs', () => {
-    expect(names()).toEqual([
-      'search_pages',
-      'read_page',
-      'write_page',
-      'attach_file',
-      'render_pdf',
-      'resolve_context',
-      'query_entities',
-      'create_task',
-      'read_collection',
-      'read_view',
-      'create_row',
-      'set_property',
-      'list_gifts',
-      'create_draft_journal_entry',
-      'poll_queue',
-      'claim_item',
-      'submit_to_gate',
-      'record_run_step',
-      'get_health',
-      ...measureVerbs,
-    ]);
+  it('registers the thirteen verbs of PRD section 8.2, attach_file, render_pdf, the four collection verbs, the seven measure verbs, render_chart and the four story verbs', () => {
+    expect(names()).toEqual([...firstVerbs, ...measureAndChartVerbs, ...storyVerbs]);
     expect(names()).toEqual([...verbNames]);
   });
 
@@ -152,11 +162,65 @@ describe('ADR 0036 the measure verbs in the verb registry', () => {
   });
 });
 
+describe('#199 render_chart in the verb registry', () => {
+  it('#199 lets a viewer draw a chart, under the read of the workflow its query reads', () => {
+    expect(findVerb('render_chart')?.group).toBe('records');
+    expect(findVerb('render_chart')?.grant).toEqual({ scope: 'resource_area', role: 'viewer' });
+  });
+
+  it('#199 offers the agent a typed object, so its tool schema is an object', () => {
+    expect(z.toJSONSchema(verbIo.render_chart.input)).toMatchObject({ type: 'object' });
+  });
+});
+
+const storyId = '00000000-0000-4000-8000-000000004101';
+const fields = {
+  title: 'The well, told on social media',
+  format: 'social_post',
+  venue: 'Social media',
+  channel: 'public',
+  url: 'https://social.example.org/posts/1',
+  language: null,
+  publishedOn: '2026-11-02',
+  excerpt: null,
+};
+const telling = { storyId, ...fields };
+
+describe('ADR 0041 the story verbs in the verb registry', () => {
+  it('ADR 0041 lets an editor add and change an expression and a reader read and list stories', () => {
+    const grants = storyVerbs.map((name) => [name, findVerb(name)?.grant ?? null]);
+    expect(grants).toEqual([
+      ['add_story_expression', { scope: 'resource_area', role: 'editor' }],
+      ['update_story_expression', { scope: 'resource_area', role: 'editor' }],
+      ['read_story', { scope: 'resource_area', role: 'viewer' }],
+      ['list_stories', null],
+    ]);
+  });
+
+  it('ADR 0041 has no verb that confirms an expression, sets a level or records consent', () => {
+    const words = verbRegistry.filter((entry) => /confirm|level|consent|retire/.test(entry.name));
+    expect(words).toEqual([]);
+  });
+
+  it('ADR 0041 refuses a status, a level, a consent or an adder on an expression an agent sends', () => {
+    const add = verbIo.add_story_expression.input;
+    expect(add.safeParse(telling).success).toBe(true);
+    for (const field of ['status', 'level', 'consentReference', 'addedBy', 'decidedBy']) {
+      expect(add.safeParse({ ...telling, [field]: 'confirmed' }).success).toBe(false);
+    }
+    const update = verbIo.update_story_expression.input;
+    expect(update.safeParse({ ...fields, expressionId: storyId }).success).toBe(true);
+    expect(
+      update.safeParse({ ...fields, expressionId: storyId, status: 'confirmed' }).success,
+    ).toBe(false);
+  });
+});
+
 describe('CT-2 the verb manifest is contract data', () => {
   it('is plain JSON-serialisable contract data', () => {
     const manifest = verbManifest();
     expect(JSON.parse(JSON.stringify(manifest))).toEqual(manifest);
-    expect(manifest).toHaveLength(26);
+    expect(manifest).toHaveLength(31);
   });
 
   it('serialises the registry with its Zod schemas stripped', () => {

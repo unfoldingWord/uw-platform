@@ -210,6 +210,44 @@ describe('a decision on a suggested change is reached only from the page routes 
   });
 });
 
+describe('#197 a decision on a review set is reached only from the page routes and its screen', () => {
+  const decisions = { 'apps/uw-platform/pages/review-decisions.ts': leaf };
+
+  it.each([
+    [
+      'the MCP verbs',
+      'apps/uw-platform/mcp/verbs/write-page.ts',
+      "import '../../pages/review-decisions.ts';",
+    ],
+    [
+      'the agent page writer',
+      'apps/uw-platform/pages/agent-write.ts',
+      "import './review-decisions.ts';",
+    ],
+    [
+      'the agent review holder',
+      'apps/uw-platform/pages/agent-review.ts',
+      "import './review-decisions.ts';",
+    ],
+  ])('refuses %s importing it', async (_name, path, source) => {
+    const found = await violations({ ...decisions, [path]: source });
+    expect(found.map((violation) => violation.rule)).toContain(
+      'review-decisions-only-from-page-routes',
+    );
+  });
+
+  it('allows the page routes, the review set screen and a test', async () => {
+    const found = await violations({
+      ...decisions,
+      'apps/uw-platform/pages/routes.ts': "import './review-decisions.ts';",
+      'apps/uw-platform/views/screens/page-review-set.tsx':
+        "import '../../pages/review-decisions.ts';",
+      'apps/uw-platform/pages/review-sets.pg.test.ts': "import './review-decisions.ts';",
+    });
+    expect(found).toEqual([]);
+  });
+});
+
 const appActivation = 'apps/uw-platform/commands/person/persona-activation.ts';
 const activationFiles = {
   [appActivation]: leaf,

@@ -35,7 +35,7 @@ export const writePageVerb = gatedHandler({
         pageId: page.id,
         version: page.version,
         status: page.status,
-        suggestionId: written.suggestionId ?? null,
+        reviewSetId: written.reviewSetId ?? null,
       },
     };
   },

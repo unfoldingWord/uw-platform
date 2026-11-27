@@ -115,6 +115,16 @@ export const screens: readonly ScreenEntry[] = [
     path: '/pages/:pageId/suggestions/:suggestionId',
   },
   {
+    name: 'page-review-new',
+    file: 'apps/uw-platform/views/screens/page-review-new.tsx',
+    path: '/pages/:pageId/review-sets/new',
+  },
+  {
+    name: 'page-review-set',
+    file: 'apps/uw-platform/views/screens/page-review-set.tsx',
+    path: '/pages/:pageId/review-sets/:reviewSetId',
+  },
+  {
     name: 'wiki-policies',
     file: 'apps/uw-platform/views/screens/wiki-policies.tsx',
     path: '/wiki/policies',
@@ -167,6 +177,14 @@ export const screens: readonly ScreenEntry[] = [
     path: '/exports/:exportId',
   },
   { name: 'measures', file: 'apps/uw-platform/views/screens/measures.tsx', path: '/measures' },
+  { name: 'stories', file: 'apps/uw-platform/views/screens/stories.tsx', path: '/stories' },
+  { name: 'charts', file: 'apps/uw-platform/views/screens/charts.tsx', path: '/charts' },
+  { name: 'chart', file: 'apps/uw-platform/views/screens/chart.tsx', path: '/charts/:chart' },
+  {
+    name: 'team-charts',
+    file: 'apps/uw-platform/views/screens/team-charts.tsx',
+    path: '/team-charts',
+  },
   {
     name: 'not-found',
     file: 'apps/uw-platform/views/screens/not-found.tsx',

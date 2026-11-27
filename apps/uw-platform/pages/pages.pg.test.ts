@@ -11,6 +11,9 @@ import {
   pageLinks,
   pageRenders,
   pageSuggestionSets,
+  pageReviewSets,
+  pageSuggestedChanges,
+  pageReviewDecisions,
   pageVersions,
   pageViews,
   pages,
@@ -183,7 +186,7 @@ const learningFrontmatter = {
 };
 
 describe('FD-9 the pages module is the only writer of pages and page versions', () => {
-  it('declares exactly the eleven page tables as owned', () => {
+  it('declares exactly the fourteen page tables as owned', () => {
     expect(owns).toEqual([
       getTableName(pages),
       getTableName(pageVersions),
@@ -196,6 +199,9 @@ describe('FD-9 the pages module is the only writer of pages and page versions', 
       getTableName(areaHomes),
       getTableName(pageRenders),
       getTableName(pageSuggestionSets),
+      getTableName(pageReviewSets),
+      getTableName(pageSuggestedChanges),
+      getTableName(pageReviewDecisions),
     ]);
   });
 });
