@@ -21,6 +21,7 @@ import {
   assistantProposalDecisionSchema,
   assistantProposalKindSchema,
 } from './assistant-proposals.ts';
+import { assistantResearchKindSchema } from './assistant-research.ts';
 import { verbNameSchema } from './verb-names.ts';
 
 const id = z.uuid();
@@ -115,4 +116,9 @@ export const assistantEvidence = {
     decision: assistantProposalDecisionSchema,
   }),
   assistant_proposal_expired: z.strictObject({ proposalId: id }),
+  assistant_research_used: z.strictObject({
+    requestId: id,
+    turnId: id,
+    kind: assistantResearchKindSchema,
+  }),
 };

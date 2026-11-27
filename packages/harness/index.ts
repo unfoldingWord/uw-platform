@@ -190,6 +190,10 @@ export {
   splitTranscript,
   transcriptParts,
   TRUSTED_AUTHSERV_ID,
+  privateAddress,
+  webAddressRefusal,
+  RESEARCH_PER_DAY,
+  RESEARCH_PER_REQUEST,
 } from './assistants/index.ts';
 export type {
   AssistantCommands,
@@ -229,5 +233,13 @@ export type {
   ProposalDecideInput,
   Expired,
   ExpireInput,
+  WebAddressParts,
+  ResearchCounts,
+  FindFlightsInput,
+  FlightsFound,
+  ReadWebPageInput,
+  SearchWebInput,
+  WebPageRead,
+  WebSearched,
 } from './assistants/index.ts';
 export type { PersonaFixture, PersonaPageDraft } from './templates/personas.ts';

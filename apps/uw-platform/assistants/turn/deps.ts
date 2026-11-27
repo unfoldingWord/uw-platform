@@ -13,6 +13,7 @@ import { hubOf } from '../../ports/hub.ts';
 import { platformModelEngine } from '../../ports/model-engine.ts';
 import { notifierOf } from '../../ports/notifier.ts';
 import { directMessagesOf } from '../direct-messages.ts';
+import { researchOf } from '../research.ts';
 import { workspaceOf } from '../workspace.ts';
 import { connectAssistantHost } from '../../mcp/assistant-host.ts';
 import type { AssistantTurnDeps, HostOpener } from './run.ts';
@@ -38,10 +39,11 @@ function kernelOf(env: Bindings, database: DatabaseHandle, logger: Logger, send:
   const notifier = notifierOf(env, database, consoleSink);
   const directMessages = directMessagesOf({ env, database, fetch: send });
   const workspace = workspaceOf({ env, database, fetch: send });
+  const research = researchOf({ env, fetch: send });
   return platformKernel(
     database,
     systemClock,
-    hubWiring(hubOf(env, logger), { notifier, directMessages, workspace }),
+    hubWiring(hubOf(env, logger), { notifier, directMessages, workspace, research }),
     assistantKernelSettings(env),
   );
 }

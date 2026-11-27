@@ -69,8 +69,17 @@ export type PdfQuickAction = {
   readonly allowRequestPattern: readonly string[];
   readonly cacheTTL: 0;
 };
+export type MarkdownQuickAction = {
+  readonly url: string;
+  readonly rejectResourceTypes: readonly string[];
+  readonly gotoOptions: { readonly waitUntil: 'networkidle2'; readonly timeout: number };
+  readonly cacheTTL: 0;
+};
 export type BrowserBinding = {
-  quickAction(action: 'pdf', options: PdfQuickAction): Promise<Response>;
+  quickAction(
+    action: 'pdf' | 'markdown',
+    options: PdfQuickAction | MarkdownQuickAction,
+  ): Promise<Response>;
 };
 export type PdfExportStart = { readonly exportId: string; readonly traceId: string };
 export type PdfExportBinding = {
@@ -91,6 +100,7 @@ export type Bindings = {
   AI_GATEWAY_ID?: string;
   AI_GATEWAY_TOKEN?: string;
   AI_SPEND_CAP_MINOR?: string;
+  BRAVE_SEARCH_API_KEY?: string;
   BROWSER?: BrowserBinding;
   BUILDER_GITHUB_APP_ID?: string;
   BUILDER_GITHUB_APP_INSTALLATION_ID?: string;
@@ -117,6 +127,7 @@ export type Bindings = {
   CREDENTIALS_KMS_REGION?: string;
   CREDENTIALS_KMS_SECRET_ACCESS_KEY?: string;
   DEV_PRINCIPAL_EMAIL?: string;
+  DUFFEL_ACCESS_TOKEN?: string;
   FILES?: FilesBucket;
   GITHUB_APP_ID?: string;
   GITHUB_APP_INSTALLATION_ID?: string;

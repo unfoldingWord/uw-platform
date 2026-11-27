@@ -18,6 +18,7 @@ import { createSimIds, type SimIds } from './adapters/ids.ts';
 import { createSimModelEngine, type SimModelEngine } from './adapters/model-engine.ts';
 import { createSimNotifier, type SimNotifier } from './adapters/notifier.ts';
 import { createSimPageAppends, type SimPageAppends } from './adapters/page-appends.ts';
+import { createSimResearch, type SimResearch } from './adapters/research.ts';
 import { createSimRuns } from './adapters/runs.ts';
 import { createSimStore } from './adapters/store.ts';
 import { createSimWorkspace, type SimWorkspace } from './adapters/workspace.ts';
@@ -47,6 +48,7 @@ type SimAdapters = {
   readonly directMessages: SimDirectMessages;
   readonly workspace: SimWorkspace;
   readonly pageAppends: SimPageAppends;
+  readonly research: SimResearch;
 };
 
 export type World = {
@@ -72,6 +74,7 @@ function simAdapters(database: EmbeddedDatabase, start: Date): SimAdapters {
     directMessages: createSimDirectMessages(clock),
     workspace: createSimWorkspace(),
     pageAppends: createSimPageAppends(() => clock.now()),
+    research: createSimResearch(),
   };
 }
 

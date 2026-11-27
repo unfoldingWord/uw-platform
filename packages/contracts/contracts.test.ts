@@ -217,6 +217,9 @@ describe('closed sets added for v0.2.0', () => {
       'email_forwarded',
       'email_attachment',
       'meeting_transcript',
+      'web_page',
+      'search_result',
+      'flight_offer',
     ]);
   });
 

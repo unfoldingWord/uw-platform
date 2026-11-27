@@ -49,6 +49,9 @@ export const untrustedSourceSchema = z.enum([
   'email_forwarded',
   'email_attachment',
   'meeting_transcript',
+  'web_page',
+  'search_result',
+  'flight_offer',
 ]);
 export const gateDecisionSchema = z.enum(['approve', 'reject', 'take_over', 'override']);
 export const personStatusSchema = z.enum(['active', 'pending', 'disabled']);

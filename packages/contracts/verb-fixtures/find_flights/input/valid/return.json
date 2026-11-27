@@ -1,0 +1,8 @@
+{
+  "origin": "NBO",
+  "destination": "GVA",
+  "departDate": "2027-03-01",
+  "returnDate": "2027-03-06",
+  "passengers": 1,
+  "cabin": "economy"
+}

@@ -188,8 +188,8 @@ describe('the proposals contract version', () => {
 });
 
 describe('the review-fixes contract version', () => {
-  it('is published at 14.24.0 with a refused turn waking its person and a thrown step named', () => {
-    expect(CONTRACT_VERSION).toBe('14.24.0');
+  it('was published at 14.24.0 with a refused turn waking its person and a thrown step named', () => {
+    expect(lock.versions.map((version) => version.version)).toContain(CONTRACT_VERSION);
     const entry = lock.versions.find((version) => version.version === '14.24.0');
     const sets: Record<string, readonly string[]> = entry?.sets ?? {};
     expect(sets['wake-reason']).toContain('assistant_refused');

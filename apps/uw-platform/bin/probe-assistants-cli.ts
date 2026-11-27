@@ -13,7 +13,8 @@ const USAGE = [
   'Usage: pnpm probe:assistants [-- --write]',
   'Reads its settings from the environment (node --env-file works): the Worker variable names,',
   'GOOGLE_WORKSPACE_KEY or GOOGLE_WORKSPACE_KEY_FILE, and PROBE_PERSON_EMAIL, PROBE_COLLEAGUE_EMAIL,',
-  'PROBE_ASSISTANT_MAILBOX. Without --write it only reads; with it, it creates and removes a probe',
+  'PROBE_ASSISTANT_MAILBOX and PROBE_WEB_PAGE (a public page to read, for the research probes).',
+  'Without --write it only reads; with it, it creates and removes a probe',
   'bot, a probe Workspace user and a probe hold, and sends one DM and one email to the probe person.',
 ];
 

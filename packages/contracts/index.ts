@@ -7,6 +7,7 @@ export * from './assistant-accounts.ts';
 export * from './assistant-history.ts';
 export * from './assistant-mail.ts';
 export * from './assistant-proposals.ts';
+export * from './assistant-research.ts';
 export * from './jd-ids.ts';
 export * from './closed-sets.ts';
 export * from './collection-commands.ts';

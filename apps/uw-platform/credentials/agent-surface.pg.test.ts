@@ -168,6 +168,9 @@ function proposalArguments() {
     propose_email: [{ to: ['ana@example.org'], subject: name, body: name }],
     propose_invite: [invite],
     propose_page_append: [{ pageId: credentialId, text: name }],
+    search_web: [{ query: name }],
+    read_web_page: [{ url: `https://${name}.example.org/` }],
+    find_flights: [{ origin: 'NBO', destination: 'GVA', departDate: '2027-03-01' }],
   };
 }
 

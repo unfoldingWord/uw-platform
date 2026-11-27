@@ -70,6 +70,17 @@ import {
   type ProposalDecideInput,
 } from './proposal-decide.ts';
 import { expireProposals, type Expired, type ExpireInput } from './proposal-expiry.ts';
+import {
+  findFlights,
+  readWebPage,
+  searchWeb,
+  type FindFlightsInput,
+  type FlightsFound,
+  type ReadWebPageInput,
+  type SearchWebInput,
+  type WebPageRead,
+  type WebSearched,
+} from './research.ts';
 
 export type AssistantCommands = {
   provision(caller: Caller, input: ProvisionInput): Promise<KernelOutcome<Activated>>;
@@ -110,11 +121,14 @@ export type AssistantCommands = {
     input: ProposalDecideInput,
   ): Promise<KernelOutcome<ProposalDecided>>;
   expireProposals(caller: Caller, input: ExpireInput): Promise<KernelOutcome<Expired>>;
+  searchWeb(caller: Caller, input: SearchWebInput): Promise<KernelOutcome<WebSearched>>;
+  readWebPage(caller: Caller, input: ReadWebPageInput): Promise<KernelOutcome<WebPageRead>>;
+  findFlights(caller: Caller, input: FindFlightsInput): Promise<KernelOutcome<FlightsFound>>;
 };
 
 type AssistantPorts = Pick<
   Ports,
-  'clock' | 'grants' | 'ids' | 'store' | 'directMessages' | 'workspace' | 'pageAppends'
+  'clock' | 'grants' | 'ids' | 'store' | 'directMessages' | 'workspace' | 'pageAppends' | 'research'
 >;
 
 export function createAssistantCommands(
@@ -154,5 +168,8 @@ export function createAssistantCommands(
     proposePageAppend: (caller, input) => propose(ports, caller, 'page_append', input),
     decideProposal: (caller, input) => decideProposal(ports, caller, input),
     expireProposals: (caller, input) => expireProposals(ports, caller, input),
+    searchWeb: (caller, input) => searchWeb(ports, caller, input),
+    readWebPage: (caller, input) => readWebPage(ports, caller, input),
+    findFlights: (caller, input) => findFlights(ports, caller, input),
   };
 }

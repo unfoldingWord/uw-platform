@@ -36,6 +36,8 @@ const assistantSecrets = [
   'CREDENTIALS_KMS_ACCESS_KEY_ID',
   'CREDENTIALS_KMS_SECRET_ACCESS_KEY',
   'OPENROUTER_API_KEY',
+  'BRAVE_SEARCH_API_KEY',
+  'DUFFEL_ACCESS_TOKEN',
 ];
 
 function environmentOf(file: string, name: string): Block {
@@ -94,6 +96,13 @@ describe('go-live: every setting the assistants read is declared for staging and
 
   it('lists each assistant secret, binds it from the store in both environments, and reads it', () => {
     expect(assistantSecrets.flatMap(secretFaults)).toEqual([]);
+  });
+
+  it('binds Browser Run in both environments, so a page that needs a browser can be rendered', () => {
+    for (const env of environments) {
+      const block = environmentOf('wrangler.toml', env);
+      expect(block['browser']).toEqual({ binding: 'BROWSER' });
+    }
   });
 
   it('keeps production email instructions off until the DMARC probe passes', () => {

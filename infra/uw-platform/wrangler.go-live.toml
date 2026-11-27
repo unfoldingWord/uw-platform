@@ -217,6 +217,16 @@ binding = "STORE_GOOGLE_WORKSPACE_KEY"
 store_id = "set-at-go-live"
 secret_name = "UW_STAGING_GOOGLE_WORKSPACE_KEY"
 
+[[env.staging.secrets_store_secrets]]
+binding = "STORE_BRAVE_SEARCH_API_KEY"
+store_id = "set-at-go-live"
+secret_name = "UW_STAGING_BRAVE_SEARCH_API_KEY"
+
+[[env.staging.secrets_store_secrets]]
+binding = "STORE_DUFFEL_ACCESS_TOKEN"
+store_id = "set-at-go-live"
+secret_name = "UW_STAGING_DUFFEL_ACCESS_TOKEN"
+
 [env.production]
 name = "uw-platform"
 workers_dev = true
@@ -402,6 +412,16 @@ secret_name = "UW_PRODUCTION_ZULIP_ADMIN_API_KEY"
 binding = "STORE_GOOGLE_WORKSPACE_KEY"
 store_id = "set-at-go-live"
 secret_name = "UW_PRODUCTION_GOOGLE_WORKSPACE_KEY"
+
+[[env.production.secrets_store_secrets]]
+binding = "STORE_BRAVE_SEARCH_API_KEY"
+store_id = "set-at-go-live"
+secret_name = "UW_PRODUCTION_BRAVE_SEARCH_API_KEY"
+
+[[env.production.secrets_store_secrets]]
+binding = "STORE_DUFFEL_ACCESS_TOKEN"
+store_id = "set-at-go-live"
+secret_name = "UW_PRODUCTION_DUFFEL_ACCESS_TOKEN"
 
 [env.preview]
 workers_dev = true

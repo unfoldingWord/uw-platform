@@ -792,6 +792,18 @@ _Avoid_: append (in prose), page edit, transcript import
 A transcript of a meeting, pasted into a direct message or attached to an email, which reaches the assistant fenced as untrusted `meeting_transcript` text.
 _Avoid_: recording, notes (the notes are the page it may be added to)
 
+**Web research**:
+What an assistant does with `search_web`, `read_web_page` and `find_flights`: read-only searches of the public web (Brave), reads of one public page (rendered by Browser Run only when it needs a browser) and priced flight offers (Duffel), each counted as `assistant_research_used`, capped per request and per day, fenced as untrusted and cited in the reply.
+_Avoid_: browsing, booking, scraping
+
+**Web address guard**:
+The check every page address passes before the platform fetches it, and again after each redirect: `http` or `https`, no user name or password, port 80 or 443, and a host that, as written and as it resolves, is not private, loopback, link-local, a metadata address or a local name. A refused address is `blocked` with a closed reason (`webAddressRefusal`).
+_Avoid_: allowlist, firewall
+
+**Flight offer**:
+One priced way to fly a route on given dates, from Duffel, with its airline, legs, total in minor units and currency, and the time it expires. An assistant shows offers and never books one; their text is fenced as untrusted `flight_offer`.
+_Avoid_: booking, ticket, fare (a fare is part of an offer)
+
 **Staging probe**:
 One check that an external service answers the way the platform's code assumes, run against staging with `pnpm probe:assistants` and reported as pass, fail, skip or manual. Each is a numbered entry of the assistants' staging-probes list.
 _Avoid_: smoke test, health check (that is `/health/probe`, the Worker's own indicators)

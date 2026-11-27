@@ -18,6 +18,8 @@ import { workspaceNotWired } from './workspace.not-wired.ts';
 import { describeWorkspaceNotWired } from '@uw/harness/port-contracts/workspace';
 import { describePageAppendsNotWired } from '@uw/harness/port-contracts/page-appends';
 import { pageAppendsNotWired } from './page-appends.not-wired.ts';
+import { describeResearchNotWired } from '@uw/harness/port-contracts/research';
+import { researchNotWired } from './research.not-wired.ts';
 
 describeStoreNotWired('uw-platform with no database', storeNotWired);
 describeGrantsNotWired('uw-platform with no database', grantsNotWired);
@@ -32,3 +34,5 @@ describeDirectMessagesNotWired(
 );
 describeWorkspaceNotWired('uw-platform with no Google Workspace key', workspaceNotWired);
 describePageAppendsNotWired('uw-platform with no database', pageAppendsNotWired);
+
+describeResearchNotWired('uw-platform kernels built without research', researchNotWired);

@@ -15,6 +15,7 @@ describe('every served verb has exactly one handler and nothing else has one', (
     const unserved = [...verbHandlers.keys()].filter((name) => findVerb(name)?.servedInV1 !== true);
     expect(unserved.sort()).toEqual([
       'cancel_reminder',
+      'find_flights',
       'find_free_time',
       'hold_time',
       'list_reminders',
@@ -22,7 +23,9 @@ describe('every served verb has exactly one handler and nothing else has one', (
       'propose_invite',
       'propose_page_append',
       'read_my_calendar',
+      'read_web_page',
       'release_hold',
+      'search_web',
       'set_reminder',
     ]);
   });

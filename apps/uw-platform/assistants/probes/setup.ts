@@ -25,6 +25,8 @@ const bindingNames = [
   'OPENROUTER_API_KEY',
   'ALWAYS_ON_MODEL',
   'ALWAYS_ON_PROVIDER',
+  'BRAVE_SEARCH_API_KEY',
+  'DUFFEL_ACCESS_TOKEN',
 ] as const satisfies readonly (keyof Bindings)[];
 
 export const WRITES_ONLY = 'writes to the realm or the domain; run again with --write';

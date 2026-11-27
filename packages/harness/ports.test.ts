@@ -17,6 +17,7 @@ describe('DX-1 the ports are the thirteen PRD section 9 names', () => {
       'directMessages',
       'workspace',
       'pageAppends',
+      'research',
     ]);
   });
 });

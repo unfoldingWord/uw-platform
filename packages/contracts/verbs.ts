@@ -239,6 +239,27 @@ export const verbRegistry: readonly VerbDefinition[] = [
     'Propose adding text to the end of a page your person can edit, such as meeting notes; nothing is written unless your person accepts it within seven days. Served only in an assistant turn.',
     false,
   ),
+  verb(
+    'search_web',
+    'assistant',
+    null,
+    'Search the public web for titles, addresses and snippets, all untrusted; capped per turn and per day. Served only in an assistant turn.',
+    false,
+  ),
+  verb(
+    'read_web_page',
+    'assistant',
+    null,
+    'Read the untrusted text of one public http or https page; private, local and odd-port addresses are refused; capped per turn and per day. Served only in an assistant turn.',
+    false,
+  ),
+  verb(
+    'find_flights',
+    'assistant',
+    null,
+    'Find priced flight offers between two airports on given dates; it never books or holds a seat; offer text is untrusted. Served only in an assistant turn.',
+    false,
+  ),
 ];
 
 const byName = new Map<string, VerbDefinition>(verbRegistry.map((entry) => [entry.name, entry]));

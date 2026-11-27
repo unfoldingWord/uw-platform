@@ -63,10 +63,13 @@ const registered = [
   'propose_email',
   'propose_invite',
   'propose_page_append',
+  'search_web',
+  'read_web_page',
+  'find_flights',
 ];
 
 describe('CT-2 the verb registry', () => {
-  it('registers the thirteen verbs of PRD section 8.2, attach_file, render_pdf, the four collection verbs and the ten assistant verbs', () => {
+  it('registers the thirteen verbs of PRD section 8.2, attach_file, render_pdf, the four collection verbs and the thirteen assistant verbs', () => {
     expect(names()).toEqual(registered);
     expect(names()).toEqual([...verbNames]);
   });
@@ -95,6 +98,9 @@ describe('CT-2 the verb registry', () => {
       'propose_email',
       'propose_invite',
       'propose_page_append',
+      'search_web',
+      'read_web_page',
+      'find_flights',
     ]);
   });
 
@@ -133,7 +139,7 @@ describe('CT-2 the verb manifest is contract data', () => {
   it('is plain JSON-serialisable contract data', () => {
     const manifest = verbManifest();
     expect(JSON.parse(JSON.stringify(manifest))).toEqual(manifest);
-    expect(manifest).toHaveLength(29);
+    expect(manifest).toHaveLength(32);
   });
 
   it('serialises the registry with its Zod schemas stripped', () => {

@@ -5,6 +5,7 @@ import type {
   CostBasis,
   DeepLink,
   Engine,
+  FlightCabin,
   Grant,
   IssueRef,
   ItemState,
@@ -18,6 +19,7 @@ import type {
   ShipRuleInput,
   VerbName,
   WakeReason,
+  WebAddressRefusal,
 } from '@uw/contracts';
 import type { GrantHolder, WakeDelivery } from './notify/types.ts';
 import type { StoreTransaction } from './store-ports.ts';
@@ -349,6 +351,56 @@ export type PageAppends = {
   append(actor: Principal, append: PageAppend): Promise<PageAppended>;
 };
 
+export type ResearchFailure = 'refused' | 'unavailable';
+export type WebQuery = { readonly query: string; readonly count: number };
+export type WebResult = { readonly title: string; readonly url: string; readonly snippet: string };
+export type WebResults =
+  | { readonly outcome: 'found'; readonly results: readonly WebResult[] }
+  | { readonly outcome: ResearchFailure };
+export type PageRequest = { readonly url: string; readonly mayRender: boolean };
+export type PageText =
+  | {
+      readonly outcome: 'read';
+      readonly url: string;
+      readonly title: string;
+      readonly text: string;
+      readonly truncated: boolean;
+      readonly rendered: boolean;
+    }
+  | { readonly outcome: 'blocked'; readonly why: WebAddressRefusal }
+  | { readonly outcome: 'unreadable' | ResearchFailure };
+export type FlightQuery = {
+  readonly origin: string;
+  readonly destination: string;
+  readonly departDate: string;
+  readonly returnDate: string | null;
+  readonly passengers: number;
+  readonly cabin: FlightCabin;
+};
+export type FlightLeg = {
+  readonly from: string;
+  readonly to: string;
+  readonly departAt: string;
+  readonly arriveAt: string;
+  readonly durationMinutes: number;
+  readonly flights: readonly string[];
+};
+export type FlightOffer = {
+  readonly airline: string;
+  readonly totalMinor: number;
+  readonly currency: string;
+  readonly expiresAt: Date;
+  readonly legs: readonly FlightLeg[];
+};
+export type FlightOffers =
+  | { readonly outcome: 'offered'; readonly offers: readonly FlightOffer[] }
+  | { readonly outcome: ResearchFailure };
+export type Research = {
+  search(query: WebQuery): Promise<WebResults>;
+  read(request: PageRequest): Promise<PageText>;
+  flights(query: FlightQuery): Promise<FlightOffers>;
+};
+
 export type RunState = 'running' | 'hibernated' | 'stopped' | 'completed' | 'failed';
 export type RunAction = 'start' | 'hibernate' | 'resume' | 'stop';
 export type RunStart = {
@@ -382,6 +434,7 @@ export type Ports = {
   readonly directMessages: DirectMessages;
   readonly workspace: Workspace;
   readonly pageAppends: PageAppends;
+  readonly research: Research;
 };
 
 export type PortName = keyof Ports;
@@ -400,6 +453,7 @@ const portKeys: Readonly<Record<PortName, true>> = {
   directMessages: true,
   workspace: true,
   pageAppends: true,
+  research: true,
 };
 
 export const portNames = Object.keys(portKeys) as readonly PortName[];

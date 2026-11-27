@@ -68,6 +68,14 @@ const checks: readonly (readonly [string, string])[] = [
     's9.5',
     'Paste a Zoom transcript into a DM and confirm the request records a meeting_transcript part',
   ],
+  [
+    's12.5',
+    'Ask the assistant to read a script-only page (a single-page app); confirm the reply quotes its text and one page_rendered event is recorded (Browser Run markdown quick action)',
+  ],
+  [
+    's12.6',
+    'Ask for a conference itinerary with ticket prices; confirm the reply cites each address and price, and that no Duffel order exists in the Duffel dashboard',
+  ],
 ];
 
 export function manualChecks(): ProbeResult[] {

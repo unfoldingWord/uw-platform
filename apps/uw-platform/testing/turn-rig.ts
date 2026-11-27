@@ -32,6 +32,7 @@ import {
 import { turnStarterOf } from '../assistants/turn/start.ts';
 import { exportPKCS8, generateKeyPair } from 'jose';
 import { fakeGoogle, type FakeGoogle } from '../assistants/google/testing/fake-google.ts';
+import { fakeResearch, type FakeResearch } from '../assistants/research/testing/fake-research.ts';
 
 export type TurnRig = {
   readonly db: Database;
@@ -40,6 +41,7 @@ export type TurnRig = {
   readonly harnessId: string;
   readonly zulip: FakeZulip;
   readonly google: FakeGoogle;
+  readonly research: FakeResearch;
   readonly gateway: FakeFetch;
   readonly fetcher: typeof fetch;
   readonly started: AssistantTurnStart[];
@@ -138,8 +140,10 @@ async function world(connectionString: string) {
   const zulip = fakeZulip();
   zulip.addUser('rowan.test@unfoldingword.org', 'Rowan', 5001);
   const gateway = fakeFetch();
+  const research = fakeResearch();
   const fetcher: typeof fetch = (input, init) => {
     const url = urlOf(input);
+    if (research.owns(url)) return research.fetch(input, init);
     if (url.startsWith(FAKE_ZULIP_SITE)) return zulip.fetch(input, init);
     if (url.startsWith(GATEWAY)) return gateway.fetch(input, init);
     if ([GOOGLE_TOKEN, GOOGLE_APIS, GMAIL_API].some((prefix) => url.startsWith(prefix)))
@@ -158,8 +162,11 @@ async function world(connectionString: string) {
     AI_GATEWAY_ID: 'gateway',
     GOOGLE_WORKSPACE_KEY: key,
     GOOGLE_WORKSPACE_DOMAIN: 'unfoldingword.org',
+    BRAVE_SEARCH_API_KEY: research.braveKey,
+    DUFFEL_ACCESS_TOKEN: research.duffelToken,
+    BROWSER: research.browser,
   };
-  return { zulip, google, gateway, fetcher, env };
+  return { zulip, google, research, gateway, fetcher, env };
 }
 
 async function botFor(rig: Omit<TurnRig, 'direct'>, kernel: Kernel): Promise<void> {

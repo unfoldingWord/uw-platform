@@ -106,6 +106,7 @@ export const eventNames = [
   'assistant_proposal_drafted',
   'assistant_proposal_decided',
   'assistant_proposal_expired',
+  'assistant_research_used',
 ] as const;
 
 export const eventNameSchema = z.enum(eventNames);

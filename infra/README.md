@@ -390,6 +390,16 @@ An assistant never sends mail to anyone else, invites anyone or writes a shared 
 
 Before relying on proposals in production, run the proposal staging probes in the assistants' staging-probes list as one test person: accept a proposed email and confirm it arrives from the assistant's address with `Reply-To` the person, once; accept a proposed invitation and confirm the attendee receives Google's invitation from the person; accept a page addition and confirm the page's history shows the person as the saver. A failed or unknown send is shown on My Assistant and never retried; the person proposes it again by asking the assistant.
 
+### Web research and flights (PA-19)
+
+An assistant can search the web, read a public page and find priced flight offers for its person, and replies citing each address and price (ADR 0046). It never books, buys or holds anything. Three verbs, served only in an assistant turn: `search_web` asks the Brave Search API (`GET https://api.search.brave.com/res/v1/web/search`, header `X-Subscription-Token: <BRAVE_SEARCH_API_KEY>`); `read_web_page` fetches the page itself with plain `fetch` and, only when the page is a script shell with almost no text, asks Browser Run's `markdown` quick action through the `BROWSER` binding the PDFs already use (no new credential); `find_flights` creates a Duffel offer request (`POST https://api.duffel.com/air/offer_requests?return_offers=false`, headers `Authorization: Bearer <DUFFEL_ACCESS_TOKEN>` and `Duffel-Version: v2`) and lists its eight cheapest offers (`GET /air/offers?offer_request_id=...&sort=total_amount&limit=8`). Nothing calls Duffel's orders or payments.
+
+A page address must be `http` or `https`, carry no user name or password, use port 80 or 443, and name a host that is not loopback, private, link-local, carrier-grade NAT, multicast, reserved or a local name (`localhost`, `*.local`, `*.internal`, a name without a dot), checked on the address as written and on every address the name resolves to (DNS over HTTPS at `cloudflare-dns.com`), again after each of at most three redirects. A page is read for at most eight seconds and 1.5 MB, and at most 20,000 characters reach the model. Every result reaches the model inside an untrusted fence (`search_result`, `web_page`, `flight_offer`).
+
+Each use is recorded as `assistant_research_used` with the request, the turn and the kind (`web_search`, `page_read`, `page_rendered`, `flight_search`) and nothing else: never the words searched, the address or the route. A request may make 5 searches, 6 page reads, 2 renderings and 3 flight searches; an assistant 30, 40, 10 and 10 in any 24 hours (`RESEARCH_PER_REQUEST` and `RESEARCH_PER_DAY` in `packages/harness/assistants/research-ledger.ts`). These calls are not model spend and do not count against the assistant's budget; the caps bound their cost.
+
+Setting it up, per environment: create a Brave Search API key (a plan whose terms allow the use; the free plan is rate-limited to one query a second) and a Duffel access token (a test token `duffel_test_*` answers with Duffel's test airline only; a live token answers real fares), store them as `UW_<ENV>_BRAVE_SEARCH_API_KEY` and `UW_<ENV>_DUFFEL_ACCESS_TOKEN` ("Platform secrets" below), and run the research probes (`s12.*`) with `pnpm probe:assistants`. Until `BRAVE_SEARCH_API_KEY` is set `search_web` is refused `research_not_wired`, and until `DUFFEL_ACCESS_TOKEN` is set `find_flights` is; `read_web_page` needs neither, and without `BROWSER` a page that needs a browser is refused `page_unreadable`. To stop it at once, remove the secret; nothing else breaks.
+
 ### Going live with personal assistants (PA-18)
 
 The order, for each environment, staging first. Every setting below is declared for staging and production in both wrangler files, and `tools/infra/assistants-config.test.ts` fails when one is missing or malformed (production's `ASSISTANT_EMAIL_INSTRUCTIONS` must be `off`).
@@ -398,6 +408,9 @@ The order, for each environment, staging first. Every setting below is declared 
 |---|---|---|
 | `GOOGLE_WORKSPACE_KEY` | secret | the service account's JSON key ([`infra/google/README.md`](google/README.md) steps 1-4) |
 | `ZULIP_ADMIN_API_KEY` | secret | the Zulip service account's API key (the Zulip steps above) |
+| `BRAVE_SEARCH_API_KEY` | secret | the Brave Search API subscription token ("Web research and flights" below) |
+| `DUFFEL_ACCESS_TOKEN` | secret | a Duffel access token ("Web research and flights" below) |
+| `BROWSER` | binding | Browser Run, already bound in both environments for PDFs; renders a page only when it needs a browser |
 | `CREDENTIALS_KMS_*`, `OPENROUTER_API_KEY`, `AI_GATEWAY_*` | secrets and variables | already set for the platform; bot keys are sealed with the KMS key, turns run on OpenRouter |
 | `GOOGLE_WORKSPACE_DOMAIN` | variable | `unfoldingword.org` |
 | `GOOGLE_WORKSPACE_ADMIN_SUBJECT` | variable | the dedicated directory admin account |
@@ -413,7 +426,7 @@ The assistants' area, 10-19, is not a setting: the numbering 10.51 upward is fix
 1. **Google, once:** [`infra/google/README.md`](google/README.md) steps 1-8.
 2. **Zulip, once:** the steps in "Personal assistants on Zulip" above.
 3. **Variables:** replace each `set-at-go-live` above in `infra/uw-platform/wrangler.toml` and `wrangler.go-live.toml` in one pull request, and run `pnpm exec vitest run tools/infra`.
-4. **Secrets:** store the two new ones and copy their blocks into `wrangler.toml` ("Platform secrets" below). Merging deploys staging.
+4. **Secrets:** store the four new ones (`GOOGLE_WORKSPACE_KEY`, `ZULIP_ADMIN_API_KEY`, `BRAVE_SEARCH_API_KEY`, `DUFFEL_ACCESS_TOKEN`) and copy their blocks into `wrangler.toml` ("Platform secrets" below). Merging deploys staging.
 5. **Read probes:** `node --env-file=<file> apps/uw-platform/bin/probe-assistants.ts` (or `pnpm probe:assistants` with the settings exported). Every line must be `PASS`, `SKIP` with a reason you accept, or `MANUAL`. The env file holds the same names as the Worker plus `GOOGLE_WORKSPACE_KEY_FILE` and the three `PROBE_*` addresses; it never goes into the repository.
 6. **Write probes:** the same with `--write`. They create and remove a probe Workspace user `uwprobe<six hex>@<domain>`, a probe hold on the test person's calendar 30 days ahead, and a probe Zulip bot, and send the test person one direct message and one email. Each is removed, or left deactivated for the bot, before the command ends; a `FAIL` line says what was left.
 7. **The walk, as one real person on staging** (the same path `sim/scenarios/PA-18.a-*` runs against the test adapters): turn the assistant on at `/assistant` with a name, and wait for the screen to show the Workspace user, the bot and the persona; grant it; DM the bot "what is on my schedule today?" and get one reply; ask it to remind you in two minutes and get one reminder; ask it to hold an hour tomorrow and see a private event with no guests; forward it an email from your own address and get one email reply on that thread; ask it to email a colleague, accept the proposal on My Assistant, and see the colleague receive it once; undo the hold; turn the assistant off and see the bot stop answering. Then work through the `MANUAL` lines of the probe output.
@@ -429,9 +442,11 @@ The secrets the platform itself runs on live in the account's Cloudflare Secrets
 | `AI_GATEWAY_ANALYTICS_TOKEN` | uw-platform | `STORE_AI_GATEWAY_ANALYTICS_TOKEN` | `UW_<ENV>_AI_GATEWAY_ANALYTICS_TOKEN` |
 | `AI_GATEWAY_TOKEN` | uw-platform | `STORE_AI_GATEWAY_TOKEN` | `UW_<ENV>_AI_GATEWAY_TOKEN` |
 | `ANTHROPIC_API_KEY` | uw-platform | `STORE_ANTHROPIC_API_KEY` | `UW_<ENV>_ANTHROPIC_API_KEY` |
+| `BRAVE_SEARCH_API_KEY` | uw-platform | `STORE_BRAVE_SEARCH_API_KEY` | `UW_<ENV>_BRAVE_SEARCH_API_KEY` |
 | `BUILDER_GITHUB_APP_PRIVATE_KEY` | uw-platform | `STORE_BUILDER_GITHUB_APP_PRIVATE_KEY` | `UW_<ENV>_BUILDER_GITHUB_APP_PRIVATE_KEY` |
 | `CREDENTIALS_KMS_ACCESS_KEY_ID` | uw-platform | `STORE_CREDENTIALS_KMS_ACCESS_KEY_ID` | `UW_<ENV>_CREDENTIALS_KMS_ACCESS_KEY_ID` |
 | `CREDENTIALS_KMS_SECRET_ACCESS_KEY` | uw-platform | `STORE_CREDENTIALS_KMS_SECRET_ACCESS_KEY` | `UW_<ENV>_CREDENTIALS_KMS_SECRET_ACCESS_KEY` |
+| `DUFFEL_ACCESS_TOKEN` | uw-platform | `STORE_DUFFEL_ACCESS_TOKEN` | `UW_<ENV>_DUFFEL_ACCESS_TOKEN` |
 | `GITHUB_APP_PRIVATE_KEY` | uw-platform | `STORE_GITHUB_APP_PRIVATE_KEY` | `UW_<ENV>_GITHUB_APP_PRIVATE_KEY` |
 | `GOOGLE_WORKSPACE_KEY` | uw-platform | `STORE_GOOGLE_WORKSPACE_KEY` | `UW_<ENV>_GOOGLE_WORKSPACE_KEY` |
 | `OPENAI_API_KEY` | uw-platform | `STORE_OPENAI_API_KEY` | `UW_<ENV>_OPENAI_API_KEY` |
@@ -444,7 +459,7 @@ The secrets the platform itself runs on live in the account's Cloudflare Secrets
 | `GITHUB_WEBHOOK_SECRET` | uw-ingest | `STORE_GITHUB_WEBHOOK_SECRET` | `UW_<ENV>_GITHUB_WEBHOOK_SECRET` |
 | `ZULIP_WEBHOOK_TOKEN` | uw-ingest | `STORE_ZULIP_WEBHOOK_TOKEN` | `UW_<ENV>_ZULIP_WEBHOOK_TOKEN` |
 
-`<ENV>` is `STAGING` or `PRODUCTION`. An account has one store, and a name is unique in it, so the environment is part of the name: 34 secrets of the 100 an account may hold. The GitHub App ids and installation ids (`*_GITHUB_APP_ID`, `*_GITHUB_APP_INSTALLATION_ID`) are not secrets; they stay Worker settings and are not in the store.
+`<ENV>` is `STAGING` or `PRODUCTION`. An account has one store, and a name is unique in it, so the environment is part of the name: 40 secrets of the 100 an account may hold. The GitHub App ids and installation ids (`*_GITHUB_APP_ID`, `*_GITHUB_APP_INSTALLATION_ID`) are not secrets; they stay Worker settings and are not in the store.
 
 ### How a secret is read
 

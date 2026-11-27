@@ -45,6 +45,11 @@ function notWiredPorts(): Ports {
     directMessages: { send: () => notWiredCall('directMessages', 'send') },
     workspace: notWiredWorkspace(),
     pageAppends: { append: () => notWiredCall('pageAppends', 'append') },
+    research: {
+      search: () => notWiredCall('research', 'search'),
+      read: () => notWiredCall('research', 'read'),
+      flights: () => notWiredCall('research', 'flights'),
+    },
   };
 }
 
@@ -90,6 +95,7 @@ function throwingPorts(): Ports {
       sendInvite: refuse,
     },
     pageAppends: { append: refuse },
+    research: { search: refuse, read: refuse, flights: refuse },
   };
 }
 

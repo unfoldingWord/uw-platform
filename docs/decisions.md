@@ -743,7 +743,7 @@ A policy's page and the Policies screen show its level, target, enforcement, dat
 
 **Consequences.** PRD section 4.2 gains "Assistants" with requirements PA-1 onward. "An agent can produce a deliverable and cannot send it" and "no route reaches an external effect without crossing a human gate" each gain one named exception: the closed set above. A reply direct-messaged to its own person carries content; nothing posted to a stream does. Content-free assistant events are internal like every harness's events: readers of the assistants area and org-scope readers (0015) can see that a request, turn or effect kind happened and when, and never what it said. The request text goes to the model vendor; which provider, how long text is kept, which area holds the personal harnesses and how Google is reached are open questions in the PRD.
 
-**Changes / changed by.** Changes 0002 (the registry may gain verbs that draft effects which take effect without a person, only within this set), 0003 (the Ship constraint is untouched; a twin constraint holds the assistant's set), 0005 (the grantor of `assist` is the harness's person, not an area admin), 0015 (the principal under an `assist` delegation holds its person's grants clamped to `viewer`, in every area the person reads) and 0020 (an assistant effect is not a connector; it runs at the turn's exit through its own port).
+**Changes / changed by.** Changes 0002 (the registry may gain verbs that draft effects which take effect without a person, only within this set), 0003 (the Ship constraint is untouched; a twin constraint holds the assistant's set), 0005 (the grantor of `assist` is the harness's person, not an area admin), 0015 (the principal under an `assist` delegation holds its person's grants clamped to `viewer`, in every area the person reads) and 0020 (an assistant effect is not a connector; it runs at the turn's exit through its own port). Changed by 0046 (the read-only research verbs).
 
 ## 0037 One Zulip bot per person, paired by email or a one-time code, its key sealed by KMS
 
@@ -967,6 +967,35 @@ A policy's page and the Policies screen show its level, target, enforcement, dat
 **Consequences.** Whether Gmail writes its own header with SPF for the exact address on mail inside the domain, and removes a sender's `mx.google.com` header, is still a staging probe (s8.1, s11.1, s11.2); until then production keeps email instructions off. An SMTP relay allowed to send as any address in the domain with the person's address as envelope sender still passes; only the owner's choice above closes that. Existing bots keep their short names; only new bots take the suffix.
 
 **Changes / changed by.** Changes 0038, 0040, 0042 and 0043 as above.
+
+## 0046 An assistant researches the web and flights read-only, through one port, behind an address guard, with counted calls and cited sources
+
+*2026-11-27. Builds on 0036 (what an assistant may do alone) and 0039 (plain-fetch clients for outside services).*
+
+**Decision.**
+
+1. **One `Research` port, three methods.** `search(query)`, `read(request)` and `flights(query)` (`packages/harness/ports.ts`). The platform adapter (`apps/uw-platform/ports/research.ts`) composes plain-`fetch` clients in `apps/uw-platform/assistants/research/`; the sim adapter (`sim/adapters/research.ts`) is scripted; both pass `packages/harness/port-contracts/research.ts`, the platform one against recorded-shape fakes of Brave, DNS over HTTPS, web pages, Browser Run and Duffel. One port rather than two: the three share the turn, the caps and the fencing, and every caller takes all three.
+2. **Search is the Brave Search API** (owner decision 14): `GET https://api.search.brave.com/res/v1/web/search` with `X-Subscription-Token` from the secret `BRAVE_SEARCH_API_KEY`; only `http` and `https` results are kept.
+3. **A page is fetched plainly first, and rendered only when it needs a browser.** The reader fetches with `redirect: manual`, eight seconds and 1.5 MB at most, keeps HTML and plain text, and turns HTML into text. Only when the text is under 200 characters and the page carries scripts does it ask Cloudflare Browser Run's `markdown` quick action through the `BROWSER` binding the PDFs already use (0028). The binding, not the REST API with an account token, because the Worker already holds it in every environment, it needs no new secret and no package, and its use is capped by the kernel.
+4. **The address guard.** Before every request, the first and each of at most three redirects, the address must be `http` or `https`, without a user name or password, on port 80 or 443, at most 2,048 characters, and its host must be neither a private, loopback, link-local, carrier-grade NAT, documentation, multicast or reserved IPv4 or non-global IPv6 address, nor a local name (`localhost`, `*.local`, `*.internal`, `*.lan`, `*.home.arpa`, a name without a dot). The check on the address as written is a pure function in the kernel package (`webAddressRefusal`, fed the parts of the WHATWG URL both runtimes parse) so the sim and the platform refuse the same addresses; the platform also resolves the name over DNS over HTTPS (`cloudflare-dns.com`, A and AAAA) and refuses it when any answer is private. A refusal is `blocked` with a closed-set reason (`webAddressRefusal`).
+5. **Flights are Duffel offers, read only** (owner decision 14; Google Flights has no API). The client creates an offer request without offers (`POST /air/offer_requests?return_offers=false`, `Duffel-Version: v2`, the secret `DUFFEL_ACCESS_TOKEN`) and lists its eight cheapest offers (`GET /air/offers?sort=total_amount&limit=8`), so a reply never parses hundreds of offers. It never calls orders, payments or seat maps. Prices become integer minor units through `parseMoney` in `packages/core/money.ts`; an amount it cannot read exactly drops the offer.
+6. **Everything returned is untrusted and fenced** as `search_result`, `web_page` or `flight_offer`; at most 20,000 characters of a page reach the model.
+7. **Counted, capped and content-free.** Each call is reserved before it is made, inside the turn's transaction, as one `assistant_research_used` event with the request, the turn and the kind (`web_search`, `page_read`, `page_rendered`, `flight_search`) and nothing else. A request may make 5 searches, 6 reads, 2 renderings and 3 flight searches; an assistant 30, 40, 10 and 10 in any 24 hours. A read past the rendering cap is not rendered. These calls are not model spend and are not charged to the assistant's budget.
+8. **Sources are cited.** The role tells the model to put the address of each page or result it uses next to what it says, and every price with its currency and that offers expire; it never books, buys or holds.
+
+**Why.** The issue's example, an itinerary with ticket prices from a forwarded conference invitation, needs search, a page and fares; owner decision 14 named the three services. A model given a fetch tool is the classic route to a platform's internal addresses, so the guard sits below the model, on every hop, on the resolved addresses too. Counting before the call keeps a looping model from spending the plan.
+
+**Rejected.**
+- The verb name `read_page`: it is already the platform's page verb. The verb is `read_web_page`.
+- Browser Run's REST API with an account id and an API token: a new secret for a capability the Worker's binding already has.
+- Rendering every page: slower, costlier and not needed for most pages.
+- Following redirects inside `fetch`: the guard could not see the hops.
+- Booking, holding or pricing a specific seat: owner decision 14 is read-only.
+- Recording the query, address or route: the events stay content-free like every assistant event.
+
+**Consequences.** DNS over HTTPS is checked before the Worker's own fetch resolves the name, so a name that changes its answer between the two (rebinding) is still refused only if Cloudflare's egress refuses private addresses; that, Brave's and Duffel's response shapes, the Browser Run `markdown` quick action on the binding and its answer shape are staging probes (s12.1 to s12.6). A test Duffel token answers only Duffel's test airline. Brave's plan terms (rate, storage of results) and Duffel's search-to-book terms are the owner's to accept.
+
+**Changes / changed by.** Adds to 0036 the research verbs, which reach no person and change nothing.
 
 # Part 2. Workflow design decisions
 

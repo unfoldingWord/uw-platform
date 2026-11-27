@@ -11,6 +11,7 @@ import {
   proposePageAppendVerb,
 } from './assistant-proposals.ts';
 import { cancelReminderVerb, listRemindersVerb, setReminderVerb } from './assistant-reminders.ts';
+import { findFlightsVerb, readWebPageVerb, searchWebVerb } from './assistant-research.ts';
 import { attachFileVerb } from './attach-file.ts';
 import { claimItem } from './claim-item.ts';
 import { createRowVerb, readCollectionVerb, readViewVerb, setPropertyVerb } from './collections.ts';
@@ -54,6 +55,9 @@ const handlers: readonly VerbHandler[] = [
   proposeEmailVerb,
   proposeInviteVerb,
   proposePageAppendVerb,
+  searchWebVerb,
+  readWebPageVerb,
+  findFlightsVerb,
 ];
 
 export const verbHandlers: ReadonlyMap<string, VerbHandler> = new Map(

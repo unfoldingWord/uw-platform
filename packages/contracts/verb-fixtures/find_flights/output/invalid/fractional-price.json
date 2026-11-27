@@ -1,0 +1,12 @@
+{
+  "offers": [
+    {
+      "totalMinor": 842.1,
+      "currency": "USD",
+      "expiresAt": "2027-02-01T10:30:00.000Z",
+      "stops": 1,
+      "durationMinutes": 610,
+      "details": ""
+    }
+  ]
+}

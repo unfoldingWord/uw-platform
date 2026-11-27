@@ -1,6 +1,7 @@
 import { exportPKCS8, generateKeyPair, type CryptoKey } from 'jose';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { fakeGoogle, type FakeGoogle } from '../google/testing/fake-google.ts';
+import { fakeResearch, type FakeResearch } from '../research/testing/fake-research.ts';
 import {
   fakeZulip,
   FAKE_ADMIN,
@@ -57,7 +58,54 @@ function openRouter(provider: string): typeof fetch {
     });
 }
 
-type World = { zulip: FakeZulip; google: FakeGoogle; fetcher: typeof fetch; env: ProbeEnv };
+type World = {
+  zulip: FakeZulip;
+  google: FakeGoogle;
+  research: FakeResearch;
+  fetcher: typeof fetch;
+  env: ProbeEnv;
+};
+
+function researchWorld(): FakeResearch {
+  const research = fakeResearch();
+  research.addResults('unfoldingWord Bible translation', [
+    { title: 'unfoldingWord', url: 'https://www.unfoldingword.org/', snippet: 'Bible translation' },
+  ]);
+  research.addPage('https://example.com/', {
+    title: 'Example Domain',
+    text: 'This domain is for use in examples.',
+  });
+  research.resolve('localtest.me', ['127.0.0.1']);
+  research.addOffers(
+    {
+      origin: 'LHR',
+      destination: 'JFK',
+      departDate: '2027-01-26',
+      returnDate: null,
+      passengers: 1,
+      cabin: 'economy',
+    },
+    [
+      {
+        airline: 'Duffel Airways',
+        totalMinor: 45_120,
+        currency: 'GBP',
+        expiresAt: new Date('2026-11-27T09:30:00.000Z'),
+        legs: [
+          {
+            from: 'LHR',
+            to: 'JFK',
+            departAt: '2027-01-26T09:00:00',
+            arriveAt: '2027-01-26T12:00:00',
+            durationMinutes: 480,
+            flights: ['ZZ1'],
+          },
+        ],
+      },
+    ],
+  );
+  return research;
+}
 
 function world(provider = 'Z.AI', authentication = passing): World {
   const zulip = fakeZulip();
@@ -68,8 +116,11 @@ function world(provider = 'Z.AI', authentication = passing): World {
   google.directory.add(admin);
   google.gmail.deliver(mailbox, mailFrom(person, authentication));
   const model = openRouter(provider);
+  const research = researchWorld();
   const fetcher: typeof fetch = async (input, init) => {
     const url = new Request(input, init).url;
+    if (research.owns(url) || url.startsWith('http://localtest.me/'))
+      return research.fetch(input, init);
     if (url.startsWith(FAKE_ZULIP_SITE)) return zulip.fetch(input, init);
     if (url.startsWith('https://gateway.ai.cloudflare.com/')) return model(input, init);
     return google.fetch(input, init);
@@ -94,8 +145,11 @@ function world(provider = 'Z.AI', authentication = passing): World {
     PROBE_PERSON_EMAIL: person,
     PROBE_COLLEAGUE_EMAIL: colleague,
     PROBE_ASSISTANT_MAILBOX: mailbox,
+    PROBE_WEB_PAGE: 'https://example.com/',
+    BRAVE_SEARCH_API_KEY: research.braveKey,
+    DUFFEL_ACCESS_TOKEN: research.duffelToken,
   };
-  return { zulip, google, fetcher, env };
+  return { zulip, google, research, fetcher, env };
 }
 
 async function probed(at: World, write: boolean): Promise<readonly ProbeResult[]> {
@@ -106,6 +160,12 @@ async function probed(at: World, write: boolean): Promise<readonly ProbeResult[]
     write,
     suffix: 'a1b2c3',
   });
+}
+
+function researchLeftNothing(at: World): boolean {
+  const urls = at.research.requests().map((request) => new URL(request.url));
+  const booked = urls.some((url) => url.pathname.startsWith('/air/orders'));
+  return !booked && !urls.some((url) => url.host === 'localtest.me');
 }
 
 function statusOf(results: readonly ProbeResult[], id: string): string | undefined {
@@ -136,6 +196,10 @@ const automated = [
   's8.5',
   's8.6',
   's8.7',
+  's12.1',
+  's12.2',
+  's12.3',
+  's12.4',
 ];
 
 describe('go-live: the staging probes exercise each external assumption and report pass or fail', () => {
@@ -150,6 +214,7 @@ describe('go-live: the staging probes exercise each external assumption and repo
     expect(at.zulip.bots().every((bot) => !bot.is_active)).toBe(true);
     expect(at.google.events(person)).toEqual([]);
     expect(at.google.directory.user('uwprobea1b2c3@unfoldingword.org')).toBeNull();
+    expect(researchLeftNothing(at)).toBe(true);
   });
 
   it('lists what only a person on staging can check as manual, never as passed', async () => {

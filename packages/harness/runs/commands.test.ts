@@ -107,6 +107,11 @@ function touchingPorts(touched: string[]): Ports {
       sendInvite: touch('workspace.sendInvite'),
     },
     pageAppends: { append: touch('pageAppends') },
+    research: {
+      search: touch('research.search'),
+      read: touch('research.read'),
+      flights: touch('research.flights'),
+    },
   };
 }
 

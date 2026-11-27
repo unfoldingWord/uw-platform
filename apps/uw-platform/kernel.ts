@@ -9,6 +9,7 @@ import {
   type ModelEngine,
   type Notifier,
   type Ports,
+  type Research,
   type Runs,
   type Workspace,
 } from '@uw/harness';
@@ -27,6 +28,7 @@ import { modelEngineNotWired } from './ports/model-engine.not-wired.ts';
 import { notifierNotWired } from './ports/notifier.not-wired.ts';
 import { platformPageAppends } from './ports/page-appends.ts';
 import { pageAppendsNotWired } from './ports/page-appends.not-wired.ts';
+import { researchNotWired } from './ports/research.not-wired.ts';
 import { runsNotWired } from './ports/runs.not-wired.ts';
 import { platformStore } from './ports/store.ts';
 import { storeNotWired } from './ports/store.not-wired.ts';
@@ -42,12 +44,16 @@ type KernelWiring = {
   readonly notifier: Notifier;
   readonly directMessages: DirectMessages;
   readonly workspace: Workspace;
+  readonly research: Research;
 };
 
 export type LiveWiring = { readonly hub: Hub; readonly runs: Runs; readonly notifier: Notifier };
 
 type HostWiring = Partial<
-  Pick<KernelWiring, 'modelEngine' | 'runs' | 'notifier' | 'directMessages' | 'workspace'>
+  Pick<
+    KernelWiring,
+    'modelEngine' | 'runs' | 'notifier' | 'directMessages' | 'workspace' | 'research'
+  >
 >;
 
 export function hubWiring(hub: Hub, host: HostWiring = {}): KernelWiring {
@@ -61,6 +67,7 @@ export function hubWiring(hub: Hub, host: HostWiring = {}): KernelWiring {
     notifier: host.notifier ?? notifierNotWired,
     directMessages: host.directMessages ?? directMessagesNotWired,
     workspace: host.workspace ?? workspaceNotWired,
+    research: host.research ?? researchNotWired,
   };
 }
 
@@ -100,6 +107,7 @@ export function platformPorts(
     directMessages: wiring.directMessages,
     workspace: wiring.workspace,
     pageAppends: database ? platformPageAppends(database.db, clock) : pageAppendsNotWired,
+    research: wiring.research,
   };
 }
 

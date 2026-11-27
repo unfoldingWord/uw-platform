@@ -27,6 +27,12 @@ import {
   assistantProposalStatusSchema,
   decideAssistantProposalCommandSchema,
 } from './assistant-proposals.ts';
+import {
+  assistantResearchKindSchema,
+  assistantResearchRefusalSchema,
+  flightCabinSchema,
+  webAddressRefusalSchema,
+} from './assistant-research.ts';
 import { assistantProposedEffectSchema } from './assistants.ts';
 
 export const assistantAccountSchemaRegistry: Record<string, ZodType> = {
@@ -53,4 +59,8 @@ export const assistantAccountSchemaRegistry: Record<string, ZodType> = {
   'assistant-proposal-refusal': assistantProposalRefusalSchema,
   'assistant-proposed-effect': assistantProposedEffectSchema,
   'decide-assistant-proposal-command': decideAssistantProposalCommandSchema,
+  'assistant-research-kind': assistantResearchKindSchema,
+  'assistant-research-refusal': assistantResearchRefusalSchema,
+  'web-address-refusal': webAddressRefusalSchema,
+  'flight-cabin': flightCabinSchema,
 };

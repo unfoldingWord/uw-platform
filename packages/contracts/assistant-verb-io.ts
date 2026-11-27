@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { assistantProposalPayloadSchemas as proposalOf } from './assistant-proposals.ts';
+import { assistantResearchVerbIo } from './assistant-research.ts';
 
 const reminderText = z.string().trim().min(1).max(500);
 const drafted = z.object({ effectId: z.uuid(), status: z.literal('drafted') });
@@ -76,4 +77,5 @@ export const assistantVerbIo = {
   propose_email: { input: proposalOf.email, output: proposed },
   propose_invite: { input: proposalOf.invite, output: proposed },
   propose_page_append: { input: proposalOf.page_append, output: proposed },
+  ...assistantResearchVerbIo,
 };

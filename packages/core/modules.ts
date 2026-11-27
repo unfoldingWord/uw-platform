@@ -167,6 +167,9 @@ export const modules = [
       'propose_email',
       'propose_invite',
       'propose_page_append',
+      'search_web',
+      'read_web_page',
+      'find_flights',
     ],
     name: 'Agents',
     summary:

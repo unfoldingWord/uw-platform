@@ -12,6 +12,7 @@ import { systemClock } from './ports/clock.ts';
 import { directMessagesNotWired } from './ports/direct-messages.not-wired.ts';
 import { workspaceNotWired } from './ports/workspace.not-wired.ts';
 import { pageAppendsNotWired } from './ports/page-appends.not-wired.ts';
+import { researchNotWired } from './ports/research.not-wired.ts';
 import { githubFactsNotWired } from './ports/github-facts.not-wired.ts';
 import { grantsNotWired } from './ports/grants.not-wired.ts';
 import { hubNotWired } from './ports/hub.not-wired.ts';
@@ -35,6 +36,7 @@ const portNames = [
   'directMessages',
   'workspace',
   'pageAppends',
+  'research',
 ];
 
 const expected = {
@@ -50,6 +52,7 @@ const expected = {
   directMessages: directMessagesNotWired,
   workspace: workspaceNotWired,
   pageAppends: pageAppendsNotWired,
+  research: researchNotWired,
 };
 
 const pulls = '/repos/unfoldingWord/uw-platform/pulls/7';
