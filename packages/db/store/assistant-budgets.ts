@@ -1,6 +1,7 @@
 import { eq, sql } from 'drizzle-orm';
 import type { AnyExecutor } from '../any-database.ts';
 import { assistantBudgets, delegations, harnesses } from '../schema.ts';
+import { turnStartedSince } from './assistant-spend-sql.ts';
 import { refusing } from './refusal.ts';
 import type { AssistantBudgetRow, AssistantBudgetsGateway, AssistantPoolBudgets } from './types.ts';
 
@@ -18,7 +19,7 @@ function counted(value: unknown): number {
   return counted;
 }
 
-async function pool(executor: AnyExecutor, at: Date): Promise<AssistantPoolBudgets> {
+async function pool(executor: AnyExecutor, at: Date, since: Date): Promise<AssistantPoolBudgets> {
   const liveAssist = sql`EXISTS (
     SELECT 1 FROM ${delegations}
     WHERE ${delegations.harnessId} = ${harnesses.id}
@@ -27,6 +28,7 @@ async function pool(executor: AnyExecutor, at: Date): Promise<AssistantPoolBudge
       AND ${delegations.revokedAt} IS NULL
       AND ${delegations.lapsedAt} IS NULL
       AND ${delegations.expiresAt} > ${at.toISOString()}::timestamptz)`;
+  const spentSince = turnStartedSince(harnesses.id, since);
   const [row] = await executor
     .select({
       enabled: sql<string>`count(*)::text`,
@@ -35,7 +37,7 @@ async function pool(executor: AnyExecutor, at: Date): Promise<AssistantPoolBudge
     })
     .from(harnesses)
     .leftJoin(assistantBudgets, eq(assistantBudgets.harnessId, harnesses.id))
-    .where(sql`${harnesses.personId} IS NOT NULL AND ${liveAssist}`);
+    .where(sql`${harnesses.personId} IS NOT NULL AND (${liveAssist} OR ${spentSince})`);
   return {
     enabled: counted(row?.enabled),
     overridden: counted(row?.overridden),
@@ -61,7 +63,7 @@ export function bindAssistantBudgets(executor: AnyExecutor): AssistantBudgetsGat
   return {
     read: {
       of: (harnessId) => of(executor, harnessId),
-      pool: (at) => pool(executor, at),
+      pool: (at, since) => pool(executor, at, since),
     },
     write: {
       put: (row) => refusing(() => put(executor, row)),

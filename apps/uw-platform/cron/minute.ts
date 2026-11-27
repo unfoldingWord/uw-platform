@@ -142,6 +142,7 @@ async function closeStale({ kernel, caller, logger }: Minute): Promise<void> {
     outcome: 'assistant_turns_swept',
     abandoned: swept.value.abandoned.length,
     settled: swept.value.settled.length,
+    unknown: swept.value.unknown.length,
   });
 }
 

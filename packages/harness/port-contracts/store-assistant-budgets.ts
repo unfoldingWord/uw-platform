@@ -103,12 +103,14 @@ function describeBudgetRows(subject: AssistantsSubject): void {
     const when = new Date(at.getTime() + 1000 * hour);
     const read = await subject().store.transaction(async (tx) => {
       await ensurePersonal(tx);
-      const before = await tx.assistantBudgets.read.pool(when);
+      const noSpend = new Date(at.getTime() + 100_000 * hour);
+      const before = await tx.assistantBudgets.read.pool(when, noSpend);
       await tx.delegations.write.insert(assistOf(1, new Date(when.getTime() + hour)), uid(1));
-      const live = await tx.assistantBudgets.read.pool(when);
+      const live = await tx.assistantBudgets.read.pool(when, noSpend);
       await tx.assistantBudgets.write.put(budgetOf(5000));
-      const overridden = await tx.assistantBudgets.read.pool(when);
-      const expired = await tx.assistantBudgets.read.pool(new Date(when.getTime() + 2 * hour));
+      const overridden = await tx.assistantBudgets.read.pool(when, noSpend);
+      const later = new Date(when.getTime() + 2 * hour);
+      const expired = await tx.assistantBudgets.read.pool(later, noSpend);
       await tx.assistantBudgets.write.remove(uid(base));
       return { before, live, overridden, expired };
     });
@@ -120,6 +122,28 @@ function describeBudgetRows(subject: AssistantsSubject): void {
       overriddenMinor: before.overriddenMinor + 5000,
     });
     expect(read.expired.enabled).toBe(before.enabled);
+  });
+}
+
+function describePoolMembers(subject: AssistantsSubject): void {
+  it('PA-16 keeps an assistant that spent this month in the pool after it is turned off', async () => {
+    const when = new Date(at.getTime() + 3000 * hour);
+    const read = await subject().store.transaction(async (tx) => {
+      await ensurePersonal(tx);
+      const noSpend = new Date(at.getTime() + 100_000 * hour);
+      const before = await tx.assistantBudgets.read.pool(when, noSpend);
+      await tx.delegations.write.insert(assistOf(2, new Date(when.getTime() + hour)), uid(1));
+      await tx.harnessEvents.write.append([
+        started(9, new Date(when.getTime() + 0.5 * hour)),
+        finished(9, 1_000, new Date(when.getTime() + 0.6 * hour)),
+      ]);
+      const later = new Date(when.getTime() + 2 * hour);
+      const spentThisMonth = await tx.assistantBudgets.read.pool(later, when);
+      const nextMonth = await tx.assistantBudgets.read.pool(later, noSpend);
+      return { before, spentThisMonth, nextMonth };
+    });
+    expect(read.spentThisMonth.enabled).toBe(read.before.enabled + 1);
+    expect(read.nextMonth.enabled).toBe(read.before.enabled);
   });
 }
 
@@ -225,5 +249,6 @@ export function describeStoreAssistantBudgets(subject: AssistantsSubject): void 
   describeUnstartedReads(subject);
   describeBudgetRows(subject);
   describePoolReads(subject);
+  describePoolMembers(subject);
   describeStaleReads(subject);
 }

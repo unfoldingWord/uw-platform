@@ -78,19 +78,19 @@ async function abandonsAnOldTurn(scene: AssistantScene): Promise<void> {
   expect(await openTurns(scene)).toBe(1);
   scene.world.adapters.clock.advance(STALE_MS);
   await readSpend(scene.world);
-  expect(value(await sweep(scene))).toEqual({ abandoned: [turn.turnId], settled: [] });
+  expect(value(await sweep(scene))).toEqual({ abandoned: [turn.turnId], settled: [], unknown: [] });
   expect(await openTurns(scene)).toBe(0);
   expect(await finishedOutcomes(scene)).toEqual([['abandoned', 0]]);
   const late = await finishWith(scene, id, turn, await loopFor(scene, turn));
   expect(late).toMatchObject({ status: 'error', reason: 'stale_version' });
   expect(scene.world.adapters.directMessages.sent()).toEqual([]);
-  expect(value(await sweep(scene))).toEqual({ abandoned: [], settled: [] });
+  expect(value(await sweep(scene))).toEqual({ abandoned: [], settled: [], unknown: [] });
 }
 
 async function leavesAYoungTurn(scene: AssistantScene): Promise<void> {
   await begun(scene, '1702');
   scene.world.adapters.clock.advance(30 * MINUTE_MS);
-  expect(value(await sweep(scene))).toEqual({ abandoned: [], settled: [] });
+  expect(value(await sweep(scene))).toEqual({ abandoned: [], settled: [], unknown: [] });
   expect(await openTurns(scene)).toBe(1);
 }
 
@@ -102,9 +102,9 @@ async function settlesAReplyPastItsLease(scene: AssistantScene): Promise<void> {
   const sending = finishWith(scene, id, turn, result);
   await hold.arrived;
   scene.world.adapters.clock.advance(6 * MINUTE_MS);
-  expect(value(await sweep(scene))).toEqual({ abandoned: [], settled: [] });
+  expect(value(await sweep(scene))).toEqual({ abandoned: [], settled: [], unknown: [] });
   scene.world.adapters.clock.advance(5 * MINUTE_MS);
-  expect(value(await sweep(scene))).toEqual({ abandoned: [], settled: [turn.turnId] });
+  expect(value(await sweep(scene))).toEqual({ abandoned: [], settled: [turn.turnId], unknown: [] });
   hold.release();
   expect(value(await sending).delivery).toBe('outcome_unknown');
   expect(scene.world.adapters.directMessages.sent()).toEqual([]);

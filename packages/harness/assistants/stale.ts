@@ -5,12 +5,17 @@ import { lockKeys } from '../lock-keys.ts';
 import { accepted, refused, type KernelOutcome } from '../outcome.ts';
 import type { AssistantStaleTurn, Ports, StoreTransaction } from '../ports.ts';
 import { anyNamed, requestEvents } from './ledger.ts';
+import { settleStaleProposalEffects } from './proposal-stale.ts';
 import { finishedDraft, type SettledLoop } from './reply.ts';
 import { assistantRole } from './role.ts';
 import { claimOf, leaseHeld, settle } from './settle.ts';
 
 export type SweepInput = { readonly limit: number };
-export type Swept = { readonly abandoned: readonly string[]; readonly settled: readonly string[] };
+export type Swept = {
+  readonly abandoned: readonly string[];
+  readonly settled: readonly string[];
+  readonly unknown: readonly string[];
+};
 
 type SweepPorts = Pick<Ports, 'clock' | 'ids' | 'store'>;
 type Closed = 'abandoned' | 'settled' | null;
@@ -80,5 +85,7 @@ export async function closeStaleTurns(
     if (closed === 'abandoned') abandonedTurns.push(stale.turnId);
     if (closed === 'settled') settledTurns.push(stale.turnId);
   }
-  return accepted({ abandoned: abandonedTurns, settled: settledTurns });
+  const startedBefore = new Date(context.at.getTime() - STALE_TURN_MS);
+  const unknown = await settleStaleProposalEffects(ports, context, startedBefore, input.limit);
+  return accepted({ abandoned: abandonedTurns, settled: settledTurns, unknown });
 }

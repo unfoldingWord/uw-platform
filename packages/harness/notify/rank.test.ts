@@ -49,6 +49,7 @@ describe('a weaker wake never spends the window a stronger one needs', () => {
       delegated_merge: 2,
       silence_alarm: 3,
       proposal_waiting: 3,
+      assistant_refused: 2,
     });
     expect([...POSTING_REASONS].sort()).toEqual([
       'delegation_lapsed',

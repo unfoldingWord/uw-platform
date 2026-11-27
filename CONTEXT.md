@@ -769,7 +769,7 @@ One model loop answering one request, hosted by the `AssistantTurn` Workflow nam
 _Avoid_: run, session, job
 
 **Assistants pool**:
-The month's spend allowance all assistants share, outside the platform's AI spend cap: the sum of the budgets of every assistant with a live `assist` delegation, under an optional ceiling. A turn is refused once it is spent.
+The month's spend allowance all assistants share, outside the platform's AI spend cap: the sum of the budgets of every assistant with a live `assist` delegation or that spent this month, under an optional ceiling. A turn is refused once it is spent.
 _Avoid_: sub-cap, assistant cap (say "the assistants pool"), quota
 
 **Direct effect**:
@@ -825,7 +825,7 @@ The minute cron's pass over the assistant mailboxes that turns each new message 
 _Avoid_: mail poll, inbox sync, Gmail watch (a push the platform does not use)
 
 **Sender verdict**:
-Whether a mail may instruct an assistant: automatic, from someone else, unproven, or passing. Only the topmost `Authentication-Results` header that Google's own mail server wrote is read.
+Whether a mail may instruct an assistant: automatic, from someone else, unproven, or passing. Only the topmost `Authentication-Results` header that Google's own mail server wrote is read, and it must show SPF passing for the person's exact address as the envelope sender.
 _Avoid_: spam check, trust score
 
 **Declined mail**:

@@ -259,6 +259,46 @@ async function notWiredIsAFailure(db: Database): Promise<void> {
   ]);
 }
 
+async function oneThrowingAccountHoldsUpNoOne(db: Database): Promise<void> {
+  const { deps, kernel } = await rig(db);
+  const zulip = deps.zulip;
+  if (zulip === null) throw new Error('zulip not wired');
+  const throwing: ProvisionerDeps = {
+    ...deps,
+    zulip: {
+      ...zulip,
+      admin: {
+        ...zulip.admin,
+        botByShortName: async (shortName) => {
+          if (shortName.startsWith('barnabas')) throw new Error('connection reset');
+          return zulip.admin.botByShortName(shortName);
+        },
+      },
+    },
+  };
+  const anaPerson = await person(db, ana, `ana@${domain}`);
+  const benPerson = await person(db, ben, `ben@${domain}`);
+  const first = await kernel.assistants.enable(call(anaPerson), {
+    harnessId: crypto.randomUUID(),
+    name: 'barnabas',
+  });
+  now = new Date(now.getTime() + 1_000);
+  const second = await kernel.assistants.enable(call(benPerson), {
+    harnessId: crypto.randomUUID(),
+    name: 'silas',
+  });
+  if (first.status !== 'accepted' || second.status !== 'accepted') throw new Error('not enabled');
+  expect(await provisionDue(throwing, 5)).toEqual([
+    { harnessId: first.value.harnessId, step: 'zulip_bot', outcome: 'failed' },
+    { harnessId: second.value.harnessId, step: 'assist', outcome: 'waiting' },
+  ]);
+  expect(await eventsOf(db, first.value.harnessId)).toContainEqual([
+    'assistant_provisioning_failed',
+    { step: 'zulip_bot', why: 'step_failed' },
+  ]);
+  expect(await provisionDue(throwing, 5)).toEqual([]);
+}
+
 describe.skipIf(!testServer)('PA-14 the assistant provisioner', () => {
   it('makes the Workspace user, the bot, the pairing and the persona, then waits for my assist delegation', () =>
     withAppDatabase(turnedOnEndToEnd));
@@ -271,4 +311,7 @@ describe.skipIf(!testServer)('PA-14 the assistant provisioner', () => {
 
   it('names a missing Workspace configuration as a failure, never silence', () =>
     withAppDatabase(notWiredIsAFailure));
+
+  it('records a step that throws as failed with backoff and carries on with the next person', () =>
+    withAppDatabase(oneThrowingAccountHoldsUpNoOne));
 });

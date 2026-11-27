@@ -11,7 +11,12 @@ import { zulipAdmin } from './admin.ts';
 import { botOfHarness } from './bots.ts';
 import { sha256Hex } from './digest.ts';
 import { openBotKey } from '../../credentials/assistant-bot-keys.ts';
-import { deactivateZulipBot, provisionZulipBot, reactivateZulipBot } from './provision.ts';
+import {
+  botShortName,
+  deactivateZulipBot,
+  provisionZulipBot,
+  reactivateZulipBot,
+} from './provision.ts';
 import { FAKE_ADMIN, FAKE_ZULIP_SITE, fakeZulip, type FakeZulip } from './testing/fake-zulip.ts';
 
 const person = '00000000-0000-4000-8000-0000000d0601';
@@ -72,7 +77,7 @@ async function createsOneBotPointingAtIngest(db: Database): Promise<void> {
   const stored = await botOfHarness(db, harness);
   expect(stored).toMatchObject({
     botUserId: 1002,
-    botEmail: 'barnabas-bot@chat.example.org',
+    botEmail: 'barnabas-0000000d0602-bot@chat.example.org',
     status: 'active',
     webhookTokenDigest: await sha256Hex('token-1002'),
   });
@@ -88,7 +93,7 @@ async function isIdempotentAndAdoptsABot(db: Database): Promise<void> {
   const { deps } = await depsOn(db, zulip);
   await deps.admin.createBot({
     fullName: 'barnabas',
-    shortName: 'barnabas',
+    shortName: botShortName('barnabas', harness),
     payloadUrl: webhookUrl,
   });
   const first = await provisionZulipBot(deps, request);
@@ -129,6 +134,69 @@ async function deactivatesTheBotWhenTurnedOff(db: Database): Promise<void> {
   });
 }
 
+const otherPerson = '00000000-0000-4000-8000-0000000d0611';
+const otherHarness = '00000000-0000-4000-8000-0000000d0612';
+
+async function seededOther(db: Database): Promise<void> {
+  await seedPerson(db, { id: otherPerson, email: 'ben@example.org' });
+  await db.execute(sql`INSERT INTO harnesses (id, key, title, template, jd_area, created_at, person_id)
+    VALUES (${otherHarness}, ${`assistant-${otherPerson}`}, 'Assistant', 'assistant', '10-19',
+      ${at.toISOString()}::timestamptz, ${otherPerson})`);
+}
+
+async function neverTakesOverABotWithTheSameName(db: Database): Promise<void> {
+  await seeded(db);
+  const zulip = fakeZulip();
+  const { deps } = await depsOn(db, zulip);
+  await deps.admin.createBot({
+    fullName: 'barnabas',
+    shortName: 'barnabas',
+    payloadUrl: 'https://notify.example.net/hook',
+  });
+  const outcome = await provisionZulipBot(deps, request);
+  expect(outcome).toMatchObject({ outcome: 'provisioned' });
+  const stored = await botOfHarness(db, harness);
+  expect(stored?.botUserId).not.toBe(1001);
+  expect(zulip.bots().find((bot) => bot.user_id === stored?.botUserId)?.services[0]?.base_url).toBe(
+    webhookUrl,
+  );
+}
+
+async function reusesANameARetiredAssistantHeld(db: Database): Promise<void> {
+  await seeded(db);
+  await seededOther(db);
+  const zulip = fakeZulip();
+  const { deps } = await depsOn(db, zulip);
+  await provisionZulipBot(deps, request);
+  expect(await deactivateZulipBot(deps, harness)).toEqual({ outcome: 'deactivated' });
+  const second = await provisionZulipBot(deps, {
+    harnessId: otherHarness,
+    personId: otherPerson,
+    personEmail: 'ben@example.org',
+    name: 'barnabas',
+  });
+  expect(second).toMatchObject({ outcome: 'provisioned' });
+  const first = await botOfHarness(db, harness);
+  const other = await botOfHarness(db, otherHarness);
+  expect(other?.status).toBe('active');
+  expect(other?.botUserId).not.toBe(first?.botUserId);
+  expect(other?.fullName).toBe('barnabas');
+}
+
+async function keepsTheBotActiveWhenZulipRefusesToTurnItOff(db: Database): Promise<void> {
+  await seeded(db);
+  const zulip = fakeZulip();
+  const { deps } = await depsOn(db, zulip);
+  await provisionZulipBot(deps, request);
+  zulip.failNext({ status: 400 });
+  expect(await deactivateZulipBot(deps, harness)).toEqual({
+    outcome: 'failed',
+    why: 'zulip_refused',
+  });
+  expect(zulip.bots()[0]?.is_active).toBe(true);
+  expect((await botOfHarness(db, harness))?.status).toBe('active');
+}
+
 describe.skipIf(!testServer)('PA-6 provisioning my assistant Zulip bot', () => {
   it('creates one bot pointing at ingest, seals its key, keeps only its token digest and pairs me by email', () =>
     withAppDatabase(createsOneBotPointingAtIngest));
@@ -141,4 +209,13 @@ describe.skipIf(!testServer)('PA-6 provisioning my assistant Zulip bot', () => {
 
   it('deactivates the bot when turned off and reactivates it when turned on', () =>
     withAppDatabase(deactivatesTheBotWhenTurnedOff));
+
+  it('never takes over a realm bot that only shares my assistant name', () =>
+    withAppDatabase(neverTakesOverABotWithTheSameName));
+
+  it('gives a name a deleted assistant held to a new assistant with a bot of its own', () =>
+    withAppDatabase(reusesANameARetiredAssistantHeld));
+
+  it('keeps the bot recorded active when Zulip refuses to turn it off', () =>
+    withAppDatabase(keepsTheBotActiveWhenZulipRefusesToTurnItOff));
 });

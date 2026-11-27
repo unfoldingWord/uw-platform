@@ -14,7 +14,11 @@ type NewBot = {
   readonly payloadUrl: string;
 };
 type CreatedBot = { readonly userId: number; readonly apiKey: string };
-export type BotDetails = CreatedBot & { readonly email: string; readonly token: string };
+export type BotDetails = CreatedBot & {
+  readonly email: string;
+  readonly token: string;
+  readonly payloadUrl: string | null;
+};
 
 export type ZulipAdmin = {
   createBot(bot: NewBot): Promise<ZulipOutcome<CreatedBot>>;
@@ -22,6 +26,7 @@ export type ZulipAdmin = {
   botByShortName(shortName: string): Promise<ZulipOutcome<BotDetails | null>>;
   userIdByEmail(email: string): Promise<ZulipOutcome<number | null>>;
   deactivate(userId: number): Promise<ZulipOutcome<null>>;
+  isActive(userId: number): Promise<ZulipOutcome<boolean>>;
   reactivate(userId: number): Promise<ZulipOutcome<null>>;
   renameBot(userId: number, fullName: string): Promise<ZulipOutcome<null>>;
 };
@@ -39,12 +44,18 @@ const listedBotSchema = z.object({
   username: z.string().min(3).max(254).optional(),
   api_key: z.string().min(1).max(200),
   services: z
-    .array(z.object({ token: z.string().min(1).max(200).optional() }))
+    .array(
+      z.object({
+        token: z.string().min(1).max(200).optional(),
+        base_url: z.string().max(2000).optional(),
+      }),
+    )
     .max(10)
     .default([]),
 });
 const botsSchema = z.object({ bots: z.array(z.unknown()).max(10_000) });
 const userSchema = z.object({ user: z.object({ user_id: zulipId }) });
+const activeSchema = z.object({ user: z.object({ is_active: z.boolean() }) });
 
 type Request = Omit<ZulipCall, 'signIn' | 'timeoutMs'>;
 
@@ -58,9 +69,11 @@ function detailsOf(entry: unknown): BotDetails | null {
   const bot = listedBotSchema.safeParse(entry);
   if (!bot.success) return null;
   const email = bot.data.email ?? bot.data.username;
-  const token = bot.data.services.find((service) => service.token !== undefined)?.token;
+  const service = bot.data.services.find((each) => each.token !== undefined);
+  const token = service?.token;
   if (email === undefined || token === undefined) return null;
-  return { userId: bot.data.user_id, email, apiKey: bot.data.api_key, token };
+  const payloadUrl = service?.base_url ?? null;
+  return { userId: bot.data.user_id, email, apiKey: bot.data.api_key, token, payloadUrl };
 }
 
 function asked(config: ZulipAdminConfig, fetcher: typeof fetch, timers: Timers) {
@@ -93,6 +106,20 @@ async function userIdOf(ask: ReturnType<typeof asked>, email: string) {
   if (!answer.ok && answer.failure === 'refused') return { ok: true as const, value: null };
   const user = parsed(answer, userSchema);
   return user.ok ? { ok: true as const, value: user.value.user.user_id } : user;
+}
+
+async function activeOf(
+  ask: ReturnType<typeof asked>,
+  userId: number,
+): Promise<ZulipOutcome<boolean>> {
+  const answer = await ask({ method: 'GET', path: `/api/v1/users/${String(userId)}` });
+  const user = parsed(answer, activeSchema);
+  return user.ok ? { ok: true, value: user.value.user.is_active } : user;
+}
+
+async function renamed(ask: ReturnType<typeof asked>, userId: number, fullName: string) {
+  const path = `/api/v1/bots/${String(userId)}`;
+  return emptied(await ask({ method: 'PATCH', path, form: { full_name: fullName } }));
 }
 
 export function zulipAdmin(
@@ -132,16 +159,10 @@ export function zulipAdmin(
     botByShortName: (shortName) => pick((bot) => bot.email.startsWith(`${shortName}-bot@`)),
     userIdByEmail: (email) => userIdOf(ask, email),
     deactivate: async (userId) =>
-      emptied(await ask({ method: 'DELETE', path: `/api/v1/users/${String(userId)}` })),
+      emptied(await ask({ method: 'DELETE', path: `/api/v1/bots/${String(userId)}` })),
+    isActive: (userId) => activeOf(ask, userId),
     reactivate: async (userId) =>
       emptied(await ask({ method: 'POST', path: `/api/v1/users/${String(userId)}/reactivate` })),
-    renameBot: async (userId, fullName) =>
-      emptied(
-        await ask({
-          method: 'PATCH',
-          path: `/api/v1/bots/${String(userId)}`,
-          form: { full_name: fullName },
-        }),
-      ),
+    renameBot: (userId, fullName) => renamed(ask, userId, fullName),
   };
 }

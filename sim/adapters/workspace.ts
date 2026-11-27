@@ -30,6 +30,8 @@ export type SimWorkspace = Workspace & {
   events(personId: string): readonly SimCalendarEvent[];
   addressesReached(): readonly string[];
   failNextWith(outcome: CalendarFailure): void;
+  throwNext(): void;
+  hangNext(): void;
 };
 
 const LIST_MOST = 100;
@@ -170,6 +172,7 @@ export function createSimWorkspace(): SimWorkspace {
     reached: [],
     next: 0,
     failing: null,
+    trouble: null,
   };
   return {
     listEvents: listIn(state),
@@ -190,6 +193,12 @@ export function createSimWorkspace(): SimWorkspace {
     addressesReached: () => [...state.reached],
     failNextWith: (outcome) => {
       state.failing = outcome;
+    },
+    throwNext: () => {
+      state.trouble = 'throw';
+    },
+    hangNext: () => {
+      state.trouble = 'hang';
     },
   };
 }

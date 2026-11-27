@@ -62,6 +62,7 @@ export const wakeReasonSchema = z.enum([
   'delegated_merge',
   'silence_alarm',
   'proposal_waiting',
+  'assistant_refused',
 ]);
 export const liveScreenSchema = z.enum([
   'home',

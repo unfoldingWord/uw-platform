@@ -12,7 +12,7 @@ import {
   seedNotesPage,
 } from '../assistant-proposal-fixtures.ts';
 import { DAY_MS, closeTurn, openTurn } from '../assistant-reminder-fixtures.ts';
-import { simPerson } from '../fixtures.ts';
+import { simCaller, simPerson, simSystem } from '../fixtures.ts';
 import { value } from '../runs.ts';
 import { personOf } from '../wakes.ts';
 import { createWorld, simAppOrigin } from '../world.ts';
@@ -187,6 +187,56 @@ async function aFailedSendIsRecordedOnce(scene: AssistantScene): Promise<void> {
   expect(why(await decide(scene, scene.person, proposalId, 'accept'))).toBe('already_decided');
 }
 
+async function aThrownSendIsSettledAsUnknown(scene: AssistantScene): Promise<void> {
+  const open = await openTurn(scene, { externalId: '1291', note: 'Send Ben the notes' });
+  const { proposalId } = value(await proposeEmail(scene, open, mail));
+  scene.world.adapters.workspace.throwNext();
+  const decided = value(await decide(scene, scene.person, proposalId, 'accept'));
+  expect(decided.failure).toBe('outcome_unknown');
+  const log = await assistantLog(scene);
+  const failed = log.filter((event) => event.name === 'assistant_effect_failed');
+  expect(failed.map((event) => event.evidence['why'])).toEqual(['outcome_unknown']);
+  expect(why(await decide(scene, scene.person, proposalId, 'accept'))).toBe('already_decided');
+}
+
+function sweep(scene: AssistantScene) {
+  const { world } = scene;
+  return world.kernel.assistants.closeStaleTurns(simCaller(world, simSystem()), { limit: 50 });
+}
+
+async function startedEffects(scene: AssistantScene): Promise<readonly unknown[]> {
+  const log = await assistantLog(scene);
+  return log
+    .filter(
+      (event) =>
+        event.name === 'assistant_effect_started' && event.evidence['kind'] === 'email_sent',
+    )
+    .map((event) => event.evidence['effectId']);
+}
+
+async function aDecisionWhoseHostDiedIsSettledBySweep(scene: AssistantScene): Promise<void> {
+  const open = await openTurn(scene, { externalId: '1295', note: 'Send Ben the notes' });
+  const { proposalId } = value(await proposeEmail(scene, open, mail));
+  await closeTurn(scene, open);
+  scene.world.adapters.workspace.hangNext();
+  void decide(scene, scene.person, proposalId, 'accept');
+  let effects: readonly unknown[] = [];
+  for (let tries = 0; tries < 200 && effects.length === 0; tries += 1) {
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    effects = await startedEffects(scene);
+  }
+  expect(effects).toHaveLength(1);
+  expect(value(await sweep(scene)).unknown).toEqual([]);
+  scene.world.adapters.clock.advance(2 * 3_600_000);
+  expect(value(await sweep(scene)).unknown).toEqual(effects);
+  const log = await assistantLog(scene);
+  const failed = log.filter((event) => event.name === 'assistant_effect_failed');
+  expect(failed.map((event) => [event.evidence['effectId'], event.evidence['why']])).toEqual([
+    [effects[0], 'outcome_unknown'],
+  ]);
+  expect(value(await sweep(scene)).unknown).toEqual([]);
+}
+
 async function anotherPersonsProposalIsNotTheirs(scene: AssistantScene): Promise<void> {
   const open = await openTurn(scene, { externalId: '1281', note: 'Send Ben the notes' });
   const { proposalId } = value(await proposeEmail(scene, open, mail));
@@ -210,6 +260,10 @@ describe('PA-12 nothing reaches another person until my assistant proposal is de
     withScene(invitesFromThePersonsCalendar));
   it('caps the proposals one request can draft', () => withScene(capsProposalsPerRequest));
   it('records a failed send once and never retries it', () => withScene(aFailedSendIsRecordedOnce));
+  it('records a send that threw as outcome unknown, once', () =>
+    withScene(aThrownSendIsSettledAsUnknown));
+  it('settles an accepted effect whose host died as outcome unknown after the hour', () =>
+    withScene(aDecisionWhoseHostDiedIsSettledBySweep));
   it("refuses an org admin deciding another person's proposal", () =>
     withScene(anotherPersonsProposalIsNotTheirs));
 });

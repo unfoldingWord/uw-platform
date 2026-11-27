@@ -1,4 +1,4 @@
-import { and, asc, count, gte, lt, sql } from 'drizzle-orm';
+import { and, asc, count, eq, gte, lt, sql } from 'drizzle-orm';
 import type { AnyExecutor } from '../any-database.ts';
 import {
   assistantFinishedEventName,
@@ -7,7 +7,12 @@ import {
 } from '../assistant-event-indexes.ts';
 import { oneOf } from '../checks.ts';
 import { harnessEvents, harnesses } from '../schema.ts';
-import { costMicros, knownCost, sameTurnFinished } from './assistant-spend-sql.ts';
+import {
+  costMicros,
+  effectSettledSql,
+  knownCost,
+  sameTurnFinished,
+} from './assistant-spend-sql.ts';
 import type { AssistantMonthSpend, AssistantStaleTurn, AssistantStaleTurnQuery } from './types.ts';
 
 const STALE_READ_MOST = 200;
@@ -109,4 +114,16 @@ export async function assistantStaleTurns(
 ): Promise<readonly AssistantStaleTurn[]> {
   const rows = await assistantStaleTurnsQuery(executor, query);
   return rows.map((row) => ({ ...row, startedAt: new Date(row.startedAt) }));
+}
+
+export async function effectSettled(
+  executor: AnyExecutor,
+  harnessId: string,
+  effectId: string,
+): Promise<boolean> {
+  const rows = await executor
+    .select({ settled: sql<boolean>`${effectSettledSql(effectId, harnessId)}` })
+    .from(harnesses)
+    .where(eq(harnesses.id, harnessId));
+  return rows[0]?.settled === true;
 }

@@ -83,9 +83,14 @@ function requestRow(request: OverviewRequest, zone: string) {
   return {
     when: formatZonedMinute(request.recordedAt, zone),
     from: channelWords[request.channel],
-    asked,
+    asked: <span id={`request-${request.requestId}`}>{asked}</span>,
     did: (
       <ul class="m-0 flex list-none flex-col gap-1 p-0">
+        {request.refused === null ? null : (
+          <li>
+            <Badge tone="held">{`Not answered: ${reasonText(request.refused)}`}</Badge>
+          </li>
+        )}
         {request.effects.map((effect) => (
           <Effect effect={effect} />
         ))}

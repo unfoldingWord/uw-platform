@@ -59,6 +59,7 @@ export const assistantProvisioningFailureSchema = z.enum([
   'key_not_sealed',
   'persona_refused',
   'person_inactive',
+  'step_failed',
 ]);
 export const assistantJdIdSchema = z.string().regex(new RegExp(ASSISTANT_JD_ID_PATTERN));
 

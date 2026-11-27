@@ -3,7 +3,7 @@ import type { HarnessEvent } from '@uw/contracts';
 import { ingestPrincipal, systemPrincipal } from '@uw/core/principal';
 import { testServer } from '@uw/db/test-database';
 import { allEvents } from '../../testing/commands.ts';
-import { withTurnRig, type TurnRig } from '../../testing/turn-rig.ts';
+import { rigBotEmail, withTurnRig, type TurnRig } from '../../testing/turn-rig.ts';
 import { completion, Crash, memorySteps, run, type Memory } from '../../testing/turn-script.ts';
 
 const DAY_MS = 24 * 60 * 60_000;
@@ -38,7 +38,7 @@ async function answersEndToEnd(rig: TurnRig): Promise<void> {
   expect(outcomes).toEqual(['assistant_request_recorded', 'assistant_turn_started']);
   expect(await run(rig, 0)).toBe('sent');
   expect(sentFromMyBot(rig)).toEqual([
-    ['barnabas-bot@chat.example.org', [5001], 'I will remind you tomorrow to call Ana.'],
+    [rigBotEmail(rig.harnessId), [5001], 'I will remind you tomorrow to call Ana.'],
   ]);
   const body = rig.gateway.requests[0]?.body as SentBody;
   expect(body.provider).toEqual({

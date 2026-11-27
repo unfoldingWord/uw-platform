@@ -89,6 +89,8 @@ export type AssistantEffectsGateway = {
     byKey(harnessId: string, idempotencyKey: string): Promise<AssistantEffectRow | null>;
     forRequests(requestIds: readonly string[]): Promise<readonly AssistantEffectRow[]>;
     countSince(harnessId: string, kind: AssistantEffectKind, since: Date): Promise<number>;
+    openProposals(startedBefore: Date, limit: number): Promise<readonly AssistantEffectRow[]>;
+    settled(harnessId: string, effectId: string): Promise<boolean>;
   };
   readonly write: {
     insert(row: AssistantEffectRow): Promise<boolean>;
@@ -205,7 +207,7 @@ export type AssistantPoolBudgets = {
 export type AssistantBudgetsGateway = {
   readonly read: {
     of(harnessId: string): Promise<AssistantBudgetRow | null>;
-    pool(at: Date): Promise<AssistantPoolBudgets>;
+    pool(at: Date, since: Date): Promise<AssistantPoolBudgets>;
   };
   readonly write: {
     put(row: AssistantBudgetRow): Promise<void>;

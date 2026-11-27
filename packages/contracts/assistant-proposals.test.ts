@@ -180,10 +180,19 @@ describe('PA-13 the proposal verbs only draft, and carry no gate word', () => {
 });
 
 describe('the proposals contract version', () => {
-  it('is published at 14.23.0 with its sets locked', () => {
-    expect(CONTRACT_VERSION).toBe('14.23.0');
+  it('was published at 14.23.0 with its sets locked', () => {
     const entry = lock.versions.find((version) => version.version === '14.23.0');
     const sets: Record<string, readonly string[]> = entry?.sets ?? {};
     expect(sets['assistant-proposal-kind']).toEqual(['email', 'invite', 'page_append']);
+  });
+});
+
+describe('the review-fixes contract version', () => {
+  it('is published at 14.24.0 with a refused turn waking its person and a thrown step named', () => {
+    expect(CONTRACT_VERSION).toBe('14.24.0');
+    const entry = lock.versions.find((version) => version.version === '14.24.0');
+    const sets: Record<string, readonly string[]> = entry?.sets ?? {};
+    expect(sets['wake-reason']).toContain('assistant_refused');
+    expect(sets['assistant-provisioning-failure']).toContain('step_failed');
   });
 });

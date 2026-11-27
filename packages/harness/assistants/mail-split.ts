@@ -1,14 +1,28 @@
 export type SplitMail = { readonly note: string; readonly forwarded: readonly string[] };
 
 const MARKERS: readonly RegExp[] = [
-  /^-{2,}\s*Forwarded message\s*-{2,}\s*$/i,
+  /^-{2,}\s*\S.*\S\s*-{2,}\s*$/u,
+  /^_{8,}\s*$/,
   /^Begin forwarded message:\s*$/i,
-  /^-{2,}\s*Original Message\s*-{2,}\s*$/i,
   /^On .+ wrote:\s*$/,
+  /<[^\s<>@]+@[^\s<>@]+>.*:\s*$/,
 ];
+const FIELD = /^[\p{L}][\p{L} .'-]{0,24}?\s?:\s*\S/u;
+const ADDRESS = /[^\s<>@]+@[^\s<>@]+\.[^\s<>@]+/;
+const QUOTED = /^\s*>/;
 const OUTLOOK_FROM = /^From:\s.+/;
 const OUTLOOK_NEXT = /^(Sent|Date):\s/;
-const QUOTED = /^\s*>/;
+const FIELDS_WITH_ADDRESS = 2;
+const FIELDS_ALONE = 4;
+
+function fieldRun(lines: readonly string[], index: number): readonly string[] {
+  const run: string[] = [];
+  for (const line of lines.slice(index)) {
+    if (!FIELD.test(line.trim())) break;
+    run.push(line);
+  }
+  return run;
+}
 
 function outlookHeader(lines: readonly string[], index: number): boolean {
   const line = lines.at(index) ?? '';
@@ -16,10 +30,17 @@ function outlookHeader(lines: readonly string[], index: number): boolean {
   return lines.slice(index + 1, index + 4).some((next) => OUTLOOK_NEXT.test(next));
 }
 
+function headerBlock(lines: readonly string[], index: number): boolean {
+  if (outlookHeader(lines, index)) return true;
+  const run = fieldRun(lines, index);
+  if (run.length >= FIELDS_ALONE) return true;
+  return run.length >= FIELDS_WITH_ADDRESS && run.some((line) => ADDRESS.test(line));
+}
+
 function markerAt(lines: readonly string[]): number {
   return lines.findIndex(
     (line, index) =>
-      MARKERS.some((marker) => marker.test(line.trim())) || outlookHeader(lines, index),
+      MARKERS.some((marker) => marker.test(line.trim())) || headerBlock(lines, index),
   );
 }
 

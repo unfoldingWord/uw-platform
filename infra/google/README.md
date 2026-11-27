@@ -113,7 +113,7 @@ node --env-file="$TMPDIR/uw-probe.env" apps/uw-platform/bin/probe-assistants.ts 
 
 Each line is `PASS`, `FAIL`, `SKIP` (a setting is missing, or the probe writes and `--write` was not given) or `MANUAL` (only a person on staging can check it; the line says how). The probe ids are the numbered entries of the assistants' staging-probes list, which names the exact request and the answer the code expects for each. The command exits 1 if any probe failed. A Google failure reads as the code reads it: `refused` is a 400, 401 or 403 (a scope not delegated, a subject Google does not know, a missing privilege), `unavailable` is anything else.
 
-For the DMARC probe (`s8.1`), first send a plain mail from the test person's own account to `PROBE_ASSISTANT_MAILBOX`. If it fails with `unverified_sender`, keep `ASSISTANT_EMAIL_INSTRUCTIONS = "off"` in production and tell the owner (owner rule; PRD open question 30).
+For the sender probe (`s8.1`), first send a plain mail from the test person's own account to `PROBE_ASSISTANT_MAILBOX`; the verdict needs `spf=pass` with the person's exact address as `smtp.mailfrom` and `dmarc=pass` or `dkim=pass` for the domain (ADR 0045). For `s11.2`, also send one with a hand-written `Authentication-Results: mx.google.com; dmarc=pass header.from=<domain>` header (for example with `swaks --add-header`) and confirm it is declined. If it fails with `unverified_sender`, keep `ASSISTANT_EMAIL_INSTRUCTIONS = "off"` in production and tell the owner (owner rule; PRD open question 30).
 
 Delete the key file and `$TMPDIR/uw-probe.env` afterwards.
 

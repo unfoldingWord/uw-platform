@@ -4,6 +4,7 @@ import {
   homeLink,
   itemLink,
   proposalLink,
+  requestLink,
   type DeepLink,
   type Harness,
   type HarnessEvent,
@@ -54,9 +55,15 @@ function proposalOf(trigger: Trigger): DeepLink | null {
   return typeof proposalId === 'string' ? proposalLink(proposalId) : null;
 }
 
+function requestOf(trigger: Trigger): DeepLink | null {
+  const requestId = trigger.event.evidence['requestId'];
+  return typeof requestId === 'string' ? requestLink(requestId) : null;
+}
+
 function linkOf(trigger: Trigger, harness: Harness, itemId: string | null): DeepLink | null {
   if (trigger.reason === 'silence_alarm') return healthLink('silence_alarm');
   if (trigger.reason === 'proposal_waiting') return proposalOf(trigger);
+  if (trigger.reason === 'assistant_refused') return requestOf(trigger);
   if (trigger.reason === 'delegation_lapsed') return homeLink;
   if (itemId === null) return null;
   return trigger.reason === 'gate_waiting'

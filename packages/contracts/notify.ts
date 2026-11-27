@@ -4,7 +4,7 @@ import { harnessTitleSchema } from './harness.ts';
 
 const uuidPart = '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}';
 const deepLinkPattern = new RegExp(
-  `^/(?:harnesses/${uuidPart}/(?:gates|items)/${uuidPart}|health/[a-z][a-z_]{0,63}|credentials|assistant#proposal-${uuidPart})?$`,
+  `^/(?:harnesses/${uuidPart}/(?:gates|items)/${uuidPart}|health/[a-z][a-z_]{0,63}|credentials|assistant#(?:proposal|request)-${uuidPart})?$`,
 );
 
 export const deepLinkSchema = z.string().max(100).regex(deepLinkPattern);
@@ -23,6 +23,10 @@ export function itemLink(harnessId: string, itemId: string): DeepLink {
 
 export function proposalLink(proposalId: string): DeepLink {
   return deepLinkSchema.parse(`/assistant#proposal-${proposalId}`);
+}
+
+export function requestLink(requestId: string): DeepLink {
+  return deepLinkSchema.parse(`/assistant#request-${requestId}`);
 }
 
 export const credentialsLink: DeepLink = '/credentials';

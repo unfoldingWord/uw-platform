@@ -72,13 +72,20 @@ function resultOf(part: string): Result | null {
   return { method: (match[1] ?? '').toLowerCase(), result: (match[2] ?? '').toLowerCase(), props };
 }
 
+function authservOf(value: string): string | undefined {
+  return withoutComments(value).split(';')[0]?.trim().split(/\s+/)[0]?.toLowerCase();
+}
+
 function trustedResults(headers: readonly MailHeader[]): readonly Result[] | null {
-  const top = named(headers, 'authentication-results')[0];
-  if (top === undefined) return null;
-  const [authserv, ...parts] = withoutComments(top).split(';');
-  const id = authserv?.trim().split(/\s+/)[0]?.toLowerCase();
-  if (id !== TRUSTED_AUTHSERV_ID) return null;
-  return parts.flatMap((part) => resultOf(part) ?? []);
+  const all = named(headers, 'authentication-results');
+  const top = all[0];
+  if (top === undefined || authservOf(top) !== TRUSTED_AUTHSERV_ID) return null;
+  const claims = all.filter((value) => authservOf(value) === TRUSTED_AUTHSERV_ID);
+  if (claims.length !== 1) return null;
+  return withoutComments(top)
+    .split(';')
+    .slice(1)
+    .flatMap((part) => resultOf(part) ?? []);
 }
 
 function passed(
@@ -94,15 +101,15 @@ function passed(
 function authenticated(results: readonly Result[], owner: string): boolean {
   const address = owner.toLowerCase();
   const domain = address.slice(address.indexOf('@') + 1);
-  if (passed(results, 'dmarc', (props) => props.get('header.from') === domain)) return true;
-  const spf = passed(results, 'spf', (props) => props.get('smtp.mailfrom') === address);
+  const envelope = passed(results, 'spf', (props) => props.get('smtp.mailfrom') === address);
+  const dmarc = passed(results, 'dmarc', (props) => props.get('header.from') === domain);
   const dkim = passed(
     results,
     'dkim',
     (props) =>
       props.get('header.d') === domain || (props.get('header.i') ?? '').endsWith(`@${domain}`),
   );
-  return spf && dkim;
+  return envelope && (dmarc || dkim);
 }
 
 export function emailSenderVerdict(input: VerdictInput, owner: string): SenderVerdict {

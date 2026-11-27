@@ -16,8 +16,9 @@ export async function poolSpent(
   at: Date,
 ): Promise<boolean> {
   await tx.lock(lockKeys.assistantPool());
-  const budgets = await tx.assistantBudgets.read.pool(at);
-  const spend = await tx.harnessEvents.read.assistantPoolSpend(monthStart(at));
+  const since = monthStart(at);
+  const budgets = await tx.assistantBudgets.read.pool(at, since);
+  const spend = await tx.harnessEvents.read.assistantPoolSpend(since);
   const poolMinor = poolMinorOf(budgets, settings.assistantSpendCapMinor);
   return budgetSpent(spend, assistantRole.turnCeilingMinor, poolMinor);
 }

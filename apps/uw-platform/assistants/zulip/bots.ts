@@ -73,6 +73,14 @@ export async function botOfHarness(db: Executor, harnessId: string): Promise<Bot
   return rows[0] ? rowOf(rows[0]) : null;
 }
 
+export async function botHeld(db: Executor, botUserId: number): Promise<boolean> {
+  const rows = await db
+    .select({ harnessId: assistantZulipBots.harnessId })
+    .from(assistantZulipBots)
+    .where(eq(assistantZulipBots.botUserId, botUserId));
+  return rows.length > 0;
+}
+
 export async function botByEmail(db: Executor, botEmail: string): Promise<BotRow | null> {
   const rows = await db
     .select()

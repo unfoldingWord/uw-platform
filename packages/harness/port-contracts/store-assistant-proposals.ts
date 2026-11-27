@@ -1,5 +1,11 @@
+import { assistantIdentityOf, identitySchema, type NewHarnessEvent } from '@uw/contracts';
 import { expect, it } from 'vitest';
-import type { AssistantRequestRow, NewAssistantProposal, StoreTransaction } from '../ports.ts';
+import type {
+  AssistantEffectRow,
+  AssistantRequestRow,
+  NewAssistantProposal,
+  StoreTransaction,
+} from '../ports.ts';
 import {
   assistantsBase as base,
   ensurePersonal,
@@ -189,10 +195,81 @@ function describeProposalRedaction(subject: AssistantsSubject): void {
   });
 }
 
+function effectOf(n: number): AssistantEffectRow {
+  return {
+    id: uid(proposalBase + 0x40 + n),
+    harnessId: uid(base),
+    requestId: uid(proposalBase),
+    kind: 'email_sent',
+    idempotencyKey: `proposal:${uid(proposalBase + 0x10 + n)}`,
+    payload: { proposalId: uid(proposalBase + 0x10 + n) },
+    createdAt: at,
+    proposalId: uid(proposalBase + 0x10 + n),
+  };
+}
+
+function doneOf(n: number): NewHarnessEvent {
+  return {
+    eventId: uid(proposalBase + 0x60 + n),
+    harnessId: uid(base),
+    itemId: null,
+    name: 'assistant_effect_done',
+    at: new Date(at.getTime() + hour).toISOString(),
+    actor: identitySchema.parse(assistantIdentityOf(person)),
+    evidence: { effectId: effectOf(n).id, kind: 'email_sent' },
+    traceId: uid(proposalBase + 0x5f),
+    requestId: null,
+  };
+}
+
+function describeOpenProposalEffects(subject: AssistantsSubject): void {
+  it('PA-12 lists an accepted proposal effect started before a time until it is settled', async () => {
+    const later = new Date(at.getTime() + 2 * hour);
+    const read = await subject().store.transaction(async (tx) => {
+      await seeded(tx);
+      const { digest } = await tx.assistantProposals.write.insert(proposalOf(10));
+      const id = proposalOf(10).id;
+      await tx.assistantProposals.write.decide({
+        id,
+        status: 'accepted',
+        decidedBy: human,
+        digest,
+        at,
+      });
+      await tx.assistantEffects.write.insert(effectOf(10));
+      const ids = async (before: Date) =>
+        (await tx.assistantEffects.read.openProposals(before, 200)).map((effect) => effect.id);
+      const tooSoon = await ids(at);
+      const open = await ids(later);
+      const settledBefore = await tx.assistantEffects.read.settled(uid(base), effectOf(10).id);
+      await tx.harnessEvents.write.append([doneOf(10)]);
+      return {
+        tooSoon,
+        open,
+        settledBefore,
+        settledAfter: await tx.assistantEffects.read.settled(uid(base), effectOf(10).id),
+        afterwards: await ids(later),
+      };
+    });
+    expect(read.tooSoon).not.toContain(effectOf(10).id);
+    expect(read.open).toContain(effectOf(10).id);
+    expect(read.settledBefore).toBe(false);
+    expect(read.settledAfter).toBe(true);
+    expect(read.afterwards).not.toContain(effectOf(10).id);
+  });
+
+  it('refuses an open effect read of more than two hundred effects', async () => {
+    await expect(
+      subject().store.transaction((tx) => tx.assistantEffects.read.openProposals(at, 201)),
+    ).rejects.toThrow(RangeError);
+  });
+}
+
 export function describeStoreAssistantProposals(subject: AssistantsSubject): void {
   describeProposalWrites(subject);
   describeProposalDecisions(subject);
   describeProposalExpiry(subject);
   describeProposalReads(subject);
   describeProposalRedaction(subject);
+  describeOpenProposalEffects(subject);
 }

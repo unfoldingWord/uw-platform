@@ -25,9 +25,10 @@ const ENTITIES: ReadonlyMap<string, string> = new Map([
   ['#39', "'"],
 ]);
 
-function htmlAsText(html: string): string {
+const QUOTE_TAG = /(<blockquote\b[^>]*>|<\/blockquote\s*>)/i;
+
+function plainOf(html: string): readonly string[] {
   return html
-    .replace(/<(script|style)[\s\S]*?<\/\1>/gi, '')
     .replace(/<br\s*\/?>/gi, '\n')
     .replace(/<\/(p|div|li|tr|h[1-6])>/gi, '\n')
     .replace(/<[^>]*>/g, '')
@@ -37,8 +38,19 @@ function htmlAsText(html: string): string {
     )
     .split('\n')
     .map((line) => line.replace(/[ \t]+/g, ' ').trim())
-    .filter((line) => line !== '')
-    .join('\n');
+    .filter((line) => line !== '');
+}
+
+function htmlAsText(html: string): string {
+  const lines: string[] = [];
+  let depth = 0;
+  const pieces = html.replace(/<(script|style)[\s\S]*?<\/\1>/gi, '').split(QUOTE_TAG);
+  for (const piece of pieces) {
+    if (/^<blockquote\b/i.test(piece)) depth += 1;
+    else if (/^<\/blockquote/i.test(piece)) depth = Math.max(0, depth - 1);
+    else lines.push(...plainOf(piece).map((line) => `${'> '.repeat(depth)}${line}`));
+  }
+  return lines.join('\n');
 }
 
 function textOf(attachment: Attachment): MailAttachment | null {

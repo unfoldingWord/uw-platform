@@ -1,0 +1,2 @@
+ALTER TABLE "assistant_provisioning" DROP CONSTRAINT "assistant_provisioning_failure_known";--> statement-breakpoint
+ALTER TABLE "assistant_provisioning" ADD CONSTRAINT "assistant_provisioning_failure_known" CHECK ("assistant_provisioning"."failure" IS NULL OR "assistant_provisioning"."failure" IN ('name_taken', 'workspace_refused', 'workspace_unavailable', 'workspace_not_wired', 'zulip_refused', 'zulip_rate_limited', 'zulip_unknown', 'zulip_not_wired', 'key_not_sealed', 'persona_refused', 'person_inactive', 'step_failed'));

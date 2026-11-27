@@ -12,3 +12,19 @@ export const sameTurnFinished = sql`EXISTS (
     AND ${finishedTurn.name} = ${assistantFinishedEventName}
     AND ${evidenceField(finishedTurn.evidence, 'requestId')} = ${evidenceField(harnessEvents.evidence, 'requestId')}
     AND ${evidenceField(finishedTurn.evidence, 'turnId')} = ${evidenceField(harnessEvents.evidence, 'turnId')})`;
+
+export function turnStartedSince(harnessId: unknown, since: Date) {
+  return sql`EXISTS (
+    SELECT 1 FROM ${harnessEvents}
+    WHERE ${harnessEvents.harnessId} = ${harnessId}
+      AND ${harnessEvents.name} = 'assistant_turn_started'
+      AND ${harnessEvents.at} >= ${since.toISOString()}::timestamptz)`;
+}
+
+export function effectSettledSql(effectId: unknown, harnessId: unknown) {
+  return sql`EXISTS (
+    SELECT 1 FROM ${harnessEvents}
+    WHERE ${harnessEvents.harnessId} = ${harnessId}
+      AND ${harnessEvents.name} IN ('assistant_effect_done', 'assistant_effect_failed')
+      AND ${evidenceField(harnessEvents.evidence, 'effectId')} = (${effectId})::text)`;
+}

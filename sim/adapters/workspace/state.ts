@@ -30,6 +30,7 @@ export type SimWorkspaceState = {
   readonly reached: string[];
   next: number;
   failing: CalendarFailure | null;
+  trouble: 'throw' | 'hang' | null;
 };
 
 export function calendarOf(state: SimWorkspaceState, personId: string): SimCalendarEvent[] {
@@ -38,6 +39,14 @@ export function calendarOf(state: SimWorkspaceState, personId: string): SimCalen
   const created: SimCalendarEvent[] = [];
   state.calendars.set(personId, created);
   return created;
+}
+
+export function troubled(state: SimWorkspaceState): Promise<void> {
+  const trouble = state.trouble;
+  state.trouble = null;
+  if (trouble === 'throw') return Promise.reject(new Error('the workspace connection was reset'));
+  if (trouble === 'hang') return new Promise<void>(() => undefined);
+  return Promise.resolve();
 }
 
 export function failure(state: SimWorkspaceState, personId: string): CalendarFailure | null {

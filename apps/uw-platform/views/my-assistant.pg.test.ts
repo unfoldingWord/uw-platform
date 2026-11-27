@@ -3,7 +3,7 @@ import { sql } from 'drizzle-orm';
 import { JSDOM } from 'jsdom';
 import { describe, expect, it } from 'vitest';
 import type { Database } from '@uw/db/client';
-import { proposalLink } from '@uw/contracts';
+import { proposalLink, requestLink } from '@uw/contracts';
 import { seedGrant, seedPerson } from '@uw/db/test-seed';
 import { post } from '../testing/commands.ts';
 import { testServer, withAppDatabase } from '../testing/postgres.ts';
@@ -220,6 +220,32 @@ async function linksAndHides(db: Database, proposalId: string): Promise<void> {
   expect(others.querySelector('main')?.textContent).not.toContain('Ruth 2 notes');
 }
 
+async function showsARefusedRequestAndWhy(db: Database): Promise<void> {
+  await scene(db);
+  const [row] = await db.execute<{ harness_id: string }>(
+    sql`SELECT harness_id FROM assistant_accounts WHERE person_id = ${anaId}`,
+  );
+  const harnessId = row?.harness_id ?? '';
+  const requestId = randomUUID();
+  await db.execute(sql`INSERT INTO assistant_requests
+      (id, harness_id, person_id, channel, external_id, thread_key, reply_address, note,
+       untrusted_parts, received_at, recorded_at)
+    VALUES (${requestId}, ${harnessId}, ${anaId}, 'zulip_dm', ${requestId}, 'dm', 'zulip:5005',
+      'Are you there?', '[]'::jsonb, ${at}::timestamptz, ${at}::timestamptz)`);
+  await db.execute(sql`INSERT INTO harness_events
+      (id, harness_id, position, name, actor, evidence, trace_id, at)
+    VALUES (${randomUUID()}, ${harnessId},
+      (SELECT COALESCE(MAX(position), 0) + 1 FROM harness_events WHERE harness_id = ${harnessId}),
+      'assistant_turn_refused', ${`agent:assistant-${anaId}`},
+      ${JSON.stringify({ requestId, why: 'assistants_capped' })}::jsonb,
+      ${randomUUID()}, ${at}::timestamptz)`);
+  const document = documentOf(await getHtml(db, ANA, '/assistant'));
+  const anchor = requestLink(requestId).split('#')[1] ?? '';
+  const cell = document.getElementById(anchor)?.closest('tr')?.textContent ?? '';
+  expect(cell).toContain('Are you there?');
+  expect(cell).toContain('Not answered: Assistants capped');
+}
+
 describe.skipIf(!testServer)('PA-12 proposals wait on My Assistant for the person', () => {
   it('shows a pending proposal in full with Accept and Reject on its digest', () =>
     withAppDatabase(showsAProposalInFullWithItsDecision));
@@ -233,4 +259,6 @@ describe.skipIf(!testServer)('PA-7 the My Assistant screen', () => {
   it('shows an org admin the accounts and the budget control, and nobody else', () =>
     withAppDatabase(showsAnAdminTheBudgetOnly));
   it('gives the person a one-time Zulip pairing code', () => withAppDatabase(givesAPairingCode));
+  it('shows a request it refused, and why, at the link the wake gives', () =>
+    withAppDatabase(showsARefusedRequestAndWhy));
 });

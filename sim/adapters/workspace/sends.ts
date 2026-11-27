@@ -1,8 +1,9 @@
 import type { CalendarFailure, Workspace } from '@uw/harness';
-import { calendarOf, failure, type SimWorkspaceState } from './state.ts';
+import { calendarOf, failure, troubled, type SimWorkspaceState } from './state.ts';
 
 export function mailIn(state: SimWorkspaceState): Workspace['sendMail'] {
   return async (mail) => {
+    await troubled(state);
     if (state.sent.has(mail.effectId)) return { outcome: 'sent' };
     const from = state.mailboxes.get(mail.harnessId);
     if (from === undefined) return { outcome: 'refused' };
@@ -22,6 +23,7 @@ export function mailIn(state: SimWorkspaceState): Workspace['sendMail'] {
 
 export function inviteIn(state: SimWorkspaceState): Workspace['sendInvite'] {
   return async (invite) => {
+    await troubled(state);
     const failed = failure(state, invite.personId);
     if (failed !== null) return { outcome: failed };
     const calendar = calendarOf(state, invite.personId);

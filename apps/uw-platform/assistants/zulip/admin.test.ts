@@ -44,6 +44,7 @@ async function createsAnOutgoingWebhookBotAnd(): Promise<void> {
       email: 'barnabas-bot@chat.example.org',
       apiKey: 'bot-key-1001',
       token: 'token-1001',
+      payloadUrl,
     },
   });
   expect(zulip.bots()[0]?.services[0]?.base_url).toBe(payloadUrl);
@@ -68,6 +69,8 @@ async function looksAPersonUpByEmail(): Promise<void> {
   await admin.createBot({ fullName: 'barnabas', shortName: 'barnabas', payloadUrl });
   expect(await admin.deactivate(1002)).toEqual({ ok: true, value: null });
   expect(zulip.bots()[0]?.is_active).toBe(false);
+  expect(zulip.calls()).toContain('DELETE /api/v1/bots/1002');
+  expect(await admin.isActive(1002)).toEqual({ ok: true, value: false });
   expect(await admin.reactivate(1002)).toEqual({ ok: true, value: null });
   expect(zulip.bots()[0]?.is_active).toBe(true);
 }

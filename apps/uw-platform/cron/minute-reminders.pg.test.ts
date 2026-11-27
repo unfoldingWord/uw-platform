@@ -29,7 +29,7 @@ import { personOn } from '../testing/kernel.ts';
 import type { CronDeps } from './job.ts';
 import { minuteJob } from './minute.ts';
 import { zulipAdmin } from '../assistants/zulip/admin.ts';
-import { provisionZulipBot } from '../assistants/zulip/provision.ts';
+import { botShortName, provisionZulipBot } from '../assistants/zulip/provision.ts';
 import { FAKE_ADMIN, FAKE_ZULIP_SITE, fakeZulip } from '../assistants/zulip/testing/fake-zulip.ts';
 import { credentialsDepsOf } from '../credentials/compose.ts';
 import { fakeKms, fakeKmsAccess, fakeKmsRegion } from '../credentials/testing/fake-kms.ts';
@@ -277,7 +277,7 @@ async function deliveredByMyBot(rig: Rig): Promise<void> {
   await minuteJob(env, depsOf(rig, directMessagesOf, fetcher));
   const sent = zulip.messages();
   expect(sent.map((message) => [message.sender, message.type, message.to])).toEqual([
-    ['barnabas-bot@chat.example.org', 'direct', [5001]],
+    [`${botShortName('barnabas', rig.harnessId)}-bot@chat.example.org`, 'direct', [5001]],
   ]);
   expect(sent[0]?.content).toContain('Call Ana');
   expect(await named(rig, 'assistant_reminder_fired')).toHaveLength(1);

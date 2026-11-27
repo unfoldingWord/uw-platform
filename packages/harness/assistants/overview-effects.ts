@@ -1,4 +1,10 @@
-import type { AssistantChannel, AssistantEffectKind, HarnessEvent } from '@uw/contracts';
+import {
+  assistantTurnRefusalSchema,
+  type AssistantChannel,
+  type AssistantEffectKind,
+  type AssistantTurnRefusal,
+  type HarnessEvent,
+} from '@uw/contracts';
 import type {
   AssistantEffectRow,
   AssistantHoldRow,
@@ -23,6 +29,7 @@ export type OverviewRequest = {
   readonly quoted: number;
   readonly redacted: boolean;
   readonly effects: readonly OverviewEffect[];
+  readonly refused: AssistantTurnRefusal | null;
 };
 export type Live = {
   readonly reminders: readonly AssistantReminderRow[];
@@ -30,7 +37,12 @@ export type Live = {
   readonly at: Date;
 };
 
-const SETTLING = ['assistant_effect_done', 'assistant_effect_failed', 'assistant_effect_undone'];
+const SETTLING = [
+  'assistant_effect_done',
+  'assistant_effect_failed',
+  'assistant_effect_undone',
+  'assistant_turn_refused',
+];
 const EVENTS_MOST = 1000;
 type Settled = { readonly state: EffectState; readonly why: string | null };
 
@@ -89,6 +101,17 @@ function effectOf(effect: AssistantEffectRow, settled: Settled | undefined, live
   return shown;
 }
 
+function refusalsOf(events: readonly HarnessEvent[]): ReadonlyMap<string, AssistantTurnRefusal> {
+  const refusals = new Map<string, AssistantTurnRefusal>();
+  for (const event of events) {
+    if (event.name !== 'assistant_turn_refused') continue;
+    const requestId = event.evidence['requestId'];
+    const why = assistantTurnRefusalSchema.safeParse(event.evidence['why']);
+    if (typeof requestId === 'string' && why.success) refusals.set(requestId, why.data);
+  }
+  return refusals;
+}
+
 export function requestsOf(
   requests: readonly RecentRequest[],
   effects: readonly AssistantEffectRow[],
@@ -96,6 +119,7 @@ export function requestsOf(
   live: Live,
 ): readonly OverviewRequest[] {
   const settled = settledOf(events);
+  const refusals = refusalsOf(events);
   return requests.map((request) => ({
     requestId: request.id,
     channel: request.channel,
@@ -106,5 +130,6 @@ export function requestsOf(
     effects: effects
       .filter((effect) => effect.requestId === request.id)
       .map((effect) => effectOf(effect, settled.get(effect.id), live)),
+    refused: refusals.get(request.id) ?? null,
   }));
 }

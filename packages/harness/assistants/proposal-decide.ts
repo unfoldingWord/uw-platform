@@ -161,6 +161,18 @@ async function settleIn(
   return { proposalId: proposal.id, decision: 'accept', effectId: effect.id, failure };
 }
 
+async function executed(
+  ports: DecidePorts,
+  caller: Caller,
+  run: Execution,
+): Promise<AssistantEffectFailure | null> {
+  try {
+    return await executeProposal(ports, caller, run);
+  } catch {
+    return 'outcome_unknown';
+  }
+}
+
 function malformed(input: ProposalDecideInput): Refused | null {
   if (!harnessSchema.shape.id.safeParse(input.proposalId).success) {
     return refused('malformed_command', { field: 'proposalId' });
@@ -182,6 +194,6 @@ export async function decideProposal(
   const plan = await ports.store.transaction((tx) => planIn(ports, tx, context, caller, input));
   if ('status' in plan) return plan;
   if ('done' in plan) return accepted(plan.done);
-  const failure = await executeProposal(ports, caller, plan.run);
+  const failure = await executed(ports, caller, plan.run);
   return accepted(await settleIn(ports, caller, plan.run, failure));
 }

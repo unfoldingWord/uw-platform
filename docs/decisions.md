@@ -791,7 +791,7 @@ A policy's page and the Policies screen show its level, target, enforcement, dat
 
 **Consequences.** `ASSISTANT_TURN` is bound in staging and production, in `wrangler.toml` and `wrangler.go-live.toml`. Preview has no Workflows, so a direct message there is recorded and its turn is not started (`not_wired` in the log). An abandoned turn counts no cost in the pool, so a dead host's model calls are spent but uncounted for that month. Whether assistants should keep running while the platform breaker pauses the platform's agents is open for the owner.
 
-**Changes / changed by.** Changes 0006 (a third hosted shape, the assistant turn, billed to the platform's OpenRouter account) and 0036 (item 10: the cap on all assistants together is the pool above, outside the platform cap).
+**Changes / changed by.** Changes 0006 (a third hosted shape, the assistant turn, billed to the platform's OpenRouter account) and 0036 (item 10: the cap on all assistants together is the pool above, outside the platform cap). Changed by 0045 (review fixes).
 
 ## 0039 The platform reaches Google with one domain-wide-delegated service account, allowlisted in code before it signs
 
@@ -842,7 +842,7 @@ A policy's page and the Policies screen show its level, target, enforcement, dat
 
 **Consequences.** `GOOGLE_ASSISTANT_OU` is a new variable; `GOOGLE_WORKSPACE_ADMIN_SUBJECT`, `ZULIP_ADMIN_EMAIL` and their secrets must be set before any assistant can be turned on in an environment; until then every step is recorded failed `workspace_not_wired` or `zulip_not_wired` and the person sees that. A name held by a Google group, not a user or alias, is found only when the user is inserted, and is recorded `name_taken`; the person turns the assistant off and back on with another name. The Admin SDK request shapes come from Google's published API, not a live call; staging confirms them before go-live.
 
-**Changes / changed by.** Changes 0036 (item 1: the person turns their own assistant on with `enable`, in area 10-19), 0037 (item 4: `bindAddress` is the provisioner's, not the system principal's) and 0039 (the directory is reached as the admin subject only by the provisioner, to insert, suspend, restore and delete assistant users).
+**Changes / changed by.** Changes 0036 (item 1: the person turns their own assistant on with `enable`, in area 10-19), 0037 (item 4: `bindAddress` is the provisioner's, not the system principal's) and 0039 (the directory is reached as the admin subject only by the provisioner, to insert, suspend, restore and delete assistant users). Changed by 0045 (review fixes).
 
 ## 0041 My Assistant is the person's own screen; an assistant's text is kept one year and the person may delete it sooner
 
@@ -892,7 +892,7 @@ A policy's page and the Policies screen show its level, target, enforcement, dat
 
 **Consequences.** Gmail's exact shapes (history 404 on an expired id, the label search spelling, the `Authentication-Results` Gmail writes on mail inside the domain) come from Google's published API, not a live call; the staging probes confirm them before the flag is turned on in production. A person whose own address changes keeps the old binding until their assistant is turned off and on. A declined mail retried after a failed label is recorded declined again.
 
-**Changes / changed by.** Changes 0036 (item 9: the email rule is the verdict above, SPF with DKIM accepted beside DMARC, and a declined mail is recorded without content) and 0039 (the assistant mailbox subject reads, labels and sends its own mail). 0044 runs its staging probes as `pnpm probe:assistants` and the walk in `infra/README.md`.
+**Changes / changed by.** Changes 0036 (item 9: the email rule is the verdict above, SPF with DKIM accepted beside DMARC, and a declined mail is recorded without content) and 0039 (the assistant mailbox subject reads, labels and sends its own mail). 0044 runs its staging probes as `pnpm probe:assistants` and the walk in `infra/README.md`. Changed by 0045 (review fixes).
 
 ## 0043 An assistant proposes; only its person decides, on the digest they saw, and the decision runs once as that person
 
@@ -918,7 +918,7 @@ A policy's page and the Policies screen show its level, target, enforcement, dat
 
 **Consequences.** Gmail's send as the assistant mailbox with a Reply-To, and the calendar insert with attendees and `sendUpdates=all`, are staging probes. A send whose outcome is unknown is recorded failed `outcome_unknown` and never retried. Expiry runs nightly; a proposal past its week is refused and shown expired before the job marks it.
 
-**Changes / changed by.** Changes 0036 (item 6: the proposal kinds, the decision path and the effect check are built as above) and 0039 (the Workspace port also sends a proposed mail as the assistant mailbox and an invitation as the person).
+**Changes / changed by.** Changes 0036 (item 6: the proposal kinds, the decision path and the effect check are built as above) and 0039 (the Workspace port also sends a proposed mail as the assistant mailbox and an invitation as the person). Changed by 0045 (review fixes).
 
 ## 0044 Assistants go live through declared settings, staging probes run from a terminal, and one scenario walks a person's whole day
 
@@ -941,6 +941,32 @@ A policy's page and the Policies screen show its level, target, enforcement, dat
 **Consequences.** Running the probes needs the service account key and the Zulip admin key on the admin's machine for the length of the run; the runbook says to delete the env file after. The probes cannot prove Workflow semantics, the webhook delivery or the DMARC result for forged mail from outside; those stay manual. A probe bot is left deactivated in the realm.
 
 **Changes / changed by.** Changes 0037, 0039 and 0042 only in how their staging probes are run: by `pnpm probe:assistants` and the walk in `infra/README.md`, "Going live with personal assistants".
+
+## 0045 Review fixes: mail proven by its envelope, forwards fenced in any language, bots never adopted by name, and every failure settled
+
+*2026-11-27. Changes 0038 (the pool), 0040 (the Zulip bot and provisioning failures), 0042 (the sender verdict and the forward split) and 0043 (settling an accepted proposal).*
+
+**Decision.**
+
+1. **The sender verdict needs the envelope.** `emailSenderVerdict` passes only when the one `mx.google.com` `Authentication-Results` header on top shows `spf=pass` with `smtp.mailfrom` the person's exact address, together with `dmarc=pass` for the person's domain or `dkim=pass` for it. DMARC for the domain alone is refused: a CRM, a marketing sender or a scanner holding the domain's DKIM key passes it with the person's address in From. A mail with more than one header claiming `mx.google.com` is refused, because one of them was written by the sender.
+2. **A forward is found by its shape, not its words.** `splitForward` treats as the start of a forwarded original a dashed banner with any text (`---------- Message transféré ---------`), an Outlook underscore rule, a line naming an address in angle brackets and ending in a colon (`Le ... a écrit :`, `Am ... schrieb ...:`), two header-like lines one of which holds an address, or four header-like lines in a row, besides the English markers. HTML-only mail keeps its quotations: `htmlAsText` prefixes each line inside a `<blockquote>` with `> ` per level, so the quoted text is fenced.
+3. **A bot is the harness's own.** The Zulip short name is `<name>-<last 12 hex digits of the harness id>`, so a name a deleted assistant held, or a realm bot that only shares it, never clashes. A bot under that short name is adopted only when its outgoing webhook points at the platform and no assistant row holds it. A bot is turned off through `DELETE /api/v1/bots/{id}`; when Zulip refuses, the provisioner reads the bot back and counts the switch done only when it is inactive, else it records `zulip_refused`.
+4. **A thrown step is a failure, not an outage.** A provisioning step that throws is recorded `step_failed` with backoff, and the batch carries on with the next person.
+5. **The pool counts who spent.** The pool is the budgets of every assistant whose `assist` delegation is live or that started a turn this month, so spend and budgets measure the same assistants.
+6. **Every accepted effect settles.** A proposal port that throws settles the effect `outcome_unknown`; the stale sweep settles `outcome_unknown` every accepted proposal's effect started more than an hour ago and never settled. Neither is retried (owner rule for unknown sends).
+7. **A refused turn is never silent.** `assistant_turn_refused` maps to the wake reason `assistant_refused`, linked to `/assistant#request-<id>`, and My Assistant shows the request not answered with its reason. The assistant itself sends nothing: in most of these cases it holds no live delegation, and a refusal must not become an assistant effect.
+
+**Why.** Review of the whole feature found each of these: domain-level DMARC does not prove the person; forwarded vendor text in a French mail program reached the model as the person's own words; a reused or shared name took over another bot; a wrong Zulip endpoint looked like success; one throwing account stopped provisioning for everyone; a turned-off assistant's spend used up others' share; an accepted send could stay started forever; and a refused turn told the person nothing.
+
+**Rejected.**
+- DKIM `header.i` equal to the person's exact address: Google signs Workspace mail with `header.i=@domain`, so every genuine mail would be refused.
+- Proving the sender from the person's own Sent folder: it needs a Gmail scope on every person, beyond owner decision 1; it is left to the owner.
+- Replying to a refused turn from the assistant's own bot or mailbox: it would be an assistant effect without a live delegation.
+- Retrying an accepted effect whose outcome is unknown: it could send twice.
+
+**Consequences.** Whether Gmail writes its own header with SPF for the exact address on mail inside the domain, and removes a sender's `mx.google.com` header, is still a staging probe (s8.1, s11.1, s11.2); until then production keeps email instructions off. An SMTP relay allowed to send as any address in the domain with the person's address as envelope sender still passes; only the owner's choice above closes that. Existing bots keep their short names; only new bots take the suffix.
+
+**Changes / changed by.** Changes 0038, 0040, 0042 and 0043 as above.
 
 # Part 2. Workflow design decisions
 

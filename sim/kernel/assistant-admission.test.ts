@@ -190,6 +190,28 @@ async function pausedThenResumed(scene: AssistantScene): Promise<void> {
   expect(scene.world.adapters.modelEngine.pending()).toBe(pending);
 }
 
+async function aRefusedTurnTellsThePersonWhy(scene: AssistantScene): Promise<void> {
+  const { world } = scene;
+  value(await pauseCommand(scene, true));
+  const id = await requestId(scene, { externalId: '631', note: 'While paused' });
+  const before = world.adapters.notifier.delivered().length;
+  expect(refusedWhy(await beginTurn(scene, id), await assistantLog(scene))).toBe('harness_paused');
+  const wakes = world.adapters.notifier
+    .delivered()
+    .slice(before)
+    .filter((wake) => wake.reason === 'assistant_refused');
+  expect(wakes).toHaveLength(1);
+  expect(wakes[0]?.personal).toBe(true);
+  expect(wakes[0]?.link).toBe(`/assistant#request-${id}`);
+  expect(wakes[0]?.recipients.map((recipient) => recipient.personId)).toEqual([
+    personOf(scene.person),
+  ]);
+  const seen = value(
+    await world.kernel.views.myAssistant(simCaller(world, scene.person), { personId: null }),
+  );
+  expect(seen.requests.find((request) => request.requestId === id)?.refused).toBe('harness_paused');
+}
+
 describe('PA-3 an assistant admits a turn once, against a reserved budget, only while running', () => {
   it('reserves an admitted turn, so the second of two with room for one is refused', () =>
     withScene(roomForOne));
@@ -208,4 +230,7 @@ describe('PA-3 an assistant admits a turn once, against a reserved budget, only 
 
   it('closes a replayed turn refused after its delegation is revoked, returning its turn id', () =>
     withScene(replayAfterRevoke));
+
+  it('tells the person once that a turn was refused, and why, on My Assistant', () =>
+    withScene(aRefusedTurnTellsThePersonWhy));
 });

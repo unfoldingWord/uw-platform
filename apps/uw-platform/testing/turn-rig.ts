@@ -22,7 +22,7 @@ import { personOn } from './kernel.ts';
 import { systemTimers } from '../timers.ts';
 import { zulipAdmin } from '../assistants/zulip/admin.ts';
 import { assistantDmHandler } from '../assistants/zulip/inbound.ts';
-import { provisionZulipBot } from '../assistants/zulip/provision.ts';
+import { botShortName, provisionZulipBot } from '../assistants/zulip/provision.ts';
 import {
   FAKE_ADMIN,
   FAKE_ZULIP_SITE,
@@ -189,9 +189,13 @@ async function botFor(rig: Omit<TurnRig, 'direct'>, kernel: Kernel): Promise<voi
   if (provisioned.outcome !== 'provisioned') throw new Error('the bot was not provisioned');
 }
 
-function envelopeOf(content: string, messageId: number, ingest: Principal) {
+export function rigBotEmail(harnessId: string): string {
+  return `${botShortName('barnabas', harnessId)}-bot@chat.example.org`;
+}
+
+function envelopeOf(content: string, messageId: number, ingest: Principal, botEmail: string) {
   const rowan = { id: 5001, email: 'rowan.test@unfoldingword.org', full_name: 'Rowan' };
-  const bot = { id: 1002, email: 'barnabas-bot@chat.example.org', full_name: 'barnabas' };
+  const bot = { id: 1002, email: botEmail, full_name: 'barnabas' };
   return ingestEnvelopeSchema.parse({
     envelopeVersion: 1,
     traceId: randomUUID(),
@@ -239,7 +243,7 @@ function directOf(
       { traceId: randomUUID(), commit: 'test', route: 'queue ingest', principal: null },
       (line) => outcomes.push((JSON.parse(line) as Record<string, unknown>)['outcome']),
     );
-    await handler(envelopeOf(content, messageId, ingest), logger);
+    await handler(envelopeOf(content, messageId, ingest, rigBotEmail(rig.harnessId)), logger);
     return outcomes;
   };
 }

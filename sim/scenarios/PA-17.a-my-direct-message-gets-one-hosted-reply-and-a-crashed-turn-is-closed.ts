@@ -76,7 +76,7 @@ async function crashedTurnClosed(scene: AssistantScene): Promise<unknown> {
   const swept = value(
     await world.kernel.assistants.closeStaleTurns(simCaller(world, simSystem()), { limit: 50 }),
   );
-  assert.deepEqual(swept, { abandoned: [turn.turnId], settled: [] });
+  assert.deepEqual(swept, { abandoned: [turn.turnId], settled: [], unknown: [] });
   const spent = await world.adapters.store.transaction((tx) =>
     tx.harnessEvents.read.assistantSpend({ harnessId: scene.harness.id, since: new Date(0) }),
   );

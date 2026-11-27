@@ -94,12 +94,20 @@ async function settled(
   return { harnessId: work.harnessId, step, outcome: outcome.kind };
 }
 
+async function ran(deps: ProvisionerDeps, work: AccountWork, step: Step): Promise<StepOutcome> {
+  try {
+    return await step.run(deps, work);
+  } catch {
+    return { kind: 'failed', why: 'step_failed' };
+  }
+}
+
 async function driveAssistant(deps: ProvisionerDeps, work: AccountWork): Promise<Driven> {
   const steps = work.status === 'enabled' ? enableSteps : disableSteps;
   let last: Step | undefined;
   for (const step of steps) {
     last = step;
-    const outcome = await step.run(deps, work);
+    const outcome = await ran(deps, work, step);
     if (outcome.kind !== 'done') return settled(deps, work, step.name, outcome);
   }
   const final = last?.name ?? 'assist';
@@ -120,7 +128,11 @@ export async function provisionDue(
 ): Promise<readonly Driven[]> {
   const driven: Driven[] = [];
   for (const work of await dueWork(deps.db, deps.clock.now(), limit)) {
-    driven.push(await driveAssistant(deps, work));
+    try {
+      driven.push(await driveAssistant(deps, work));
+    } catch {
+      continue;
+    }
   }
   return driven;
 }

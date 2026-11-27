@@ -4,9 +4,11 @@ import {
   untrustedPartSchema,
   type AssistantEffectKind,
 } from '@uw/contracts';
-import { and, asc, desc, eq, gte, inArray, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, inArray, isNotNull, lt, sql } from 'drizzle-orm';
 import type { AnyExecutor } from '../any-database.ts';
 import { assistantEffects, assistantRequests, assistantSettings } from '../schema.ts';
+import { effectSettled } from './assistant-pool.ts';
+import { effectSettledSql } from './assistant-spend-sql.ts';
 import { recentRequests, redactEffects, redactRequests } from './assistant-history.ts';
 import { unstartedRequests } from './assistant-unstarted.ts';
 import { deliveredReplyFor } from './events.ts';
@@ -222,6 +224,49 @@ async function effectsSince(
   return rows[0]?.count ?? 0;
 }
 
+async function effectsFor(executor: AnyExecutor, requestIds: readonly string[]) {
+  if (requestIds.length === 0) return [];
+  const rows = await executor
+    .select()
+    .from(assistantEffects)
+    .where(inArray(assistantEffects.requestId, [...requestIds]))
+    .orderBy(asc(assistantEffects.createdAt), asc(assistantEffects.id))
+    .limit(EFFECT_READ_MOST);
+  return rows.map(toEffect);
+}
+
+const OPEN_READ_MOST = 200;
+
+function openLimit(limit: number): number {
+  if (!Number.isInteger(limit) || limit < 1 || limit > OPEN_READ_MOST) {
+    throw new RangeError(`an open effect read holds 1 to ${OPEN_READ_MOST} effects, not ${limit}`);
+  }
+  return limit;
+}
+
+function openProposalEffects(executor: AnyExecutor, startedBefore: Date, limit: number) {
+  return executor
+    .select()
+    .from(assistantEffects)
+    .where(
+      and(
+        isNotNull(assistantEffects.proposalId),
+        lt(assistantEffects.createdAt, startedBefore),
+        sql`NOT ${effectSettledSql(assistantEffects.id, assistantEffects.harnessId)}`,
+      ),
+    )
+    .orderBy(asc(assistantEffects.createdAt), asc(assistantEffects.id))
+    .limit(openLimit(limit));
+}
+
+function openEffectReads(executor: AnyExecutor) {
+  return {
+    openProposals: async (startedBefore: Date, limit: number) =>
+      (await openProposalEffects(executor, startedBefore, limit)).map(toEffect),
+    settled: (harnessId: string, effectId: string) => effectSettled(executor, harnessId, effectId),
+  };
+}
+
 export function bindAssistantEffects(executor: AnyExecutor): AssistantEffectsGateway {
   return {
     read: {
@@ -244,17 +289,9 @@ export function bindAssistantEffects(executor: AnyExecutor): AssistantEffectsGat
           );
         return rows[0] ? toEffect(rows[0]) : null;
       },
-      forRequests: async (requestIds) => {
-        if (requestIds.length === 0) return [];
-        const rows = await executor
-          .select()
-          .from(assistantEffects)
-          .where(inArray(assistantEffects.requestId, [...requestIds]))
-          .orderBy(asc(assistantEffects.createdAt), asc(assistantEffects.id))
-          .limit(EFFECT_READ_MOST);
-        return rows.map(toEffect);
-      },
+      forRequests: (requestIds) => effectsFor(executor, requestIds),
       countSince: (harnessId, kind, since) => effectsSince(executor, harnessId, kind, since),
+      ...openEffectReads(executor),
     },
     write: {
       insert: (row) =>

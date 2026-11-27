@@ -112,21 +112,30 @@ function createBot(state: State, form: URLSearchParams): Reply {
 
 function listBots(state: State): Reply {
   return ok({
-    bots: [...state.bots.values()].map((bot) => ({
-      user_id: bot.user_id,
-      username: bot.email,
-      email: bot.email,
-      full_name: bot.full_name,
-      api_key: bot.api_key,
-      is_active: bot.is_active,
-      bot_type: 3,
-      services: bot.services,
-    })),
+    bots: [...state.bots.values()]
+      .filter((bot) => bot.is_active)
+      .map((bot) => ({
+        user_id: bot.user_id,
+        username: bot.email,
+        email: bot.email,
+        full_name: bot.full_name,
+        api_key: bot.api_key,
+        is_active: bot.is_active,
+        bot_type: 3,
+        services: bot.services,
+      })),
   });
 }
 
+function userByKey(state: State, key: string): FakeUser | undefined {
+  if (/^[0-9]+$/.test(key)) {
+    return [...state.users.values()].find((each) => String(each.user_id) === key);
+  }
+  return state.users.get(decodeURIComponent(key));
+}
+
 function userByEmail(state: State, email: string): Reply {
-  const user = state.users.get(decodeURIComponent(email));
+  const user = userByKey(state, email);
   if (user === undefined) return error(400, 'No such user');
   return ok({
     user: {
@@ -139,9 +148,10 @@ function userByEmail(state: State, email: string): Reply {
   });
 }
 
-function setActive(state: State, id: string, active: boolean): Reply {
+function setActive(state: State, id: string, active: boolean, bots: boolean): Reply {
   const user = [...state.users.values()].find((each) => String(each.user_id) === id);
-  if (user === undefined) return error(400, 'No such user');
+  if (user === undefined || user.is_bot !== bots)
+    return error(400, bots ? 'No such bot' : 'No such user');
   if (user.is_active === active)
     return error(400, active ? 'User is already active' : 'User is already deactivated');
   user.is_active = active;
@@ -196,6 +206,11 @@ const adminRoutes: readonly AdminRoute[] = [
     answer: (state, m, form) => renameBot(state, m, form),
   },
   {
+    method: 'DELETE',
+    path: /^\/api\/v1\/bots\/([0-9]+)$/,
+    answer: (state, m) => setActive(state, m, false, true),
+  },
+  {
     method: 'GET',
     path: /^\/api\/v1\/users\/([^/]+)$/,
     answer: (state, m) => userByEmail(state, m),
@@ -203,12 +218,12 @@ const adminRoutes: readonly AdminRoute[] = [
   {
     method: 'DELETE',
     path: /^\/api\/v1\/users\/([0-9]+)$/,
-    answer: (state, m) => setActive(state, m, false),
+    answer: (state, m) => setActive(state, m, false, false),
   },
   {
     method: 'POST',
     path: /^\/api\/v1\/users\/([0-9]+)\/reactivate$/,
-    answer: (state, m) => setActive(state, m, true),
+    answer: (state, m) => setActive(state, m, true, state.bots.has(Number(m))),
   },
 ];
 

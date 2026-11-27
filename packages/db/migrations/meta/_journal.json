@@ -575,6 +575,13 @@
       "when": 1795761537668,
       "tag": "0083_assistant_proposals_settled",
       "breakpoints": true
+    },
+    {
+      "idx": 84,
+      "version": "7",
+      "when": 1795771749609,
+      "tag": "0084_assistant_step_failed",
+      "breakpoints": true
     }
   ]
 }
