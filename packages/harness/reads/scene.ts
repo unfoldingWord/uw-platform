@@ -6,7 +6,8 @@ import {
   type Principal,
   type Stage,
 } from '@uw/contracts';
-import { allowed, bareAgent, isAgent, ownerBound } from '../access.ts';
+import { can } from '@uw/core/acl';
+import { allowed, bareAgent, isAgent, isSystemPrincipal, ownerBound } from '../access.ts';
 import type { Caller } from '../caller.ts';
 import { personaMatches } from '../delegations/beat.ts';
 import { livenessOf } from '../delegations/live.ts';
@@ -95,6 +96,11 @@ async function delegationAdmits(
   return delegation.harnessId === harness.id && delegation.capability !== 'none';
 }
 
+function personalShown(actor: Principal, harness: Harness, at: Date): boolean {
+  if (harness.personId === null || actor.personId === harness.personId) return true;
+  return isSystemPrincipal(actor) || can(actor, 'admin', { kind: 'org' }, at);
+}
+
 async function admitsHarness(
   ports: ScenePorts,
   tx: StoreTransaction,
@@ -103,6 +109,7 @@ async function admitsHarness(
   at: Date,
 ): Promise<boolean> {
   if (!ownerBound(caller.actor) || !allowed(caller.actor, 'read', harness, at)) return false;
+  if (!personalShown(caller.actor, harness, at)) return false;
   return delegationAdmits(ports, tx, caller.actor, harness, at);
 }
 

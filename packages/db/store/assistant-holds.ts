@@ -2,13 +2,26 @@ import { assistantHoldStatusSchema } from '@uw/contracts';
 import { and, asc, eq } from 'drizzle-orm';
 import type { AnyExecutor } from '../any-database.ts';
 import { assistantCalendarHolds } from '../schema.ts';
+import { redactHolds } from './assistant-history.ts';
 import { refusing } from './refusal.ts';
 import type { AssistantHoldRow, AssistantHoldsGateway, HoldRelease } from './types.ts';
 
 const READ_MOST = 200;
 
 function toHold(row: typeof assistantCalendarHolds.$inferSelect): AssistantHoldRow {
-  return { ...row, status: assistantHoldStatusSchema.parse(row.status) };
+  return {
+    id: row.id,
+    harnessId: row.harnessId,
+    personId: row.personId,
+    eventId: row.eventId,
+    title: row.title,
+    startsAt: row.startsAt,
+    endsAt: row.endsAt,
+    status: assistantHoldStatusSchema.parse(row.status),
+    releasedEffectId: row.releasedEffectId,
+    releasedAt: row.releasedAt,
+    createdAt: row.createdAt,
+  };
 }
 
 function bounded(limit: number): number {
@@ -68,6 +81,7 @@ export function bindAssistantHolds(executor: AnyExecutor): AssistantHoldsGateway
     write: {
       insert: (row) => refusing(() => insert(executor, row)),
       release: (change) => refusing(() => release(executor, change)),
+      redact: (query) => refusing(() => redactHolds(executor, query)),
     },
   };
 }

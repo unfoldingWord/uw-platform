@@ -1,8 +1,14 @@
 import { Hono, type Context } from 'hono';
+import type { ZodType } from 'zod';
 import {
+  customiseAssistantCommandSchema,
+  deleteMyAssistantHistoryCommandSchema,
   disableAssistantCommandSchema,
   enableAssistantCommandSchema,
   grantAssistCommandSchema,
+  renewAssistCommandSchema,
+  revokeAssistCommandSchema,
+  undoAssistantEffectCommandSchema,
 } from '@uw/contracts';
 import type { AppEnv } from '../deps.ts';
 import { malformed, readJson, toOutcome, type CommandResult } from '../http/commands.ts';
@@ -13,62 +19,59 @@ import {
   grantAssist,
   type AssistantCommandDeps,
 } from './person/assistant.ts';
+import {
+  customiseAssistant,
+  deleteMyAssistantHistory,
+  renewAssist,
+  revokeAssist,
+  undoAssistantEffect,
+} from './person/assistant-screen.ts';
 import { assistantCommandDepsOf, type AssistantCommandHost } from './assistant-deps.ts';
 
 type Host = Omit<AssistantCommandHost, 'requestId'>;
-type Run = (
-  host: Host,
-  body: unknown,
-) => Promise<{ readonly requestId: string; readonly result: CommandResult } | null>;
+type Handler = {
+  readonly schema: ZodType<{ readonly requestId: string }>;
+  readonly run: (deps: AssistantCommandDeps, command: never) => Promise<CommandResult>;
+};
 
-function depsOf(host: Host, requestId: string): AssistantCommandDeps {
-  return assistantCommandDepsOf({ ...host, requestId });
+function handler<T extends { readonly requestId: string }>(
+  schema: ZodType<T>,
+  run: (deps: AssistantCommandDeps, command: T) => Promise<CommandResult>,
+): Handler {
+  return { schema, run: run as Handler['run'] };
 }
 
-const handlers = new Map<string, Run>([
+const handlers = new Map<string, Handler>([
+  ['enable_assistant', handler(enableAssistantCommandSchema, enableAssistant)],
+  ['disable_assistant', handler(disableAssistantCommandSchema, disableAssistant)],
+  ['grant_assist', handler(grantAssistCommandSchema, grantAssist)],
+  ['customise_assistant', handler(customiseAssistantCommandSchema, customiseAssistant)],
+  ['renew_assist', handler(renewAssistCommandSchema, renewAssist)],
+  ['revoke_assist', handler(revokeAssistCommandSchema, revokeAssist)],
+  ['undo_assistant_effect', handler(undoAssistantEffectCommandSchema, undoAssistantEffect)],
   [
-    'enable_assistant',
-    async (host, body) => {
-      const parsed = enableAssistantCommandSchema.safeParse(body);
-      if (!parsed.success) return null;
-      return {
-        requestId: parsed.data.requestId,
-        result: await enableAssistant(depsOf(host, parsed.data.requestId), parsed.data),
-      };
-    },
-  ],
-  [
-    'disable_assistant',
-    async (host, body) => {
-      const parsed = disableAssistantCommandSchema.safeParse(body);
-      if (!parsed.success) return null;
-      return {
-        requestId: parsed.data.requestId,
-        result: await disableAssistant(depsOf(host, parsed.data.requestId)),
-      };
-    },
-  ],
-  [
-    'grant_assist',
-    async (host, body) => {
-      const parsed = grantAssistCommandSchema.safeParse(body);
-      if (!parsed.success) return null;
-      return {
-        requestId: parsed.data.requestId,
-        result: await grantAssist(depsOf(host, parsed.data.requestId), parsed.data),
-      };
-    },
+    'delete_my_assistant_history',
+    handler(deleteMyAssistantHistoryCommandSchema, deleteMyAssistantHistory),
   ],
 ]);
 
+async function run(entry: Handler, host: Host, body: unknown) {
+  const parsed = entry.schema.safeParse(body);
+  if (!parsed.success) return null;
+  const { requestId } = parsed.data;
+  const deps = assistantCommandDepsOf({ ...host, requestId });
+  return { requestId, result: await entry.run(deps, parsed.data as never) };
+}
+
 function handle(fetcher: typeof fetch) {
   return async (c: Context<AppEnv>): Promise<Response> => {
-    const run = handlers.get(c.req.param('name') ?? '');
-    if (!run) return refuse(c, 'not_wired');
+    const entry = handlers.get(c.req.param('name') ?? '');
+    if (!entry) return refuse(c, 'not_wired');
     const database = c.get('database');
     if (database === null) return refuse(c, 'database_not_configured');
     const actor = c.get('principal');
     if (actor === null) return refuse(c, 'unauthenticated');
+    if (actor.kind !== 'person' || actor.personId === null) return refuse(c, 'not_permitted');
     const body = await readJson(c);
     const host = {
       env: c.env,
@@ -78,7 +81,7 @@ function handle(fetcher: typeof fetch) {
       traceId: c.get('traceId'),
       at: c.get('now'),
     };
-    const outcome = await run(host, body);
+    const outcome = await run(entry, host, body);
     if (outcome === null) return malformed(c, body);
     return reply(c, toOutcome(outcome.requestId, outcome.result));
   };

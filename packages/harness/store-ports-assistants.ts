@@ -35,6 +35,14 @@ export type AssistantRequestRow = {
   readonly receivedAt: Date;
   readonly recordedAt: Date;
 };
+export type RecentRequest = AssistantRequestRow & { readonly redactedAt: Date | null };
+export type RedactQuery = {
+  readonly harnessId: string | null;
+  readonly before: Date;
+  readonly at: Date;
+  readonly limit: number;
+};
+export type RedactedRequest = { readonly id: string; readonly harnessId: string };
 export type RequestPlace = { readonly recordedAt: Date; readonly id: string };
 export type ThreadQuery = {
   readonly harnessId: string;
@@ -56,8 +64,12 @@ export type AssistantRequestsGateway = {
     byExternal(channel: AssistantChannel, externalId: string): Promise<AssistantRequestRow | null>;
     deliveredInThread(query: ThreadQuery): Promise<readonly AssistantRequestRow[]>;
     countSince(harnessId: string, since: Date): Promise<number>;
+    recent(harnessId: string, limit: number): Promise<readonly RecentRequest[]>;
   };
-  readonly write: { insert(row: AssistantRequestRow): Promise<void> };
+  readonly write: {
+    insert(row: AssistantRequestRow): Promise<void>;
+    redact(query: RedactQuery): Promise<readonly RedactedRequest[]>;
+  };
 };
 
 export type AssistantEffectPayload = Readonly<Record<string, unknown>>;
@@ -72,11 +84,15 @@ export type AssistantEffectRow = {
 };
 export type AssistantEffectsGateway = {
   readonly read: {
+    byId(effectId: string): Promise<AssistantEffectRow | null>;
     byKey(harnessId: string, idempotencyKey: string): Promise<AssistantEffectRow | null>;
     forRequests(requestIds: readonly string[]): Promise<readonly AssistantEffectRow[]>;
     countSince(harnessId: string, kind: AssistantEffectKind, since: Date): Promise<number>;
   };
-  readonly write: { insert(row: AssistantEffectRow): Promise<boolean> };
+  readonly write: {
+    insert(row: AssistantEffectRow): Promise<boolean>;
+    redactFor(requestIds: readonly string[], at: Date): Promise<number>;
+  };
 };
 
 export type AssistantReminderRow = {
@@ -100,12 +116,14 @@ export type ReminderClose = {
 export type AssistantRemindersGateway = {
   readonly read: {
     byId(reminderId: string): Promise<AssistantReminderRow | null>;
+    byEffect(effectId: string): Promise<AssistantReminderRow | null>;
     due(at: Date, limit: number): Promise<readonly AssistantReminderRow[]>;
     pending(harnessId: string, limit: number): Promise<readonly AssistantReminderRow[]>;
   };
   readonly write: {
     insert(row: AssistantReminderRow): Promise<void>;
     close(change: ReminderClose): Promise<boolean>;
+    redact(query: RedactQuery): Promise<number>;
   };
 };
 
@@ -207,7 +225,11 @@ export type AssistantHoldRow = {
   readonly releasedAt: Date | null;
   readonly createdAt: Date;
 };
-export type HoldRelease = { readonly id: string; readonly effectId: string; readonly at: Date };
+export type HoldRelease = {
+  readonly id: string;
+  readonly effectId: string | null;
+  readonly at: Date;
+};
 export type AssistantHoldsGateway = {
   readonly read: {
     byId(holdId: string): Promise<AssistantHoldRow | null>;
@@ -216,5 +238,6 @@ export type AssistantHoldsGateway = {
   readonly write: {
     insert(row: AssistantHoldRow): Promise<boolean>;
     release(change: HoldRelease): Promise<boolean>;
+    redact(query: RedactQuery): Promise<number>;
   };
 };

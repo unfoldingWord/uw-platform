@@ -709,7 +709,7 @@ A policy's page and the Policies screen show its level, target, enforcement, dat
 
 ## 0036 A person's assistant is a persona on their own harness, lent authority by that person, acting directly only within a closed low-risk set
 
-*2026-11-26. Changes 0002, 0003, 0005, 0015 and 0020. Changed by 0037, 0038, 0039 and 0040.*
+*2026-11-26. Changes 0002, 0003, 0005, 0015 and 0020. Changed by 0037, 0038, 0039, 0040 and 0041.*
 
 **Decision.**
 
@@ -795,7 +795,7 @@ A policy's page and the Policies screen show its level, target, enforcement, dat
 
 ## 0039 The platform reaches Google with one domain-wide-delegated service account, allowlisted in code before it signs
 
-*2026-11-26. Changes 0036. Changed by 0040.*
+*2026-11-26. Changes 0036. Changed by 0040 and 0041.*
 
 **Decision.**
 
@@ -843,6 +843,30 @@ A policy's page and the Policies screen show its level, target, enforcement, dat
 **Consequences.** `GOOGLE_ASSISTANT_OU` is a new variable; `GOOGLE_WORKSPACE_ADMIN_SUBJECT`, `ZULIP_ADMIN_EMAIL` and their secrets must be set before any assistant can be turned on in an environment; until then every step is recorded failed `workspace_not_wired` or `zulip_not_wired` and the person sees that. A name held by a Google group, not a user or alias, is found only when the user is inserted, and is recorded `name_taken`; the person turns the assistant off and back on with another name. The Admin SDK request shapes come from Google's published API, not a live call; staging confirms them before go-live.
 
 **Changes / changed by.** Changes 0036 (item 1: the person turns their own assistant on with `enable`, in area 10-19), 0037 (item 4: `bindAddress` is the provisioner's, not the system principal's) and 0039 (the directory is reached as the admin subject only by the provisioner, to insert, suspend, restore and delete assistant users).
+
+## 0041 My Assistant is the person's own screen; an assistant's text is kept one year and the person may delete it sooner
+
+*2026-11-27. Changes 0036 and 0039.*
+
+**Decision.**
+
+1. **One screen for the person, reached by everyone.** `/assistant` (My Assistant, Form shape, started from `new-agent.tsx`) is a module under area 10-19 in every sidebar. It reads `kernel.views.myAssistant`, which answers the person's own assistant in full, an org admin a named person's assistant without its content (accounts, number, budget and spend only; no settings, requests, effects, reminders or holds), and refuses anyone else. An admin's view is `/assistant?person=<id>` and carries the `set_assistant_budget` control (0038).
+2. **Every control posts to the person's own endpoint.** `/api/assistant/commands/<name>` (0040) gains `customise_assistant`, `renew_assist`, `revoke_assist`, `undo_assistant_effect` and `delete_my_assistant_history`. Each acts on the caller's own assistant, found from the caller, never from the body; an agent principal is refused before any work. Pairing is a server form (`POST /assistant/pairing`) because its answer is a code shown once.
+3. **Undo by the person.** `kernel.assistants.undoEffect` lets only the effect's person undo a `reminder_set` whose reminder is still set (it is cancelled and never fires) or a `calendar_hold_added` whose hold is held and not yet ended (the Workspace port removes it, then the hold is released with no releasing effect, which migration 0080 allows). Both record `assistant_effect_undone {effectId, kind}`. The person's undo is the person's own action, not an assistant effect, so it is outside ADR 0036's closed set and its caps.
+4. **Retention one year (owner decision 8).** `kernel.assistants.redactHistory` as the system principal, run by a nightly cron step, empties the note and untrusted parts of every request recorded more than 365 days ago, the payloads of that request's effects (reply text, reminder and hold drafts), the text of reminders closed and the titles of holds ended or released more than 365 days ago. As the person it does the same for their own assistant up to now, except a reminder still set or a hold still ahead. Each row keeps `redacted_at`, and check constraints hold that a redacted row carries no text and that a set reminder is never redacted. Each batch records `assistant_history_redacted {why, requests}` per harness. Events are never touched: they carry no text (0004, 0036).
+5. **A personal harness is listed only to its person and org admins.** `admittedHarnesses` (and so every harness list, the sidebar's Agent Queues and `readableHarness`) leaves out a personal harness for anyone but its person, an org admin and the system principal, even when they read area 10-19.
+
+**Why.** The owner asked for the whole feature to work for a real person, with request text and replies kept one year and the person able to delete their own sooner. Without a screen the person could turn the assistant on only by hand-made requests; without retention the owner-only tables would keep every request forever.
+
+**Rejected.**
+- Deleting old request rows. The rows anchor the content-free events, the effects and the reminders through foreign keys, and the effect keys keep a retried turn from acting twice.
+- Redacting a reminder still to come on delete-my-history. It would leave a reminder that fires with no text; the person cancels it with Undo instead.
+- Showing an admin the content. The tables are owner-only (0036); an admin needs only the budget.
+- A separate harness list filter in each view. One rule in `admittedHarnesses` covers every list and the single read.
+
+**Consequences.** The nightly retention redacts at most 20 batches of 500 requests a night, so a backlog drains over several nights. A hold the person removed in Google themselves cannot be undone from the screen (the port answers `not_own_hold`); it stays listed until it ends.
+
+**Changes / changed by.** Changes 0036 (item 4: assistant text is redacted after 365 days or on the person's request; a personal harness is hidden from area readers) and 0039 (a hold can be released by its person, with no releasing effect).
 
 # Part 2. Workflow design decisions
 

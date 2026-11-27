@@ -1,0 +1,9 @@
+{
+  "command": "customise_assistant",
+  "requestId": "00000000-0000-4000-8000-0000000000e1",
+  "displayName": "Barnabas",
+  "instructionsMd": "Keep replies short.",
+  "timezone": "Africa/Nairobi",
+  "expectedVersion": 1,
+  "model": "z-ai/glm"
+}

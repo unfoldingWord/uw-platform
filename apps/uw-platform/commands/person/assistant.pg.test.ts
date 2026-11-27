@@ -72,7 +72,7 @@ async function refusesWhatIsNotTheirs(db: Database): Promise<void> {
   const none = await command(db, BEN, { command: 'grant_assist', expiresAt: null });
   expect(none.body).toMatchObject({ status: 'error', reason: 'no_assistant' });
   const reserved = await command(db, BEN, { command: 'enable_assistant', name: 'postmaster' });
-  expect(reserved.body).toMatchObject({ status: 'error', reason: 'malformed_command' });
+  expect(reserved.body).toMatchObject({ status: 'error', reason: 'assistant_name_reserved' });
   const someone = await command(db, BEN, {
     command: 'enable_assistant',
     name: 'silas',

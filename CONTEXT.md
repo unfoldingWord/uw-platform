@@ -828,6 +828,18 @@ _Avoid_: purge, retire (the kernel's name for the step)
 The platform secret (`GOOGLE_WORKSPACE_KEY`) holding the one domain-wide-delegated Google service account the platform signs tokens with: for Gmail only as an active assistant mailbox, for the calendar only as an active person in the organization's domain, and for the directory only as the one configured admin subject (ADR 0039).
 _Avoid_: service account, OAuth token
 
+**My Assistant**:
+The person's own screen for their assistant (`/assistant`): turning it on or off, its accounts and pairing, its `assist` permission, its **customisation**, spend against budget, recent requests and what it did, undo, what waits for the person, and deleting their history. An org admin sees another person's assistant there without its content.
+_Avoid_: assistant settings, assistant admin
+
+**Undo**:
+The person's one-step reversal of an assistant effect still in force: cancelling a reminder that has not fired, or removing a hold that has not ended. It is the person's action, recorded as `assistant_effect_undone`, never an assistant effect.
+_Avoid_: revert, rollback
+
+**Redaction**:
+Emptying an assistant's stored text (a request's note and untrusted parts, its effects' payloads, a passed reminder's text or hold's title) while keeping the row and its events. It happens 365 days after a request was recorded (**retention**) or when the person deletes their history.
+_Avoid_: purge, delete (the rows stay)
+
 ## The repo and the build
 
 **PRD**:

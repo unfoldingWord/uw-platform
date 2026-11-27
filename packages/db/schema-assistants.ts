@@ -80,6 +80,7 @@ export const assistantRequests = declareTable(
     untrustedParts: jsonb('untrusted_parts').notNull(),
     receivedAt: instant('received_at').notNull(),
     recordedAt: instant('recorded_at').notNull(),
+    redactedAt: instant('redacted_at'),
   },
   restrictedNever,
   (t) => [
@@ -103,10 +104,17 @@ export const assistantRequests = declareTable(
       sql`char_length(${t.replyAddress}) BETWEEN 1 AND 254`,
     ),
     check('assistant_requests_note_length', lengthAtMost(t.note, 20000)),
+    check(
+      'assistant_requests_redacted_empty',
+      sql`${t.redactedAt} IS NULL OR (${t.note} = '' AND ${t.untrustedParts} = '[]'::jsonb)`,
+    ),
     uniqueIndex('assistant_requests_external_once').on(t.channel, t.externalId),
     unique('assistant_requests_id_harness').on(t.id, t.harnessId),
     index('assistant_requests_thread').on(t.harnessId, t.channel, t.threadKey, t.recordedAt, t.id),
     index('assistant_requests_recorded').on(t.recordedAt, t.id),
+    index('assistant_requests_unredacted')
+      .on(t.harnessId, t.recordedAt)
+      .where(sql`${t.redactedAt} IS NULL`),
   ],
 );
 
@@ -122,6 +130,7 @@ export const assistantEffects = declareTable(
     idempotencyKey: text('idempotency_key').notNull(),
     payload: jsonb('payload').notNull(),
     createdAt: instant('created_at').notNull(),
+    redactedAt: instant('redacted_at'),
   },
   restrictedNever,
   (t) => [
@@ -132,6 +141,10 @@ export const assistantEffects = declareTable(
     }),
     check('assistant_effects_direct_only', oneOf(t.kind, assistantDirectEffectSchema.options)),
     check('assistant_effects_payload_object', sql`jsonb_typeof(${t.payload}) = 'object'`),
+    check(
+      'assistant_effects_redacted_empty',
+      sql`${t.redactedAt} IS NULL OR ${t.payload} = '{}'::jsonb`,
+    ),
     check(
       'assistant_effects_idempotency_key_length',
       sql`char_length(${t.idempotencyKey}) BETWEEN 1 AND 200`,
@@ -155,6 +168,7 @@ export const assistantReminders = declareTable(
     status: text('status').notNull(),
     closedAt: instant('closed_at'),
     createdAt: instant('created_at').notNull(),
+    redactedAt: instant('redacted_at'),
   },
   restrictedNever,
   (t) => [
@@ -181,7 +195,10 @@ export const assistantReminders = declareTable(
       'assistant_reminders_closed_when_done',
       sql`(${t.status} = 'set') = (${t.closedAt} IS NULL)`,
     ),
-    check('assistant_reminders_text_length', sql`char_length(${t.text}) BETWEEN 1 AND 500`),
+    check(
+      'assistant_reminders_text_length',
+      sql`(${t.redactedAt} IS NULL AND char_length(${t.text}) BETWEEN 1 AND 500) OR (${t.redactedAt} IS NOT NULL AND ${t.text} = '' AND ${t.status} <> 'set')`,
+    ),
     uniqueIndex('assistant_reminders_effect_once').on(t.effectId),
     index('assistant_reminders_due').on(t.status, t.dueAt, t.id),
     index('assistant_reminders_harness').on(t.harnessId, t.status, t.dueAt),
@@ -338,6 +355,7 @@ export const assistantCalendarHolds = declareTable(
     releasedEffectId: uuid('released_effect_id'),
     releasedAt: instant('released_at'),
     createdAt: instant('created_at').notNull(),
+    redactedAt: instant('redacted_at'),
   },
   restrictedNever,
   (t) => [
@@ -358,13 +376,16 @@ export const assistantCalendarHolds = declareTable(
     ),
     check(
       'assistant_calendar_holds_released_when_done',
-      sql`(${t.status} = 'released') = (${t.releasedAt} IS NOT NULL AND ${t.releasedEffectId} IS NOT NULL)`,
+      sql`(${t.status} = 'released') = (${t.releasedAt} IS NOT NULL) AND (${t.releasedEffectId} IS NULL OR ${t.status} = 'released')`,
     ),
     check(
       'assistant_calendar_holds_at_most_a_day',
       sql`${t.endsAt} > ${t.startsAt} AND ${t.endsAt} - ${t.startsAt} <= interval '24 hours'`,
     ),
-    check('assistant_calendar_holds_title_length', sql`char_length(${t.title}) BETWEEN 1 AND 200`),
+    check(
+      'assistant_calendar_holds_title_length',
+      sql`(${t.redactedAt} IS NULL AND char_length(${t.title}) BETWEEN 1 AND 200) OR (${t.redactedAt} IS NOT NULL AND ${t.title} = '')`,
+    ),
     check(
       'assistant_calendar_holds_event_id_shape',
       sql`${t.eventId} ~ '^[0-9a-v]{5,}$' AND char_length(${t.eventId}) <= 1024`,

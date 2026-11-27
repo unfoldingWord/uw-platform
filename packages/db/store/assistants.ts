@@ -7,6 +7,7 @@ import {
 import { and, asc, desc, eq, gte, inArray, sql } from 'drizzle-orm';
 import type { AnyExecutor } from '../any-database.ts';
 import { assistantEffects, assistantRequests, assistantSettings } from '../schema.ts';
+import { recentRequests, redactEffects, redactRequests } from './assistant-history.ts';
 import { unstartedRequests } from './assistant-unstarted.ts';
 import { deliveredReplyFor } from './events.ts';
 import { refusing } from './refusal.ts';
@@ -31,9 +32,17 @@ function toSettings(row: typeof assistantSettings.$inferSelect): AssistantSettin
 
 function toRequest(row: typeof assistantRequests.$inferSelect): AssistantRequestRow {
   return {
-    ...row,
+    id: row.id,
+    harnessId: row.harnessId,
+    personId: row.personId,
     channel: assistantChannelSchema.parse(row.channel),
+    externalId: row.externalId,
+    threadKey: row.threadKey,
+    replyAddress: row.replyAddress,
+    note: row.note,
     untrustedParts: untrustedParts.parse(row.untrustedParts),
+    receivedAt: row.receivedAt,
+    recordedAt: row.recordedAt,
   };
 }
 
@@ -46,9 +55,13 @@ function payloadOf(value: unknown): AssistantEffectPayload {
 
 function toEffect(row: typeof assistantEffects.$inferSelect): AssistantEffectRow {
   return {
-    ...row,
+    id: row.id,
+    harnessId: row.harnessId,
+    requestId: row.requestId,
     kind: assistantEffectKindSchema.parse(row.kind),
+    idempotencyKey: row.idempotencyKey,
     payload: payloadOf(row.payload),
+    createdAt: row.createdAt,
   };
 }
 
@@ -161,6 +174,7 @@ export function bindAssistantRequests(executor: AnyExecutor): AssistantRequestsG
       deliveredInThread: (query) => deliveredInThread(executor, query),
       countSince: (harnessId, since) => requestsSince(executor, harnessId, since),
       unstarted: (query) => unstartedRequests(executor, query),
+      recent: (harnessId, limit) => recentRequests(executor, harnessId, limit, toRequest),
     },
     write: {
       insert: (row) =>
@@ -169,6 +183,7 @@ export function bindAssistantRequests(executor: AnyExecutor): AssistantRequestsG
             .insert(assistantRequests)
             .values({ ...row, untrustedParts: [...row.untrustedParts] });
         }),
+      redact: (query) => refusing(() => redactRequests(executor, query)),
     },
   };
 }
@@ -209,6 +224,13 @@ async function effectsSince(
 export function bindAssistantEffects(executor: AnyExecutor): AssistantEffectsGateway {
   return {
     read: {
+      byId: async (effectId) => {
+        const rows = await executor
+          .select()
+          .from(assistantEffects)
+          .where(eq(assistantEffects.id, effectId));
+        return rows[0] ? toEffect(rows[0]) : null;
+      },
       byKey: async (harnessId, idempotencyKey) => {
         const rows = await executor
           .select()
@@ -245,6 +267,7 @@ export function bindAssistantEffects(executor: AnyExecutor): AssistantEffectsGat
             .returning({ id: assistantEffects.id });
           return inserted.length === 1;
         }),
+      redactFor: (requestIds, at) => refusing(() => redactEffects(executor, requestIds, at)),
     },
   };
 }

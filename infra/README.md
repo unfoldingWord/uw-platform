@@ -361,6 +361,12 @@ One-time steps in the Workspace admin console, by a super-admin:
 
 When a person leaves, an org admin deactivates them; their live grants end, so the `assist` delegation lapses and their assistant takes no more turns. Its Workspace user and bot stay as they are, because turning an assistant off is the person's own command; suspend the user in the admin console and deactivate the bot in Zulip by hand until an admin path exists.
 
+### My Assistant and retention (PA-7, PA-15)
+
+A person does all of the above on the My Assistant screen at `/assistant` (sidebar, 10-19), which posts to the same endpoint; it also customises the assistant (`customise_assistant`), renews and revokes `assist` (`renew_assist`, `revoke_assist`), undoes a reminder or hold (`undo_assistant_effect`) and deletes the person's history (`delete_my_assistant_history`), and a pairing code is issued by `POST /assistant/pairing` (ADR 0041). An org admin opens `/assistant?person=<personId>` to see an assistant's accounts and spend and to change its monthly budget; the admin never sees what its person asked.
+
+The nightly cron runs `cron assistant retention` after the deletion job: it empties request text, untrusted parts, replies, effect drafts and passed reminder and hold text recorded more than 365 days ago (owner decision 8), at most 10,000 requests a night, and records `assistant_history_redacted` on each assistant's harness. Its log line carries `outcome: history_redacted`, the count and `done: false` when a backlog remains for the next night. It needs no configuration beyond the database. Nothing restores redacted text; a backup taken before the run still holds it until the backup itself expires.
+
 ## Platform secrets in Cloudflare Secrets Store (#160)
 
 The secrets the platform itself runs on live in the account's Cloudflare Secrets Store, and each Worker binds only the ones it reads. `uw-ingest` binds its two; `uw-platform` binds the rest; a per-PR Worker (`preview`) binds none. The list is `infra/secrets-store.json`, under 30-39 Infrastructure: each secret with what it is, who issues it, its owner and the date to rotate it by, per environment. `tools/infra/secrets-store.test.ts` keeps the list, the wrangler files and the code naming the same secrets, and fails when a binding named like a credential is added to a Worker without a row.

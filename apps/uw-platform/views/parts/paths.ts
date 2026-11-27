@@ -228,3 +228,11 @@ export function crosswalkCellPath(area: string, tier: string): string {
 export function crosswalkNodePath(nodeId: string): string {
   return `/crosswalk/nodes/${segment(nodeId)}`;
 }
+
+export function myAssistantPath(personId: string | null = null): string {
+  return personId === null ? '/assistant' : `/assistant?person=${encodeURIComponent(personId)}`;
+}
+
+export function myAssistantPairingPath(): string {
+  return '/assistant/pairing';
+}

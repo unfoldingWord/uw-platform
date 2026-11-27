@@ -15,6 +15,7 @@ import {
   assistantProvisioningStepSchema,
 } from './assistant-accounts.ts';
 import { ASSISTANT_BUDGET_MOST_MINOR } from './assistant-commands.ts';
+import { assistantRedactionWhySchema } from './assistant-history.ts';
 import { verbNameSchema } from './verb-names.ts';
 
 const id = z.uuid();
@@ -92,4 +93,9 @@ export const assistantEvidence = {
     why: assistantProvisioningFailureSchema,
   }),
   assistant_deleted: z.strictObject({ jdId: assistantJdIdSchema }),
+  assistant_effect_undone: z.strictObject({ effectId: id, kind: assistantEffectKindSchema }),
+  assistant_history_redacted: z.strictObject({
+    why: assistantRedactionWhySchema,
+    requests: count,
+  }),
 };

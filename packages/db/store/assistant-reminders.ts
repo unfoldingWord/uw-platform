@@ -2,13 +2,25 @@ import { assistantReminderStatusSchema } from '@uw/contracts';
 import { and, asc, eq, lte } from 'drizzle-orm';
 import type { AnyExecutor } from '../any-database.ts';
 import { assistantReminders } from '../schema.ts';
+import { redactReminders } from './assistant-history.ts';
 import { refusing } from './refusal.ts';
 import type { AssistantReminderRow, AssistantRemindersGateway, ReminderClose } from './types.ts';
 
 const READ_MOST = 200;
 
 function toReminder(row: typeof assistantReminders.$inferSelect): AssistantReminderRow {
-  return { ...row, status: assistantReminderStatusSchema.parse(row.status) };
+  return {
+    id: row.id,
+    harnessId: row.harnessId,
+    personId: row.personId,
+    requestId: row.requestId,
+    effectId: row.effectId,
+    text: row.text,
+    dueAt: row.dueAt,
+    status: assistantReminderStatusSchema.parse(row.status),
+    closedAt: row.closedAt,
+    createdAt: row.createdAt,
+  };
 }
 
 function bounded(limit: number): number {
@@ -59,6 +71,13 @@ export function bindAssistantReminders(executor: AnyExecutor): AssistantReminder
   return {
     read: {
       byId: (reminderId) => byId(executor, reminderId),
+      byEffect: async (effectId) => {
+        const rows = await executor
+          .select()
+          .from(assistantReminders)
+          .where(eq(assistantReminders.effectId, effectId));
+        return rows[0] ? toReminder(rows[0]) : null;
+      },
       due: (at, limit) => due(executor, at, limit),
       pending: (harnessId, limit) => pending(executor, harnessId, limit),
     },
@@ -68,6 +87,7 @@ export function bindAssistantReminders(executor: AnyExecutor): AssistantReminder
           await executor.insert(assistantReminders).values({ ...row });
         }),
       close: (change) => refusing(() => close(executor, change)),
+      redact: (query) => refusing(() => redactReminders(executor, query)),
     },
   };
 }

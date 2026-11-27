@@ -58,6 +58,8 @@ import { listReminders, type ListedReminders } from './reminders.ts';
 import { recordRequest, type RecordedRequest, type RequestInput } from './requests.ts';
 import { customise, type CustomiseInput } from './settings.ts';
 import { closeStaleTurns, type SweepInput, type Swept } from './stale.ts';
+import { redactHistory, type RedactInput, type Redacted } from './redaction.ts';
+import { undoEffect, type Undone, type UndoInput } from './undo.ts';
 import { unstartedRequests, type Unstarted, type UnstartedInput } from './unstarted.ts';
 import { beginTurn, type BeginInput, type Turn } from './turn.ts';
 
@@ -89,6 +91,8 @@ export type AssistantCommands = {
   setBudget(caller: Caller, input: SetBudgetInput): Promise<KernelOutcome<BudgetSet>>;
   closeStaleTurns(caller: Caller, input: SweepInput): Promise<KernelOutcome<Swept>>;
   unstartedRequests(caller: Caller, input: UnstartedInput): Promise<KernelOutcome<Unstarted>>;
+  undoEffect(caller: Caller, input: UndoInput): Promise<KernelOutcome<Undone>>;
+  redactHistory(caller: Caller, input: RedactInput): Promise<KernelOutcome<Redacted>>;
 };
 
 type AssistantPorts = Pick<
@@ -125,5 +129,7 @@ export function createAssistantCommands(
     setBudget: (caller, input) => setBudget(ports, caller, input),
     closeStaleTurns: (caller, input) => closeStaleTurns(ports, caller, input),
     unstartedRequests: (caller, input) => unstartedRequests(ports, caller, input),
+    undoEffect: (caller, input) => undoEffect(ports, caller, input),
+    redactHistory: (caller) => redactHistory(ports, caller),
   };
 }

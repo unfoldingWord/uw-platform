@@ -19,6 +19,7 @@ import { describeStoreAssistantReads } from './store-assistant-reads.ts';
 import { describeStoreAssistantPairing } from './store-assistant-pairing.ts';
 import { describeStoreAssistantReminders } from './store-assistant-reminders.ts';
 import { describeStoreAssistantHolds } from './store-assistant-holds.ts';
+import { describeStoreAssistantHistory } from './store-assistant-history.ts';
 import { at, hour, refusedBy, uid } from './store-gateway-fixtures.ts';
 
 function requestOf(n: number, threadKey: string | null, recorded: number): AssistantRequestRow {
@@ -237,5 +238,6 @@ export function describeStoreAssistants(adapter: string, subject: AssistantsSubj
     describeStoreAssistantPairing(subject);
     describeStoreAssistantBudgets(subject);
     describeStoreAssistantAccounts(subject);
+    describeStoreAssistantHistory(subject);
   });
 }

@@ -14,6 +14,7 @@ import {
   collectionPath,
   credentialsPath,
   crosswalkPath,
+  myAssistantPath,
   queuePath,
   healthPath,
   homePath,
@@ -61,6 +62,7 @@ const plainModules: ReadonlyMap<string, { readonly href: string; readonly code: 
     ['tasks', { href: collectionPath('tasks'), code: moduleCodes.tasks }],
     ['directory', { href: collectionPath('directory'), code: moduleCodes.directory }],
     ['crosswalk', { href: crosswalkPath(), code: moduleCodes.crosswalk }],
+    ['myAssistant', { href: myAssistantPath(), code: moduleCodes.myAssistant }],
   ],
 );
 

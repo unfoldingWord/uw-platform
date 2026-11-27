@@ -1,5 +1,6 @@
 import {
   assistantIdentityOf,
+  assistantNameRefusal,
   type EnableAssistantCommand,
   type GrantAssistCommand,
 } from '@uw/contracts';
@@ -28,6 +29,9 @@ export async function enableAssistant(
   deps: AssistantCommandDeps,
   command: EnableAssistantCommand,
 ): Promise<CommandResult> {
+  const invalid = assistantNameRefusal(command.name);
+  if (invalid === 'name_invalid') return { ok: false, reason: 'assistant_name_invalid' };
+  if (invalid === 'name_reserved') return { ok: false, reason: 'assistant_name_reserved' };
   if (await deps.nameTaken(command.name)) return { ok: false, reason: 'assistant_name_taken' };
   const input = { harnessId: crypto.randomUUID(), name: command.name };
   const outcome = await deps.kernel.assistants.enable(deps.caller, input);

@@ -204,5 +204,10 @@ export type {
   RecordedRequest,
   RequestInput,
   Turn,
+  AssistantOverview,
+  OverviewEffect,
+  OverviewRequest,
+  Redacted,
+  Undone,
 } from './assistants/index.ts';
 export type { PersonaFixture, PersonaPageDraft } from './templates/personas.ts';
