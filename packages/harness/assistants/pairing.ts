@@ -1,5 +1,5 @@
 import type { AssistantChannel, AssistantPairingRefusal, AssistantPairingVia } from '@uw/contracts';
-import { isIngestPrincipal, isSystemPrincipal } from '../access.ts';
+import { isIngestPrincipal, isProvisionerPrincipal } from '../access.ts';
 import type { Caller } from '../caller.ts';
 import { draft, recordContext, recordHarnessEvents } from '../items/record.ts';
 import { accepted, refused, type KernelOutcome, type Refused } from '../outcome.ts';
@@ -188,7 +188,7 @@ export function bindAddress(
   caller: Caller,
   input: BindAddressInput,
 ): Promise<KernelOutcome<Paired>> {
-  if (!isSystemPrincipal(caller.actor)) {
+  if (!isProvisionerPrincipal(caller.actor)) {
     return Promise.resolve(refused('not_permitted', { actor: caller.actor.identity }));
   }
   const malformed = addressRefusal(input);

@@ -1,4 +1,5 @@
 import {
+  assistantProvisionerIdentity,
   deviceOwnerSegment,
   ingestIdentity,
   systemIdentity,
@@ -66,6 +67,20 @@ export function isIngestPrincipal(actor: Principal): boolean {
   );
 }
 
+export function isProvisionerPrincipal(actor: Principal): boolean {
+  return (
+    actor.identity === assistantProvisionerIdentity &&
+    actor.kind === 'agent' &&
+    actor.personId === null &&
+    actor.grants.length === 0 &&
+    !actor.interactive
+  );
+}
+
 export function platformIdentity(identity: string): boolean {
-  return identity === systemIdentity || identity === ingestIdentity;
+  return (
+    identity === systemIdentity ||
+    identity === ingestIdentity ||
+    identity === assistantProvisionerIdentity
+  );
 }

@@ -1,6 +1,6 @@
 import { sql } from 'drizzle-orm';
 import { describe, expect, it } from 'vitest';
-import { systemPrincipal } from '@uw/core/principal';
+import { assistantProvisionerPrincipal } from '@uw/core/principal';
 import type { Database } from '@uw/db/client';
 import { seedPerson } from '@uw/db/test-seed';
 import { memoryDataKeys } from '../../credentials/testing/memory-data-keys.ts';
@@ -20,7 +20,7 @@ const at = new Date('2026-11-26T09:00:00.000Z');
 const clock = { now: () => at };
 const webhookUrl = 'https://ingest.example.org/webhooks/zulip-assistant';
 const waits: Timers = { after: () => new Promise<void>(() => undefined) };
-const system = systemPrincipal();
+const system = assistantProvisionerPrincipal();
 
 async function seeded(db: Database): Promise<void> {
   await seedPerson(db, { id: person, email: 'ana@example.org' });

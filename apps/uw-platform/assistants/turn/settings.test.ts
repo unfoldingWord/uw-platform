@@ -13,6 +13,6 @@ describe('PA-16 the optional assistants spend ceiling', () => {
 
   it('caps the pool at the configured minor units', () => {
     const settings = assistantKernelSettings({ ASSISTANT_SPEND_CAP_MINOR: '20000' });
-    expect(settings).toEqual({ assistantsArea: null, assistantSpendCapMinor: 20000 });
+    expect(settings).toEqual({ assistantsArea: '10-19', assistantSpendCapMinor: 20000 });
   });
 });

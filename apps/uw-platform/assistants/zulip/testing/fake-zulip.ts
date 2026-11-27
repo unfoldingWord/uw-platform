@@ -4,7 +4,7 @@ export const FAKE_ADMIN = { email: 'platform-admin@example.org', apiKey: 'admin-
 type FakeUser = {
   readonly user_id: number;
   readonly email: string;
-  readonly full_name: string;
+  full_name: string;
   is_active: boolean;
   readonly is_bot: boolean;
 };
@@ -148,6 +148,15 @@ function setActive(state: State, id: string, active: boolean): Reply {
   return ok({});
 }
 
+function renameBot(state: State, id: string, form: URLSearchParams): Reply {
+  const bot = state.bots.get(Number(id));
+  const fullName = form.get('full_name') ?? '';
+  if (bot === undefined) return error(400, 'No such bot');
+  if (fullName.length < 1) return error(400, 'Name too short!');
+  bot.full_name = fullName;
+  return ok({});
+}
+
 function sendMessage(state: State, request: Request, form: URLSearchParams): Reply {
   const bot = botSending(state, request);
   if (bot === null) return error(401, 'Invalid API key', 'UNAUTHORIZED');
@@ -181,6 +190,11 @@ const adminRoutes: readonly AdminRoute[] = [
     answer: (state, _m, form) => createBot(state, form),
   },
   { method: 'GET', path: /^\/api\/v1\/bots$/, answer: (state) => listBots(state) },
+  {
+    method: 'PATCH',
+    path: /^\/api\/v1\/bots\/([0-9]+)$/,
+    answer: (state, m, form) => renameBot(state, m, form),
+  },
   {
     method: 'GET',
     path: /^\/api\/v1\/users\/([^/]+)$/,

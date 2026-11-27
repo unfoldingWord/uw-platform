@@ -540,6 +540,13 @@
       "when": 1795736926985,
       "tag": "0078_assistant_calendar",
       "breakpoints": true
+    },
+    {
+      "idx": 79,
+      "version": "7",
+      "when": 1795742066315,
+      "tag": "0079_assistant_accounts",
+      "breakpoints": true
     }
   ]
 }

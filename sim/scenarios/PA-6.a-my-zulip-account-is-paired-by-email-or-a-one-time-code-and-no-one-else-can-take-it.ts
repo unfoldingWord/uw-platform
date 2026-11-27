@@ -1,7 +1,8 @@
+import { simProvisioner } from '../assistant-account-fixtures.ts';
 import assert from 'node:assert/strict';
 import type { Principal } from '@uw/contracts';
 import { assistantLog, assistantScene, type AssistantScene } from '../assistant-fixtures.ts';
-import { simCaller, simIngest, simPerson, simSystem } from '../fixtures.ts';
+import { simCaller, simIngest, simPerson } from '../fixtures.ts';
 import { value } from '../runs.ts';
 import { defineScenario } from '../scenario.ts';
 import { personOf } from '../wakes.ts';
@@ -18,7 +19,7 @@ function bindingOf(scene: AssistantScene, harnessId: string) {
 async function pairedByEmail(scene: AssistantScene): Promise<string> {
   const { world, person } = scene;
   value(
-    await world.kernel.assistants.bindAddress(simCaller(world, simSystem()), {
+    await world.kernel.assistants.bindAddress(simCaller(world, simProvisioner()), {
       personId: personOf(person),
       channel: 'zulip_dm',
       address: 'zulip:5005',

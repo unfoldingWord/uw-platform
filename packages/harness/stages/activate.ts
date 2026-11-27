@@ -84,7 +84,7 @@ function inputRefusal(input: ActivateInput, external: readonly string[]): Refuse
   return externalRefusal(external);
 }
 
-function harnessOf(input: ActivateInput, external: string[]): Harness {
+export function harnessOf(input: ActivateInput, external: string[]): Harness {
   return {
     id: input.harnessId,
     key: input.harnessKey,

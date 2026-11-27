@@ -326,7 +326,8 @@ Variables, in `infra/uw-platform/wrangler.go-live.toml` (and `wrangler.toml`) un
 | Variable | Value |
 |---|---|
 | `GOOGLE_WORKSPACE_DOMAIN` | The Workspace domain, `unfoldingword.org`; only people whose address is in it can be acted as |
-| `GOOGLE_WORKSPACE_ADMIN_SUBJECT` | The one Workspace admin account the platform acts as for the directory (provisioning, a later slice); `set-at-go-live`. A dedicated admin account, never a person's own |
+| `GOOGLE_WORKSPACE_ADMIN_SUBJECT` | The one Workspace admin account the platform acts as for the directory, to create, suspend, restore and delete assistant users; `set-at-go-live`. A dedicated admin account, never a person's own |
+| `GOOGLE_ASSISTANT_OU` | The organizational unit path the assistant users are created in, `/Assistants` |
 
 Secret, set in the store as the table below names it:
 
@@ -344,6 +345,21 @@ One-time steps, by a Google Cloud project owner and a Workspace super-admin:
 5. Run the Google staging probes in the assistants' staging-probes list before go-live, as one test person: a token for `calendar.events`, listing today's events, free/busy for two people, inserting a hold with a chosen id (and inserting it again, expecting a conflict), reading and deleting it.
 
 Until `GOOGLE_WORKSPACE_KEY` and `GOOGLE_WORKSPACE_DOMAIN` are set, every calendar verb is refused `calendar_not_wired` and a drafted hold is recorded failed `not_wired`.
+
+### Turning an assistant on and off (PA-14)
+
+A person turns their own assistant on with `POST /api/assistant/commands/enable_assistant` (`{ "command": "enable_assistant", "requestId": "<uuid>", "name": "barnabas" }`), and off with `disable_assistant`; `grant_assist` (`expiresAt` or `null` for the default) lends it authority (ADR 0040). The name becomes `<name>@<GOOGLE_WORKSPACE_DOMAIN>` and the bot's name, and the assistant takes the lowest free number from 10.51 in area 10-19. The platform then makes, as `agent:assistant-provisioner`: the Workspace user in `GOOGLE_ASSISTANT_OU`, with a random password it keeps nowhere; the Zulip bot, paired with the person by email; and the active persona; then it waits for the person's `assist` grant. Turning off suspends the user and deactivates the bot at once. The minute cron re-drives unfinished steps (step `assistant-provisioning` in its log, five assistants a minute, backing off up to an hour after a failure), and the nightly cron (`cron assistant deletion`) deletes the Workspace user of an assistant turned off 30 days ago and frees its number; the bot stays deactivated.
+
+Each environment needs, before anyone turns an assistant on: `GOOGLE_WORKSPACE_KEY`, `GOOGLE_WORKSPACE_DOMAIN`, `GOOGLE_WORKSPACE_ADMIN_SUBJECT` and `GOOGLE_ASSISTANT_OU` (this section), and `ZULIP_SITE`, `ZULIP_ADMIN_EMAIL`, `ZULIP_ADMIN_API_KEY`, `ASSISTANT_WEBHOOK_BASE` and the `CREDENTIALS_KMS_*` secrets (the Zulip section and the key service section). Until then every step is recorded failed with `workspace_not_wired` or `zulip_not_wired` (event `assistant_provisioning_failed`) and retried.
+
+One-time steps in the Workspace admin console, by a super-admin:
+
+1. Create the organizational unit named in `GOOGLE_ASSISTANT_OU` (`/Assistants`). Restrict it so its users receive mail only from inside the domain, and turn off services an assistant does not need (Drive sharing outside the domain, Meet, Chat).
+2. Make `GOOGLE_WORKSPACE_ADMIN_SUBJECT` a dedicated admin account with the User management privileges (create, update, suspend and delete users) for that unit; the service account's `admin.directory.user` scope acts only as it.
+3. Confirm there are enough Workspace licences: every assistant turned on or turned off within the last 30 days holds one; final deletion frees it.
+4. Run the directory staging probes in the assistants' staging-probes list as the admin subject: `users.get` for a free address, a user and an alias; `users.insert` with an external id; a second insert (expecting a conflict); `users.update` with `suspended` true and false; `users.delete`.
+
+When a person leaves, an org admin deactivates them; their live grants end, so the `assist` delegation lapses and their assistant takes no more turns. Its Workspace user and bot stay as they are, because turning an assistant off is the person's own command; suspend the user in the admin console and deactivate the bot in Zulip by hand until an admin path exists.
 
 ## Platform secrets in Cloudflare Secrets Store (#160)
 

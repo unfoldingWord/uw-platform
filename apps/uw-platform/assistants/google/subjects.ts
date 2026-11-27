@@ -76,3 +76,19 @@ export async function putMailbox(db: Executor, row: MailboxRow): Promise<void> {
       },
     });
 }
+
+export async function mailboxOf(db: Executor, harnessId: string): Promise<MailboxRow | null> {
+  const rows = await db
+    .select()
+    .from(assistantMailboxes)
+    .where(eq(assistantMailboxes.harnessId, harnessId));
+  const row = rows[0];
+  if (row === undefined) return null;
+  const status = row.status === 'active' || row.status === 'suspended' ? row.status : 'deleted';
+  const { harnessId: harness, personId, address, googleUserId } = row;
+  return { harnessId: harness, personId, address, googleUserId, status, at: row.updatedAt };
+}
+
+export async function removeMailbox(db: Executor, harnessId: string): Promise<void> {
+  await db.delete(assistantMailboxes).where(eq(assistantMailboxes.harnessId, harnessId));
+}

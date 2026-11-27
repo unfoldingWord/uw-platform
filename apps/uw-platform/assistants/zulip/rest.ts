@@ -14,7 +14,7 @@ export type ZulipHost = {
 };
 
 export type ZulipCall = {
-  readonly method: 'GET' | 'POST' | 'DELETE';
+  readonly method: 'GET' | 'POST' | 'PATCH' | 'DELETE';
   readonly path: string;
   readonly form?: Readonly<Record<string, string>>;
   readonly signIn: ZulipIdentity;

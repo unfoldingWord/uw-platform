@@ -3,6 +3,7 @@ export * from './agent-commands.ts';
 export * from './areas.ts';
 export * from './assistants.ts';
 export * from './assistant-commands.ts';
+export * from './assistant-accounts.ts';
 export * from './jd-ids.ts';
 export * from './closed-sets.ts';
 export * from './collection-commands.ts';

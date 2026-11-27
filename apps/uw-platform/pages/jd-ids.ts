@@ -1,5 +1,6 @@
-import { and, ne, or, sql } from 'drizzle-orm';
+import { and, isNotNull, ne, or, sql } from 'drizzle-orm';
 import {
+  ASSISTANT_JD_CATEGORY,
   jdCategorySchema,
   jdIdOfTitle,
   knowledgeFrontmatterSchema,
@@ -7,12 +8,21 @@ import {
   type Page,
 } from '@uw/contracts';
 import type { Executor } from '@uw/db/client';
-import { pages } from '@uw/db/schema';
+import { assistantAccounts, pages } from '@uw/db/schema';
 
 const filedIn = sql<string>`${pages.frontmatter}->>'jd_category'`;
 const numbered = sql<string | null>`${pages.frontmatter}->>'jd_id'`;
 
 type JdRefusal = 'jd_taken';
+
+async function assistantJdIds(db: Executor, category: JdCategory): Promise<readonly string[]> {
+  if (category !== ASSISTANT_JD_CATEGORY) return [];
+  const rows = await db
+    .select({ jdId: assistantAccounts.jdId })
+    .from(assistantAccounts)
+    .where(isNotNull(assistantAccounts.jdId));
+  return rows.flatMap((row) => (row.jdId === null ? [] : [row.jdId]));
+}
 
 export async function takenJdIds(
   db: Executor,
@@ -29,7 +39,7 @@ export async function takenJdIds(
         except === undefined ? undefined : ne(pages.id, except),
       ),
     );
-  const taken = new Set<string>();
+  const taken = new Set<string>(await assistantJdIds(db, category));
   for (const row of rows) {
     if (row.jdId !== null) taken.add(row.jdId);
     const titled = jdIdOfTitle(row.title);

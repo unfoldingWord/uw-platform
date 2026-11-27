@@ -1,3 +1,4 @@
+import { platformKernelSettings } from './assistants/area.ts';
 import {
   createKernel,
   type Clock,
@@ -99,13 +100,11 @@ export function platformPorts(
   };
 }
 
-const unset: KernelSettings = { assistantsArea: null, assistantSpendCapMinor: null };
-
 export function platformKernel(
   database: DatabaseHandle | null,
   clock: Clock = systemClock,
   wiring: KernelWiring = idle,
-  settings: KernelSettings = unset,
+  settings: KernelSettings = platformKernelSettings,
 ): Kernel {
   return createKernel(platformPorts(database, clock, wiring), settings);
 }

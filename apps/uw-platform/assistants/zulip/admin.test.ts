@@ -159,3 +159,17 @@ describe('PA-6 a direct message from one assistant bot', () => {
     answersRefusedWhenZulipRefusesAnd,
   );
 });
+
+describe('PA-14 renaming an assistant bot', () => {
+  it('sets the bot full name to the assistant name', async () => {
+    const zulip = fakeZulip();
+    const admin = adminOn(zulip);
+    const made = await admin.createBot({ fullName: 'barnabas', shortName: 'barnabas', payloadUrl });
+    if (!made.ok) throw new Error('no bot');
+    expect(await admin.renameBot(made.value.userId, 'Tychicus')).toEqual({ ok: true, value: null });
+    expect(zulip.bots().find((bot) => bot.user_id === made.value.userId)?.full_name).toBe(
+      'Tychicus',
+    );
+    expect(await admin.renameBot(9999, 'Tychicus')).toMatchObject({ ok: false });
+  });
+});

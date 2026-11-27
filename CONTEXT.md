@@ -804,6 +804,26 @@ _Avoid_: the bot (say which), service bot
 The assistant's own Google Workspace address, from which it receives forwarded mail and sends replies.
 _Avoid_: service account, bot email
 
+**Assistant name**:
+The name a person picks when they turn their assistant on. It is the assistant mailbox's address exactly (`<name>@unfoldingword.org`, no suffix) and its bot's name: lowercase letters, digits, dots and hyphens, 2 to 30 characters, free in Google Workspace and among assistants.
+_Avoid_: handle, username, display name (that is the **customisation**'s)
+
+**Assistant number**:
+The JD id an assistant holds in area 10-19, the lowest free one from 10.51 upward when it is turned on. It stays while the assistant is turned off and is freed only by **final deletion**.
+_Avoid_: assistant id, slot
+
+**Turning on**, **turning off**:
+What only a person does to their own assistant. Turning on numbers it and starts **provisioning**; turning off suspends its mailbox, deactivates its bot and revokes its `assist` delegation at once. Turning back on within 30 days restores both.
+_Avoid_: enable, activate (activation is a persona's), install
+
+**Provisioning**:
+The platform's resumable steps after turning on or off: the Workspace user, the bot and its pairing, the active persona, then waiting for the `assist` delegation; or suspending the user and deactivating the bot. Each step is idempotent and run by `agent:assistant-provisioner`, a platform identity no persona can take.
+_Avoid_: setup, onboarding
+
+**Final deletion**:
+Deleting an assistant's Workspace user 30 days after it was turned off, which frees its **assistant number**. Its bot stays deactivated and its events stay.
+_Avoid_: purge, retire (the kernel's name for the step)
+
 **Workspace key**:
 The platform secret (`GOOGLE_WORKSPACE_KEY`) holding the one domain-wide-delegated Google service account the platform signs tokens with: for Gmail only as an active assistant mailbox, for the calendar only as an active person in the organization's domain, and for the directory only as the one configured admin subject (ADR 0039).
 _Avoid_: service account, OAuth token

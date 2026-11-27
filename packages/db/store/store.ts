@@ -8,6 +8,7 @@ import {
 } from './assistants.ts';
 import { bindAssistantBindings, bindAssistantPairingCodes } from './assistant-pairing.ts';
 import { bindAssistantBudgets } from './assistant-budgets.ts';
+import { bindAssistantAccounts } from './assistant-accounts.ts';
 import { bindAssistantReminders } from './assistant-reminders.ts';
 import { bindAssistantHolds } from './assistant-holds.ts';
 import { bindDelegations } from './delegations.ts';
@@ -66,6 +67,7 @@ function bind(executor: AnyExecutor): DrizzleTransaction {
     assistantBindings: bindAssistantBindings(executor),
     assistantPairingCodes: bindAssistantPairingCodes(executor),
     assistantBudgets: bindAssistantBudgets(executor),
+    assistantAccounts: bindAssistantAccounts(executor),
   };
   executors.set(tx, executor);
   return tx;

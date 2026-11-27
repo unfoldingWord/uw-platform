@@ -1,3 +1,4 @@
+import { assistantRoutes } from './commands/assistant-routes.ts';
 import { Hono } from 'hono';
 import { errorFields } from '@uw/core/log';
 import { aclRoutes, directoryScreenRoutes } from './acl/routes.ts';
@@ -31,6 +32,11 @@ function mountContent(app: Hono<AppEnv>): void {
   mountExports(app);
 }
 
+function mountPersonCommands(app: Hono<AppEnv>, deps: AppDeps): void {
+  app.route('/api/acl', aclRoutes());
+  app.route('/api/assistant', assistantRoutes(deps.fetch));
+}
+
 export function createApp(
   deps: AppDeps = platformDeps,
   person: PersonDeps = platformPersonDeps,
@@ -58,7 +64,7 @@ export function createApp(
   app.use(withPrincipal(deps));
   app.use(withFrameHealth(deps));
   app.route('/api/me', meRoutes());
-  app.route('/api/acl', aclRoutes());
+  mountPersonCommands(app, deps);
   app.route('/api/agents', agentRoutes(deps));
   app.route('/api/credentials', credentialRoutes(deps));
   mountContent(app);

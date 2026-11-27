@@ -37,7 +37,7 @@ async function provisioned(scene: AssistantScene): Promise<void> {
 async function onlyTheConfiguredArea(scene: AssistantScene): Promise<void> {
   const { world, rowan } = scene;
   const otherAdmin = await simPerson(world, 7, [
-    { role: 'admin', scopeKind: 'jd_area', scopeArea: '10-19' },
+    { role: 'admin', scopeKind: 'jd_area', scopeArea: '20-29' },
   ]);
   const target = await simPerson(world, 8, [
     { role: 'editor', scopeKind: 'jd_area', scopeArea: '10-19' },
@@ -45,7 +45,7 @@ async function onlyTheConfiguredArea(scene: AssistantScene): Promise<void> {
   const attempt = {
     harnessId: world.adapters.ids.next(),
     personId: personOf(target),
-    jdArea: '10-19',
+    jdArea: '20-29',
   };
   const elsewhere = await world.kernel.assistants.provision(simCaller(world, otherAdmin), attempt);
   assert.equal(reasonOf(elsewhere), 'not_permitted');

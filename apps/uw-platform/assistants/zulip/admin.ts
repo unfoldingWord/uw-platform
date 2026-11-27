@@ -23,6 +23,7 @@ export type ZulipAdmin = {
   userIdByEmail(email: string): Promise<ZulipOutcome<number | null>>;
   deactivate(userId: number): Promise<ZulipOutcome<null>>;
   reactivate(userId: number): Promise<ZulipOutcome<null>>;
+  renameBot(userId: number, fullName: string): Promise<ZulipOutcome<null>>;
 };
 
 const ADMIN_TIMEOUT_MS = 5_000;
@@ -134,5 +135,13 @@ export function zulipAdmin(
       emptied(await ask({ method: 'DELETE', path: `/api/v1/users/${String(userId)}` })),
     reactivate: async (userId) =>
       emptied(await ask({ method: 'POST', path: `/api/v1/users/${String(userId)}/reactivate` })),
+    renameBot: async (userId, fullName) =>
+      emptied(
+        await ask({
+          method: 'PATCH',
+          path: `/api/v1/bots/${String(userId)}`,
+          form: { full_name: fullName },
+        }),
+      ),
   };
 }

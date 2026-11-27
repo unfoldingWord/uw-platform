@@ -93,6 +93,18 @@ export async function setBotStatus(
     .where(eq(assistantZulipBots.harnessId, harnessId));
 }
 
+export async function setBotFullName(
+  db: Executor,
+  harnessId: string,
+  fullName: string,
+  at: Date,
+): Promise<void> {
+  await db
+    .update(assistantZulipBots)
+    .set({ fullName, updatedAt: at })
+    .where(eq(assistantZulipBots.harnessId, harnessId));
+}
+
 export async function deliveryTarget(
   db: Executor,
   personId: string,

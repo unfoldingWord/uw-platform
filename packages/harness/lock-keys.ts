@@ -11,4 +11,5 @@ export const lockKeys = {
   assistantRequest: (requestId: string) => `assistant-request:${requestId}`,
   assistantHarness: (harnessId: string) => `assistant-harness:${harnessId}`,
   assistantPool: () => 'assistant-pool',
+  assistantJdAllocation: () => 'jd-allocation:10',
 };

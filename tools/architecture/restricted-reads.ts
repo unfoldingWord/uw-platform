@@ -36,6 +36,7 @@ export const restrictedReads: ReadonlyMap<string, ReadGovernance> = new Map<stri
     ['apps/uw-platform/acl/grant-commands.ts', platform],
     ['apps/uw-platform/agents/service-tokens.ts', platform],
     ['apps/uw-platform/assistants/zulip/bots.ts', platform],
+    ['apps/uw-platform/assistants/provisioning/rows.ts', platform],
     ['apps/uw-ingest/deliveries/bot-tokens.ts', platform],
     ['apps/uw-platform/credentials/bindings.ts', platform],
     ['apps/uw-platform/credentials/open.ts', platform],

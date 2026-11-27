@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { assistantIdentityOf, ingestEnvelopeSchema, type Principal } from '@uw/contracts';
 import { createLogger } from '@uw/core/log';
+import { assistantProvisionerPrincipal } from '@uw/core/principal';
 import { createClient, type Database } from '@uw/db/client';
 import { createMigratedDatabase, testServer } from '@uw/db/test-database';
 import { projectSeededPersona, seedPage } from '@uw/db/test-seed';
@@ -159,11 +160,7 @@ async function world(connectionString: string) {
   return { zulip, google, gateway, fetcher, env };
 }
 
-async function botFor(
-  rig: Omit<TurnRig, 'direct'>,
-  kernel: Kernel,
-  system: Principal,
-): Promise<void> {
+async function botFor(rig: Omit<TurnRig, 'direct'>, kernel: Kernel): Promise<void> {
   const platform = {
     fetch: rig.fetcher,
     timers: systemTimers,
@@ -178,7 +175,7 @@ async function botFor(
       admin: zulipAdmin({ site: FAKE_ZULIP_SITE, ...FAKE_ADMIN }, rig.fetcher, systemTimers),
       webhookUrl: 'https://ingest.example.org/webhooks/zulip-assistant',
       clock: { now: () => rig.start },
-      caller: caller(system),
+      caller: caller(assistantProvisionerPrincipal()),
     },
     {
       harnessId: rig.harnessId,
@@ -260,7 +257,7 @@ export async function withTurnRig(
     const harnessId = await assistantFor(db, kernel, start, system);
     const parts = await world(database.connectionString);
     const base = { db, harnessId, started: [], start, ...parts };
-    await botFor(base, kernel, system);
+    await botFor(base, kernel);
     await work({ ...base, direct: directOf(base, kernel, ingest) });
   } finally {
     await db.$client.end();

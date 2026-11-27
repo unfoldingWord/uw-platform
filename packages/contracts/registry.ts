@@ -31,6 +31,7 @@ import {
   assistantTurnRefusalSchema,
   untrustedPartSchema,
 } from './assistants.ts';
+import { assistantAccountSchemaRegistry } from './assistant-accounts-registry.ts';
 import { setAssistantBudgetCommandSchema } from './assistant-commands.ts';
 import {
   bindCredentialCommandSchema,
@@ -239,6 +240,7 @@ import {
 
 export const schemaRegistry: Record<string, ZodType> = {
   ...collectionSchemaRegistry,
+  ...assistantAccountSchemaRegistry,
   command: commandSchema,
   'command-name': commandNameSchema,
   'override-command': overrideCommandSchema,

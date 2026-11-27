@@ -75,13 +75,13 @@ export const hostRules = [
   {
     name: 'persona-activation-only-in-the-person-surface',
     comment:
-      'Only an admin makes a persona active, so the kernel and its package index carry no activation: the activation module is built only by the person activation, the app test helpers, the simulator and tests (S10-R18).',
+      'Only an admin makes a persona active, so the kernel and its package index carry no activation: the activation module is built only by the person activation, the app test helpers, the simulator and tests (S10-R18). The one exception is the assistant provisioner activation, which flips only the suggested persona of a personal assistant harness, only for agent:assistant-provisioner (ADR 0040, docs/exceptions.md).',
     severity: 'error',
     from: {
       pathNot: [
         personActivation,
         '^packages/harness/persona-activation\\.ts$',
-        '^packages/harness/personas/(commands|activate)\\.ts$',
+        '^packages/harness/personas/(commands|activate|assistant-activation)\\.ts$',
         appTesting,
         '^sim/',
         testFile,

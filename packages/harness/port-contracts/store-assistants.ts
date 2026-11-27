@@ -13,6 +13,7 @@ import {
   personalHarness,
   type AssistantsSubject,
 } from './store-assistant-fixtures.ts';
+import { describeStoreAssistantAccounts } from './store-assistant-accounts.ts';
 import { describeStoreAssistantBudgets } from './store-assistant-budgets.ts';
 import { describeStoreAssistantReads } from './store-assistant-reads.ts';
 import { describeStoreAssistantPairing } from './store-assistant-pairing.ts';
@@ -235,5 +236,6 @@ export function describeStoreAssistants(adapter: string, subject: AssistantsSubj
     describeStoreAssistantHolds(subject);
     describeStoreAssistantPairing(subject);
     describeStoreAssistantBudgets(subject);
+    describeStoreAssistantAccounts(subject);
   });
 }

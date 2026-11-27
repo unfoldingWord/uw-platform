@@ -709,11 +709,11 @@ A policy's page and the Policies screen show its level, target, enforcement, dat
 
 ## 0036 A person's assistant is a persona on their own harness, lent authority by that person, acting directly only within a closed low-risk set
 
-*2026-11-26. Changes 0002, 0003, 0005, 0015 and 0020. Changed by 0037, 0038 and 0039.*
+*2026-11-26. Changes 0002, 0003, 0005, 0015 and 0020. Changed by 0037, 0038, 0039 and 0040.*
 
 **Decision.**
 
-1. **A personal harness.** Each assistant has its own harness: template `assistant`, no stages, key `assistant-<personId>`, in the assistants area. `harnesses.person_id` names its one person; a check constraint holds `(template = 'assistant') = (person_id IS NOT NULL)`, and a unique index allows one assistant per person. Only `kernel.assistants.provision` creates one, for an org admin or an admin of the assistants area. The template is not in the templates registry and not in `templateKeySchema`, so no generic command creates or switches to it. Stage edits on a personal harness are refused, so no item can enter one.
+1. **A personal harness.** Each assistant has its own harness: template `assistant`, no stages, key `assistant-<personId>`, in the assistants area. `harnesses.person_id` names its one person; a check constraint holds `(template = 'assistant') = (person_id IS NOT NULL)`, and a unique index allows one assistant per person. Only `kernel.assistants.provision` creates one, for an org admin or an admin of the assistants area (amended by 0040: the person turns their own assistant on with `kernel.assistants.enable`, and `provision` is reached by no route). The template is not in the templates registry and not in `templateKeySchema`, so no generic command creates or switches to it. Stage edits on a personal harness are refused, so no item can enter one.
 2. **A real persona per person.** The identity is `agent:assistant-<personId>`, stable across renames and email changes. Its persona page is seeded from the **assistant role**, a fixture in code (`packages/harness/assistants/role.ts`): instructions, a fixed toolset with no write verb, an engine, a capability word and a monthly budget. It is activated through the existing tool check and dry run. Activation refuses an `agent:assistant-*` identity on any harness but that person's personal harness, and any other identity on a personal harness. The person's **customisation** (display name, an instructions addendum and a timezone) lives in an owner-only row and is appended after the role under "the role's limits win". It never replaces the role.
 3. **Authority is a delegation the person grants.** The capability word `assist` is grantable only on a personal harness and only by that harness's person; every other word is refused there. Expiry (default ninety days), revoke, supersede and lapse are unchanged. An `assist` delegation stays live while its grantor is still the harness's person and still holds a live grant. The rules sit in one policy registry per capability word (`packages/harness/delegations/capability.ts`), not in a branch. The assistant's principal holds its person's live grants clamped to `viewer`, each ending at the earlier of the grant's and the delegation's expiry, so it reads only what its person reads, never an owner-only row, and makes no platform write through a write verb. The workflow run beat skips `assist` delegations, and no device host can act under one.
 4. **Requests and turns are kernel commands on the personal harness, and events carry no content.** A request is recorded by the ingest principal, once per channel and external id. The person's text and any untrusted parts live only in owner-only restricted tables (`packages/db/schema-assistants.ts`) that are never offline. Every change records a `harness_events` row on the personal harness in the same transaction, whose evidence holds only ids, closed sets and numbers, so `harness_events` stays the one source of truth (0004 unchanged). Wakes on a personal harness go only to its person and are never posted to a Zulip stream.
@@ -747,7 +747,7 @@ A policy's page and the Policies screen show its level, target, enforcement, dat
 
 ## 0037 One Zulip bot per person, paired by email or a one-time code, its key sealed by KMS
 
-*2026-11-26. Changes 0020 and 0036.*
+*2026-11-26. Changes 0020 and 0036. Changed by 0040.*
 
 **Decision.**
 
@@ -795,7 +795,7 @@ A policy's page and the Policies screen show its level, target, enforcement, dat
 
 ## 0039 The platform reaches Google with one domain-wide-delegated service account, allowlisted in code before it signs
 
-*2026-11-26. Changes 0036.*
+*2026-11-26. Changes 0036. Changed by 0040.*
 
 **Decision.**
 
@@ -816,6 +816,33 @@ A policy's page and the Policies screen show its level, target, enforcement, dat
 **Consequences.** A leaked key can act as any user in the domain for the delegated scopes; Google cannot limit delegation to some users. The mitigations are the allowlist, the four scopes, key rotation and Workspace audit alerts on unexpected subjects. Scope names, the token exchange, the conflict on a reused event id and the free/busy shape come from Google's published API, not a live call; staging confirms them before go-live.
 
 **Changes / changed by.** Changes 0036 (calendar holds are placed acting as the person through domain-wide delegation, not through the person's share to the assistant mailbox).
+
+## 0040 A person turns their own assistant on and off; a narrow provisioner principal makes its accounts, numbered from 10.51
+
+*2026-11-27. Changes 0036, 0037 and 0039.*
+
+**Decision.**
+
+1. **Only the person turns it on or off.** `kernel.assistants.enable` and `disable` take only an interactive person, acting for themself, who holds a live grant. No admin, agent or system principal turns someone's assistant on (owner decision 5 says the platform creates the accounts when someone turns their assistant on). The person-surface routes `/api/assistant/commands/<name>` call them with the request's principal; they ask no `can()` on an area, because the only resource is the caller's own personal harness and the kernel holds the caller to it (`docs/exceptions.md`).
+2. **The person picks the name, which is the address.** The name is the mailbox's local part exactly, `<name>@<GOOGLE_WORKSPACE_DOMAIN>`, with no suffix, and the Zulip bot's name (owner decision 9): lowercase letters, digits, dots and hyphens, 2 to 30 characters, no `..`, not a reserved mailbox name (`assistantNameRefusal`). It is refused when another live assistant holds it (a unique partial index) or when Google Workspace holds it as a user or an alias (Admin SDK `users.get`, which resolves aliases, asked before the kernel and again when the user is inserted: a conflict there is recorded `name_taken`).
+3. **Numbers in area 10-19, lowest free from 10.51, reused after final deletion.** The platform kernel passes `assistantsArea = '10-19'` from trusted code (`apps/uw-platform/assistants/area.ts`), closing review R5. `enable` takes the lowest number from 10.51 upward that no assistant holds (10.99, then 10.100 and on; owner decision 10), under the advisory lock `jd-allocation:10`, keeps it while the assistant is turned off, and frees it only at final deletion. The wiki's suggester counts assistant numbers as taken in category 10, and the personal harness's title carries the number ("10.51 Barnabas").
+4. **A narrow provisioner principal.** The platform's steps run as `agent:assistant-provisioner`: kind agent, no person, no grants, not interactive, a platform identity no persona can take (`assistantProvisionerPrincipal`, `isProvisionerPrincipal`). Only it may bind a Zulip address at provisioning (`bindAddress`, which was the system principal's), activate the suggested assistant persona on that person's personal harness (`activatePersona`, through the same tool check and dry run as any activation, and only an `assistant` persona for that harness's person), record provisioning outcomes and retire an assistant. It cannot grant `assist`; only the person can.
+5. **Resumable, idempotent steps.** `apps/uw-platform/assistants/provisioning/` keeps one progress row per assistant, keyed to the account's version, and runs the steps for its goal. Turned on: the Workspace user (`users.insert` in `GOOGLE_ASSISTANT_OU`, a random password generated and sent once and stored nowhere, an external id naming the harness so a retry adopts its own user and a stranger's address is refused), the Zulip bot (0037), the persona, then waiting for the person's `assist` delegation. Turned off: suspend the user and deactivate the bot at once (owner decision 11). A failure is kept with a closed reason (`assistantProvisioningFailureSchema`), recorded once per account version and step as `assistant_provisioning_failed`, and retried with backoff by a guarded minute-cron step; the person's command drives the steps at once as well.
+6. **Final deletion after 30 days.** A nightly cron step deletes the Workspace user of an assistant turned off 30 days ago (which frees the licence), leaves the bot deactivated, and calls `retire`, which clears the number and records `assistant_deleted`. Turning on again afterwards takes the lowest free number and makes a new Workspace user; the bot is reactivated and renamed.
+
+**Why.** The owner ruled that a person turns their own assistant on, picks its name, gets a Workspace user and a Zulip bot made automatically, numbered from 10.51 with numbers reused after deletion, and that turning off suspends both, deleting the user after 30 days (issue #123, decisions 4, 5, 9, 10 and 11). The build plan had an area admin provisioning each assistant (0036 item 1), which would make every person wait for an admin and let an admin choose someone's assistant. A narrow principal, rather than the system principal, keeps the steps that touch Google and Zulip from carrying the system's other powers, and the steps' idempotency lets a crashed Worker or a refused API call be retried without a second user, bot or number.
+
+**Rejected.**
+- Running the steps as the person. A person holds no `admin.directory.user` right, and the steps must run unattended after the request ends.
+- Running them as `agent:system`. It would let every system path bind addresses and activate personas.
+- A `.assistant` suffix on the address (the build plan). Overruled by the owner.
+- Keeping a number forever (the build plan). Overruled by the owner: numbers are reused after final deletion.
+- A `jd_id` column on `harnesses`. The number belongs to the assistant account, which outlives a turned-off state and is cleared at deletion, so it lives on `assistant_accounts` beside the name and status.
+- A Cloudflare Workflow per provisioning. The steps are short, idempotent and recorded; the minute cron re-drives them with no new binding.
+
+**Consequences.** `GOOGLE_ASSISTANT_OU` is a new variable; `GOOGLE_WORKSPACE_ADMIN_SUBJECT`, `ZULIP_ADMIN_EMAIL` and their secrets must be set before any assistant can be turned on in an environment; until then every step is recorded failed `workspace_not_wired` or `zulip_not_wired` and the person sees that. A name held by a Google group, not a user or alias, is found only when the user is inserted, and is recorded `name_taken`; the person turns the assistant off and back on with another name. The Admin SDK request shapes come from Google's published API, not a live call; staging confirms them before go-live.
+
+**Changes / changed by.** Changes 0036 (item 1: the person turns their own assistant on with `enable`, in area 10-19), 0037 (item 4: `bindAddress` is the provisioner's, not the system principal's) and 0039 (the directory is reached as the admin subject only by the provisioner, to insert, suspend, restore and delete assistant users).
 
 # Part 2. Workflow design decisions
 

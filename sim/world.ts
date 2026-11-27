@@ -23,7 +23,7 @@ import { createSimWorkspace, type SimWorkspace } from './adapters/workspace.ts';
 
 const worldStart = new Date('2026-10-01T09:00:00.000Z');
 
-export const simAssistantsArea: JdArea = '90-99';
+export const simAssistantsArea: JdArea = '10-19';
 
 const simSettings: KernelSettings = {
   assistantsArea: simAssistantsArea,

@@ -47,6 +47,7 @@ function tracking(tx: StoreTransaction, appended: HarnessEvent[]): StoreTransact
     assistantBindings: tx.assistantBindings,
     assistantPairingCodes: tx.assistantPairingCodes,
     assistantBudgets: tx.assistantBudgets,
+    assistantAccounts: tx.assistantAccounts,
   };
   originals.set(tracked, tx);
   return tracked;

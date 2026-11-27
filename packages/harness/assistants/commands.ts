@@ -16,6 +16,21 @@ import {
   type StartPairingInput,
 } from './pairing.ts';
 import { provision, type ProvisionInput } from './provision.ts';
+import { enable, type EnableInput, type Enabled } from './accounts.ts';
+import {
+  disable,
+  recordProvisioning,
+  retire,
+  type Disabled,
+  type ProvisioningRecord,
+  type RetireInput,
+  type Retired,
+} from './account-lifecycle.ts';
+import {
+  activateAssistantPersona,
+  type AssistantActivationInput,
+} from '../personas/assistant-activation.ts';
+import type { ActivatedPersona } from '../personas/types.ts';
 import {
   cancelReminder,
   setReminder,
@@ -48,6 +63,14 @@ import { beginTurn, type BeginInput, type Turn } from './turn.ts';
 
 export type AssistantCommands = {
   provision(caller: Caller, input: ProvisionInput): Promise<KernelOutcome<Activated>>;
+  enable(caller: Caller, input: EnableInput): Promise<KernelOutcome<Enabled>>;
+  disable(caller: Caller, input: Record<string, never>): Promise<KernelOutcome<Disabled>>;
+  retire(caller: Caller, input: RetireInput): Promise<KernelOutcome<Retired>>;
+  recordProvisioning(caller: Caller, input: ProvisioningRecord): Promise<KernelOutcome<null>>;
+  activatePersona(
+    caller: Caller,
+    input: AssistantActivationInput,
+  ): Promise<KernelOutcome<ActivatedPersona>>;
   customise(caller: Caller, input: CustomiseInput): Promise<KernelOutcome<AssistantSettingsRow>>;
   recordRequest(caller: Caller, input: RequestInput): Promise<KernelOutcome<RecordedRequest>>;
   beginTurn(caller: Caller, input: BeginInput): Promise<KernelOutcome<Turn>>;
@@ -79,6 +102,11 @@ export function createAssistantCommands(
 ): AssistantCommands {
   return {
     provision: (caller, input) => provision(ports, settings, caller, input),
+    enable: (caller, input) => enable(ports, settings, caller, input),
+    disable: (caller) => disable(ports, caller),
+    retire: (caller, input) => retire(ports, caller, input),
+    recordProvisioning: (caller, input) => recordProvisioning(ports, caller, input),
+    activatePersona: (caller, input) => activateAssistantPersona(ports, caller, input),
     customise: (caller, input) => customise(ports, caller, input),
     recordRequest: (caller, input) => recordRequest(ports, caller, input),
     beginTurn: (caller, input) => beginTurn(ports, settings, caller, input),

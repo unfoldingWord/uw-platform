@@ -9,6 +9,11 @@ import {
   assistantTurnOutcomeSchema,
   assistantTurnRefusalSchema,
 } from './assistants.ts';
+import {
+  assistantJdIdSchema,
+  assistantProvisioningFailureSchema,
+  assistantProvisioningStepSchema,
+} from './assistant-accounts.ts';
 import { ASSISTANT_BUDGET_MOST_MINOR } from './assistant-commands.ts';
 import { verbNameSchema } from './verb-names.ts';
 
@@ -79,4 +84,12 @@ export const assistantEvidence = {
     channel: assistantChannelSchema,
     why: assistantPairingRefusalSchema,
   }),
+  assistant_enabled: z.strictObject({ jdId: assistantJdIdSchema, restored: z.boolean() }),
+  assistant_disabled: z.strictObject({ revoked: count }),
+  assistant_provisioned: z.strictObject({ goal: z.enum(['enabled', 'disabled']) }),
+  assistant_provisioning_failed: z.strictObject({
+    step: assistantProvisioningStepSchema,
+    why: assistantProvisioningFailureSchema,
+  }),
+  assistant_deleted: z.strictObject({ jdId: assistantJdIdSchema }),
 };

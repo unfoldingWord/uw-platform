@@ -12,6 +12,9 @@ import { spendOnlyEngine } from '../ports/model-engine.ts';
 import { runsOf } from '../ports/runs.ts';
 import { unitHub } from '../unit-hub.ts';
 import { turnStarterOf, type TurnStarter } from '../assistants/turn/start.ts';
+import { provisionerOf } from '../assistants/provisioning/deps.ts';
+import { provisionDue } from '../assistants/provisioning/provisioner.ts';
+import type { ProvisionerDeps } from '../assistants/provisioning/types.ts';
 import { runDelegatedExits } from './delegated-exits.ts';
 import { cronLogger, type CronDeps, type CronJob } from './job.ts';
 
@@ -22,6 +25,7 @@ const SILENCE_LIMIT = 200;
 const REMINDER_LIMIT = 50;
 const STALE_TURN_LIMIT = 50;
 const START_LIMIT = 20;
+const PROVISION_LIMIT = 5;
 
 type Minute = {
   readonly kernel: Kernel;
@@ -29,6 +33,7 @@ type Minute = {
   readonly deps: CronDeps;
   readonly logger: Logger;
   readonly startTurn: TurnStarter;
+  readonly provisioner: ProvisionerDeps;
 };
 
 function monthStart(now: Date): Date {
@@ -158,6 +163,17 @@ async function startWaiting(minute: Minute): Promise<void> {
   });
 }
 
+async function provision({ provisioner, logger }: Minute): Promise<void> {
+  const driven = await provisionDue(provisioner, PROVISION_LIMIT);
+  const counts = { done: 0, waiting: 0, failed: 0 };
+  for (const one of driven) counts[one.outcome] += 1;
+  logger.info('assistants provisioned', {
+    step: 'assistant-provisioning',
+    outcome: 'assistants_provisioned',
+    ...counts,
+  });
+}
+
 function failureOf(step: string, error: unknown): string {
   if (step === 'breaker' && error instanceof PortNotWiredError) return 'breaker_not_configured';
   if (step === 'breaker') return 'breaker_unreadable';
@@ -196,7 +212,16 @@ async function minuteWith(
     hubWiring(unit.hub, { modelEngine, runs: runsOf(env), notifier, directMessages }),
   );
   const caller: Caller = { actor: systemPrincipal(), traceId: deps.newId(), requestId: null };
-  const minute = { kernel, caller, deps, logger, startTurn: turnStarterOf(env.ASSISTANT_TURN) };
+  const clock = { now: deps.now };
+  const host = { env, database, fetch: deps.fetch, clock, kernel, traceId: caller.traceId };
+  const minute = {
+    kernel,
+    caller,
+    deps,
+    logger,
+    startTurn: turnStarterOf(env.ASSISTANT_TURN),
+    provisioner: provisionerOf(host),
+  };
   try {
     await guarded(minute, 'sweep', sweep);
     await guarded(minute, 'expiry', expire);
@@ -205,6 +230,7 @@ async function minuteWith(
     await guarded(minute, 'reminders', remind);
     await guarded(minute, 'assistant-turns', closeStale);
     await guarded(minute, 'assistant-starts', startWaiting);
+    await guarded(minute, 'assistant-provisioning', provision);
     await guarded(minute, 'silence', silence);
     await runDelegatedExits({
       database,

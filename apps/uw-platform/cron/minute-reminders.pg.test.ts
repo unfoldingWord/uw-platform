@@ -1,7 +1,11 @@
 import { randomUUID } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import { assistantIdentityOf, type HarnessEvent, type Principal } from '@uw/contracts';
-import { ingestPrincipal, systemPrincipal } from '@uw/core/principal';
+import {
+  assistantProvisionerPrincipal,
+  ingestPrincipal,
+  systemPrincipal,
+} from '@uw/core/principal';
 import { createClient, type Database } from '@uw/db/client';
 import { createMigratedDatabase, testServer } from '@uw/db/test-database';
 import { projectSeededPersona, seedPage } from '@uw/db/test-seed';
@@ -254,7 +258,7 @@ async function zulipWorld(rig: Rig) {
       admin: zulipAdmin({ site: FAKE_ZULIP_SITE, ...FAKE_ADMIN }, fetcher, systemTimers),
       webhookUrl: 'https://ingest.example.org/webhooks/zulip-assistant',
       clock: { now: () => start },
-      caller: caller(systemPrincipal()),
+      caller: caller(assistantProvisionerPrincipal()),
     },
     {
       harnessId: rig.harnessId,

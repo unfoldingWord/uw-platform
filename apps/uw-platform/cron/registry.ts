@@ -1,3 +1,4 @@
+import { deleteTurnedOffAssistantsJob } from './assistant-deletion.ts';
 import { sweepGitHubJob } from './github-sweep.ts';
 import type { CronJob } from './job.ts';
 import { minuteJob } from './minute.ts';
@@ -11,6 +12,7 @@ const nightlyJob: CronJob = async (env, deps) => {
   await pruneRequestsJob(env, deps);
   await expirePdfExportsJob(env, deps);
   await sweepGitHubJob(env, deps);
+  await deleteTurnedOffAssistantsJob(env, deps);
 };
 
 export const cronJobs: ReadonlyMap<string, CronJob> = new Map([

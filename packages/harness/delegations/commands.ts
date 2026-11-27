@@ -204,7 +204,7 @@ async function mayRevoke(
   return adminRefusal(ports, tx, caller, harness, at);
 }
 
-async function revokeIn(
+export async function revokeIn(
   ports: DelegationPorts,
   tx: StoreTransaction,
   caller: Caller,

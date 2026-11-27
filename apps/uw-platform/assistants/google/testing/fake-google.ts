@@ -1,4 +1,5 @@
 import { decodeJwt, jwtVerify, type CryptoKey } from 'jose';
+import { createFakeDirectory, type FakeDirectory } from './fake-directory.ts';
 
 export const FAKE_TOKEN_URL = 'https://oauth2.googleapis.com/token';
 
@@ -34,6 +35,7 @@ type State = {
   readonly tokens: Map<string, Issued>;
   readonly requests: FakeRequest[];
   readonly failures: Reply[];
+  readonly directory: FakeDirectory;
   next: number;
 };
 
@@ -46,6 +48,7 @@ export type FakeGoogle = {
   requests(): readonly FakeRequest[];
   revokeScope(scope: string): void;
   failNext(status: number): void;
+  readonly directory: Pick<FakeDirectory, 'add' | 'user'>;
 };
 
 const SCOPE_ROOT = 'https://www.googleapis.com/auth/';
@@ -212,6 +215,14 @@ function calendarRoute(state: State, request: Request, url: URL, body: unknown):
     : error(403, 'Insufficient Permission');
 }
 
+function directoryRoute(state: State, request: Request, url: URL, body: unknown): Reply {
+  const issued = issuedTo(state, request);
+  if (issued === null) return error(401, 'Invalid Credentials');
+  return (
+    state.directory.route(request.method, url.pathname, issued, body) ?? error(404, 'Not Found')
+  );
+}
+
 async function bodyOf(request: Request): Promise<{ form: URLSearchParams; json: unknown }> {
   const text = request.method === 'GET' || request.method === 'DELETE' ? '' : await request.text();
   const json = (() => {
@@ -238,11 +249,14 @@ async function route(state: State, request: Request): Promise<Reply> {
   if (failure !== undefined) return failure;
   if (url.href === FAKE_TOKEN_URL && request.method === 'POST') return token(state, form);
   if (url.origin === 'https://www.googleapis.com') return calendarRoute(state, request, url, json);
+  if (url.origin === 'https://admin.googleapis.com')
+    return directoryRoute(state, request, url, json);
   return error(404, 'Not Found');
 }
 
-export function fakeGoogle(): FakeGoogle {
-  const state: State = {
+function initialState(): State {
+  const users = new Map<string, FakeEvent[]>();
+  return {
     publicKey: null,
     granted: new Set([
       `${SCOPE_ROOT}gmail.modify`,
@@ -250,12 +264,19 @@ export function fakeGoogle(): FakeGoogle {
       FREEBUSY_SCOPE,
       `${SCOPE_ROOT}admin.directory.user`,
     ]),
-    users: new Map(),
+    users,
     tokens: new Map(),
     requests: [],
     failures: [],
+    directory: createFakeDirectory((address) => {
+      if (!users.has(address)) users.set(address, []);
+    }),
     next: 0,
   };
+}
+
+export function fakeGoogle(): FakeGoogle {
+  const state = initialState();
   const fetcher: typeof fetch = async (input, init) => {
     const reply = await route(state, new Request(input, init));
     const body = reply.status === 204 ? null : JSON.stringify(reply.body);
@@ -289,5 +310,6 @@ export function fakeGoogle(): FakeGoogle {
     failNext: (status) => {
       state.failures.push(error(status, 'failed'));
     },
+    directory: state.directory,
   };
 }

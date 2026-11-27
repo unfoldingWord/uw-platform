@@ -13,6 +13,7 @@ import { owns as acl } from '../../apps/uw-platform/acl/grant-commands.ts';
 import { owns as serviceTokens } from '../../apps/uw-platform/agents/service-tokens.ts';
 import { owns as assistantZulip } from '../../apps/uw-platform/assistants/zulip/owns.ts';
 import { owns as assistantGoogle } from '../../apps/uw-platform/assistants/google/owns.ts';
+import { owns as assistantProvisioning } from '../../apps/uw-platform/assistants/provisioning/owns.ts';
 import { owns as commandRequests } from '../../apps/uw-platform/commands/requests.ts';
 import { owns as credentialStore } from '../../apps/uw-platform/credentials/store.ts';
 import { owns as crosswalk } from '../../apps/uw-platform/crosswalk/owns.ts';
@@ -59,6 +60,7 @@ const owners: Owner[] = [
   { dir: 'apps/uw-platform/agents/', tables: serviceTokens },
   { dir: 'apps/uw-platform/assistants/zulip/', tables: assistantZulip },
   { dir: 'apps/uw-platform/assistants/google/', tables: assistantGoogle },
+  { dir: 'apps/uw-platform/assistants/provisioning/', tables: assistantProvisioning },
   { dir: 'apps/uw-platform/commands/', tables: commandRequests },
   { dir: 'apps/uw-platform/credentials/', tables: credentialStore },
   { dir: 'apps/uw-platform/crosswalk/', tables: crosswalk },

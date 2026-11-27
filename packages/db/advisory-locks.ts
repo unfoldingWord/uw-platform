@@ -20,6 +20,7 @@ export const lockKeyPrefixes: readonly string[] = [
   'assistant-request:',
   'assistant-harness:',
   'assistant-pool',
+  'jd-allocation:',
 ];
 
 export function githubRepoKey(repoId: number): string {

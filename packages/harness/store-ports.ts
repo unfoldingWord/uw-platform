@@ -39,7 +39,10 @@ import type {
   AssistantSettingsGateway,
 } from './store-ports-assistants.ts';
 
+import type { AssistantAccountsGateway } from './store-ports-accounts.ts';
+
 export type * from './store-ports-assistants.ts';
+export type * from './store-ports-accounts.ts';
 
 type DataSourceKind = EventEvidence['measurement_recorded']['source'];
 
@@ -427,4 +430,5 @@ export type StoreTransaction = {
   readonly assistantBindings: AssistantBindingsGateway;
   readonly assistantPairingCodes: AssistantPairingCodesGateway;
   readonly assistantBudgets: AssistantBudgetsGateway;
+  readonly assistantAccounts: AssistantAccountsGateway;
 };

@@ -16,7 +16,7 @@ type WorkspaceHost = {
 
 export type WorkspaceFactory = (host: WorkspaceHost) => Workspace;
 
-const isolateTokens: TokenCache = new Map();
+export const isolateTokens: TokenCache = new Map();
 
 export const workspaceOf: WorkspaceFactory = ({ env, database, fetch }) => {
   const config = workspaceConfigOf(env);

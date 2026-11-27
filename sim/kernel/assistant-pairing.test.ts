@@ -1,3 +1,4 @@
+import { simProvisioner } from '../assistant-account-fixtures.ts';
 import { closeEmbeddedTemplate } from '@uw/db/embedded';
 import type { KernelOutcome } from '@uw/harness';
 import { afterAll, describe, expect, it } from 'vitest';
@@ -49,7 +50,7 @@ function complete(scene: AssistantScene, codeDigest: string, address = 'zulip:60
 }
 
 function bindByEmail(scene: AssistantScene, address: string) {
-  return scene.world.kernel.assistants.bindAddress(simCaller(scene.world, simSystem()), {
+  return scene.world.kernel.assistants.bindAddress(simCaller(scene.world, simProvisioner()), {
     personId: personOf(scene.person),
     channel: 'zulip_dm',
     address,
@@ -74,6 +75,11 @@ async function bindsTheAddressTheProvisionerFound(scene: AssistantScene): Promis
     { personId: personOf(scene.person), channel: 'zulip_dm', address: 'zulip:6006' },
   );
   expect(asIngest.status).toBe('error');
+  const asSystem = await scene.world.kernel.assistants.bindAddress(
+    simCaller(scene.world, simSystem()),
+    { personId: personOf(scene.person), channel: 'zulip_dm', address: 'zulip:6006' },
+  );
+  expect(asSystem.status).toBe('error');
   value(await bindByEmail(scene, 'zulip:6006'));
   expect(await bindingOf(scene)).toMatchObject({ address: 'zulip:6006', via: 'email_match' });
   expect(value(await bindByEmail(scene, 'zulip:7007'))).toEqual({ via: 'email_match' });
@@ -142,7 +148,7 @@ async function neverGivesOneZulipAccountTo(scene: AssistantScene): Promise<void>
     }),
   );
   const taken = await scene.world.kernel.assistants.bindAddress(
-    simCaller(scene.world, simSystem()),
+    simCaller(scene.world, simProvisioner()),
     { personId: personOf(other), channel: 'zulip_dm', address: 'zulip:6006' },
   );
   expect(why(taken)).toBe('address_taken');
@@ -165,7 +171,7 @@ async function refusesTheThirtyFirstRequestWithin(scene: AssistantScene): Promis
 }
 
 describe('PA-6 pairing a Zulip account with its assistant', () => {
-  it('binds the address the provisioner found by email, for the system only', () =>
+  it('binds the address the provisioner found by email, for the provisioner only', () =>
     withScene(bindsTheAddressTheProvisionerFound));
 
   it('lets only the person start a pairing on their own assistant', () =>

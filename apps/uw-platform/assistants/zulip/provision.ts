@@ -2,7 +2,7 @@ import type { Caller, Clock, Kernel } from '@uw/harness';
 import type { Executor } from '@uw/db/client';
 import type { DataKeys } from '../../credentials/data-keys.ts';
 import type { BotDetails, ZulipAdmin } from './admin.ts';
-import { botOfHarness, insertBot, setBotStatus, type BotRow } from './bots.ts';
+import { botOfHarness, insertBot, setBotFullName, setBotStatus, type BotRow } from './bots.ts';
 import { sha256Hex } from './digest.ts';
 import { sealBotKey } from '../../credentials/assistant-bot-keys.ts';
 import type { ZulipFailure, ZulipOutcome } from './rest.ts';
@@ -144,4 +144,19 @@ export function reactivateZulipBot(
   harnessId: string,
 ): Promise<ZulipBotState> {
   return switched(deps, harnessId, 'active');
+}
+
+export async function renameZulipBot(
+  deps: ZulipProvisionDeps,
+  harnessId: string,
+  fullName: string,
+): Promise<ZulipBotState> {
+  const bot = await botOfHarness(deps.db, harnessId);
+  if (bot === null) return failed('no_bot');
+  if (bot.fullName !== fullName) {
+    const answer = await deps.admin.renameBot(bot.botUserId, fullName);
+    if (!answer.ok) return failed(failureWhy[answer.failure]);
+    await setBotFullName(deps.db, harnessId, fullName, deps.clock.now());
+  }
+  return { outcome: bot.status };
 }

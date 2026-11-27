@@ -7,7 +7,7 @@ export type GoogleAnswer =
 export type GoogleCall = {
   readonly subject: string;
   readonly scopes: readonly string[];
-  readonly method: 'GET' | 'POST' | 'DELETE';
+  readonly method: 'GET' | 'POST' | 'PUT' | 'DELETE';
   readonly url: string;
   readonly body?: unknown;
 };

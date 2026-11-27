@@ -80,6 +80,7 @@ describe('DX-2 executorOf', () => {
       assistantBindings: untouched(),
       assistantPairingCodes: untouched(),
       assistantBudgets: untouched(),
+      assistantAccounts: untouched(),
     };
     expect(() => executorOf(foreign)).toThrow('not a transaction of the Drizzle store');
   });
